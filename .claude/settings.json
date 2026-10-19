@@ -1,0 +1,6 @@
+{
+  "claudeMdExcludes": [
+    "**/canvas/spec/CLAUDE.md",
+    "**/canvas/spec/**/CLAUDE.md"
+  ]
+}
