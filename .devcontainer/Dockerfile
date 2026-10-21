@@ -1,14 +1,20 @@
 # Development container for NovaTrail's canvas.
-# Exact versions only: the base image is pinned by digest, every tool below by an ARG default.
+# Exact versions only: the base image is pinned by digest, every tool below by an ARG default,
+# the browser by its image's digest and the system libraries by a snapshot of the Ubuntu archive.
 # Anything a builder understands: no heredocs, no RUN --mount, no TARGETARCH — architecture is
 # detected at RUN time via dpkg instead. A host that has Docker can build this, and that is the
 # whole requirement.
 #
-# Two stages. `toolchain` holds what it takes to check the schemas and documents, and is the
-# stage the automated checks run inside. `devcontainer` adds what a person needs on top of that
-# and is the default stage, so building this file with no target gives the full environment.
+# Two stages. `toolchain` holds what it takes to check the documents and the code — Node, just and
+# the browser the code's tests run in — and is the stage the automated checks run inside.
+# `devcontainer` adds what a person needs on top of that and is the default stage, so building
+# this file with no target gives the full environment.
+#
+# This is spec's devcontainer with canvas's own additions, the browser and its libraries, recorded
+# as R13 in docs/decisions.md. A move to a new tag of spec carries spec's changes into this file
+# by hand rather than replacing it.
 
-# -- toolchain: checks the schemas and documents -----------------------------
+# -- toolchain: checks the documents and the code -----------------------------
 
 FROM mcr.microsoft.com/devcontainers/base:3.0.10-noble@sha256:21e9e3275736cb3bc33a2904b279a2ab292c51fedd53c2963463627d4586c3e6 AS toolchain
 
@@ -19,7 +25,7 @@ ARG NODE_VERSION=24.21.0
 ARG JUST_VERSION=1.58.0
 # The sha256 of every archive, per architecture, as its publisher lists it: SHASUMS256.txt of
 # the Node release, SHA256SUMS of the just release. A sum written here keeps an archive from
-# being swapped once it has been read (R34), and is raised together with its version.
+# being swapped once it has been read (R34 spec), and is raised together with its version.
 ARG NODE_SHA256_AMD64=6e1db87ef58b8819e5d5402eff1536491b18edd8eb7bee5ef7897876e88dc5ff
 ARG NODE_SHA256_ARM64=724282c3b43aec998aa9527380465b45d229e021b58035f5f4f63095eabfe5d5
 ARG JUST_SHA256_AMD64=4a5cc2f53e6f0f8c59092a6cc38291eb729d46a7dd95d3ae582008881b84931d
@@ -60,6 +66,36 @@ RUN arch="$(dpkg --print-architecture)"; \
     rm -rf "$workdir"
 
 ENV PATH="/usr/local/node/bin:/home/vscode/.local/bin:${PATH}"
+
+# The browser the tests run in (R13). Playwright publishes no sums for its browser downloads, so it
+# comes from Playwright's own image, pinned by tag and digest (R19 .github), and only the build a
+# headless test starts: Chrome Headless Shell. The image's tag is the version of the playwright
+# package in package-lock.json, and the revision is the one that version's browsers.json names:
+# otherwise Playwright finds no browser, and ci-test fails on it. All three are raised by hand, in
+# the pull request that raises the package: Dependabot reads FROM lines only, and this image is not
+# in one.
+ARG PLAYWRIGHT_HEADLESS_SHELL_REVISION=1248
+COPY --from=mcr.microsoft.com/playwright:v1.64.1-noble@sha256:7852dc5a7d72f5fe458a597d690f6c42fbc8e9e26ddfa95f8e6ef552558d9bbf \
+    /ms-playwright/chromium_headless_shell-${PLAYWRIGHT_HEADLESS_SHELL_REVISION} \
+    /ms-playwright/chromium_headless_shell-${PLAYWRIGHT_HEADLESS_SHELL_REVISION}
+# Where Playwright looks for its browsers, outside any home: in CI the checks run with HOME=/tmp.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+# The system libraries the browser needs: Chromium's list for Ubuntu 24.04 in Playwright's
+# nativeDeps.ts at the same version, and the fonts it reads. apt pins no versions by itself, so
+# they come from the Ubuntu archive as it was at one moment: a snapshot, whose ID is raised by hand
+# like a version (R13) — with the image above, or when a newer base image needs a newer archive.
+# apt checks the archive's signatures as it does on any update.
+ARG UBUNTU_SNAPSHOT=20261021T000000Z
+RUN apt-get update --snapshot "$UBUNTU_SNAPSHOT"; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        --snapshot "$UBUNTU_SNAPSHOT" \
+        libasound2t64 libatk-bridge2.0-0t64 libatk1.0-0t64 libatspi2.0-0t64 libcairo2 \
+        libcups2t64 libdbus-1-3 libdrm2 libgbm1 libglib2.0-0t64 libnspr4 libnss3 \
+        libpango-1.0-0 libx11-6 libxcb1 libxcomposite1 libxdamage1 libxext6 libxfixes3 \
+        libxkbcommon0 libxrandr2 \
+        libfontconfig1 libfreetype6 fonts-liberation; \
+    rm -rf /var/lib/apt/lists/*
 
 # -- devcontainer: the toolchain, plus what a person works with --------------
 

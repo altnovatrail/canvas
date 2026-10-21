@@ -6,7 +6,15 @@ A component of [NovaTrail](https://github.com/altnovatrail/spec/tree/v0.2.14), a
 
 ## Status
 
-Detailing. The documents come first: the first epic of [RUN.md](RUN.md) decides what the component's card left open, and the code follows in the order RUN.md sets. There is no package and no samples page here yet: the first epic decides what they are built on, and epic E2, beside it, builds them task by task as those decisions come (R02).
+Code started. The detailing is done — epic E1, archived in [docs/plan/E1.md](docs/plan/E1.md) — and epic E2 of [RUN.md](RUN.md) builds the handwriting sheet and the samples page task by task. So far there is the package's skeleton, `@altnovatrail/canvas`, with its tools; no release has come out yet.
+
+## Code
+
+- `src/core/` — the DOM-free part, `@altnovatrail/canvas/core`: it runs the same in a browser and in Node.
+- `src/element/` — the element `<novatrail-canvas>`, `@altnovatrail/canvas`: importing it registers the element.
+- `scripts/` — the check of every package's license, and the check of the package as a consumer takes it.
+
+`just build` builds the package into `lib/`, and `just ci` runs the checks CI runs: format, lint and types; the tests in Node and in Chromium; advisories; licenses. They run in the devcontainer, whose toolchain stage holds the browser the tests run in. The license check needs `ALLOWED_LICENSES`, the list CI takes from .github's `typescript.yml`: how to set it is in [CLAUDE.md](CLAUDE.md), Environment.
 
 ## Documents
 

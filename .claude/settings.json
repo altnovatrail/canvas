@@ -2,5 +2,31 @@
   "claudeMdExcludes": [
     "**/canvas/spec/CLAUDE.md",
     "**/canvas/spec/**/CLAUDE.md"
-  ]
+  ],
+  "permissions": {
+    "deny": [
+      "Read(/samples)",
+      "Read(/samples/**)",
+      "Edit(/samples)",
+      "Edit(/samples/**)",
+      "Bash(samples)",
+      "Bash(samples *)",
+      "Bash(samples/*)",
+      "Bash(* samples)",
+      "Bash(* samples *)",
+      "Bash(* samples/*)",
+      "Bash(*/samples)",
+      "Bash(*/samples *)",
+      "Bash(*/samples/*)",
+      "Bash(*\"samples\"*)",
+      "Bash(*\"samples/*)",
+      "Bash(*'samples'*)",
+      "Bash(*'samples/*)",
+      "Bash(*=samples)",
+      "Bash(*=samples *)",
+      "Bash(*=samples/*)",
+      "Bash(*<samples*)",
+      "Bash(*>samples*)"
+    ]
+  }
 }
