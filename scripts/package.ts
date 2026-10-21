@@ -9,6 +9,7 @@
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /** The paths npm pack takes, besides the build: package.json and the files npm always adds. */
@@ -63,8 +64,22 @@ async function main(): Promise<string[]> {
     problems.push(`${manifest.name} resolves to ${element}, not to the element's build`);
   }
 
+  // The npm that comes with this very Node, by its path in Node's distribution and run by this
+  // Node: no program is looked up in PATH.
+  const npm = join(
+    dirname(process.execPath),
+    "..",
+    "lib",
+    "node_modules",
+    "npm",
+    "bin",
+    "npm-cli.js",
+  );
+  if (!existsSync(npm)) return [...problems, `npm is not at ${npm}, beside this Node`];
   const packed = JSON.parse(
-    execFileSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], { encoding: "utf8" }),
+    execFileSync(process.execPath, [npm, "pack", "--dry-run", "--json", "--ignore-scripts"], {
+      encoding: "utf8",
+    }),
   ) as { files: { path: string }[] }[];
   problems.push(...packProblems(packed[0]?.files.map((file) => file.path) ?? []));
   return problems;
