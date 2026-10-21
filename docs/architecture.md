@@ -50,6 +50,8 @@
 
 У карточки четыре пункта — подразделы 2.1–2.4, в её порядке. Два из них опираются на вопросы реестров `spec`: стыковка и публикация пакета — на Т-21 и Т-26, формат образцов — на протокол eval (R15 spec) и согласие добровольцев (П-16). Там задача готовит ответ со стороны `canvas`, а само решение записывается в `spec`.
 
+Подраздел 2.5 — сверх карточки и не из эпика E1: ввод на текстовой канве. Его нашёл анализ автора 2026-10-21 (раздел 4), а решает эпик текстовой канвы после E2. Он же, когда решение принято, правит под него карточку — строкой таблицы 3 «в реестр spec» (architecture 3 spec).
+
 ### 2.1. Движок рисования
 
 - **Суть:** чем канва рисует лист и слои и принимает ввод пера, пальца и мыши: готовой библиотекой — canvas-api планировал Konva — или своим кодом на API браузера. Решается здесь: это пункт карточки (architecture 3.2 spec), а технологии компонента решает его репозиторий (R11 spec).
@@ -182,6 +184,19 @@
   - откуда страница образцов берёт задачи замера, пока у `modules` и `module-kit` нет кода, — В6 в таблице 3 [RUN.md](../RUN.md), «в реестр spec». Задачи замера сейчас у `tutor`, с ключом, решением, ловушками и фразами-утечками (architecture 3.1 tutor).
 - **Варианты:** пока пусто.
 - **Задача:** T04.
+
+### 2.5. Ввод на текстовой канве — как набран
+
+- **Суть:** текстовая канва отдаёт на проверку то, что набрал ученик. А браузер и клавиатура устройства сами меняют набранное: исправляют слова, ставят заглавные буквы, подсказывают продолжение и отмечают ошибки. Тогда вид проверки «текст» или «правка» сверял бы с ключом не ответ ученика, а исправление устройства — например, ударение, которое поставила автозамена там, где модуль считает ударения значимыми (concepts 9.2, 16.2 spec). А отмеченная ошибка — подсказка ещё до проверки, та «красная ручка», без которой обходится платформа (product 7 spec). В карточке этого пункта нет: его нашёл анализ автора 2026-10-21 (раздел 4) — «нормализация, автокоррекция и „угадывание“ нужного слова в канве запрещены».
+- **Что известно:**
+  - HTML Standard (раздел 4): с `autocorrect="off"` браузеру нельзя исправлять слова при наборе, а без атрибута действует `on`; с `spellcheck="false"` правописание не проверяется, а при включённой проверке браузер отмечает ошибки — как именно, стандарт не задаёт; с `writingsuggestions="false"` браузер не подсказывает продолжение;
+  - атрибуты — просьба, а не гарантия. Проверку, которую пользователь включил всегда, `spellcheck="false"` не выключает, а `autocapitalize` браузер или клавиатура «may choose to ignore or override», и полагаться на него стандарт не велит (раздел 4). Как ведут себя клавиатуры iPad и Android, видно только на устройствах — так же T22 проверяет перо;
+  - у выключения есть цена — доступность интерфейса (concepts 15 spec): ученику с нарушениями моторики или с дислексией автозамена и подсказки могут помогать набирать. Доступность интерфейса — пункт карточки `app` (architecture 3.1 spec);
+  - нормализация — параметр вида проверки, и задаёт её модуль: регистр, пробелы, пунктуация, ударения (concepts 9.2 spec). Канве нормализовать нечего;
+  - ввод на текстовой канве — «клавиатура с ударениями» (раздел 3.1). Своя ли это панель канвы или клавиатура устройства, решает эпик текстовой канвы.
+- **Варианты:** выключить всё — `autocorrect="off"`, `autocapitalize="none"`, `spellcheck="false"`, `writingsuggestions="false"` — и проверить клавиатуры на устройствах; оставить, как настроено на устройстве; решать модулю на каждую задачу.
+- **Рекомендация:** выключить всё в поле ответа и проверить на устройствах: автозамена не нужна ни одной проверке, поэтому и настройка модулю не нужна. Чем заменить помощь при наборе тому, кому она нужна, решить в том же эпике, вместе с доступностью интерфейса `app`. Там же — что делать, если клавиатура устройства атрибуты не слушает: например, своя экранная клавиатура канвы.
+- **Задача:** эпик текстовой канвы после E2 — его предлагает T05.
 
 ## 3. Устройство
 
@@ -593,3 +608,9 @@ sheet_box = [B.ymin − m/s, B.xmin − m/s, B.ymin − m/s + h/s, B.xmin − m/
   - `verify-release-integrity.md`: «To verify a local artifact is an exact match for a release asset» — `gh release verify-asset RELEASE-TAG ARTIFACT-PATH`;
   - `oidc-with-reusable-workflows.md`: «If that job is part of a reusable workflow, the token will include the standard claims that contain information about the calling workflow, and will also include a custom claim called `job_workflow_ref` that contains information about the called workflow»;
   - API GitHub, 2026-10-21: у `altnovatrail/canvas` `immutable-releases` — `{"enabled":false,"enforced_by_owner":false}`, а ruleset у него один — `main` (25506234).
+- **HTML Standard** (раздел 2.5) — [6.8 Editing](https://html.spec.whatwg.org/multipage/interaction.html#editing-2), Last Updated 20 October 2026, прочитано 2026-10-21:
+  - [`autocorrect`](https://html.spec.whatwg.org/multipage/interaction.html#attr-autocorrect), состояние `off`: «The user agent is not allowed to automatically correct spelling while the user types»; «The attribute's invalid value default, missing value default, and empty value default are all the On state»;
+  - [`spellcheck`](https://html.spec.whatwg.org/multipage/interaction.html#spelling-and-grammar-checking), состояние `false`: «Spelling and grammar will not be checked»; «If the checking is enabled for a word/sentence/text, the user agent should indicate spelling and grammar errors in that text»; «This specification does not define the user interface for spelling and grammar checkers». В порядке, по которому браузер решает, проверять ли текст, выбор пользователя идёт раньше атрибута: «Otherwise, if the user has forced the checking for this text to always be enabled, then the checking is enabled»;
+  - [`writingsuggestions`](https://html.spec.whatwg.org/multipage/interaction.html#attr-writingsuggestions), состояние `false`: «Writing suggestions should not be offered on this element»;
+  - [`autocapitalize`](https://html.spec.whatwg.org/multipage/interaction.html#autocapitalization): «User agents or input methods may choose to ignore or override the used autocapitalization hint in certain circumstances»; «the attribute must not be relied on for any sort of input validation».
+- **Анализ «Базовая канва и контракт „канва ↔ агент“»** (раздел 2.5; эпик E2 в [RUN.md](../RUN.md)) — его прислал автор 2026-10-21, в репозитории его нет. Писала модель, которая не видела ни кода, ни принятых решений NovaTrail, поэтому отсюда берутся вопросы, а не факты.
