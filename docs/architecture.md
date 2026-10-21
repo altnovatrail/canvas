@@ -131,9 +131,22 @@
   - варианты Т-26 — npm в области `@altnovatrail`, GitHub Packages, только релизы GitHub. Его рекомендация — решить, прочитав условия реестров: пакеты должны ставиться по точной версии и без токена, в том числе авторами виджетов. По документации GitHub, без токена пакет npm из GitHub Packages не поставить, даже публичный (раздел 4);
   - с этапа 4 канва — ещё и сторона протокола виджета в приложении (architecture 3.2 spec; repositories 3 spec). Сам протокол — R16 spec и Т-24, эпик E5 в RUN.md `spec`;
   - в релиз `canvas` войдут ещё сборка страницы образцов (R25 spec) и синтетические образцы для CI `tutor` (В7 в таблице 3 [RUN.md](../RUN.md));
-  - общая обёртка TypeScript `.github` приходит с первым кодом на TypeScript — у `canvas`, эпиком E5 в RUN.md `.github` (R03 .github, поправка 2026-10-21; раздел 4).
-- **Варианты:** пока пусто.
-- **Задача:** T03.
+  - общая обёртка TypeScript `.github` приходит с первым кодом на TypeScript — у `canvas`, эпиком E5 в RUN.md `.github` (R03 .github, поправка 2026-10-21; раздел 4);
+  - фреймворк `app` ещё не выбран — его T01 открыта, — и `app`, и `skill-map` ждут ответа на Т-21. «Прослушать» на текстовой канве `app` тоже отложил до Т-21: «один ли у них с `app` синтез речи, решается вместе со стыковкой пакетов (Т-21)» (раздел 4);
+  - React 19 и Preact берут custom element сами: значения передают его свойствами, если элемент их объявил, а события слушают по имени (раздел 4);
+  - ссылки ARIA по ID не выходят за границу Shadow DOM, а имя custom element на странице одно (раздел 4).
+- **Варианты** стыковки — по источникам раздела 4:
+
+  | Вопрос | Варианты | Решено |
+  |---|---|---|
+  | чем пакет входит в потребителя (Т-21) | веб-компонент без фреймворка; компонент фреймворка `app`; функция монтирования | первый |
+  | сколько элементов | один на все виды канвы; свой на каждый вид | первый |
+  | где разметка элемента | открытый Shadow DOM; общий DOM страницы | первый |
+  | кто озвучивает «прослушать» | `app`, по событию канвы; сама канва | первый |
+
+  Почему выбран каждый и чем плохи остальные — R07.
+- **Решено** (R07): стыковка — веб-компонент `<novatrail-canvas>`, один на все виды канвы и с открытым Shadow DOM. Данные он получает свойствами, работу для проверки отдаёт методом, а историю письма и просьбу озвучить — событиями. Устройство — раздел 3.3. Публикация и релиз (Т-26, Т-27) — T27.
+- **Задачи:** T03 — стыковка, сделана; T27 — публикация и релиз.
 
 ### 2.4. Формат образцов по протоколу eval
 
@@ -156,7 +169,7 @@
 
 ## 3. Устройство
 
-Сюда переезжает то, что решено по разделу 2: из каких частей компонент состоит, его типы и данные, как он связан с другими репозиториями. Пока здесь — движок рисования со слоями канвы и логические координаты листа: из раздела 2 решены подразделы 2.1 (R05) и 2.2 (R06).
+Сюда переезжает то, что решено по разделу 2: из каких частей компонент состоит, его типы и данные, как он связан с другими репозиториями. Пока здесь — движок рисования со слоями канвы, логические координаты листа и стыковка с приложением: из раздела 2 решены подразделы 2.1 (R05) и 2.2 (R06) и стыковка из 2.3 (R07).
 
 ### 3.1. Движок рисования и слои
 
@@ -203,7 +216,7 @@
 
 **Что решают следующие задачи:**
 - T02 — единицы листа, один перевод координат на все слои и пометки текстовой канвы: решено, раздел 3.2 (R06);
-- T03 — интерфейс пакета: часть на странице не держится ни за один фреймворк, поэтому годится любой ответ Т-21;
+- T03 — интерфейс пакета: часть на странице не держится ни за один фреймворк, поэтому годится любой ответ Т-21. Решено: веб-компонент, раздел 3.3 (R07); публикация и релиз — T27;
 - T08 — инструменты и тесты в Node и в браузере;
 - T09–T14 — ввод, ластик и история, слои и сетка, группы, вырезка, привязка пометок;
 - T22 — проверка на устройствах.
@@ -285,9 +298,65 @@ sheet_box = [B.ymin − m/s, B.xmin − m/s, B.ymin − m/s + h/s, B.xmin − m/
 - от `api` пометка приходит с меткой группы, с ячейкой ответа или с рамкой в долях вырезки — не в единицах листа (В13);
 - на текстовой канве единиц листа нет: слова раскладывает страница. Пометка — это `{word_ids}`, и рисуется она по текущей раскладке своих слов. Перестановка и зачёркивание её не сдвигают. ID словам условия даёт открытый вид, по формату (В14), а вставленным словам — `canvas`.
 
-**С устройства не уходят** `sheet_box`, таблица групп, штрихи и их время (R09 spec). Как `canvas` отдаёт их потребителю вместе с вырезкой и принимает обратно с пометками, решает T03.
+**С устройства не уходят** `sheet_box`, таблица групп, штрихи и их время (R09 spec). Как `canvas` отдаёт их потребителю вместе с вырезкой и принимает обратно с пометками — раздел 3.3.
 
 **Набросок «как начать» на пустом месте** вырезкой не адресуется: вырезка покрывает только работу, а у пустого листа её нет. Где он встаёт, решается вместе с ним — с первым срезом `app` и `api` (эпик E2, «Не входит»).
+
+### 3.3. Стыковка с приложением
+
+Пакет входит в потребителя веб-компонентом — элементом `<novatrail-canvas>`, без фреймворка (R07; Т-21). Варианты — раздел 2.3, источники — раздел 4.
+
+**Элемент:**
+- один на все виды канвы: вид он берёт из открытого вида задачи. Модуль выбирает вид, а новый вид — код платформы (R02 spec), поэтому новый вид приходит новой версией `canvas`, без правки `app`;
+- разметка — в открытом Shadow DOM: стили страницы не задевают слоёв канвы, а стили канвы — страницу;
+- элемент регистрируется при импорте своей точки входа и только один раз. Имя элемента на странице одно, а `app` собирает одну точную версию пакета (R16 spec);
+- точек входа у пакета две. Часть без DOM импортируется и в Node, для тестов и синтетики T18 (раздел 3.1), и элемента не регистрирует. Элемент регистрируется отдельной точкой входа. Как они называются, решает T08.
+
+**Получает** — свойствами, а не атрибутами. Свойства объявлены в классе элемента: так React 19 и Preact передают их значения элементу как свойства (раздел 4).
+- `task` — открытый вид задачи: условие, пункты и ячейки ответа, вид канвы и его настройки (В14 в таблице 3 [RUN.md](../RUN.md)), разрешённые инструменты. Ключа, решения и ловушек в нём нет (R05 spec);
+- `media` — функция, которая по ссылке на медиафайл отдаёт обещание `Blob` (`Promise`). Медиа даёт потребитель, а сама канва по сети не ходит (repositories 2.1 spec): `app` берёт их из того, что раздаёт `api`, а страница образцов — из своей сборки (R25 spec). Чем канва заменяет медиафайл, который не пришёл, решает T11;
+- `history` — история письма, с которой открывается лист. Её хранит `app` на устройстве (architecture 3.1 spec); без неё лист пуст. Если присвоить ту историю, что уже на листе, ничего не меняется, а другая заменяет лист целиком. Поэтому `app`, который держит историю у себя, может отдавать её элементу при каждой перерисовке, и лист от этого не пересобирается;
+- `marks` — пометки наставника одной отправки вместе с её контекстом (ниже);
+- язык интерфейса — атрибут `lang` на самом элементе: его ставит `app`, а элемент следит за ним и переводит подписи. В теневом дереве `lang` наследуется от хоста, поэтому `:lang` и программа чтения с экрана видят тот же язык (раздел 4). Подписи переводятся по общей схеме пакетов интерфейса, которую T07 `app` передаст «в реестр spec».
+
+**Отдаёт:**
+- событие `historychange` — после каждого штриха, стирания и отмены: новые события истории письма, со временем. `app` дописывает их на устройстве, как canvas-api писал штрихи после каждого штриха (spec 4.2 canvas-api);
+- метод `exportWork()` — работу для проверки, когда её просит потребитель, например по «Проверить». Метод асинхронный и отдаёт обещание. У листа работа — это вырезка PNG и контекст отправки: `sheet_box`, рамки групп в долях вырезки и таблица «метка → ID штрихов» (раздел 3.2). У пустого листа работы нет, и обещание отдаёт `null` (H3). У текстовой канвы работой будут правки — эпиком после E2;
+- свойство `history` для чтения — вся история письма. Её берут образец (T04) и выгрузка `app` (R09 spec);
+- событие `speak` — просьба озвучить текст на его языке. Так «прослушать» на текстовой канве озвучивает `app`, одним синтезом речи на всё приложение (Т-13).
+
+События элемент шлёт с самого себя — с хоста, а не изнутри теневого дерева — и они всплывают (`bubbles: true`). По умолчанию событие DOM не всплывает, а изнутри теневого дерева до слушателей снаружи доходит только событие с `composed: true` (раздел 4). Имена событий — строчными буквами: React и Preact слушают событие по точному имени (раздел 4).
+
+**Контекст отправки.** Своих данных у канвы нет (architecture 3.2 spec), поэтому контекст отправки она не хранит, а отдаёт вместе с вырезкой:
+- `app` держит контекст у себя и возвращает его вместе с пометками этой отправки. Держит — пока могут прийти пометки; хранить ли его на устройстве дольше, решает `app` (architecture 3.1 spec, «что и сколько хранится на устройстве»). Контекст выведен из работы ученика — как и штрихи, это данные на устройстве (privacy 4 spec);
+- `sheet_box` и таблица «метка → ID штрихов» на сервер не уходят (R06), а рамки групп уйдут, только если их примет В8;
+- по контексту канва находит штрихи меток групп и переводит рамки в единицы листа, а стёртые с тех пор штрихи отбрасывает (раздел 3.2).
+
+**Типы:**
+- типы элемента — его свойства, метод и события — лежат в пакете `canvas`. Элемент встаёт в `HTMLElementTagNameMap`, и `document.createElement` и `querySelector` отдают его тип. Для JSX React 19 потребитель дополняет пространство имён `JSX` модуля `react` (раздел 4);
+- типы данных берутся из релизов `spec` (R21 spec; T35 в RUN.md `spec`):
+  - открытый вид задачи и настройки канвы — формат модуля v0 (T28 в RUN.md `spec`; В14);
+  - пометки наставника, вырезка и рамки групп в контракте `app` ↔ `api` — эпик E3 (В13);
+  - история письма в образце — протокол eval (E3; R15 spec);
+  - штрихи в выгрузке — формат выгрузки (R09 spec).
+
+  Пока этих типов нет, у канвы свои временные того же состава, а с релизом `spec` она переходит на его типы (В16).
+
+**Доступность интерфейса.** Ссылки ARIA по ID не выходят за границу shadow root (раздел 4). Поэтому подписи инструментов, условия и пометок живут внутри элемента, а имя канвы целиком `app` даёт самому элементу. Как всё это звучит, проверяют T11 и T14.
+
+**Тема** — переменными CSS: они наследуются от родителя (раздел 4), и элемент читает их внутри своего дерева. Какие это переменные, решает T11.
+
+**Сборки:**
+- `app` ставит пакет по точной версии, а где пакет публикуется, решает T27;
+- страница образцов — своя сборка того же элемента (T19);
+- сайт и карточка канала MCP получают вторую сборку того же пакета (architecture 6 spec).
+
+**Что делает `app`:**
+- даёт элементу `task`, `media`, `history` и `marks`, а атрибутом `lang` — язык;
+- слушает `historychange` и `speak`;
+- по «Проверить» зовёт `exportWork()` и отправляет в `api` только вырезку (R09 spec), а контекст отправки держит у себя.
+
+Т-21 — вопрос реестра `spec`, а ответ `canvas` на него — В15.
 
 ## 4. Источники
 
@@ -364,6 +433,24 @@ sheet_box = [B.ymin − m/s, B.xmin − m/s, B.ymin − m/s + h/s, B.xmin − m/
   - Anthropic, [Vision](https://platform.claude.com/docs/en/build-with-claude/vision): «An image, therefore, costs `⌈width / 28⌉ × ⌈height / 28⌉` visual tokens»; «Images larger than either limit are downscaled before processing». В таблице пределов «Max long edge» — «2576 px» у «Claude 4.7 and later models» и «1568 px» у «All other models». «Claude's coordinate and localization outputs are approximate»;
   - OpenAI, [Images and vision](https://developers.openai.com/api/docs/guides/images-vision): «patch_count = ceil(width/32)×ceil(height/32)»; «For coordinate-sensitive tasks, resize images to fit those limits before sending them and map returned coordinates back to the original image»; «The model struggles with tasks requiring precise spatial localization». У `gpt-6-astra` в `high` — «up to 2,500 patches», а формата рамки на странице нет;
   - Google, [Image understanding](https://ai.google.dev/gemini-api/docs/image-understanding), Last updated 2026-09-23: «The box_2d should be [ymin, xmin, ymax, xmax] normalized to 0-1000»; «You need to descale these coordinates based on your original image size». Модели Google здесь — только для справки: из замера `tutor` их убрал (запись `tutor` ниже).
+- **Веб-компоненты** (разделы 2.3 и 3.3), прочитано 2026-10-21:
+  - React 19:
+    - [блог](https://react.dev/blog/2024/12/05/react-19#support-for-custom-elements): «React 19 adds full support for custom elements and passes all tests on Custom Elements Everywhere»; «props that match a property on the Custom Element instance will be assigned as properties, otherwise they will be assigned as attributes»;
+    - [справочник](https://react.dev/reference/react-dom/components#custom-html-elements): «React will, however, recognize an custom element's property as one that it may pass arbitrary values to if the property name shows up on the class during construction»; «You can listen for these events using an `on` prefix when binding to the event via JSX»; «Events are case-sensitive and support dashes (`-`)»;
+    - [upgrade guide](https://react.dev/blog/2024/04/25/react-19-upgrade-guide#the-jsx-namespace-in-typescript): «You'll now need to wrap module augmentation of the JSX namespace in `declare module "....":`», в примере — `declare module "react"`;
+  - Preact, [Web Components](https://preactjs.com/guide/v10/web-components/): «Preact fully supports Web Components»; «When a Custom Element defines a setter for a given property, Preact detects its existence and will use the setter instead of an attribute»; о событиях — «unrecognized event handler props passed to a DOM Element are registered using their casing exactly as specified»;
+  - TypeScript, [DOM Manipulation](https://www.typescriptlang.org/docs/handbook/dom-manipulation.html): «The map interface contains every specified HTML tag name and its corresponding type interface» — это `HTMLElementTagNameMap`, по которому `createElement` и `querySelector` выводят тип элемента;
+  - MDN:
+    - [Using shadow DOM](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM): «the styles defined in the shadow DOM tree are scoped to that tree, so just as page styles don't affect elements in the shadow DOM, shadow DOM styles don't affect elements in the rest of the page»; «Language and text directionality, set using lang and dir, are generally inherited from an element's parent node. When that parent is a shadow root, they are inherited from the shadow host instead»;
+    - [Using CSS custom properties](https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Cascading_variables/Using_custom_properties): «A custom property defined using two dashes -- instead of @property always inherits the value of its parent»; запасные значения `var()` — «useful when working with Custom Elements and Shadow DOM»;
+    - [`Event()`](https://developer.mozilla.org/en-US/docs/Web/API/Event/Event): у `bubbles` — «The default is false»; `composed` — «A boolean value indicating whether the event will trigger listeners outside of a shadow root»;
+    - [Reflected attributes](https://developer.mozilla.org/en-US/docs/Web/API/Document_Object_Model/Reflected_attributes): «Attribute element references can only refer to other elements that are in the same DOM or Shadow DOM, because element ids are only valid in the scope in which they are declared»;
+    - [Using custom elements](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements): «every custom element name you register must be globally unique across the entire page»;
+  - HTML Standard, [custom elements](https://html.spec.whatwg.org/multipage/custom-elements.html), Last Updated 20 October 2026: если в реестре уже есть определение с тем же именем, `define` должен «throw a "NotSupportedError" DOMException»;
+  - WICG, [Reference Target](https://github.com/WICG/webcomponents/blob/gh-pages/proposals/reference-target-explainer.md): «The motivating goal of this feature is to enable ARIA relationship attributes to work across shadow root boundaries». Вышло ли это в браузерах, не проверялось.
+- **app и skill-map** (раздел 2.3), прочитано 2026-10-21:
+  - [altnovatrail/app](https://github.com/altnovatrail/app/tree/7a96676), коммит 7a96676: T01 «Фреймворк и сборка» в таблице 1 его RUN.md — `[ ]`. В architecture 2.4 app — «„Прослушать“ — инструмент канвы, то есть `canvas`; один ли у них с `app` синтез речи, решается вместе со стыковкой пакетов (Т-21)». В T07 app — «стандарт доступности и схема переводов — общие для пакетов интерфейса, и это строкой таблицы 3 «в реестр spec»»;
+  - [altnovatrail/skill-map](https://github.com/altnovatrail/skill-map/tree/0295ce8), коммит 0295ce8: рекомендация его T04 к Т-26 — «одна на `skill-map` и `canvas`», и если `canvas` разберёт вопрос раньше, T04 берёт его выводы.
 - **tutor** (раздел 2.4) — [altnovatrail/tutor](https://github.com/altnovatrail/tutor/tree/4394a33), ветка `main`, коммит 4394a33, прочитано 2026-10-21: R04, R05 и R07 tutor; В7 в таблице 3 его RUN.md — «E3 берёт формат `tutor` за основу: он проверен на замере. T04 `canvas` сверяет с ним образец страницы образцов, и когда она появится, страница записи `tutor` уходит»; в его эпике E2 одна задача — T08 «Исследование: как дать модели ход рассуждения», не сделана; её цель — в том числе «Решено и то, какие виды входа идут в замер … и что для этого пишет страница записи». На коммите [16d9cd1](https://github.com/altnovatrail/tutor/tree/16d9cd1), прочитано 2026-10-21 (T01 в [RUN.md](../RUN.md)), — R08 tutor: «Группы для меток строятся так, как их построит устройство, — по пространству и времени, без разметки», а для замера «PNG рисуется с медианной высотой группы штрихов 16, 24, 32 и 48 px». На коммите [231bf8b](https://github.com/altnovatrail/tutor/tree/231bf8b), прочитано 2026-10-21 (разделы 2.2 и 3.2):
   - разбор хода решения идёт «в двух вариантах» (R08 tutor), и во втором — «чистая вырезка, и модель даёт рамку в координатах своего поставщика, а раннер притягивает её к штрихам»; попадание — «Жаккар по множествам штрихов ≥ 0,5, у рамки ещё IoU ≥ 0,5»;
   - в architecture 3.1 tutor — «PNG рисуется только из видимых штрихов, без сетки и текста задачи, по рамке работы с полем 12 px»;
