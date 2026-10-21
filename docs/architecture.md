@@ -39,7 +39,7 @@
 - своих данных нет (architecture 3.2 spec). Штрихи и артефакты ученика лежат на устройстве — их держит `app` (architecture 3.1, 5 spec). В репозитории нет данных учеников и секретов (RULES.md, Hard rules): штрихи в тестах и примерах — только синтетические;
 - потребители — `app` и страница образцов; позже — предпросмотр модуля для автора и карточка канала MCP (architecture 3.2 spec). `app` собирает пакет по точной версии, а во время разработки подключает его рабочую копию. Второй потребитель получает вторую сборку того же пакета (architecture 6 spec; R16 spec);
 - при сборке ни от чего не зависит, кроме `spec`, а по сети ни к кому не обращается; от него при сборке зависит `app` (repositories 2.1, 3 spec). CI сборки страницы образцов берёт по точному тегу CLI `module-kit` и релиз `modules` — это связь «инструмент CI», а не зависимость при сборке: так в сборку попадают задачи и медиафайлы, а сам пакет предметов не знает (R25 spec; repositories 1 spec; architecture 3.2 spec). Код возьмёт типы `spec` из сгенерированных пакетов его релизов, а не из подмодуля (R21 spec; Т-7);
-- как пакет стыкуется с приложением — Т-21: его рекомендация — веб-компоненты с типами из `spec`. Где публикуется пакет — Т-26 (architecture 6 spec; раздел 2.3 этого документа);
+- как пакет стыкуется с приложением — Т-21: его рекомендация — веб-компоненты с типами из `spec`. Где публикуется пакет — Т-26 (architecture 6 spec). Ответы `canvas` на оба — раздел 2.3. Стыковка — веб-компонент (R07, раздел 3.3). Пакет — в npm, а сборка страницы образцов и синтетические образцы — файлами релиза GitHub (R08, раздел 3.4);
 - образцы взрослых добровольцев со страницы образцов уходят в eval-наборы модулей через pull request в `modules`, а образцы детей — без него, туда, куда решат П-10 и П-12 (R25 spec). Формат образцов задаёт протокол eval из `spec` (R15 spec; architecture 3.2 spec). Согласие добровольцев — открытый вопрос П-16 (раздел 2.4);
 - лицензия — Apache-2.0, а зависимости — только с лицензиями, совместимыми с ней (R12 spec; R20 spec);
 - этап 2. Вместе с `tutor` это первый код этапа: замер чтения ИИ по каждому виду канвы и ответа идёт раньше остального (repositories 6 spec; product 11 spec).
@@ -131,10 +131,15 @@
   - варианты Т-26 — npm в области `@altnovatrail`, GitHub Packages, только релизы GitHub. Его рекомендация — решить, прочитав условия реестров: пакеты должны ставиться по точной версии и без токена, в том числе авторами виджетов. По документации GitHub, без токена пакет npm из GitHub Packages не поставить, даже публичный (раздел 4);
   - с этапа 4 канва — ещё и сторона протокола виджета в приложении (architecture 3.2 spec; repositories 3 spec). Сам протокол — R16 spec и Т-24, эпик E5 в RUN.md `spec`;
   - в релиз `canvas` войдут ещё сборка страницы образцов (R25 spec) и синтетические образцы для CI `tutor` (В7 в таблице 3 [RUN.md](../RUN.md));
-  - общая обёртка TypeScript `.github` приходит с первым кодом на TypeScript — у `canvas`, эпиком E5 в RUN.md `.github` (R03 .github, поправка 2026-10-21; раздел 4);
+  - общая обёртка TypeScript `.github` приходит с первым кодом на TypeScript — у `canvas`, эпиком E5 в RUN.md `.github` (R03 .github, поправка 2026-10-21; раздел 4). Её договор с рецептами `canvas` — R19 .github (раздел 3.4);
   - фреймворк `app` ещё не выбран — его T01 открыта, — и `app`, и `skill-map` ждут ответа на Т-21. «Прослушать» на текстовой канве `app` тоже отложил до Т-21: «один ли у них с `app` синтез речи, решается вместе со стыковкой пакетов (Т-21)» (раздел 4);
   - React 19 и Preact берут custom element сами: значения передают его свойствами, если элемент их объявил, а события слушают по имени (раздел 4);
-  - ссылки ARIA по ID не выходят за границу Shadow DOM, а имя custom element на странице одно (раздел 4).
+  - ссылки ARIA по ID не выходят за границу Shadow DOM, а имя custom element на странице одно (раздел 4);
+  - npm: публичный пакет в области ставит любой, опубликованная версия не меняется, а организация для публичных пакетов бесплатна. Публиковать без долгоживущего токена позволяет trusted publishing, и из reusable workflow npm сверяет имя вызывающего workflow. Настроить его можно только у пакета, который уже есть в реестре (раздел 4);
+  - в npm 12 установка по ссылке по умолчанию закрыта: `allow-remote` равен `none`, а исключение — только архивы с хоста самого реестра. В npm 11, который идёт с Node 24, она ещё открыта (раздел 4);
+  - GitHub Packages требует токен и для установки публичного пакета, причём только personal access token (classic) (раздел 4);
+  - общий релиз `.github` — `release.yml`, вышел в v0.1.4 (R18 .github). Файлы пишет рецепт вызывающего `release-files`, и каждый подписан cosign без ключей. Первый релиз на нём — `module-kit` v0.1.0 от 2026-10-21. В npm общий релиз не публикует, а что проверяет потребитель у его подписи, решает T37 `spec` (Т-27; раздел 4);
+  - T32 `tutor` ждёт ответа, где в релизе `canvas` лежат синтетические образцы, а T04 `skill-map` берёт выводы `canvas` о Т-26 (раздел 4).
 - **Варианты** стыковки — по источникам раздела 4:
 
   | Вопрос | Варианты | Решено |
@@ -145,8 +150,19 @@
   | кто озвучивает «прослушать» | `app`, по событию канвы; сама канва | первый |
 
   Почему выбран каждый и чем плохи остальные — R07.
-- **Решено** (R07): стыковка — веб-компонент `<novatrail-canvas>`, один на все виды канвы и с открытым Shadow DOM. Данные он получает свойствами, работу для проверки отдаёт методом, а историю письма и просьбу озвучить — событиями. Устройство — раздел 3.3. Публикация и релиз (Т-26, Т-27) — T27.
-- **Задачи:** T03 — стыковка, сделана; T27 — публикация и релиз.
+- **Варианты** публикации — по источникам раздела 4:
+
+  | Вопрос | Варианты | Решено |
+  |---|---|---|
+  | где выходит пакет (Т-26) | npm, область `@altnovatrail`; GitHub Packages; только релизы GitHub | первый |
+  | как пакет попадает в npm | шаг общего `release.yml` — тот же файл, что в подписанном релизе; свой job в `release.yml` `canvas`; staged publishing; вручную, каждой версией | первый |
+  | где сборка страницы образцов и синтетика | файлы того же релиза GitHub; пакеты npm; отдельные релизы | первый |
+
+  Почему выбран каждый и чем плохи остальные — R08.
+- **Решено:**
+  - стыковка (R07) — веб-компонент `<novatrail-canvas>`, один на все виды канвы и с открытым Shadow DOM. Данные он получает свойствами, работу для проверки отдаёт методом, а историю письма и просьбу озвучить — событиями. Устройство — раздел 3.3;
+  - публикация и релиз (R08) — пакет выходит в npm, `@altnovatrail/canvas`, а всё, что выходит у `canvas`, — файлы одного релиза GitHub с подписью общего `release.yml` `.github`. В npm уходит тот же файл пакета, шагом того же релиза. Устройство — раздел 3.4.
+- **Задачи:** T03 — стыковка, сделана; T27 — публикация и релиз, сделана.
 
 ### 2.4. Формат образцов по протоколу eval
 
@@ -169,7 +185,7 @@
 
 ## 3. Устройство
 
-Сюда переезжает то, что решено по разделу 2: из каких частей компонент состоит, его типы и данные, как он связан с другими репозиториями. Пока здесь — движок рисования со слоями канвы, логические координаты листа и стыковка с приложением: из раздела 2 решены подразделы 2.1 (R05) и 2.2 (R06) и стыковка из 2.3 (R07).
+Сюда переезжает то, что решено по разделу 2: из каких частей компонент состоит, его типы и данные, как он связан с другими репозиториями. Пока здесь — движок рисования со слоями канвы, логические координаты листа, стыковка с приложением и публикация пакета: из раздела 2 решены подразделы 2.1 (R05), 2.2 (R06) и 2.3 (R07, R08).
 
 ### 3.1. Движок рисования и слои
 
@@ -216,7 +232,7 @@
 
 **Что решают следующие задачи:**
 - T02 — единицы листа, один перевод координат на все слои и пометки текстовой канвы: решено, раздел 3.2 (R06);
-- T03 — интерфейс пакета: часть на странице не держится ни за один фреймворк, поэтому годится любой ответ Т-21. Решено: веб-компонент, раздел 3.3 (R07); публикация и релиз — T27;
+- T03 — интерфейс пакета: часть на странице не держится ни за один фреймворк, поэтому годится любой ответ Т-21. Решено: веб-компонент, раздел 3.3 (R07); публикация и релиз — раздел 3.4 (R08);
 - T08 — инструменты и тесты в Node и в браузере;
 - T09–T14 — ввод, ластик и история, слои и сетка, группы, вырезка, привязка пометок;
 - T22 — проверка на устройствах.
@@ -347,7 +363,7 @@ sheet_box = [B.ymin − m/s, B.xmin − m/s, B.ymin − m/s + h/s, B.xmin − m/
 **Тема** — переменными CSS: они наследуются от родителя (раздел 4), и элемент читает их внутри своего дерева. Какие это переменные, решает T11.
 
 **Сборки:**
-- `app` ставит пакет по точной версии, а где пакет публикуется, решает T27;
+- `app` ставит пакет из npm по точной версии (раздел 3.4);
 - страница образцов — своя сборка того же элемента (T19);
 - сайт и карточка канала MCP получают вторую сборку того же пакета (architecture 6 spec).
 
@@ -357,6 +373,76 @@ sheet_box = [B.ymin − m/s, B.xmin − m/s, B.ymin − m/s + h/s, B.xmin − m/
 - по «Проверить» зовёт `exportWork()` и отправляет в `api` только вырезку (R09 spec), а контекст отправки держит у себя.
 
 Т-21 — вопрос реестра `spec`, а ответ `canvas` на него — В15.
+
+### 3.4. Публикация и релиз
+
+Пакет выходит в npm — `@altnovatrail/canvas`, в области организации `altnovatrail` (R08; Т-26). Всё, что выходит у `canvas`, — файлы одного релиза GitHub с подписью общего `release.yml` `.github`, а в npm уходит тот же файл пакета. Варианты — раздел 2.3, источники — раздел 4.
+
+**Релиз** выходит сам, как у `module-kit`. После зелёного CI на `main` свой `release.yml` `canvas` зовёт общий по SHA его релиза (R18 .github). Номер — следующий патч линии `RELEASE_LINE`, сначала `0.1`, а тег встаёт вместе с неизменяемым релизом. Релиз выходит, только если изменились пути, из которых он собран. Их список составляет T24, по В6 module-kit.
+
+**Файлы релиза** пишет рецепт `release-files <версия>` в стадии `toolchain`. Он собирает их из дерева выпускаемого коммита — без истории, без подмодуля `spec`, без `git` и без токенов (R18 .github):
+
+| Файл | Что это | Кто берёт |
+|---|---|---|
+| `altnovatrail-canvas-<X.Y.Z>.tgz` | пакет, как его собирает `npm pack`. Версия пакета — номер релиза без `v`: в git номера нет, его вписывает рецепт | npm — тот же файл |
+| `samples-page_v<X.Y.Z>.html` | сборка страницы образцов одним файлом (R25 spec; T19). Уведомления лицензий чужого кода, который она несёт, — в самом файле: доброволец скачивает только его | взрослый — со страницы релиза |
+| `synthetic-samples_v<X.Y.Z>.<…>` | синтетические образцы одним архивом; формат архива и образцов — T18 | CI `tutor` — по тегу и сумме (T32 tutor) |
+| `LICENSE` | Apache-2.0, как в релизе `module-kit` | — |
+| `SHA256SUMS` | суммы всех файлов | любой |
+
+Рядом с каждым файлом — его подпись `.sigstore.json`: cosign без ключей, а идентичность — общий `release.yml` (R18 .github). Отсюда три следствия:
+- в `dist/` — только файлы релиза: общий релиз выкладывает всё, что там лежит, и падает на подпапке. Сборка пакета лежит в другой папке, её называет T08;
+- в неизменяемый релиз файл потом не добавить, поэтому сборку страницы для релиза собирает сам `release-files` — без токена и без `gh`:
+  - задачи замера он скачивает по тегу и сверяет по суммам, записанным в дереве. Сеть у контейнера есть: `docker run` этого шага идёт без `--network`, а такой контейнер Docker подключает к сети по умолчанию (раздел 4);
+  - cosign у него есть, только если стоит в стадии `toolchain`, со своей суммой (R34 spec);
+  - что в сборке нет закрытых полей задачи, проверяется на том файле, который уходит в релиз (T21);
+- когда шаг npm включён, каждый релиз — новая версия и в npm, даже если код пакета не менялся: тег на всё один. `app` возьмёт пакет только после замера (repositories 6 spec), тогда это и пересматривается (R08).
+
+**В npm** пакет уходит шагом общего `release.yml`. Это тот же прогон, после того как релиз вышел и проверен, и тот же файл `.tgz` (В18 в таблице 3 [RUN.md](../RUN.md)). Сумма версии в npm — сумма этого файла.
+- **Без долгоживущего токена** — trusted publishing по OIDC. Из reusable workflow npm сверяет имя вызывающего, то есть `release.yml` `canvas`, а `id-token: write` дают оба workflow (раздел 4).
+- **provenance** npm создаёт сам. Его сертификат по правилу Fulcio называет в SAN общий `release.yml`, как и подписи cosign (Т-27). Примет ли реестр provenance из reusable workflow другого репозитория, документация npm не говорит — это проверит первая публикация (T24).
+- **Сам шаг** идёт на раннере, а не в стадии `toolchain` вызывающего: токены туда не идут (R18 .github). Остальные требования к нему — в В18.
+
+**Как берут и что проверяют.** Что проверяет потребитель у подписи общего релиза, решает Т-27 — T37 в RUN.md `spec`. Ответ `canvas` для своих потребителей — В19.
+- **`app`** берёт `@altnovatrail/canvas` из npm по точной версии, и в `main` у него — только источник из реестра. Менеджер пакетов `app` ещё не выбран (T01 app). В npm lock-файл держит сумму `integrity`, и npm сверяет её при установке. `npm audit signatures` проверяет подпись реестра и provenance, но не то, каким workflow собран пакет (раздел 4). Связь с подписанным релизом даёт сам файл, но её проверяют отдельным шагом: архив той же версии скачивают из реестра и сверяют его sha256 с `SHA256SUMS` того же тега, чья подпись проверена. Lock-файл держит в `integrity` sha512, и с `SHA256SUMS` его напрямую не сравнить. Берёт ли `app` такой шаг, решает он сам, по Т-27 (В19).
+- **Рабочая копия** при разработке подключается ссылкой. В npm это `npm link`, а установка папки вне проекта тоже ставит symlink (раздел 4). В `main` `app` она не попадает: в релиз идут только точные версии (architecture 6 spec).
+- **CI `tutor`** берёт архив синтетики из релиза по точному тегу и сумме (T32 tutor; В7). Подпись — по рекомендации Т-27: SAN — общий `release.yml` на SHA релиза `.github`, репозиторий и workflow — `canvas`, коммит — тот, на котором тег.
+- **Взрослый** скачивает сборку страницы со страницы релиза (R25 spec). Проверять подпись от него никто не ждёт, а `SHA256SUMS` открыт любому.
+
+**Рецепты для общих workflow.** Такими их ждут обёртка TypeScript и общий релиз. Договор обёртки — R19 .github: по нему T08 пишет рецепты, `.npmrc` и стадию `toolchain`, а T23 — вызывающий job (architecture 3.1 и 3.3 .github; раздел 4).
+- **Рецепты** — четыре, с теми же именами, что у `go.yml` (R16 .github). Чем проверять и в каких версиях, решает и закрепляет `canvas`:
+  - `ci-lint` — формат, линт и проверка типов;
+  - `ci-test` — тесты, и в браузере тоже;
+  - `ci-vuln` — уязвимости пакетов lock-файла по опубликованным советам;
+  - `ci-licenses` — лицензия каждого пакета lock-файла, инструментов разработки тоже, по `ALLOWED_LICENSES` из окружения. Исключение — по имени и только для инструмента, который никуда не поставляется, каждое со своим решением (R12 spec). Сверх договора `canvas` проверяет и то, что несёт сборка страницы (T19, T21).
+
+  Рецепт `ci`, который зовёт все четыре, — для разработчика: обёртка его не зовёт.
+- **Как их зовёт обёртка.** Каждый job — новый контейнер стадии `toolchain`, собранной без контекста. Он идёт от пользователя раннера, с `HOME=/tmp`, с сетью и с флагами `--init` и `--ipc=host`, а из окружения шага в него идёт только `ALLOWED_LICENSES` (R16 .github; R19 .github). Checkout — без подмодуля: ни код, ни тесты, ни `justfile` `canvas` ничего не берут из `spec/` (R21 spec). Пакеты `ci-lint` и `ci-test` ставят сами, `npm ci` из lock-файла, а `ci-vuln` и `ci-licenses` хватает самого lock-файла.
+- **Что лежит в репозитории:**
+  - lock-файл и `.npmrc` с `ignore-scripts=true` и `save-exact=true`;
+  - Node — в стадии `toolchain`, по точной версии и с суммой архива (R34 spec), он там уже есть. Пакеты ставит npm, который идёт с Node, а другой менеджер пакетов — по точной версии в той же стадии и со своим решением;
+  - в `dependabot.yml` — экосистема `npm` с паузой в три дня, а `directory` — папка `package.json` (architecture 3.3 .github).
+- **Браузеры для тестов:**
+  - ставятся в стадии `toolchain` при сборке образа, а их системные пакеты — `apt-get`, от root;
+  - путь к ним задаёт `ENV PLAYWRIGHT_BROWSERS_PATH` в самой стадии, вне `HOME`: в CI `HOME` — `/tmp`, а других переменных обёртка в контейнер не передаёт;
+  - ревизия — та, которую ждёт версия Playwright в lock-файле, так что пакет и браузеры поднимаются одной правкой. Как устроить это с Dependabot, решает T08;
+  - своего списка сумм у загрузок Playwright нет, и R34 spec к ним как есть не применить. В рамках правил — папка `/ms-playwright` из образа Playwright, закреплённого по тегу и digest. Сумма, которую `canvas` посчитал бы сам, — отступление от R34 spec и строка «в реестр spec». Выбирает T08;
+  - браузеры приходят не из lock-файла, и `ci-licenses` их не видит. Их лицензии называет решение, которое их приносит (T08).
+- **Рекомендации `.github`**, не условия договора: `ci-vuln` — `npm audit --omit=dev --audit-level=high`, как R48 canvas-api; `ci-licenses` — свой скрипт по lock-файлу, как `licenses-check` `spec` и `web/scripts/licenses.ts` canvas-api, пока `spec` не даст общую проверку (В20 в RUN.md `.github`). Берёт ли их `canvas`, решает T08.
+- **Проба и вызов.** `typescript.yml` пишет T22 `.github`, когда код T08 будет в pull request: этот pull request зовёт обёртку по SHA её ветки, до релиза `.github`. Вызывающий job — по тексту architecture 3.3 .github, а SHA релиза встаёт в него после релиза (T23).
+- **`release-files <версия>`** пишет в `dist/` только простые файлы с безопасными именами (R18 .github).
+
+**Шаги автора** до первого релиза, по правилу 4, — в T24:
+1. организация `altnovatrail` в npm — для публичных пакетов бесплатная. Имя лучше занять сразу: ответ реестра «Scope not found» не доказывает, что оно свободно (раздел 4);
+2. у `canvas` — неизменяемые релизы и ruleset тегов `v*`, как у `module-kit` (architecture 3.3 .github). Сейчас их нет (раздел 4);
+3. первый релиз выходит с выключенным шагом npm: trusted publisher настраивается только у пакета, который уже есть в реестре;
+4. первую версию автор публикует вручную, с 2FA, тем же файлом из первого релиза: `npm publish ./altnovatrail-canvas-0.1.0.tgz --access public`. Provenance у неё нет;
+5. trusted publisher — `npm trust` или сайт npm, — а затем «Require two-factor authentication and disallow tokens»;
+6. за 2 дня после настройки должна пройти первая публикация по ней. Для этого pull request включает шаг и задевает пути релиза.
+
+Пока шаг не включён, пути релиза другие pull request не трогают. Иначе релиз выйдет без версии в npm, и её придётся публиковать вручную, как в шаге 4.
+
+Т-26 — вопрос реестра `spec`, а ответ `canvas` на него — В17.
 
 ## 4. Источники
 
@@ -375,7 +461,7 @@ sheet_box = [B.ymin − m/s, B.xmin − m/s, B.ymin − m/s + h/s, B.xmin − m/
   - R269 standalone, «Rejected»: «Konva and other canvas libraries. A canvas is one element a screen reader cannot read, and a change of theme means drawing it again. … Mafs and react-konva need React»;
   - `docs/widget-drawings.md`, таблица «What to draw with», по данным npm и bundlephobia на 2026-10-08: «Konva 10.7.1 | MIT | 186.7 / 55.6 KB» (min / gzip); «react-konva 19.3.0 | MIT | 143.2 / 44.5 KB + React | … | Needs React's reconciler».
 - **Прототип `spec/draft/`** (раздел 2.1) — `NovaTrail Widget.html` на теге `spec` v0.1.0, прочитано 2026-10-19: лист — элемент `<canvas>` с `getContext('2d')`, а ластик рисует с `globalCompositeOperation = 'destination-out'`, то есть стирает пиксели. «Where it differs from the documents in docs/, the documents win» (`spec/draft/README.md`). На теге v0.2.13 файл тот же, прочитано 2026-10-21 (раздел 3.1): лист сложен из элементов страницы — пунктирный набросок SVG лежит под холстом, на холсте стоит `touch-action:none`, рамка наставника — SVG поверх него с `pointer-events:none`, а номера и надпись — элементы `div`.
-- **GitHub Packages** (раздел 2.3) — GitHub Docs, [Working with the npm registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-npm-registry), прочитано 2026-10-19: «You need an access token to publish, install, and delete private, internal, and public packages».
+- **GitHub Packages** (раздел 2.3) — GitHub Docs, [Working with the npm registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-npm-registry), прочитано 2026-10-19: «You need an access token to publish, install, and delete private, internal, and public packages». Перечитано 2026-10-21 в исходниках документации, [github/docs](https://github.com/github/docs/blob/cca0c9d7299f760587d6601bd96acfd2f5cb8929/data/reusables/package_registry/authenticate-packages.md), коммит cca0c9d: фраза та же, а [рядом](https://github.com/github/docs/blob/cca0c9d7299f760587d6601bd96acfd2f5cb8929/data/reusables/package_registry/packages-classic-pat-only.md) — «GitHub Packages only supports authentication using a personal access token (classic)».
 - **Исследование «Рукопись ребёнка на канве и ИИ-наставник»** — [артефакт](https://claude.ai/artifact/QLH6WzmmQs4MY5NvjMxb1D), отчёт `files/child-handwriting.md`, версия 1792539580-561a, от 2026-10-20, прочитано 2026-10-21 (разделы 2.1, 2.2 и 2.4). В репозиториях NovaTrail его нет, доступ к артефакту — у автора, а то, на что опираются документы `canvas`, процитировано ниже. Это не решение: «Не решение: решения по нему принимает эпик E6 в RUN.md, а пока они не приняты, действуют документы и журнал решений». Какой это RUN.md, исследование не говорит: в RUN.md `spec` на теге v0.2.12 эпиков после E5 нет, а здесь — после E2. Его пункты цитируются по его же меткам — A3, A6, C1. «Метка» в нём — и метка группы штрихов (A, B, C), и пометка слоя наставника; в документах `canvas` второе — «пометка», как в concepts 8 spec:
   - A3: «Канва вида «лист для рукописи» экспортирует только чернила, без сетки и текста задачи, обрезает по рамке работы с полем 12 px и масштабирует так, чтобы медианная высота группы штрихов была ≈32 px»; «Высота цифры — настройка канвы модуля»;
   - A4: «Риск по возрастанию: (a) картинка < (b) картинка и грубые признаки процесса < (d) стёртое ≤ (c) сырые штрихи с временем и нажимом»;
@@ -449,12 +535,61 @@ sheet_box = [B.ymin − m/s, B.xmin − m/s, B.ymin − m/s + h/s, B.xmin − m/
   - HTML Standard, [custom elements](https://html.spec.whatwg.org/multipage/custom-elements.html), Last Updated 20 October 2026: если в реестре уже есть определение с тем же именем, `define` должен «throw a "NotSupportedError" DOMException»;
   - WICG, [Reference Target](https://github.com/WICG/webcomponents/blob/gh-pages/proposals/reference-target-explainer.md): «The motivating goal of this feature is to enable ARIA relationship attributes to work across shadow root boundaries». Вышло ли это в браузерах, не проверялось.
 - **app и skill-map** (раздел 2.3), прочитано 2026-10-21:
-  - [altnovatrail/app](https://github.com/altnovatrail/app/tree/7a96676), коммит 7a96676: T01 «Фреймворк и сборка» в таблице 1 его RUN.md — `[ ]`. В architecture 2.4 app — «„Прослушать“ — инструмент канвы, то есть `canvas`; один ли у них с `app` синтез речи, решается вместе со стыковкой пакетов (Т-21)». В T07 app — «стандарт доступности и схема переводов — общие для пакетов интерфейса, и это строкой таблицы 3 «в реестр spec»»;
+  - [altnovatrail/app](https://github.com/altnovatrail/app/tree/7a96676), коммит 7a96676: T01 «Фреймворк и сборка» в таблице 1 его RUN.md — `[ ]`. Она решает, «как сборка подключает рабочие копии пакетов при разработке, а в релиз берёт точные версии», а менеджера пакетов не называет (раздел 3.4). В architecture 2.4 app — «„Прослушать“ — инструмент канвы, то есть `canvas`; один ли у них с `app` синтез речи, решается вместе со стыковкой пакетов (Т-21)». В T07 app — «стандарт доступности и схема переводов — общие для пакетов интерфейса, и это строкой таблицы 3 «в реестр spec»»;
   - [altnovatrail/skill-map](https://github.com/altnovatrail/skill-map/tree/0295ce8), коммит 0295ce8: рекомендация его T04 к Т-26 — «одна на `skill-map` и `canvas`», и если `canvas` разберёт вопрос раньше, T04 берёт его выводы.
 - **tutor** (раздел 2.4) — [altnovatrail/tutor](https://github.com/altnovatrail/tutor/tree/4394a33), ветка `main`, коммит 4394a33, прочитано 2026-10-21: R04, R05 и R07 tutor; В7 в таблице 3 его RUN.md — «E3 берёт формат `tutor` за основу: он проверен на замере. T04 `canvas` сверяет с ним образец страницы образцов, и когда она появится, страница записи `tutor` уходит»; в его эпике E2 одна задача — T08 «Исследование: как дать модели ход рассуждения», не сделана; её цель — в том числе «Решено и то, какие виды входа идут в замер … и что для этого пишет страница записи». На коммите [16d9cd1](https://github.com/altnovatrail/tutor/tree/16d9cd1), прочитано 2026-10-21 (T01 в [RUN.md](../RUN.md)), — R08 tutor: «Группы для меток строятся так, как их построит устройство, — по пространству и времени, без разметки», а для замера «PNG рисуется с медианной высотой группы штрихов 16, 24, 32 и 48 px». На коммите [231bf8b](https://github.com/altnovatrail/tutor/tree/231bf8b), прочитано 2026-10-21 (разделы 2.2 и 3.2):
   - разбор хода решения идёт «в двух вариантах» (R08 tutor), и во втором — «чистая вырезка, и модель даёт рамку в координатах своего поставщика, а раннер притягивает её к штрихам»; попадание — «Жаккар по множествам штрихов ≥ 0,5, у рамки ещё IoU ≥ 0,5»;
   - в architecture 3.1 tutor — «PNG рисуется только из видимых штрихов, без сетки и текста задачи, по рамке работы с полем 12 px»;
   - в таблице 3 его RUN.md, «в реестр spec», — В12 tutor «Как наблюдение указывает место на канве» и В13 tutor «Высота цифр в картинке для проверки». Рекомендация В13 tutor — «настройка канвы модуля в формате модуля v0 (эпик E2 RUN.md `spec`), умолчание — из выводов E2»;
-  - поправка 2026-10-21 к R06 tutor — «Google из замера убран».
+  - поправка 2026-10-21 к R06 tutor — «Google из замера убран»;
+  - T32 «Совместимость с `canvas`» в его RUN.md — «скачать синтетические образцы из закреплённого релиза `canvas` — точный тег и сумма sha256», а решить при её планировании — «где в релизе `canvas` лежат синтетические образцы и в каком они формате» (разделы 2.3 и 3.4).
 - **spec на теге v0.2.12** (разделы 2.2 и 2.4) — [altnovatrail/spec](https://github.com/altnovatrail/spec/tree/v0.2.12), коммит b721be9, релиз неизменяемый, прочитано 2026-10-21. В его RUN.md: Д12 в таблице 4 — ответы `spec` на строки «в реестр spec» других репозиториев, у `canvas` — «В4 и В5»; эпик E2 «Формат модуля v0» с задачей T28 «Задача: пункты, ячейки ответа и канва», чей «Вход» — «T02 `canvas` — логические координаты листа: в них задаётся зона»; эпик E3 «Контракты первого среза» — в таблице 2, с протоколом eval и форматом образцов.
-- **.github** (раздел 2.3) — [altnovatrail/.github](https://github.com/altnovatrail/.github/tree/e480eb4), ветка `main`, коммит e480eb4, прочитано 2026-10-21: поправка 2026-10-21 к R03 .github — «Обёртка Go и релиз приходят с первым кодом `module-kit`, а обёртка TypeScript — с первым кодом на TypeScript, у `canvas`»; эпик E5 «Обёртка TypeScript» в таблице 2 его RUN.md — «Идёт с первым кодом на TypeScript — у `canvas`, этап 2».
+- **.github** (раздел 2.3) — [altnovatrail/.github](https://github.com/altnovatrail/.github/tree/e480eb4), ветка `main`, коммит e480eb4, прочитано 2026-10-21: поправка 2026-10-21 к R03 .github — «Обёртка Go и релиз приходят с первым кодом `module-kit`, а обёртка TypeScript — с первым кодом на TypeScript, у `canvas`»; эпик E5 «Обёртка TypeScript» в таблице 2 его RUN.md — «Идёт с первым кодом на TypeScript — у `canvas`, этап 2». На коммите [ed62dff](https://github.com/altnovatrail/.github/tree/ed62dff), прочитано 2026-10-21 (разделы 2.3 и 3.4):
+  - R18 .github — общий релиз `release.yml`, вышел в v0.1.4, коммит 11435db;
+  - в самом файле рецепт `release-files` пишет в `dist/` «plain files, named with letters, digits, dots, dashes, pluses and underscores», а на всём прочем релиз падает — «dist/ holds something besides files». В контейнер сборки токены не идут: «Nothing of the step's environment, no token among it, goes into the container». Сам контейнер запускается так: `docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp --volume "$tree:/work" --workdir /work release-toolchain just release-files "$VERSION"`, то есть без `--network`;
+  - R16 .github: обёртка Go «запускает в ней `just ci-<проверка>` от пользователя раннера, с `HOME=/tmp`»;
+  - входы у файла — `paths` и `publish`, выходов у него нет, и в npm он не публикует. Про подпись: «What a consumer checks of it is Т-27, which T37 in spec decides»;
+  - поправка 2026-10-21 к R18 .github — первый релиз на общем `release.yml` — `module-kit` v0.1.0, коммит 7e0144a.
+
+  На коммите [071262c](https://github.com/altnovatrail/.github/tree/071262c), мерж pull request #39 «Agree the TypeScript wrapper's contract (T21)», прочитано 2026-10-21 (раздел 3.4):
+  - R19 .github: «Это договор: по нему `canvas` пишет рецепты своего первого кода (T08 canvas), а сам файл пишет T22, вместе с этим кодом». О контейнере — «`just ci-<проверка>` идёт в ней от пользователя раннера, с `HOME=/tmp`; из окружения шага в контейнер идёт только `ALLOWED_LICENSES`», флаги `--init` и `--ipc=host` и «контейнер идёт с сетью: она нужна `npm ci` и `npm audit`»;
+  - о рецептах — «чем он это делает и в каких версиях, решает и закрепляет репозиторий», а `ci` «для разработчика: обёртка его не зовёт»;
+  - о браузерах — «Списка сумм у загрузок Playwright нет (architecture 4), и R34 spec к ним как есть не применить. В рамках правил — папка браузеров из образа Playwright, закреплённого по тегу и digest: в нём браузеры лежат в `/ms-playwright`»; «Сумма, которую репозиторий посчитал сам, — отступление от R34 spec, и тогда это вопрос „в реестр spec“. Выбирает T08 canvas»; «браузеры приходят не из lock-файла, и `ci-licenses` их не видит»;
+  - о цене — «каждый из четырёх job собирает стадию `toolchain` целиком, без кеша, а с браузерами в ней — и браузеры … Сколько это стоит, покажет код T08 canvas»;
+  - architecture 3.3 .github — текст вызывающего job «TypeScript» с `typescript.yml@<SHA релиза>` и запись `npm` для `dependabot.yml`: «`directory` — папка `package.json`. Node в Dockerfile и браузеры для тестов Dependabot не видит»;
+  - T22 в его RUN.md — «Обёртку проверяет вызов из pull request репозитория на TypeScript, по SHA ветки, до релиза».
+- **module-kit** (раздел 3.4), прочитано 2026-10-21:
+  - [релиз v0.1.0](https://github.com/altnovatrail/module-kit/releases/tag/v0.1.0) от 2026-10-21 — неизменяемый. В нём шесть программ, `LICENSE`, `LICENSE-go` и `SHA256SUMS`, и у каждого файла — свой `.sigstore.json` (API GitHub);
+  - [altnovatrail/module-kit](https://github.com/altnovatrail/module-kit/tree/1a54028), коммит 1a54028: в таблице 3 его RUN.md В6 «в реестр spec» — о том, из каких путей собран релиз, а В7 — «Как CI `modules` и `canvas` берут CLI `module-kit` по точному тегу». Рекомендация В7 — бинарник релиза, сверенный подписью, «с тем, что решит T37 `spec` о Т-27».
+- **npm** (разделы 2.3 и 3.4), прочитано 2026-10-21:
+  - CLI — [npm/cli](https://github.com/npm/cli/tree/ae98c62586b6fea44114f72e249e246a2981de70), релиз v12.2.1 от 2026-10-15, коммит ae98c62:
+    - `allow-remote` в `workspaces/config/lib/definitions/definitions.js`: «As of npm 12 the default is `none`. Tarballs that share a hostname with the configured registry (the typical case for the npm registry, GitHub Packages, and most private registries) are still installed normally»; «`root` only allows urls defined in your project's package.json to be installed». В npm 11.19.0, который стоит в контейнере вместе с Node 24.21.0, значение по умолчанию — `'all'`;
+    - `npm-install.md`: папка вне проекта — «it will create a symlink to `<folder>`»; `npm-link.md`: «First, `npm link` in a package folder with no arguments will create a symlink in the global folder…»;
+    - `npm-audit.md`: «The `audit signatures` command will also verify the provenance attestations of downloaded packages». pacote 22.0.0 из той же сборки (`node_modules/pacote/lib/registry.js`) сверяет имя и версию пакета и его sha512, а `sigstore.verify` зовёт без правила о том, кто подписал. Workflow и репозиторий, которые собрали пакет, не проверяются;
+    - `npm-cache.md`: «All data that passes through the cache is fully verified for integrity on both insertion and extraction»;
+    - имя архива в `workspaces/libnpmpack/lib/index.js` — `${manifest.name}-${manifest.version}.tgz`, без `@` и с `-` вместо `/`;
+    - `npm-stage.md`: «Staged publishing allows users to have their automated workflows stage a package without a 2FA prompt, deferring the act of 2FA, allowing the maintainer to approve the staged package and publish at a later point»;
+    - у параметра `access` значение по умолчанию — «'public' for new packages, existing packages it will not change the current level»;
+  - документация — [npm/documentation](https://github.com/npm/documentation/tree/4e8e03b978033529bf8f50d74305b29939eb022c), коммит 4e8e03b от 2026-10-16:
+    - `trusted-publishers.mdx`:
+      - «Trusted publishing requires npm CLI version 11.5.1 or later and Node version 22.14.0 or higher»;
+      - «Some GitHub Actions workflows use `workflow_call` to invoke other workflows that run `npm publish` … validation checks the calling workflow's name instead of the workflow that actually contains the publish command, which can cause configuration mismatches. The `id-token: write` permission must also be given to both parent and child workflows»;
+      - «npm automatically generates and publishes provenance attestations for your package»;
+      - «A newly created trusted publisher configuration must complete its first successful publish within 2 days»;
+      - настройка «Require two-factor authentication and disallow tokens»;
+      - «your package's `repository.url` field in `package.json` must exactly match your GitHub repository»;
+    - `npm-trust.mdx` (v12): «Package must exist: The package you're configuring must already exist on the npm registry»;
+    - `downloading-and-installing-packages-locally.mdx`: «Scoped public packages can be downloaded and installed by anyone». В `creating-and-publishing-scoped-public-packages.mdx` — «By default, scoped packages are published with private visibility. To publish a scoped package with public visibility, use `npm publish --access public`»: с параметром `access` CLI это расходится;
+    - `organizations/index.mdx`: «Organizations are free when they publish public packages»;
+    - `policies/unpublish.mdx`: «Registry data is immutable, meaning once published, a package cannot change»; «Once `package@version` has been used, you can never use it again»;
+    - `about-access-tokens.mdx`: «As of November 2025, only Granular access tokens are supported»; «The ability to publish new package versions directly with a granular access token will be removed in January 2027»;
+    - `about-two-factor-authentication.mdx`: для публикации нужны «Two-factor authentication (2FA) enabled on your account, OR A granular access token with bypass 2FA enabled»;
+  - реестр: `https://registry.npmjs.org/-/org/altnovatrail/package` отвечает 404 `{"error":"Scope not found"}`, а `@altnovatrail/canvas` — 404 `{"error":"Not found"}`. Так же реестр отвечает и на выдуманное имя, поэтому свободно ли имя, ответ не доказывает.
+- **Node.js** (раздел 3.4) — [dist/index.json](https://nodejs.org/dist/index.json), прочитано 2026-10-21: у v24.21.0 — `"npm": "11.19.0"`.
+- **Docker** (раздел 3.4) — документация, [docker/docs](https://github.com/docker/docs/blob/226023fc89bdeb3f051c4c8c697d04ed5f5bcd2c/content/manuals/engine/network/_index.md), коммит 226023f, прочитано 2026-10-21: «Containers have networking enabled by default, and they can make outgoing connections»; «When you run a container without the `--network` option, it is connected to the default bridge»; «Containers attached to the default bridge have access to network services outside the Docker host».
+- **Релизы GitHub** (раздел 3.4) — исходники GitHub Docs, [github/docs](https://github.com/github/docs/tree/cca0c9d7299f760587d6601bd96acfd2f5cb8929), коммит cca0c9d, прочитано 2026-10-21:
+  - `about-releases.md`, с подставленными значениями переменных: «Up to 1000 release assets may be associated with a single release. Each file included in a release must be under 2 GiB»;
+  - `immutable-releases.md`: «Immutable releases are releases where the assets and associated Git tag cannot be changed after publication»; «Release assets cannot be modified or deleted». При этом создаётся «release attestation, which is a cryptographically verifiable record of a release containing the release tag, commit SHA, and release assets»;
+  - `verify-release-integrity.md`: «To verify a local artifact is an exact match for a release asset» — `gh release verify-asset RELEASE-TAG ARTIFACT-PATH`;
+  - `oidc-with-reusable-workflows.md`: «If that job is part of a reusable workflow, the token will include the standard claims that contain information about the calling workflow, and will also include a custom claim called `job_workflow_ref` that contains information about the called workflow»;
+  - API GitHub, 2026-10-21: у `altnovatrail/canvas` `immutable-releases` — `{"enabled":false,"enforced_by_owner":false}`, а ruleset у него один — `main` (25506234).
