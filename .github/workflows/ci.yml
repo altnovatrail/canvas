@@ -29,3 +29,8 @@ jobs:
   documents:
     name: Documents
     uses: altnovatrail/.github/.github/workflows/documents.yml@ff2a3597769ca85e59e476b1a41bdcbc1f50e3ed # v0.1.0
+
+  # The repository's TypeScript code, by its own ci- recipes in its toolchain stage (R19 .github).
+  typescript:
+    name: TypeScript
+    uses: altnovatrail/.github/.github/workflows/typescript.yml@c772cc86973240e21cebb310fd0cda221a752ade # v0.1.5

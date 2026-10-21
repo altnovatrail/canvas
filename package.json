@@ -1,0 +1,40 @@
+{
+  "name": "@altnovatrail/canvas",
+  "version": "0.0.0",
+  "description": "NovaTrail's canvases: the workplace of a task, where the learner writes, draws and types.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/altnovatrail/canvas.git"
+  },
+  "type": "module",
+  "files": [
+    "lib"
+  ],
+  "exports": {
+    ".": {
+      "types": "./lib/element/index.d.ts",
+      "default": "./lib/element/index.js"
+    },
+    "./core": {
+      "types": "./lib/core/index.d.ts",
+      "default": "./lib/core/index.js"
+    }
+  },
+  "sideEffects": [
+    "./lib/element/index.js"
+  ],
+  "dependencies": {
+    "perfect-freehand": "1.2.3",
+    "rbush": "4.0.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "@types/node": "24.19.2",
+    "@types/rbush": "4.0.0",
+    "@vitest/browser-playwright": "5.0.5",
+    "playwright": "1.64.1",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5"
+  }
+}

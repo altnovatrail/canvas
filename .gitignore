@@ -1,0 +1,15 @@
+# The samples of the samples page and the device checks: handwriting, with the time and pressure of
+# every stroke. They stay out of git, and no agent opens them: CLAUDE.md, .claude/settings.json and
+# R15 in docs/decisions.md.
+/samples/
+
+# What npm ci installs from package-lock.json.
+/node_modules/
+# The package's build: just build writes it, npm pack takes it (R12).
+/lib/
+# What tsc -b leaves beside the programs of the root tsconfig.json, should anyone run it.
+*.tsbuildinfo
+# The release's files: only release-files writes them (R08).
+/dist/
+# The screenshots Vitest takes of a failed test in the browser.
+__screenshots__/

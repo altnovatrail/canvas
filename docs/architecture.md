@@ -216,7 +216,7 @@
 
 ## 3. Устройство
 
-Сюда переезжает то, что решено по разделу 2: из каких частей компонент состоит, его типы и данные, как он связан с другими репозиториями. Здесь — движок рисования со слоями канвы (3.1), логические координаты листа (3.2), стыковка с приложением (3.3), публикация и релиз (3.4), файл образца (3.5) и шаги страницы образцов (3.6). Это все пункты карточки: 2.1 (R05), 2.2 (R06), 2.3 (R07, R08) и 2.4 (R09, R11). Пробу сборки из файла делает T29, а ввод на текстовой канве (2.5) — эпик текстовой канвы.
+Сюда переезжает то, что решено по разделу 2: из каких частей компонент состоит, его типы и данные, как он связан с другими репозиториями. Здесь — движок рисования со слоями канвы (3.1), логические координаты листа (3.2), стыковка с приложением (3.3), публикация и релиз (3.4), файл образца (3.5) и шаги страницы образцов (3.6). Это все пункты карточки: 2.1 (R05), 2.2 (R06), 2.3 (R07, R08) и 2.4 (R09, R11). Пробу сборки из файла делает T29, а ввод на текстовой канве (2.5) — эпик текстовой канвы. Код и его инструменты — раздел 3.7 (R12–R15).
 
 ### 3.1. Движок рисования и слои
 
@@ -239,7 +239,7 @@
 
 Слой наставника — один слой в двух элементах: набросок лежит под работой ученика, рамки и пометки — над ней. Ни то, ни другое не перехватывает ввод пера (`pointer-events: none`) и не закрывает работу ученика (R05 spec). Условие, инструменты и пометки — элементы HTML и SVG с доступными именами, и программа чтения с экрана может их прочесть, а содержимое холста ей не видно (раздел 4). Поэтому на холсте — только чернила (concepts 15 spec; R269 standalone). Как условие, инструменты и пометка звучат для программы чтения с экрана, проверяют T11 и T14.
 
-**Зависимости** — по точным версиям, с lock-файлом: их ставит T08 (R12 spec):
+**Зависимости** — по точным версиям, в `dependencies` пакета и в lock-файле (R12 spec; R12, раздел 3.7):
 - perfect-freehand 1.2.3 — MIT, без зависимостей: контур штриха на экране. На вырезку он не идёт: там линия одной толщины, без нажима (spec 3.1 canvas-api);
 - rbush 4.0.1 — MIT, с `quickselect` 3.0.0 — ISC: индекс штрихов для ластика, притяжки и групп. Пакет только ESM; типы — `@types/rbush` 4.0.0, MIT, только для разработки.
 
@@ -271,7 +271,7 @@
 **Что решают следующие задачи:**
 - T02 — единицы листа, один перевод координат на все слои и пометки текстовой канвы: решено, раздел 3.2 (R06);
 - T03 — интерфейс пакета: часть на странице не держится ни за один фреймворк, поэтому годится любой ответ Т-21. Решено: веб-компонент, раздел 3.3 (R07); публикация и релиз — раздел 3.4 (R08);
-- T08 — инструменты и тесты в Node и в браузере;
+- T08 — инструменты и тесты в Node и в браузере: решено, раздел 3.7 (R12, R13);
 - T09–T14 — ввод, ластик и история, слои и сетка, группы, вырезка, привязка пометок;
 - T22 — проверка на устройствах.
 
@@ -364,7 +364,7 @@ sheet_box = [B.ymin − m/s, B.xmin − m/s, B.ymin − m/s + h/s, B.xmin − m/
 - один на все виды канвы: вид он берёт из открытого вида задачи. Модуль выбирает вид, а новый вид — код платформы (R02 spec), поэтому новый вид приходит новой версией `canvas`, без правки `app`;
 - разметка — в открытом Shadow DOM: стили страницы не задевают слоёв канвы, а стили канвы — страницу;
 - элемент регистрируется при импорте своей точки входа и только один раз. Имя элемента на странице одно, а `app` собирает одну точную версию пакета (R16 spec);
-- точек входа у пакета две. Часть без DOM импортируется и в Node, для тестов и синтетики T18 (раздел 3.1), и элемента не регистрирует. Элемент регистрируется отдельной точкой входа. Как они называются, решает T08.
+- точек входа у пакета две. Часть без DOM импортируется и в Node, для тестов и синтетики T18 (раздел 3.1), и элемента не регистрирует. Элемент регистрируется отдельной точкой входа. Это `@altnovatrail/canvas` — элемент — и `@altnovatrail/canvas/core` — часть без DOM (R12; раздел 3.7).
 
 **Получает** — свойствами, а не атрибутами. Свойства объявлены в классе элемента: так React 19 и Preact передают их значения элементу как свойства (раздел 4).
 - `task` — открытый вид задачи: условие, пункты и ячейки ответа, вид канвы и его настройки (В14 в таблице 3 [RUN.md](../RUN.md)), разрешённые инструменты. Ключа, решения и ловушек в нём нет (R05 spec);
@@ -429,7 +429,7 @@ sheet_box = [B.ymin − m/s, B.xmin − m/s, B.ymin − m/s + h/s, B.xmin − m/
 | `SHA256SUMS` | суммы всех файлов | любой |
 
 Рядом с каждым файлом — его подпись `.sigstore.json`: cosign без ключей, а идентичность — общий `release.yml` (R18 .github). Отсюда три следствия:
-- в `dist/` — только файлы релиза: общий релиз выкладывает всё, что там лежит, и падает на подпапке. Сборка пакета лежит в другой папке, её называет T08;
+- в `dist/` — только файлы релиза: общий релиз выкладывает всё, что там лежит, и падает на подпапке. Сборка пакета лежит в `lib/` (R12; раздел 3.7);
 - в неизменяемый релиз файл потом не добавить, поэтому сборку страницы для релиза собирает сам `release-files` — без токена и без `gh`:
   - задачи замера он скачивает по тегу и сверяет по суммам, записанным в дереве. Сеть у контейнера есть: `docker run` этого шага идёт без `--network`, а такой контейнер Docker подключает к сети по умолчанию (раздел 4);
   - cosign у него есть, только если стоит в стадии `toolchain`, со своей суммой (R34 spec);
@@ -448,7 +448,7 @@ sheet_box = [B.ymin − m/s, B.xmin − m/s, B.ymin − m/s + h/s, B.xmin − m/
 - **CI `tutor`** берёт архив синтетики из релиза по точному тегу и сумме (T32 tutor; В7). Подпись — по рекомендации Т-27: SAN — общий `release.yml` на SHA релиза `.github`, репозиторий и workflow — `canvas`, коммит — тот, на котором тег.
 - **Взрослый** скачивает сборку страницы со страницы релиза (R25 spec). Проверять подпись от него никто не ждёт, а `SHA256SUMS` открыт любому.
 
-**Рецепты для общих workflow.** Такими их ждут обёртка TypeScript и общий релиз. Договор обёртки — R19 .github, с двумя поправками к нему, а сама обёртка — `typescript.yml` в релизе `.github` v0.1.5. По договору T08 пишет рецепты, `.npmrc`, стадию `toolchain` и вызывающий job (architecture 3.1 и 3.3 .github; раздел 4).
+**Рецепты для общих workflow.** Такими их ждут обёртка TypeScript и общий релиз. Договор обёртки — R19 .github, с двумя поправками к нему, а сама обёртка — `typescript.yml` в релизе `.github` v0.1.5. По договору T08 написала рецепты, `.npmrc`, стадию `toolchain` и вызывающий job (architecture 3.1 и 3.3 .github; раздел 4). Что выбрал `canvas` там, где договор оставил выбор ему, — раздел 3.7 (R12–R14).
 - **Рецепты** — четыре, с теми же именами, что у `go.yml` (R16 .github). Чем проверять и в каких версиях, решает и закрепляет `canvas`:
   - `ci-lint` — формат, линт и проверка типов;
   - `ci-test` — тесты, и в браузере тоже;
@@ -456,25 +456,25 @@ sheet_box = [B.ymin − m/s, B.xmin − m/s, B.ymin − m/s + h/s, B.xmin − m/
   - `ci-licenses` — лицензия каждого пакета lock-файла, инструментов разработки тоже, по `ALLOWED_LICENSES` из окружения. Исключение — по имени и только для инструмента, который никуда не поставляется, каждое со своим решением (R12 spec). Сверх договора `canvas` проверяет и то, что несёт сборка страницы (T19, T21).
 
   Рецепт `ci`, который зовёт все четыре, — для разработчика: обёртка его не зовёт.
-- **Как их зовёт обёртка.** Каждый job — новый контейнер стадии `toolchain`, собранной без контекста. Он идёт от пользователя раннера, с `HOME=/tmp`, с сетью и с флагом `--init`, а у job `test`, где запускается браузер, — ещё и с `--ipc=host`. Из окружения шага в контейнер идут `CI` и `ALLOWED_LICENSES`: по `CI` Vitest запускает браузер headless и не пускает `test.only` (R16 .github; R19 .github, с поправкой к нему). Checkout — без подмодуля: ни код, ни тесты, ни `justfile` `canvas` ничего не берут из `spec/` (R21 spec). Пакеты `ci-lint` и `ci-test` ставят сами, `npm ci` из lock-файла, а `ci-vuln` и `ci-licenses` хватает самого lock-файла.
+- **Как их зовёт обёртка.** Каждый job — новый контейнер стадии `toolchain`, собранной без контекста. Он идёт от пользователя раннера, с `HOME=/tmp`, с сетью и с флагом `--init`, а у job `test`, где запускается браузер, — ещё и с `--ipc=host`. Из окружения шага в контейнер идут `CI` и `ALLOWED_LICENSES`: по `CI` Vitest по умолчанию запускает браузер headless и не пускает `test.only` (R16 .github; R19 .github, с поправкой к нему). У `canvas` headless задан в конфиге явно — дисплея нет и в контейнере разработки, — а `test.only` по-прежнему держит `CI` (R12). Checkout — без подмодуля: ни код, ни тесты, ни `justfile` `canvas` ничего не берут из `spec/` (R21 spec). Пакеты `ci-lint` и `ci-test` ставят сами, `npm ci` из lock-файла, а `ci-vuln` и `ci-licenses` хватает самого lock-файла.
 - **Что лежит в репозитории:**
   - lock-файл и `.npmrc` с `ignore-scripts=true` и `save-exact=true`;
   - Node — в стадии `toolchain`, по точной версии и с суммой архива (R34 spec), он там уже есть. Пакеты ставит npm, который идёт с Node, а другой менеджер пакетов — по точной версии в той же стадии и со своим решением;
   - в `dependabot.yml` — экосистема `npm` с паузой в три дня, а `directory` — папка `package.json` (architecture 3.3 .github).
 - **Браузеры для тестов:**
-  - ставятся в стадии `toolchain` при сборке образа, а их системные пакеты — `apt-get`, от root. Точных версий `apt` им сам не ставит, а Hard rules их требуют — это В21 в RUN.md `.github`, «в реестр spec». Рекомендация `.github` — архив Ubuntu на дату: `apt-get --snapshot` с номером снимка в `ARG`, как версия; в сборке Dockerfile его ещё не пробовали. До ответа `spec` путь выбирает T08, и при любом пути это её решение. Версии, которые так и не станут точными, — строка таблицы 4 [RUN.md](../RUN.md), а путь, отличный от рекомендации, — ещё и строка «в реестр spec» со ссылкой на В21 в RUN.md `.github`;
+  - ставятся в стадии `toolchain` при сборке образа, а их системные пакеты — `apt-get`, от root. Точных версий `apt` им сам не ставит, а Hard rules их требуют — это В21 в RUN.md `.github`, «в реестр spec». Решено по рекомендации `.github` — архив Ubuntu на дату, `apt-get --snapshot` с номером снимка в `ARG` (R13; раздел 3.7);
   - путь к ним задаёт `ENV PLAYWRIGHT_BROWSERS_PATH` в самой стадии, вне `HOME`: в CI `HOME` — `/tmp`, а из окружения шага обёртка передаёт в контейнер только `CI` и `ALLOWED_LICENSES`;
-  - ревизия — та, которую ждёт версия Playwright в lock-файле, так что пакет и браузеры поднимаются одной правкой. Версия пакета `playwright` совпадает с тегом образа, иначе Playwright не найдёт браузеров (раздел 4). Как устроить это с Dependabot, решает T08;
-  - своего списка сумм у загрузок Playwright нет, и R34 spec к ним как есть не применить. В рамках правил — папка `/ms-playwright` из образа Playwright, закреплённого по тегу и digest. Сумма, которую `canvas` посчитал бы сам, — отступление от R34 spec и строка «в реестр spec». Выбирает T08;
-  - браузеры приходят не из lock-файла, и `ci-licenses` их не видит. Их лицензии называет решение, которое их приносит (T08).
+  - ревизия — та, которую ждёт версия Playwright в lock-файле, так что пакет и браузеры поднимаются одной правкой. Версия пакета `playwright` совпадает с тегом образа, иначе Playwright не найдёт браузеров (раздел 4). Dependabot образа не видит, и его поднимают руками в pull request, который поднимает `playwright` (R13);
+  - своего списка сумм у загрузок Playwright нет, и R34 spec к ним как есть не применить. В рамках правил — браузер из образа Playwright, закреплённого по тегу и digest; `canvas` берёт из `/ms-playwright` только Chrome Headless Shell (R13);
+  - браузеры приходят не из lock-файла, и `ci-licenses` их не видит. Их условия называет R13: Chrome Headless Shell — сборка Google Chrome for Testing на бесплатных условиях Google, названным исключением (В27).
 - **Проба `.github`** — pull request #40 и #42, без мержа, по решению автора 2026-10-21 (поправка к R19 .github; раздел 4). Пакет пробы лежит в коммитах `refs/pull/40/head` `.github`:
   - TypeScript 7.0.2, Vitest 5.0.5 с `@vitest/browser-playwright` 5.0.5 и Playwright 1.64.1. В конфиге Vitest — проекты `node` и `browser`; у второго `provider: playwright()` и `instances: [{ browser: "chromium" }]`, а `headless` не задан: его включает `CI`;
   - Chromium — из `/ms-playwright` образа `mcr.microsoft.com/playwright:v1.64.1-noble@sha256:7852dc5a7d72f5fe458a597d690f6c42fbc8e9e26ddfa95f8e6ef552558d9bbf`, с `ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright`. Системные библиотеки ставил `apt-get`: 21 пакет из `nativeDeps.ts` Playwright v1.64.1 и ещё `libfontconfig1`, `libfreetype6` и `fonts-liberation`;
   - все четыре проверки «TypeScript / …» зелёные, а тест в Chromium прошёл headless, от пользователя раннера и с `HOME=/tmp`;
-  - Vitest тянет Vite, а с ним `lightningcss` под MPL-2.0 — 12 пакетов, все dev. Без исключения для них «TypeScript / licenses» красная. Исключение по имени, как в R48 canvas-api, — решение T08;
+  - Vitest тянет Vite, а с ним `lightningcss` под MPL-2.0 — 12 пакетов, все dev. Без исключения для них «TypeScript / licenses» красная. Исключение по имени, как в R48 canvas-api, — R14;
   - стадия `toolchain` с браузерами собиралась за 46–56 секунд на job, без них — за 21. `.github` оставил одну стадию без кеша и пересмотрит это, если стадия `canvas` выйдет заметно тяжелее: её замеряет T08.
-- **Рекомендации `.github`**, не условия договора: `ci-vuln` — `npm audit --omit=dev --audit-level=high`, как R48 canvas-api; `ci-licenses` — свой скрипт по lock-файлу, как `licenses-check` `spec` и `web/scripts/licenses.ts` canvas-api, пока `spec` не даст общую проверку (В20 в RUN.md `.github`). Берёт ли их `canvas`, решает T08.
-- **Вызов.** Пробы по SHA ветки нет: обёртка вышла в v0.1.5 раньше кода `canvas` (поправка к R19 .github). Вызывающий job пишет T08 — по тексту architecture 3.3 .github, сразу по SHA релиза: job `typescript` с `name: TypeScript` и `uses: altnovatrail/.github/.github/workflows/typescript.yml@c772cc86973240e21cebb310fd0cda221a752ade # v0.1.5`. На настоящем коде обёртку проверит первый pull request T08, а ошибку в самой обёртке исправит следующий релиз `.github`. Проверки «TypeScript / lint», «TypeScript / test», «TypeScript / vuln» и «TypeScript / licenses» — каждая своим именем в ruleset `main`, с `integration_id` 15368, как остальные его проверки GitHub Actions (R30 spec; раздел 4). Ставит их автор шагом T08, по правилу 4.
+- **Рекомендации `.github`**, не условия договора: `ci-vuln` — `npm audit --omit=dev --audit-level=high`, как R48 canvas-api; `ci-licenses` — свой скрипт по lock-файлу, как `licenses-check` `spec` и `web/scripts/licenses.ts` canvas-api, пока `spec` не даст общую проверку (В20 в RUN.md `.github`). `canvas` взял обе (R12).
+- **Вызов.** Пробы по SHA ветки нет: обёртка вышла в v0.1.5 раньше кода `canvas` (поправка к R19 .github). Вызывающий job написала T08 — по тексту architecture 3.3 .github, сразу по SHA релиза: job `typescript` с `name: TypeScript` и `uses: altnovatrail/.github/.github/workflows/typescript.yml@c772cc86973240e21cebb310fd0cda221a752ade # v0.1.5`. На настоящем коде обёртку проверит первый pull request T08, а ошибку в самой обёртке исправит следующий релиз `.github`. Проверки «TypeScript / lint», «TypeScript / test», «TypeScript / vuln» и «TypeScript / licenses» — каждая своим именем в ruleset `main`, с `integration_id` 15368, как остальные его проверки GitHub Actions (R30 spec; раздел 4). Ставит их автор шагом T08, по правилу 4.
 - **`release-files <версия>`** пишет в `dist/` только простые файлы с безопасными именами (R18 .github).
 
 **Шаги автора** до первого релиза, по правилу 4, — в T24:
@@ -638,6 +638,76 @@ sheet_box = [B.ymin − m/s, B.xmin − m/s, B.ymin − m/s + h/s, B.xmin − m/
 - **Сохранение** — как у взрослого, но без pull request. Уведомление советует передать файл и удалить его с устройства.
 
 **Что страница помнит** о людях — ничего: ни кодов, ни назначения, ни заявлений. Всё это спрашивается при каждом открытии. Помнит ли она что-то ещё, например недописанный лист, решает T20, а работает ли хранилище на странице, открытой из файла, проверяет T29.
+
+### 3.7. Код и инструменты
+
+Первый код `canvas` — каркас пакета и его инструменты (T08). Решения — R12, R13, R14 и R15, источники — раздел 4.
+
+**Пакет** `@altnovatrail/canvas` — `package.json` и lock-файл в корне репозитория (R12):
+
+| Точка входа | Что это | Где |
+|---|---|---|
+| `@altnovatrail/canvas` | элемент `<novatrail-canvas>`, который регистрируется при импорте — один раз (раздел 3.3) | `src/element/` → `lib/element/` |
+| `@altnovatrail/canvas/core` | часть без DOM: одинакова в браузере и в Node (раздел 3.1) | `src/core/` → `lib/core/` |
+
+- В `sideEffects` — только точка входа элемента: иначе сборщик потребителя выбросил бы регистрацию.
+- Сборка — `tsc` в `lib/`: JavaScript и объявления, без сборщика. `dist/` остаётся файлам релиза (раздел 3.4), а страницу образцов одним файлом собирает T19.
+- В архив `npm pack` идут только `lib/`, `package.json`, README и LICENSE. `version` в git — `0.0.0`, а номер вписывает `release-files` (R08).
+
+**Инструменты** — пакеты npm в lock-файле, по точным версиям. Каждая — последняя из вышедших не позже чем за три дня до установки, как пауза Dependabot: lock-файл собран с `npm install --before` (R12).
+
+| Что | Чем | Лицензия |
+|---|---|---|
+| типы | TypeScript 7.0.2 | Apache-2.0 |
+| формат и линт | Biome 2.5.15 | MIT OR Apache-2.0 |
+| тесты | Vitest 5.0.5, `@vitest/browser-playwright` 5.0.5, Playwright 1.64.1 | MIT, MIT, Apache-2.0 |
+| типы Node и rbush | `@types/node` 24.19.2, `@types/rbush` 4.0.0 | MIT |
+
+Vitest тянет Vite 8.3.4, а с ним `lightningcss` под MPL-2.0 — названное исключение (R14).
+
+**Типы** — три программы `tsc --noEmit`:
+- часть без DOM (`tsconfig.core.json`) видит только ES2022, без DOM и без Node;
+- элемент (`tsconfig.element.json`) видит ES2022 и DOM;
+- скрипты, конфиги и тесты (`tsconfig.node.json`) видят ещё и Node.
+
+Границу держат проверки от обратного, файлы `*.check.ts`: `document` и `process` в части без DOM и `process` в элементе должны быть ошибками типов. Сборка — своя настройка, `tsconfig.build.json`. Корневой `tsconfig.json` ссылается на три программы, чтобы редактор брал для файла его программу. Импорты в `src/` — с `.js`, как требует `NodeNext`; скрипты Node запускает сам, снятием типов, и они импортируют `.ts`.
+
+**Тесты** — Vitest:
+- проект `node` — часть без DOM и скрипты;
+- проект `browser` — элемент, в Chromium через Playwright, всегда headless: дисплея нет ни в контейнере, ни на раннере;
+- после сборки `scripts/package.ts` берёт пакет как потребитель: часть без DOM импортируется в голом Node по имени пакета, а `npm pack` берёт только сборку.
+
+Тесты лежат рядом с кодом, `*.test.ts`.
+
+**Рецепты** — `justfile`, по договору обёртки TypeScript (раздел 3.4; R19 .github):
+
+| Рецепт | Что делает |
+|---|---|
+| `ci-lint` | `biome ci` и три программы `tsc` |
+| `ci-test` | сборка, `vitest run` и проверка пакета |
+| `ci-vuln` | `npm audit --omit=dev --audit-level=high`: советы об инструментах разработки приносят алерты Dependabot |
+| `ci-licenses` | `node scripts/licenses.ts` по `ALLOWED_LICENSES` |
+| `ci` | все четыре — для разработчика |
+| `build`, `fmt` | сборка в `lib/`; формат и правки Biome на месте |
+
+`ci-lint` и `ci-test` ставят пакеты сами, `npm ci --ignore-scripts`. В контейнере разработки — только когда изменились `package.json` или lock-файл: это держит штамп с их суммами. Список для `ci-licenses` — тот, что задаёт `typescript.yml` `.github`: в контейнере его берут оттуда (CLAUDE.md, Environment).
+
+**Проверка лицензий** — `scripts/licenses.ts` (R12, R14):
+- каждый пакет lock-файла, инструменты разработки тоже, по выражению SPDX;
+- без `ALLOWED_LICENSES` и на lock-файле без `packages` — отказ;
+- исключение — по имени и лицензии, только для `dev`, вместе со сборками под платформы, которые инструмент сам называет в `optionalDependencies`, — если они `dev` и под его лицензией. Ненужное исключение — ошибка.
+
+**Браузер** — в стадии `toolchain` (R13):
+- только Chrome Headless Shell 1248 — папка `/ms-playwright/chromium_headless_shell-1248` образа Playwright v1.64.1, закреплённого по тегу и digest;
+- его системные библиотеки — 24 пакета из снимка архива Ubuntu `20261021T000000Z`;
+- образ, ревизию и снимок поднимают руками, в pull request Dependabot, который поднимает `playwright`;
+- это сборка Google Chrome for Testing на бесплатных условиях Google — названное исключение, а прочтение правила — В27 в таблице 3 [RUN.md](../RUN.md).
+
+**Dependabot** — запись `npm` по тексту architecture 3.3 .github и два добавления: группа `vitest` с `@vitest/*` и `ignore` major-версий `@types/node` (R12).
+
+**CI** — job «TypeScript» в `ci.yml` по SHA `typescript.yml` v0.1.5, CodeQL — со входом `languages: javascript-typescript`.
+
+**`samples/`** закрыт для агентов: правило в CLAUDE.md, `.gitignore` и правила `deny` Claude Code. Правила Bash закрывают имя папки — отдельным словом, частью пути, в кавычках, после `=` и в перенаправлении, — а не само слово: оно есть в именах файлов релиза (R15).
 
 ## 4. Источники
 
@@ -824,3 +894,34 @@ sheet_box = [B.ymin − m/s, B.xmin − m/s, B.ymin − m/s + h/s, B.xmin − m/
 - **Developer Certificate of Origin 1.1** (раздел 3.6; В21 в [RUN.md](../RUN.md)) — [developercertificate.org](https://developercertificate.org/), прочитано 2026-10-21: (c) «The contribution was provided directly to me by some other person who certified (a), (b) or (c) and I have not modified it»; (d) «a record of the contribution (including all personal information I submit with it, including my sign-off) is maintained indefinitely».
 - **GitHub Docs: удаление данных из репозитория** (раздел 3.6) — [github/docs](https://github.com/github/docs/blob/efd4783/content/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository.md), коммит efd4783, прочитано 2026-10-21: «If you only rewrite your history and force push it, the commits with sensitive data may still be accessible elsewhere», среди прочего — «Through any pull requests that reference them». И о Support GitHub: он «won't remove non-sensitive data».
 - **CONTRIBUTING `.github`** (раздел 3.6) — [altnovatrail/.github](https://github.com/altnovatrail/.github/blob/c772cc8/CONTRIBUTING.md), коммит c772cc8, прочитано 2026-10-21: «No samples for eval sets yet. Handwriting, voice and photo samples for eval sets are not accepted until the project decides how the people who make them consent to their publication. That is П-16, an open question of spec's privacy document»; о подписи DCO — «The line and the email in it stay public in the history for good».
+- **Код и инструменты** (раздел 3.7; R12–R15), прочитано 2026-10-21:
+  - реестр npm, `npm view <пакет> time`:
+    - Biome 2.5.15 — 2026-09-30, а 2.6.0, 2.6.1 и 2.6.2 — 2026-10-21, в 09:51, 10:28 и 11:08 UTC;
+    - Vite 8.3.4 — 2026-10-08, а 8.3.5 — 2026-10-21;
+    - Vitest 5.0.5 — 2026-10-15, Playwright 1.64.1 — 2026-10-14, TypeScript 7.0.2 — 2026-07-08, `@types/node` 24.19.2 — 2026-10-09;
+    - у vitest 5.0.5 peer `vite` «^6.4.0 || ^7.0.0 || ^8.0.0» не помечен необязательным, а у `@vitest/browser-playwright` 5.0.5 peer `vitest` — «5.0.5»;
+    - typescript-eslint 8.72.0 требует `typescript` «>=4.8.4 <6.1.0»;
+    - `exports` пакета `typescript` 7.0.2 — `./lib/version.cjs` и `./unstable/*`, а `bin/tsc` запускает нативный бинарник платформенного пакета `@typescript/typescript-<платформа>`;
+  - npm 11.19.0 в контейнере, `@npmcli/config`, `definitions.js`, о `before`: «If passed to `npm install`, will rebuild the npm tree such that only versions that were available **on or before** the given date are installed»;
+  - TypeScript 7.0.2 на сборке этого пакета: `rewriteRelativeImportExtensions` переписал `./sheet.ts` в `./sheet.js` в JavaScript, а в `.d.ts` оставил `./sheet.ts`. Отсюда импорты с `.js` в `src/` (R12);
+  - Node 24.21.0 в контейнере: `process.features.typescript` — `strip`, а файл `.ts` с типами запускается без флагов и без предупреждения; `import.meta.main` объявлен в `@types/node` 24.19.2;
+  - Biome — схема настроек 2.5.15, `linter.rules.preset`: «recommended», «all», «none». Расширение для VS Code — [biomejs/biome-vscode](https://github.com/biomejs/biome-vscode/tree/v3.7.1), тег v3.7.1, коммит cd61440:
+    - README: «dual-licensed under the MIT License and the Apache License, Version 2.0»;
+    - `src/locator.ts` ищет Biome сначала в настройках, затем — «Check the project's `node_modules` directory for a Biome binary»;
+    - в Marketplace стабильные версии — 3.8.0 от 2026-10-21 и 3.7.1 от 2026-06-18, а версии с датой в номере — предварительные;
+  - Playwright — [microsoft/playwright](https://github.com/microsoft/playwright/tree/v1.64.1), тег v1.64.1, коммит cfe490d:
+    - `packages/playwright-core/browsers.json` — у `chromium-headless-shell` `"revision": "1248"`, `"browserVersion": "156.0.8078.4"`, `"title": "Chrome Headless Shell"`;
+    - `packages/playwright-core/src/server/registry/index.ts` — для `ubuntu24.04-x64` «`cftUrl('linux64/chrome-headless-shell-linux64.zip')`», то есть `builds/cft/${browserVersion}/…` на `https://cdn.playwright.dev`;
+    - `docs/src/browsers.md`: «by default, Playwright uses open source Chromium builds» и «Playwright ships a regular Chromium build for headed operations and a separate chromium headless shell for headless mode»;
+    - `nativeDeps.ts` для `ubuntu24.04-x64`: у `chromium` — 21 пакет, у `firefox` — 25, у `webkit` — 52;
+    - `lib/coreBundle.js` пакета playwright-core 1.64.1: в `chromiumSwitches` — `"--disable-dev-shm-usage"`;
+  - образ `mcr.microsoft.com/playwright:v1.64.1-noble`, индекс `sha256:7852dc5…`, манифест amd64 `sha256:bdfda2a…` (реестр MCR):
+    - слой `sha256:e20e5ef…`, 314 299 253 байта сжатыми, — `playwright-core install chromium`: `chromium-1248` с `WidevineCdm/LICENSE`, `chromium_headless_shell-1248` и `ffmpeg-1013`. Firefox и WebKit — отдельные слои по 122 076 107 и 113 748 815 байт, и файлов лицензий в них нет;
+    - `chromium_headless_shell-1248/chrome-headless-shell-linux64/ABOUT`: «Google Chrome … Copyright 2026 Google LLC. All rights reserved. Chrome is made possible by the Chromium open source project (https://www.chromium.org/) and other open source software (chrome://credits). See the Terms of Service at chrome://terms». `LICENSE.headless_shell` там же начинается с «The Chromium Project» и BSD-3-Clause;
+    - в пересобранном контейнере `chrome-headless-shell --version` отвечает «Google Chrome for Testing 156.0.8078.4», а папка занимает 273 МБ;
+  - условия Chrome — [Chrome/ChromeOS/GooglebookOS Additional Terms of Service](https://www.google.com/chrome/terms/), редакция «Last modified: 30 September, 2025»: «By using Chrome or ChromeOS, you agree to the Google Terms of Service located at https://policies.google.com/terms and these Google Chrome and ChromeOS Additional Terms of Service. These Google Chrome and ChromeOS Additional Terms of Service apply to the executable code version of Chrome and ChromeOS. Most source code for Chrome is available free of charge under open source software license agreements at chrome://credits». Страница [Chrome for Testing](https://developer.chrome.com/docs/automation-and-testing/chrome-for-testing), обновлена 2023-06-12, и README [GoogleChromeLabs/chrome-for-testing](https://github.com/GoogleChromeLabs/chrome-for-testing) на коммите b9cf0a2 об условиях своих сборок не пишут;
+  - apt 2.8.3 базового образа: в `changelog` — «Initial support for snapshot servers, apt --snapshot option» и «Automatically enable snapshots where supported». `apt-config dump` называет серверы снимков для `archive.ubuntu.com` и `security.ubuntu.com`. На пустых списках `apt-get update --snapshot 20261021T000000Z` взял `noble`, `noble-updates`, `noble-backports` и `noble-security` с `https://snapshot.ubuntu.com/ubuntu/20261021T000000Z`, а `apt-get install -s` 24 пакетов — «0 upgraded, 61 newly installed, 0 to remove»;
+  - Dependabot — [dependabot-core](https://github.com/dependabot/dependabot-core/blob/fda701f/docker/lib/dependabot/docker/file_parser.rb), коммит fda701f: разбор Dockerfile берёт строку, только если она совпадает с `FROM_LINE` — `^FROM\s+…`. Группы по нескольким экосистемам — [github/docs](https://github.com/github/docs/tree/1696b2d/content/code-security), коммит 1696b2d: «Multi-ecosystem updates allow Dependabot to group dependency updates across different package ecosystems … into a single pull request per group», и `patterns` для них обязательны. Что тогда бывает с остальными пакетами записи, документация не говорит;
+  - Claude Code — [Permissions](https://code.claude.com/docs/en/permissions): «`/path` Path relative to the settings source», а в настройках проекта это `<primary working directory>/path`; «A `*` in a Bash rule matches any text, including spaces»; о правиле Bash — «isn't a security boundary around the program»;
+  - SonarQube Cloud — [Automatic analysis](https://docs.sonarsource.com/sonarqube-cloud/analyzing-source-code/automatic-analysis): о `.sonarcloud.properties` — «Below are the supported optional settings for the `.sonarcloud.properties` file. Wildcard patterns are not allowed». Сам список настроек в тексте страницы не прочитан;
+  - `tutor` — его T11, pull request #13, слит f501412: раздел `samples/` в CLAUDE.md, `/samples/` в `.gitignore` и в `.claude/settings.json` — `Read(/samples)`, `Read(/samples/**)`, `Edit(/samples)`, `Edit(/samples/**)` и `Bash(*samples*)`.
