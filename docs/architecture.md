@@ -433,7 +433,7 @@ sheet_box = [B.ymin − m/s, B.xmin − m/s, B.ymin − m/s + h/s, B.xmin − m/
 - **`release-files <версия>`** пишет в `dist/` только простые файлы с безопасными именами (R18 .github).
 
 **Шаги автора** до первого релиза, по правилу 4, — в T24:
-1. организация `altnovatrail` в npm — для публичных пакетов бесплатная. Имя лучше занять сразу: ответ реестра «Scope not found» не доказывает, что оно свободно (раздел 4);
+1. организация `altnovatrail` в npm — для публичных пакетов бесплатная. Сделано: автор создал её 2026-10-21, и реестр её видит (раздел 4);
 2. у `canvas` — неизменяемые релизы и ruleset тегов `v*`, как у `module-kit` (architecture 3.3 .github). Сейчас их нет (раздел 4);
 3. первый релиз выходит с выключенным шагом npm: trusted publisher настраивается только у пакета, который уже есть в реестре;
 4. первую версию автор публикует вручную, с 2FA, тем же файлом из первого релиза: `npm publish ./altnovatrail-canvas-0.1.0.tgz --access public`. Provenance у неё нет;
@@ -584,7 +584,7 @@ sheet_box = [B.ymin − m/s, B.xmin − m/s, B.ymin − m/s + h/s, B.xmin − m/
     - `policies/unpublish.mdx`: «Registry data is immutable, meaning once published, a package cannot change»; «Once `package@version` has been used, you can never use it again»;
     - `about-access-tokens.mdx`: «As of November 2025, only Granular access tokens are supported»; «The ability to publish new package versions directly with a granular access token will be removed in January 2027»;
     - `about-two-factor-authentication.mdx`: для публикации нужны «Two-factor authentication (2FA) enabled on your account, OR A granular access token with bypass 2FA enabled»;
-  - реестр: `https://registry.npmjs.org/-/org/altnovatrail/package` отвечает 404 `{"error":"Scope not found"}`, а `@altnovatrail/canvas` — 404 `{"error":"Not found"}`. Так же реестр отвечает и на выдуманное имя, поэтому свободно ли имя, ответ не доказывает.
+  - реестр: `https://registry.npmjs.org/-/org/altnovatrail/package` отвечает 404 `{"error":"Scope not found"}`, а `@altnovatrail/canvas` — 404 `{"error":"Not found"}`. Так же реестр отвечает и на выдуманное имя, поэтому свободно ли имя, ответ не доказывает. В тот же день автор создал организацию `altnovatrail`. После этого `-/org/altnovatrail/package` отвечает 200 `{}`, выдуманное имя — по-прежнему 404 «Scope not found», а `@altnovatrail/canvas` — 404 «Not found»: пакета ещё нет.
 - **Node.js** (раздел 3.4) — [dist/index.json](https://nodejs.org/dist/index.json), прочитано 2026-10-21: у v24.21.0 — `"npm": "11.19.0"`.
 - **Docker** (раздел 3.4) — документация, [docker/docs](https://github.com/docker/docs/blob/226023fc89bdeb3f051c4c8c697d04ed5f5bcd2c/content/manuals/engine/network/_index.md), коммит 226023f, прочитано 2026-10-21: «Containers have networking enabled by default, and they can make outgoing connections»; «When you run a container without the `--network` option, it is connected to the default bridge»; «Containers attached to the default bridge have access to network services outside the Docker host».
 - **Релизы GitHub** (раздел 3.4) — исходники GitHub Docs, [github/docs](https://github.com/github/docs/tree/cca0c9d7299f760587d6601bd96acfd2f5cb8929), коммит cca0c9d, прочитано 2026-10-21:
