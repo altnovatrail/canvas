@@ -386,13 +386,13 @@ E1 — детализация — сделан 2026-10-21 и лежит в ар�
       - программа тестов проверяет и код, который тесты импортируют: так устроен `tsc`, а три программы нужны ради границ части без DOM и элемента.
   - дополнено 2026-10-21, на pull request [#18](https://github.com/altnovatrail/canvas/pull/18): коммит, push и pull request — исполнитель, по моему поручению («Решено автором»).
     - SonarCloud нашёл `typescript:S4036` в `scripts/package.ts`: `npm` искался по `PATH`. Рейтинг безопасности нового кода стал B, и quality gate — красным;
-    - исправлено кодом, по правилу 12: проверка пакета запускает npm, который идёт с этим же Node, — по его пути в дистрибутиве Node и этим Node. Проверено в том числе с `PATH` без Node.
+    - исправлено кодом, по правилу 12: проверка пакета запускает npm, который идёт с этим же Node, — по его пути в дистрибутиве Node и этим Node. Проверено в том числе с `PATH` без Node;
+    - после исправления зелёные все проверки pull request: «TypeScript / lint», «/ test», «/ vuln» и «/ licenses» — обёртка `.github` v0.1.5 на настоящем коде, — «CodeQL / analyze (javascript-typescript)» и «(actions)», Documents, DCO, Secrets и SonarCloud. В «TypeScript / test» прошли 24 теста, из них 2 — в «browser (chromium)»;
+    - замер, прогон 39690774485: шаг «Toolchain image» — 57 секунд в `test` и `vuln`, 59 в `lint`, 67 в `licenses` и 61 в Documents. Без браузера тот же шаг — 18 секунд: Documents на `main` 7756744, прогон 39684511091. У пробы `.github` с браузерами было 46–56. Сами рецепты шли 1–6 секунд.
 - **Открыто:**
-  - на pull request:
-    - CodeQL `javascript-typescript`, четыре «TypeScript / …», Documents и SonarCloud. Если «TypeScript / …» упадёт из-за самой обёртки — журнал прогона сюда и строка отчёта для `.github`. Если SonarCloud найдёт место безопасности в Dockerfile, его просматривает автор, а причина записывается;
-    - время шага «Toolchain image» в каждом job — против Documents на 7756744 и пробы `.github` (R13, «Цена»);
-  - мой шаг — ruleset `main`, по правилу 4: «TypeScript / lint», «TypeScript / test», «TypeScript / vuln», «TypeScript / licenses» и «CodeQL / analyze (javascript-typescript)», `integration_id` 15368. Затем `gh api repos/altnovatrail/canvas/rulesets/25506234` их называет. После этого эпик E5 `.github` закончен;
-  - «Нужно» и «Риски» эпика E2 — о `.github` v0.1.5 и проверке обёртки — поправить после pull request;
+  - мой шаг — ruleset `main`, по правилу 4: «TypeScript / lint», «TypeScript / test», «TypeScript / vuln», «TypeScript / licenses» и «CodeQL / analyze (javascript-typescript)», `integration_id` 15368. Проверки уже прошли на pull request #18. Затем `gh api repos/altnovatrail/canvas/rulesets/25506234` их называет. После этого эпик E5 `.github` закончен;
+  - мерж pull request #18 — мой;
+  - «Нужно» и «Риски» эпика E2 — о `.github` v0.1.5 и проверке обёртки — поправить после мержа: обёртка на настоящем коде прошла;
   - `.sonarcloud.properties` не тронут. Тесты для SonarCloud — пока основной код: страница автоматического анализа пишет «Wildcard patterns are not allowed», а список настроек в её тексте не прочитан. Вернуться, если SonarCloud начнёт отмечать тесты;
   - В27 и В28 «в реестр spec»;
   - для `.github`:
