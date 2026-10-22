@@ -597,8 +597,6 @@
 - когда понадобится WebKit — движок Safari на iPad, главного устройства с пером (T09, T22);
 - если сборка стадии в pull request выйдет заметно дороже, чем у пробы `.github`.
 
-— *Поправка 2026-10-21:* пункт «Цена» точнее так: от MCR и `snapshot.ubuntu.com` зависят не все обязательные проверки, а пять — те, что собирают стадию `toolchain`: четыре «TypeScript / …» и Documents. Secrets, DCO, CodeQL и SonarCloud её не собирают. После мержа pull request #18 четыре «TypeScript / …» встали в ruleset `main` рядом с Documents, так что без MCR и снимка мерж не проходит. — RUN.md, T08.
-
 — *Следствие:*
 - следующий переход на тег `spec` переносит изменения `editDevcontainer` в Dockerfile руками и сохраняет эти; к В11 — «Дополнено»;
 - Д2 закрыт: образ собран, суммы сверены при сборке;
@@ -606,6 +604,8 @@
 - В27 и В28 «в реестр spec».
 
 — `.devcontainer/Dockerfile`, `.devcontainer/devcontainer.json`; CLAUDE.md, Environment; [architecture.md](architecture.md), разделы 3.4, 3.7 и 4; RUN.md, T08, таблицы 3 и 4.
+
+— *Поправка 2026-10-21:* пункт «Цена» точнее так: от MCR и `snapshot.ubuntu.com` зависят не все обязательные проверки, а пять — те, что собирают стадию `toolchain`: четыре «TypeScript / …» и Documents. Secrets, DCO, CodeQL и SonarCloud её не собирают. После мержа pull request #18 четыре «TypeScript / …» встали в ruleset `main` рядом с Documents, так что без MCR и снимка мерж не проходит. — RUN.md, T08.
 
 **R14. `lightningcss` под MPL-2.0 — названное исключение проверки лицензий, вместе со своими сборками под платформы, пока lock-файл помечает их `dev`.**
 - Это минификатор CSS из Vite: Vite 8 зависит от него напрямую, а сам приходит обязательным peer Vitest 5.0.5. В lock-файле — `lightningcss` 1.33.0 и 11 сборок, которые он сам называет в `optionalDependencies`, все под MPL-2.0 и `dev`.
