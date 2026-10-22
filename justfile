@@ -1,12 +1,10 @@
 # canvas's own recipes: the package's build, and the four checks .github's typescript.yml runs in
 # CI, one job each, in a new container of the toolchain stage of .devcontainer/Dockerfile — as the
-# runner's user, with HOME=/tmp, with CI and ALLOWED_LICENSES from the step's environment (R19
-# .github; R12 in docs/decisions.md). Nothing here reads ALLOWED_LICENSES, which .github keeps for
-# older checks until its Д6. Only ci-licenses reads spec/: it runs spec's recipe
-# licenses-check-repo, and the licenses job alone gets the submodule. The code and its tests read
-# nothing of spec/, and the documents are checked by spec's own recipe, just -f spec/justfile
-# docs-check-repo. One more recipe is for the author's hands: demo serves a page to try the
-# element on.
+# runner's user, with HOME=/tmp and with CI from the step's environment (R19 .github; R12 in
+# docs/decisions.md). Only ci-licenses reads spec/: it runs spec's recipe licenses-check-repo, and
+# the licenses job alone gets the submodule. The code and its tests read nothing of spec/, and the
+# documents are checked by spec's own recipe, just -f spec/justfile docs-check-repo. One more
+# recipe is for the author's hands: demo serves a page to try the element on.
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
