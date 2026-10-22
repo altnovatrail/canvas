@@ -27,9 +27,10 @@ updates:
     cooldown:
       default-days: 3
     groups:
-      # @vitest/browser-playwright pins vitest exactly, so the two move in one pull request.
+      # @vitest/browser-playwright pins vitest exactly, so the two move in one pull request. Vite,
+      # which vitest runs on and just demo serves with, moves with them.
       vitest:
-        patterns: ["vitest", "@vitest/*"]
+        patterns: ["vitest", "@vitest/*", "vite"]
     ignore:
       # The types of Node follow the major version of the Node in .devcontainer/Dockerfile, which
       # moves by hand.

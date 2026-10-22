@@ -1,13 +1,15 @@
 // The package's entry point @altnovatrail/canvas: the canvas as a custom element, one for every
 // canvas kind, with its markup in an open shadow root (R07). Importing it registers the element,
 // once: a page has one element of this name. So far it is the handwriting sheet with its input,
-// one pointer at a time (RUN.md, T09; R18), and its undo and clearing, which the consumer calls
-// from buttons of its own (T33; R19). Its other layers and the element's other properties, methods
-// and events come with the tasks of the sheet (T34, T10–T15).
+// one pointer at a time (RUN.md, T09; R18), its undo and clearing, which the consumer calls from
+// buttons of its own (T33; R19), and what tutor's check board needs to take it in place of its own
+// sheet: the picture of the work and an event after every change of the work (T34; R20). Its
+// other layers and the element's other properties, methods and events come with the tasks of the
+// sheet (T10–T15).
 
 import type { Vec2 } from "perfect-freehand";
 import type { Stroke } from "../core/ink.js";
-import { outline } from "../core/outline.js";
+import { evenOutline, followsPressure, outline } from "../core/outline.js";
 import { type PointerSample, Recorder } from "../core/recorder.js";
 import { scaleFor, toSheet, type View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
@@ -19,6 +21,10 @@ export const TAG = "novatrail-canvas";
 
 /** The colour of the ink: the check board's (R19 tutor). */
 const INK = "#111";
+/** The colour of the sheet, on the screen and on the picture of the work: the board's white. */
+const PAPER = "#fff";
+/** The event the element sends after every change of the work (R20). */
+const WORK_CHANGE = "workchange";
 
 // The sheet scrolls in a container of its own, by the browser's own scrolling: the wheel, the
 // scroll bar and the keyboard work as anywhere on a page. The canvas stays in the container's
@@ -29,7 +35,7 @@ const STYLE = `
 :host { display: flex; flex-direction: column; }
 :host([hidden]) { display: none; }
 .viewport { flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; }
-.sheet { aspect-ratio: ${SHEET.width} / ${SHEET.height}; background: #fff; }
+.sheet { aspect-ratio: ${SHEET.width} / ${SHEET.height}; background: ${PAPER}; }
 canvas {
   position: sticky; top: 0; display: block; width: 100%; max-height: 100%;
   touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
@@ -58,10 +64,15 @@ export class NovatrailCanvas extends HTMLElement {
   readonly #context = this.#canvas.getContext("2d");
   /** The strokes on the sheet and the actions undo takes back (R19). */
   readonly #work = new Work();
-  /** The input: a finished stroke goes onto the work. */
-  readonly #recorder = new Recorder((stroke) => this.#work.write(stroke));
+  /** The input: a finished stroke goes onto the work, and the work has changed. */
+  readonly #recorder = new Recorder((stroke) => {
+    this.#work.write(stroke);
+    this.#changed();
+  });
   /** The path of each finished stroke, outlined once (R18). */
   readonly #inks = new WeakMap<Stroke, Ink>();
+  /** The path of each pen's stroke on the picture of the work, without its pressure, outlined once. */
+  readonly #evens = new WeakMap<Stroke, Path2D>();
   readonly #resize = new ResizeObserver((entries) => {
     const box = entries.at(-1)?.contentBoxSize[0];
     if (box !== undefined) this.#area = { width: box.inlineSize, height: box.blockSize };
@@ -93,8 +104,10 @@ export class NovatrailCanvas extends HTMLElement {
     this.#canvas.addEventListener("pointercancel", (event) => {
       if (this.#recorder.cancel(event.pointerId)) this.#request();
     });
+    // A stroke that ends here, or on its pointerup, lands through the recorder's handler, which
+    // draws the sheet anew.
     this.#canvas.addEventListener("lostpointercapture", (event) => {
-      if (this.#recorder.end(event.pointerId)) this.#request();
+      this.#recorder.end(event.pointerId);
     });
     // A long press of a pen or a finger, or a right click, opens no menu over the sheet.
     this.#canvas.addEventListener("contextmenu", (event) => event.preventDefault());
@@ -115,26 +128,64 @@ export class NovatrailCanvas extends HTMLElement {
 
   /**
    * Takes back the last action on the sheet — the last stroke written, or the clearing — and says
-   * whether there was one (R19). A stroke under way stays: it lands when it ends.
+   * whether there was one (R19), with a `workchange` if there was (R20). A stroke under way stays:
+   * it lands when it ends.
    */
   undo(): boolean {
     const undone = this.#work.undo();
-    if (undone) this.#request();
+    if (undone) this.#changed();
     return undone;
   }
 
   /**
    * Takes every stroke off the sheet, an action that undo takes back, and says whether there were
-   * any (R19). A stroke under way stays: it lands when it ends.
+   * any (R19), with a `workchange` if there were (R20). A stroke under way stays: it lands when it
+   * ends.
    */
   clear(): boolean {
     const cleared = this.#work.clear();
-    if (cleared) this.#request();
+    if (cleared) this.#changed();
     return cleared;
   }
 
+  /**
+   * The picture of the work, a PNG, as tutor's check board sends its sheet to the models (R20; R19
+   * tutor): the whole sheet, a pixel to a unit — 1000 × 1400, whatever the screen and the
+   * element's size — its strokes in ink on white. The line is as wide all along, a pen's too: the
+   * pressure goes into no picture for checking. The browser's own canvas draws it, so its bytes are
+   * the browser's.
+   *
+   * It is the sheet as it is when this is called: a stroke under way is not on it yet, and one that
+   * ends before the promise settles is not in it. A sheet without strokes has no picture, and the
+   * promise gives null; it is rejected if the browser cannot draw or encode the picture.
+   */
+  async exportPNG(): Promise<Blob | null> {
+    const strokes = this.#work.strokes;
+    if (strokes.length === 0) return null;
+    // A canvas of its own, in no document: toBlob is older in browsers than OffscreenCanvas.
+    const picture = document.createElement("canvas");
+    picture.width = SHEET.width;
+    picture.height = SHEET.height;
+    const context = picture.getContext("2d");
+    // Not null: a consumer would take it for an empty sheet.
+    if (context === null) throw new Error("the browser gives no 2D context to draw the picture on");
+    context.fillStyle = PAPER;
+    context.fillRect(0, 0, SHEET.width, SHEET.height);
+    context.fillStyle = INK;
+    for (const stroke of strokes) context.fill(this.#even(stroke));
+    // toBlob copies the canvas as it is now, before anything else can write on the sheet, and
+    // encodes the copy after (HTML Standard).
+    return new Promise((resolve, reject) => {
+      picture.toBlob((png) => {
+        if (png === null) reject(new Error("the browser could not encode the picture"));
+        else resolve(png);
+      }, "image/png");
+    });
+  }
+
   disconnectedCallback(): void {
-    // A stroke under way ends where it is: its pointerup will not reach a sheet off the page.
+    // A stroke under way ends where it is: its pointerup will not reach a sheet off the page. Its
+    // workchange reaches only the element's own listeners, for the element is in no tree now.
     this.#recorder.end();
     this.#resize.disconnect();
     this.#unwatchDensity?.();
@@ -170,11 +221,8 @@ export class NovatrailCanvas extends HTMLElement {
   #up(event: PointerEvent): void {
     if (this.#recorder.pointer !== event.pointerId) return;
     const screen = this.#view();
-    const ended =
-      screen === undefined
-        ? this.#recorder.end(event.pointerId)
-        : this.#recorder.up(this.#sample(event, screen));
-    if (ended) this.#request();
+    if (screen === undefined) this.#recorder.end(event.pointerId);
+    else this.#recorder.up(this.#sample(event, screen));
   }
 
   #sample(event: PointerEvent, screen: Screen): PointerSample {
@@ -247,6 +295,17 @@ export class NovatrailCanvas extends HTMLElement {
     this.#unwatchDensity = () => density.removeEventListener("change", changed);
   }
 
+  /**
+   * The work has changed — a stroke landed, an undo, a clearing: the sheet is drawn anew, and
+   * whoever listens hears of it at once, the work already as it now is (R20). The event goes up
+   * from the element itself, and out of a consumer's own shadow tree too, should the element be
+   * in one.
+   */
+  #changed(): void {
+    this.#request();
+    this.dispatchEvent(new Event(WORK_CHANGE, { bubbles: true, composed: true }));
+  }
+
   #request(): void {
     if (this.#frame !== 0 || !this.isConnected) return;
     this.#frame = requestAnimationFrame(() => {
@@ -290,6 +349,21 @@ export class NovatrailCanvas extends HTMLElement {
       this.#inks.set(stroke, ink);
     }
     return ink;
+  }
+
+  /**
+   * A finished stroke's path on the picture of the work: a mouse's or a finger's is its path on the
+   * screen, and a pen's its own, as wide all along, outlined once.
+   */
+  #even(stroke: Stroke): Path2D {
+    if (!followsPressure(stroke)) return this.#finished(stroke).path;
+    let path = this.#evens.get(stroke);
+    if (path === undefined) {
+      this.#outlines++;
+      path = pathOf(evenOutline(stroke));
+      this.#evens.set(stroke, path);
+    }
+    return path;
   }
 
   #outline(stroke: Stroke, complete: boolean): Vec2[] {

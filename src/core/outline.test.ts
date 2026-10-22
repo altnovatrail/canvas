@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { Stroke } from "./ink.js";
-import { INK_WIDTH, outline } from "./outline.js";
+import { evenOutline, followsPressure, INK_WIDTH, outline } from "./outline.js";
 
 // A level stroke from x 100 to 200 at y 100, of one pointer and one pressure all along.
 function level(kind: string, pressure: number): Stroke {
@@ -33,6 +33,27 @@ test("a pen's line widens with its pressure", () => {
   const firm = extent(outline(level("pen", 0.9), true)).width;
   expect(light).toBeCloseTo(INK_WIDTH * 0.7, 5);
   expect(firm).toBeCloseTo(INK_WIDTH * 1.4, 5);
+});
+
+test(`on the picture of the work a pen's line is ${INK_WIDTH} units wide too, as a mouse's of the same points`, () => {
+  for (const pressure of [0.2, 0.9]) {
+    const pen = level("pen", pressure);
+    expect(extent(evenOutline(pen)).width).toBeCloseTo(INK_WIDTH, 5);
+    expect(evenOutline(pen)).toEqual(outline({ ...pen, kind: "mouse" }, true));
+  }
+  // A mouse's and a finger's line is the same there as on the screen.
+  for (const kind of ["mouse", "touch"]) {
+    expect(evenOutline(level(kind, 0.5))).toEqual(outline(level(kind, 0.5), true));
+  }
+});
+
+test("only a pen's line follows its pressure", () => {
+  expect(["pen", "mouse", "touch", ""].map((kind) => followsPressure(level(kind, 0.5)))).toEqual([
+    true,
+    false,
+    false,
+    false,
+  ]);
 });
 
 test("a complete stroke reaches its last point, and its round end goes half the width beyond", () => {

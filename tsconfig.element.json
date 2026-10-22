@@ -5,6 +5,6 @@
     "types": [],
     "noEmit": true
   },
-  "include": ["src/element/**/*.ts"],
-  "exclude": ["src/**/*.test.ts"]
+  "include": ["src/element/**/*.ts", "demo/**/*.ts"],
+  "exclude": ["src/**/*.test.ts", "demo/vite.config.ts"]
 }
