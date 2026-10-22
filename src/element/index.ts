@@ -1,8 +1,9 @@
 // The package's entry point @altnovatrail/canvas: the canvas as a custom element, one for every
 // canvas kind, with its markup in an open shadow root (R07). Importing it registers the element,
 // once: a page has one element of this name. So far it is the handwriting sheet with its input,
-// one pointer at a time (RUN.md, T09; R18). Its other layers and the element's properties, methods
-// and events come with the tasks of the sheet (T33, T34, T10–T15).
+// one pointer at a time (RUN.md, T09; R18), and its undo and clearing, which the consumer calls
+// from buttons of its own (T33; R19). Its other layers and the element's other properties, methods
+// and events come with the tasks of the sheet (T34, T10–T15).
 
 import type { Vec2 } from "perfect-freehand";
 import type { Stroke } from "../core/ink.js";
@@ -10,6 +11,7 @@ import { outline } from "../core/outline.js";
 import { type PointerSample, Recorder } from "../core/recorder.js";
 import { scaleFor, toSheet, type View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
+import { Work } from "../core/work.js";
 import { attachProbe } from "./probe.js";
 
 /** The name the element is registered under. */
@@ -54,7 +56,10 @@ export class NovatrailCanvas extends HTMLElement {
   readonly #sheet = document.createElement("div");
   readonly #canvas = document.createElement("canvas");
   readonly #context = this.#canvas.getContext("2d");
-  readonly #recorder = new Recorder();
+  /** The strokes on the sheet and the actions undo takes back (R19). */
+  readonly #work = new Work();
+  /** The input: a finished stroke goes onto the work. */
+  readonly #recorder = new Recorder((stroke) => this.#work.write(stroke));
   /** The path of each finished stroke, outlined once (R18). */
   readonly #inks = new WeakMap<Stroke, Ink>();
   readonly #resize = new ResizeObserver((entries) => {
@@ -96,7 +101,7 @@ export class NovatrailCanvas extends HTMLElement {
     this.#viewport.addEventListener("scroll", () => this.#scrolled(), { passive: true });
 
     attachProbe(this, () => ({
-      strokes: this.#recorder.strokes,
+      strokes: this.#work.strokes,
       live: this.#recorder.live,
       outlines: this.#outlines,
       view: this.#view(),
@@ -106,6 +111,26 @@ export class NovatrailCanvas extends HTMLElement {
   connectedCallback(): void {
     this.#resize.observe(this.#viewport);
     this.#watchDensity();
+  }
+
+  /**
+   * Takes back the last action on the sheet — the last stroke written, or the clearing — and says
+   * whether there was one (R19). A stroke under way stays: it lands when it ends.
+   */
+  undo(): boolean {
+    const undone = this.#work.undo();
+    if (undone) this.#request();
+    return undone;
+  }
+
+  /**
+   * Takes every stroke off the sheet, an action that undo takes back, and says whether there were
+   * any (R19). A stroke under way stays: it lands when it ends.
+   */
+  clear(): boolean {
+    const cleared = this.#work.clear();
+    if (cleared) this.#request();
+    return cleared;
   }
 
   disconnectedCallback(): void {
@@ -248,7 +273,7 @@ export class NovatrailCanvas extends HTMLElement {
     context.setTransform(across, 0, 0, down, 0, -screen.vy * down);
     context.fillStyle = INK;
     const bottom = screen.vy + screen.height / screen.k;
-    for (const stroke of this.#recorder.strokes) {
+    for (const stroke of this.#work.strokes) {
       const ink = this.#finished(stroke);
       if (ink.bottom >= screen.vy && ink.top <= bottom) context.fill(ink.path);
     }

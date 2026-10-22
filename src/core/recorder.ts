@@ -47,18 +47,18 @@ interface Live {
 /**
  * The strokes of one sheet, from the pointer's samples (R18; architecture 3.1 in
  * docs/architecture.md). One pointer writes at a time, with its primary button: a second pointer,
- * and any other button, write nothing while a stroke is under way.
+ * and any other button, write nothing while a stroke is under way. A finished stroke goes to the
+ * handler the recorder is made with — onto the work on the sheet (R19).
  */
 export class Recorder {
-  readonly #strokes: Stroke[] = [];
+  readonly #finished: (stroke: Stroke) => void;
   #live: Live | undefined;
   #nextId = 1;
   #origin: number | undefined;
   #lastT = 0;
 
-  /** The finished strokes, in the order they were written. */
-  get strokes(): readonly Stroke[] {
-    return this.#strokes;
+  constructor(finished: (stroke: Stroke) => void) {
+    this.#finished = finished;
   }
 
   /** The stroke being written, or nothing between strokes. */
@@ -136,8 +136,9 @@ export class Recorder {
     const live = this.#live;
     if (live === undefined) return false;
     if (live.latest !== live.points[live.points.length - 1]) live.points.push(live.latest);
-    this.#strokes.push({ id: live.id, kind: live.kind, points: live.points });
+    // The stroke is no longer under way by the time the handler has it.
     this.#live = undefined;
+    this.#finished({ id: live.id, kind: live.kind, points: live.points });
     return true;
   }
 
