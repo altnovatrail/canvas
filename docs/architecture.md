@@ -42,7 +42,7 @@
 - как пакет стыкуется с приложением и где публикуется, решили ответы `canvas` на Т-21 и Т-26 — R36 и R37 spec (раздел 2.3; R16). Стыковка — веб-компонент `<novatrail-canvas>` с типами данных из релизов `spec` (R07, раздел 3.3). Пакет — в npm, а сборка страницы образцов и синтетические образцы — файлами релиза GitHub (R08, раздел 3.4);
 - образцы взрослых со страницы образцов уходят организатору замера или, для eval-набора, через pull request в `modules`, а образцы детей — без него, туда, куда решат П-10 и П-12 (R25 spec; R11). Формат образцов задаёт протокол eval из `spec` (R15 spec; architecture 3.2 spec), а что лежит в файле образца до него — раздел 3.5 (R09). Согласие добровольцев — открытый вопрос П-16 (раздел 2.4), а шаги страницы — раздел 3.6 (R11);
 - лицензия — Apache-2.0, а зависимости — только с лицензиями, совместимыми с ней (R12 spec; R20 spec);
-- этап 2. Вместе с `tutor` это первый код этапа: замер чтения ИИ по каждому виду канвы и ответа идёт раньше остального (repositories 6 spec; product 11 spec). Лист для рукописи и страница образцов идут эпиком E2 рядом с детализацией, раньше пунктов 3 и 4 repositories 6 spec (R02; repositories 6 spec, пункт 5).
+- этап 2. Вместе с `tutor` это первый код этапа. По repositories 6 spec и product 11 spec замер чтения ИИ по каждому виду канвы и ответа шёл раньше остального, а лист для рукописи и страница образцов — эпиком E2 рядом с детализацией, раньше пунктов 3 и 4 repositories 6 spec (R02; repositories 6 spec, пункт 5). С 2026-10-22 большой замер отложен (R19 tutor; В20 tutor), и E2 перепланирован под MVP — доску проверки `tutor`: сначала лист и элемент, а страница образцов ждёт решения по данным доски (R17; В29).
 
 ## 2. Решить при детализации
 
@@ -198,7 +198,7 @@
 
   Почему выбран каждый и чем плохи остальные — R09.
 - **Решено** (R09): состав файла задают назначение, кто писал и происхождение. История письма — только в образце замера от взрослого, а в образцах eval-набора и ребёнка — итоговая геометрия видимых штрихов; синтетика — в каждом составе. Во всех — вырезки на высотах eval, группы, разметка по строкам и ссылка на задачу без ключа. Что предлагается протоколу, `spec` записал в эпик E3 своего RUN.md, а что идёт юристу, — в П-18 (R16). Устройство — раздел 3.5. Шаги страницы (R11): назначение выбирают на странице; согласие — уведомление на странице и подписанная форма вне её; пока тексты — черновик, открыт только замер автора; возраст — заявление «18 лет или больше»; код писавшего — один на человека. Устройство — раздел 3.6. Откуда задачи замера, пока у `modules` нет первого содержания, решил `spec` по В6: из релиза `tutor`, файлом открытых видов (поправка 2026-10-21 к R25 spec; R16).
-- **Задачи:** T04 — состав файла, сделана; T28 — шаги страницы: возраст, согласие, сеанс образца ребёнка, сделана; T29 — проба сборки из файла на устройствах.
+- **Задачи:** T04 — состав файла, сделана; T28 — шаги страницы: возраст, согласие, сеанс образца ребёнка, сделана; T29 — проба сборки из файла на устройствах, отложена вместе с большим замером (R17).
 
 ### 2.5. Ввод на текстовой канве — как набран
 
@@ -623,7 +623,7 @@ sheet_box = [B.ymin − m/s, B.xmin − m/s, B.ymin − m/s + h/s, B.xmin − m/
 6. **Сохранение:**
    - страница показывает вырезки — то, что увидит модель, — и коротко, что ещё лежит в файле;
    - человек подтверждает, что на листе нет ничего личного;
-   - файл ложится туда, куда браузер кладёт загрузки. Где это на каждом устройстве и синхронизируется ли эта папка с облаком, проверяет T29;
+   - файл ложится туда, куда браузер кладёт загрузки. Где это на каждом устройстве и синхронизируется ли эта папка с облаком, проверяет T29, отложенная вместе с большим замером (R17). У Safari на iPad это «iCloud Drive» или «On My iPad», по выбору в настройках (раздел 4), а при «iCloud Drive» файл образца, в том числе ребёнка, уходит в облако Apple — В30;
    - куда передать файл: образец замера — организатору, так, как договорились (как именно — эпик E4 в RUN.md `spec`), а образец eval-набора — pull request по правилам T02 modules.
 
 **Сеанс образца ребёнка** проводит взрослый, а пишет ребёнок. Пока набор текстов для сеансов не утверждён, сеанс закрыт.
@@ -638,7 +638,7 @@ sheet_box = [B.ymin − m/s, B.xmin − m/s, B.ymin − m/s + h/s, B.xmin − m/
 - **Письмо и разметка.** Пишет ребёнок, а размечает взрослый — со слов ребёнка, после письма (раздел 3.5).
 - **Сохранение** — как у взрослого, но без pull request. Уведомление советует передать файл и удалить его с устройства.
 
-**Что страница помнит** о людях — ничего: ни кодов, ни назначения, ни заявлений. Всё это спрашивается при каждом открытии. Помнит ли она что-то ещё, например недописанный лист, решает T20, а работает ли хранилище на странице, открытой из файла, проверяет T29.
+**Что страница помнит** о людях — ничего: ни кодов, ни назначения, ни заявлений. Всё это спрашивается при каждом открытии. Помнит ли она что-то ещё, например недописанный лист, решает T20, а работает ли хранилище на странице, открытой из файла, проверяет T29, отложенная вместе с большим замером (R17). По исходникам браузеров оно ведёт себя по-разному: в Chromium все страницы из `file:` делят одно хранилище, а в Firefox у каждого файла своё (раздел 4). Если T20 станет хранить недописанный лист, в Chromium его прочтёт любой локальный HTML-файл.
 
 ### 3.7. Код и инструменты
 
@@ -935,3 +935,28 @@ Vitest тянет Vite 8.3.4, а с ним `lightningcss` под MPL-2.0 — н�
   - Claude Code — [Permissions](https://code.claude.com/docs/en/permissions): «`/path` Path relative to the settings source», а в настройках проекта это `<primary working directory>/path`; «A `*` in a Bash rule matches any text, including spaces»; о правиле Bash — «isn't a security boundary around the program»;
   - SonarQube Cloud — [Automatic analysis](https://docs.sonarsource.com/sonarqube-cloud/analyzing-source-code/automatic-analysis): о `.sonarcloud.properties` — «Below are the supported optional settings for the `.sonarcloud.properties` file. Wildcard patterns are not allowed». Сам список настроек в тексте страницы не прочитан;
   - `tutor` — его T11, pull request #13, слит f501412: раздел `samples/` в CLAUDE.md, `/samples/` в `.gitignore` и в `.claude/settings.json` — `Read(/samples)`, `Read(/samples/**)`, `Edit(/samples)`, `Edit(/samples/**)` и `Bash(*samples*)`.
+- **Браузеры и страница из файла** (разделы 2.4 и 3.6; T29 в [RUN.md](../RUN.md)), прочитано 2026-10-22. Это находки планирования T29, которая потом отложена (R17): проб на устройствах ещё не было. Исходники движков — на тегах: Chromium 156.0.8078.47 — [chromium/src](https://chromium.googlesource.com/chromium/src/+/refs/tags/156.0.8078.47/), Firefox 158.0.1 — [mozilla-firefox/firefox](https://github.com/mozilla-firefox/firefox/tree/FIREFOX_158_0_1_RELEASE), WebKit — [WebKit/WebKit](https://github.com/WebKit/WebKit/tree/WebKit-7625.1.29.18.27):
+  - **GitHub**, заголовки из первых рук, `curl -sIL`, 2026-10-22, 01:14–01:17 UTC:
+    - `report-7.0.11.html` релиза `adamws/kicad-via-patterns` v0.4, у которого в API `content_type: text/html`, приходит через 302 на `release-assets.githubusercontent.com`, а там — `content-type: application/octet-stream` и `content-disposition: attachment; filename=report-7.0.11.html`. Так же — ещё три файла `.html` из релизов. Документация GitHub этого не обещает;
+    - raw.githubusercontent.com и gist.githubusercontent.com отдают HTML как `text/plain; charset=utf-8`, с `content-security-policy: default-src 'none'; style-src 'unsafe-inline'; sandbox` и `x-content-type-options: nosniff`;
+    - GitHub Pages: «When a GitHub Pages site is visited, the visitor's IP address is logged and stored for security purposes, regardless of whether the visitor has signed into GitHub or not» ([What is GitHub Pages?](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages#data-collection), github/docs 5815d11);
+  - **безопасный контекст**:
+    - [Secure Contexts](https://w3c.github.io/webappsec-secure-contexts/): «If origin's scheme is "file", return "Potentially Trustworthy"». Так и в движках: в Chromium — `net/base/is_potentially_trustworthy.cc`, в Firefox — `URI_IS_POTENTIALLY_TRUSTWORTHY` у протокола `file` в `netwerk/build/components.conf`, в WebKit — `page/SecurityOrigin.cpp`;
+    - `getCoalescedEvents()` — `[SecureContext]` в [Pointer Events](https://w3c.github.io/pointerevents/), в Chromium (`pointer_event.idl`) и в WebKit (`PointerEvent.idl`), а в Firefox — по той же проверке, `nsContentUtils::IsSecureContextOrWebExtension`;
+  - **хранилище на `file:`**:
+    - Chromium: «'file' URLs all parse as ("file", "", 0)» (`url/origin.h`) и «file: origins all serialize to "file://"» — у всех страниц из `file:` одно хранилище, а «file:// URLs should become unique opaque origins at some point» (`url/origin_unittest.cc`);
+    - Firefox — по файлу: `security.fileuri.strict_origin_policy` — `true` (`StaticPrefList.yaml`; `caps/tests/unit/test_origin.js`);
+    - WebKit — только пока приложение-хозяин держит включённой `needsStorageAccessFromFileURLsQuirk`, а что у Safari, не видно;
+    - MDN пишет «each `file:` URL seems to have its own unique local-storage area» ([Window: localStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage)) — это расходится с исходниками Chromium;
+  - **политика в `<meta>` на `file:`** — без исключения для `file:` в Chromium (`http_equiv.cc`), Firefox (`nsCSPUtils.cpp`) и WebKit (`Document.cpp`). **`<a download>` с blob своей страницы** — работает в Chromium (`html_anchor_element.cc`) и Gecko (`nsContentUtils.cpp`);
+  - **iPadOS и Safari**:
+    - «Released September 14, 2026 — 27.0 … Safari 27 is available for iOS 27, iPadOS 27» ([Safari 27 Release Notes](https://developer.apple.com/documentation/safari-release-notes/safari-27-release-notes));
+    - «Файлы»: «If you haven’t installed the app that created a file, a preview of the file opens in Quick Look» ([iPad User Guide](https://support.apple.com/guide/ipad/ipadb3b759ed/26/ipados/26)). Руководство здесь и ниже — для iPadOS 26, а для iPadOS 27 оно не прочитано;
+    - загрузки Safari: «iCloud Drive: Select this option to save downloads to the Downloads folder in iCloud Drive» или «On My iPad» ([Customize your Safari settings](https://support.apple.com/guide/ipad/customize-your-safari-settings-ipad54f3cde6/26/ipados/26)), а что по умолчанию, не сказано;
+    - выполняет ли Quick Look скрипты HTML и открывает ли Safari `file:`, документация Apple не говорит. «Нет» говорят только форумы: тред 710001 (2022, ниже) и [Apple Discussions, тред 256102223](https://discussions.apple.com/thread/256102223), июль 2025, — «Quick Look is as close as you can get and it will not run JavaScript»;
+    - `getCoalescedEvents` — с Safari 18.2: «New PointerEvent methods getPredictedEvents() and getCoalescedEvents() are now supported» ([WebKit Features in Safari 18.2](https://webkit.org/blog/16301/webkit-features-in-safari-18-2/)). Pointer Events с Apple Pencil — с Safari 13: «Added support for the Pointer Events API enabling consistent access to mouse, trackpad, touch, and Apple Pencil events» ([Safari 13 Release Notes](https://developer.apple.com/documentation/safari-release-notes/safari-13-release-notes)). Перо приходит как `pen` с нажимом: `TouchType::Stylus ? penPointerEventType() : touchPointerEventType()` и `m_pressure(event.forceAtIndex(index))` (`dom/ios/PointerEventIOS.cpp` WebKit);
+  - **Android**:
+    - Chrome открывает HTML из своего окна загрузок сам, как `content://` во встроенном просмотрщике (`DownloadUtils.java`, `MediaViewerUtils.java`), и принимает `content://` с типом `text/html` от «Файлов» (`AndroidManifest.xml`);
+    - прямой `file://` к загрузкам он, скорее всего, отклонит: о `READ_EXTERNAL_STORAGE` — «Starting in API level 33, this permission has no effect» ([Manifest.permission](https://developer.android.com/reference/android/Manifest.permission));
+    - что скрипты там выполнятся, не подтверждено, а о Samsung Internet первоисточников нет;
+  - **Scorecard**, Signed-Releases: смотрит «the project's last five release assets» и ищет в них подписи ([checks.md](https://github.com/ossf/scorecard/blob/main/docs/checks.md)).
