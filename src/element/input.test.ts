@@ -266,3 +266,72 @@ test("a sheet taken off the page ends the stroke under way where it was", async 
   expect(probe(element).live).toBeUndefined();
   expect(probe(element).strokes[0]?.points.map((point) => Math.round(point.x))).toEqual([50, 80]);
 });
+
+test("undo() and clear() take ink off the sheet and bring it back, each stroke's path built once", async () => {
+  const { element, canvas, view } = await sheet(400);
+  level(canvas, view(), 300, 100, 300);
+  level(canvas, view(), 600, 100, 300);
+  await settle();
+  const ids = () => probe(element).strokes.map((stroke) => stroke.id);
+  // Whether there is ink in the middle of the first stroke, and of the second.
+  const ink = () => [inkAt(canvas, view(), 200, 300) > 0, inkAt(canvas, view(), 200, 600) > 0];
+  expect(ids()).toEqual([1, 2]);
+  expect(ink()).toEqual([true, true]);
+
+  expect(element.clear()).toBe(true);
+  await settle();
+  expect(ids()).toEqual([]);
+  expect(ink()).toEqual([false, false]);
+  expect(element.clear()).toBe(false);
+
+  expect(element.undo()).toBe(true);
+  await settle();
+  expect(ids()).toEqual([1, 2]);
+  expect(ink()).toEqual([true, true]);
+
+  expect(element.undo()).toBe(true);
+  await settle();
+  expect(ids()).toEqual([1]);
+  expect(ink()).toEqual([true, false]);
+
+  expect(element.undo()).toBe(true);
+  await settle();
+  expect(ids()).toEqual([]);
+  expect(ink()).toEqual([false, false]);
+  expect(element.undo()).toBe(false);
+  expect(probe(element).outlines).toBe(2);
+});
+
+test("a stroke under way stays through clear() and lands on the sheet when it ends", async () => {
+  const { element, canvas, view } = await sheet(400);
+  level(canvas, view(), 300, 100, 300);
+  const pen = { pointerId: 5, pointerType: "pen", isPrimary: true, bubbles: true };
+  const event = (type: string, x: number, init: PointerEventInit) =>
+    new PointerEvent(type, { ...pen, ...at(canvas, view(), x, 600), ...init });
+  canvas.dispatchEvent(event("pointerdown", 100, { button: 0, buttons: 1, pressure: 0.5 }));
+  expect(element.clear()).toBe(true);
+  canvas.dispatchEvent(event("pointermove", 300, { button: -1, buttons: 1, pressure: 0.5 }));
+  canvas.dispatchEvent(event("pointerup", 300, { button: 0, buttons: 0, pressure: 0 }));
+  await settle();
+  expect(probe(element).strokes.map((stroke) => stroke.id)).toEqual([2]);
+  expect(inkAt(canvas, view(), 200, 300)).toBe(0);
+  expect(inkAt(canvas, view(), 200, 600)).toBeGreaterThan(0);
+});
+
+test("a stroke under way stays through undo() and lands after the strokes left", async () => {
+  const { element, canvas, view } = await sheet(400);
+  level(canvas, view(), 300, 100, 300);
+  level(canvas, view(), 450, 100, 300);
+  const pen = { pointerId: 6, pointerType: "pen", isPrimary: true, bubbles: true };
+  const event = (type: string, x: number, init: PointerEventInit) =>
+    new PointerEvent(type, { ...pen, ...at(canvas, view(), x, 600), ...init });
+  canvas.dispatchEvent(event("pointerdown", 100, { button: 0, buttons: 1, pressure: 0.5 }));
+  expect(element.undo()).toBe(true);
+  canvas.dispatchEvent(event("pointermove", 300, { button: -1, buttons: 1, pressure: 0.5 }));
+  canvas.dispatchEvent(event("pointerup", 300, { button: 0, buttons: 0, pressure: 0 }));
+  await settle();
+  expect(probe(element).strokes.map((stroke) => stroke.id)).toEqual([1, 3]);
+  expect(inkAt(canvas, view(), 200, 300)).toBeGreaterThan(0);
+  expect(inkAt(canvas, view(), 200, 450)).toBe(0);
+  expect(inkAt(canvas, view(), 200, 600)).toBeGreaterThan(0);
+});
