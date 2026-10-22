@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>novatrail-canvas, by hand</title>
+<!-- The page to try the element on by hand, as tutor's check board would have it (RUN.md, T34). -->
+<style>
+  body { margin: 0; padding: 16px; background: #f4f4f1; color: #1d1d1b;
+         font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1040px; margin: 0 auto; }
+  novatrail-canvas { height: 600px; background: #fff; border: 1px solid #d4d4cf; }
+  .tools { display: flex; gap: 8px; align-items: center; margin: 10px 0; flex-wrap: wrap; }
+  button { font: inherit; padding: 6px 14px; border: 1px solid #d4d4cf; border-radius: 6px;
+           background: #fff; color: inherit; cursor: pointer; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  #status { color: #6b6b66; }
+  figure { margin: 0; }
+  #picture { display: block; width: 300px; background: #fff; border: 1px solid #d4d4cf; }
+  #picture:not([src]) { display: none; }
+  figcaption { color: #6b6b66; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<main>
+  <p id="counter"></p>
+  <div id="place"></div>
+  <div class="tools">
+    <button id="undo">Undo stroke</button>
+    <button id="clear">Clear</button>
+    <button id="check">Check</button>
+    <button id="next">Next task</button>
+    <span id="status" role="status"></span>
+  </div>
+  <figure>
+    <img id="picture" alt="The picture of the work, as Check would send it">
+    <figcaption id="caption"></figcaption>
+  </figure>
+</main>
+<script type="module" src="./main.ts"></script>
+</body>
+</html>

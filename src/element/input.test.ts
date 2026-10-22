@@ -335,3 +335,75 @@ test("a stroke under way stays through undo() and lands after the strokes left",
   expect(inkAt(canvas, view(), 200, 450)).toBe(0);
   expect(inkAt(canvas, view(), 200, 600)).toBeGreaterThan(0);
 });
+
+// A consumer stops the writing with a style of its own, as the board would while it checks
+// (R20): pointer-events inherits into the shadow tree, and a real pointer then hits nothing of it.
+test("pointer-events: none on the element lets no real pointer write, and one workchange comes for each stroke", async () => {
+  const { element, canvas, view } = await sheet(400);
+  let heard = 0;
+  element.addEventListener("workchange", () => heard++);
+  const drag = async () => {
+    const pressed = { force: 0.5 };
+    await input("mousePressed", at(canvas, view(), 100, 100), pressed);
+    await input("mouseMoved", at(canvas, view(), 300, 100), pressed);
+    await input("mouseReleased", at(canvas, view(), 300, 100), { force: 0 });
+    await settle();
+  };
+
+  element.style.pointerEvents = "none";
+  await drag();
+  expect(probe(element).strokes).toEqual([]);
+  expect(heard).toBe(0);
+
+  element.style.pointerEvents = "";
+  await drag();
+  expect(probe(element).strokes).toHaveLength(1);
+  // The pointer's capture goes after its pointerup, and that ends no second stroke.
+  expect(heard).toBe(1);
+});
+
+test("a stroke under way when pointer-events: none comes goes on to its end: the canvas holds its pointer", async () => {
+  const { element, canvas, view } = await sheet(400);
+  let heard = 0;
+  element.addEventListener("workchange", () => heard++);
+  const pressed = { force: 0.5 };
+  await input("mousePressed", at(canvas, view(), 100, 100), pressed);
+  await input("mouseMoved", at(canvas, view(), 200, 100), pressed);
+  element.style.pointerEvents = "none";
+  await input("mouseMoved", at(canvas, view(), 300, 100), pressed);
+  await input("mouseReleased", at(canvas, view(), 300, 100), { force: 0 });
+  await settle();
+  const [stroke, ...more] = probe(element).strokes;
+  expect(more).toEqual([]);
+  expect(stroke?.points.at(-1)?.x).toBeCloseTo(300, 0);
+  expect(heard).toBe(1);
+});
+
+test("the picture draws each stroke by the path it was given once, and a stroke it outlines first keeps its path for the screen", async () => {
+  const { element, canvas, view } = await sheet(400);
+  level(canvas, view(), 100, 100, 300);
+  await settle();
+  expect(probe(element).outlines).toBe(1);
+  await element.exportPNG();
+  expect(probe(element).outlines).toBe(1);
+
+  // Asked for before a frame has drawn the stroke: the picture outlines it, and no frame again.
+  level(canvas, view(), 200, 100, 300);
+  await element.exportPNG();
+  expect(probe(element).outlines).toBe(2);
+  await settle();
+  expect(probe(element).outlines).toBe(2);
+
+  // A pen's stroke has a path of its own on the picture, without its pressure, outlined once.
+  const pen = { pointerId: 8, pointerType: "pen", isPrimary: true, bubbles: true };
+  const event = (type: string, x: number, init: PointerEventInit) =>
+    new PointerEvent(type, { ...pen, ...at(canvas, view(), x, 300), ...init });
+  canvas.dispatchEvent(event("pointerdown", 100, { button: 0, buttons: 1, pressure: 0.9 }));
+  canvas.dispatchEvent(event("pointermove", 300, { button: -1, buttons: 1, pressure: 0.9 }));
+  canvas.dispatchEvent(event("pointerup", 300, { button: 0, buttons: 0, pressure: 0 }));
+  await settle();
+  expect(probe(element).outlines).toBe(3);
+  await element.exportPNG();
+  await element.exportPNG();
+  expect(probe(element).outlines).toBe(4);
+});

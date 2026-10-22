@@ -6,13 +6,14 @@ A component of [NovaTrail](https://github.com/altnovatrail/spec/tree/v0.2.18), a
 
 ## Status
 
-Code started. The detailing is done — epic E1, archived in [docs/plan/E1.md](docs/plan/E1.md) — and epic E2 of [RUN.md](RUN.md), replanned for the MVP on 2026-10-22, builds the handwriting sheet as the element `<novatrail-canvas>` first: tutor's check board can take it in place of its own sheet. The samples page waits for the author's decision on the big measurement. So far there is the package, `@altnovatrail/canvas`, with its tools and the sheet's input: the element takes a pen, a finger or a mouse, one pointer at a time, and draws the strokes, and a consumer's buttons undo the last action and clear the sheet through its methods `undo()` and `clear()`. No release has come out yet.
+Code started. The detailing is done — epic E1, archived in [docs/plan/E1.md](docs/plan/E1.md) — and epic E2 of [RUN.md](RUN.md), replanned for the MVP on 2026-10-22, builds the handwriting sheet as the element `<novatrail-canvas>` first: tutor's check board can take it in place of its own sheet. The samples page waits for the author's decision on the big measurement. So far there is the package, `@altnovatrail/canvas`, with its tools and the sheet's input: the element takes a pen, a finger or a mouse, one pointer at a time, and draws the strokes, and a consumer's buttons undo the last action and clear the sheet through its methods `undo()` and `clear()`. `exportPNG()` gives the picture of the work, a PNG of the whole sheet, and the event `workchange` tells of every change of the work: all that tutor's check board needs to take the element. A test plays the board's part, and `just demo` serves a page to try the element on by hand. No release has come out yet.
 
 ## Code
 
 - `src/core/` — the DOM-free part, `@altnovatrail/canvas/core`: it runs the same in a browser and in Node.
 - `src/element/` — the element `<novatrail-canvas>`, `@altnovatrail/canvas`: importing it registers the element.
 - `scripts/` — the check of the package as a consumer takes it.
+- `demo/` — a page to try the element on by hand, as the check board would have it: `just demo` serves it on this machine.
 - `licenses.json` — the packages the license check accepts by name, each with why.
 
 `just build` builds the package into `lib/`, and `just ci` runs the checks CI runs: format, lint and types; the tests in Node and in Chromium; advisories; licenses. They run in the devcontainer, whose toolchain stage holds the browser the tests run in. The license check is spec's recipe, run from the `spec/` submodule with the exceptions in `licenses.json`, so it needs `spec/` checked out: see [CLAUDE.md](CLAUDE.md), Environment.
