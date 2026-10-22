@@ -119,8 +119,8 @@ E1 — детализация — сделан 2026-10-21 и лежит в ар�
 - `spec` vX.Y.Z — канва задачи и открытый вид в формате модуля v0 (T28 в RUN.md `spec`, её «Вход»), пометки, вырезка и рамки групп в контракте `app` ↔ `api` (эпик E3 там же; Т-32) и типы для TypeScript в релизах `spec` (T35 там же, её «Вход»; R36 spec) — вход T11, T14 и T15: они берут их, если те уже пришли, и не ждут, а до них типы — свои временные того же состава (R07; [docs/architecture.md](docs/architecture.md), раздел 3.3);
 - `spec` vX.Y.Z — Т-27: что проверять у подписи общего релиза (T37 в RUN.md `spec`), — к T21 и T24, через переход на этот тег. До него — по рекомендации `canvas`, которую записал Т-27: одно правило и одна его реализация на всех, кто берёт файлы общего релиза;
 - `.github` v0.1.5 — `typescript.yml`, эпик E5 в RUN.md `.github`, — пришёл 2026-10-21, коммит c772cc8, к T08. Договор с рецептами `canvas` — R19 .github, с двумя поправками к нему. Пробы по SHA ветки нет: обёртку проверила проба в самом `.github`, T08 зовёт её сразу по SHA релиза, а T23 слита с T08. На настоящем коде обёртка прошла на pull request #18 T08, и её четыре проверки стоят в ruleset `main` ([docs/architecture.md](docs/architecture.md), раздел 3.4);
-- `.github` vX.Y.Z — `release.yml` с подписью и шагом npm — к T24. С подписью он вышел в v0.1.4 (R18 .github), а шага npm ещё нет: его пишет `.github` поправкой к R18 .github (R37 spec);
-- `.github` vX.Y.Z — `typescript.yml`, у которого job `licenses` берёт подмодуль `spec` и зовёт `licenses-check-repo` (R39 spec; Д15 в RUN.md `spec`), — к T32;
+- `.github` vX.Y.Z — `release.yml` с подписью и шагом npm — к T24. С подписью он вышел в v0.1.4 (R18 .github), а шага npm ещё нет: его пишет T27 в RUN.md `.github`, поправкой к R18 .github (R37 spec). С v0.1.6 от 2026-10-22 общий релиз зовёт рецепты `spec` скриптом `spec/tools/toolchain/toolchain.sh` из подмодуля вызывающего и требует подмодуль `altnovatrail/spec` на теге v0.2.17 или новее, а иначе останавливает прогон Release на `main` (поправка 2026-10-22 к R18 .github). Подмодуль `canvas` с T31 — на v0.2.18, где скрипт есть, так что T24 другого перехода не ждёт ([docs/architecture.md](docs/architecture.md), разделы 3.4 и 4);
+- `.github` vX.Y.Z — `typescript.yml`, у которого job `licenses` берёт подмодуль `spec` и зовёт `licenses-check-repo` (R39 spec; Д15 в RUN.md `spec`), — к T32. Его пишет T26 в RUN.md `.github`, на 2026-10-22 ещё не распланированная, а в v0.1.6 `typescript.yml` тот же, что в v0.1.5. Рецепт есть в `spec` с v0.2.17, и T31 его уже дала;
 - `tutor` vX.Y.Z — файл открытых видов задач замера, по поправке 2026-10-21 к R25 spec, — к T21; раннер, который читает образцы `canvas`, — к T25 (R38 spec);
 - `module-kit` vX.Y.Z и `modules` vX.Y.Z — CLI открытых видов и первое содержание — когда у `modules` выйдет первое содержание: тогда задачи замера в сборке страницы — снова из релиза `modules` через CLI `module-kit` (поправка 2026-10-21 к R25 spec), своей задачей (Д4).
 
@@ -450,14 +450,14 @@ E1 — детализация — сделан 2026-10-21 и лежит в ар�
 
 - **Цель:** `ci-licenses` проверяет lock-файл рецептом `spec` — `just -f spec/justfile licenses-check-repo package-lock.json <файл исключений>`, — а `scripts/licenses.ts` с тестами уходит. Исключение по-прежнему одно — `lightningcss` (R14), а граница `dev` и сборки под платформы — у рецепта (поправка 2026-10-22 к R39 spec).
 - **Почему:** R39 spec: список лицензий и проверку lock-файла npm другие репозитории берут рецептами `spec`, а Д16 в RUN.md `spec` велит `canvas` взять `licenses-check-repo` вместо своего скрипта. Правило тогда живёт в одной копии, у `spec`.
-- **Нужно:** `.github` vX.Y.Z — `typescript.yml`, у которого job `licenses` берёт подмодуль `spec` (R39 spec; Д15 в RUN.md `spec`). У обёртки v0.1.5 checkout — без подмодуля (R16 .github), и рецепта в CI нет.
+- **Нужно:** `.github` vX.Y.Z — `typescript.yml`, у которого job `licenses` берёт подмодуль `spec` (R39 spec; Д15 в RUN.md `spec`). У обёртки v0.1.5 checkout — без подмодуля (R16 .github), и рецепта в CI нет; v0.1.6 обёртку не менял. Новую пишет T26 в RUN.md `.github`, на 2026-10-22 ещё не распланированная. Рецепт `licenses-check-repo` есть в `spec` с v0.2.17, а подмодуль `canvas` с T31 — на v0.2.18.
 - **Сделать:**
   - вызывающий job «TypeScript» в `ci.yml` — на этот релиз `.github`, по тексту architecture 3.3 .github, своей сессией (поправка 2026-10-21 к R30 spec);
   - `ci-licenses` — рецепт `spec`. Он идёт на модулях Node и списке категории A самого `spec`, так что `ALLOWED_LICENSES` ему не нужен; CLAUDE.md, Environment, — по нему;
   - файл исключений — JSON по R39 spec: `lightningcss` с лицензией `MPL-2.0` и причиной, которая называет R14;
   - `scripts/licenses.ts` и его тесты — убрать; поправки к R12 и R14; [docs/architecture.md](docs/architecture.md), разделы 3.4 и 3.7.
 - **Как проверить:** `just ci` — зелёный; на пробе рецепт отказывает пакету с лицензией вне списка и исключению, которому нечего принимать; на pull request — «TypeScript / licenses» по новому релизу `.github`; `just -f spec/justfile docs-check-repo`; `/code-review high`.
-- **Разделы:** R12 spec, R30 spec, R39 spec; R16 .github, R19 .github; architecture 3.3 .github; Д15 и Д16 в RUN.md `spec`; R12, R14, R16; architecture 3.4, 3.7; T08, T31.
+- **Разделы:** R12 spec, R30 spec, R39 spec; R16 .github, R19 .github; architecture 3.3 .github; T26 в RUN.md `.github`; Д15 и Д16 в RUN.md `spec`; R12, R14, R16; architecture 3.4, 3.7; T08, T31.
 
 #### T09. Ввод пера, пальца и мыши
 
@@ -659,6 +659,7 @@ E1 — детализация — сделан 2026-10-21 и лежит в ар�
 - **Цель:** у `canvas` есть релиз с подписью общего `release.yml` `.github`: пакет — в npm, `@altnovatrail/canvas`, тем же файлом, что в релизе (R08; R37 spec), а сборка страницы образцов и синтетические образцы — файлами релиза. `app` и CI `tutor` берут их по точной версии.
 - **Сделать:**
   - номер и тег — рецептами релиза `spec` по их интерфейсу (R31 spec), так, как их позовёт общий `release.yml`: свой `release.yml` после зелёного CI на `main` зовёт общий по SHA его релиза, а номер — следующий патч линии `RELEASE_LINE`, сначала `0.1`. Рецепты в стадии `toolchain` раннер зовёт скриптом `spec/tools/toolchain/toolchain.sh` из подмодуля, на его теге (поправка 2026-10-21 к R31 spec; R08; [docs/architecture.md](docs/architecture.md), раздел 3.4);
+  - свой `release.yml` — по тексту architecture 3.3 .github, своей сессией (поправка 2026-10-21 к R30 spec), по SHA релиза `.github` с шагом npm. С v0.1.6 общий релиз до сборки проверяет, что `spec/` — подмодуль `altnovatrail/spec` на теге v0.2.17 или новее, со скриптом, и иначе останавливает прогон Release на `main` (поправка 2026-10-22 к R18 .github). У `canvas` подмодуль с T31 — на v0.2.18. Пример в architecture 3.3 .github на 2026-10-22 закрепляет ещё v0.1.4, где скрипта нет: SHA берётся у релиза с шагом npm, а не из примера;
   - пути, из которых собран релиз, — список этой задачи, по В6 module-kit: релиз выходит, только если они изменились;
   - подпись — cosign без ключей, `.sigstore.json` у каждого файла, идентичность — общий `release.yml` (R18 .github). Что проверяет потребитель, решает Т-27, а рекомендация `canvas` записана в нём (R08; раздел 3.4);
   - публикация пакета — шагом общего `release.yml`, через trusted publishing, без токена (R08; [docs/architecture.md](docs/architecture.md), раздел 3.4);
@@ -667,7 +668,7 @@ E1 — детализация — сделан 2026-10-21 и лежит в ар�
   - как `app` поставит пакет по точной версии — установкой в пробный проект.
 - **Мой шаг:** неизменяемые релизы и ruleset тегов `v*`, первая публикация вручную и trusted publisher — в порядке из [docs/architecture.md](docs/architecture.md), раздел 3.4, с подтверждением по правилу 4; цена называется до шага. Организация в npm уже есть — с 2026-10-21.
 - **Как проверить:** релиз вышел, подпись проверяется по Т-27; в нём пакет, сборка страницы и синтетические образцы; пробный проект ставит пакет по точной версии. Первая публикация шагом npm прошла, и у версии есть provenance, а если реестр его не принял, — записано, почему (R08); `/code-review high`.
-- **Разделы:** architecture 3.11, 6 spec; R16 spec, R25 spec, R31 spec, R37 spec; Т-27; R03 .github, R18 .github; В6 module-kit; R08, R11, R16; architecture 2.3, 3.4, 3.6; T03, T27, T08, T18, T21, T22, T31.
+- **Разделы:** architecture 3.11, 6 spec; R16 spec, R25 spec, R30 spec, R31 spec, R37 spec; Т-27; R03 .github, R18 .github; architecture 3.3 .github; T27 в RUN.md `.github`; В6 module-kit; R08, R11, R16; architecture 2.3, 3.4, 3.6; T03, T27, T08, T18, T21, T22, T31.
 
 #### T25. Итог эпика и передача замеру
 
