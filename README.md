@@ -6,7 +6,7 @@ A component of [NovaTrail](https://github.com/altnovatrail/spec/tree/v0.2.18), a
 
 ## Status
 
-Code started. The detailing is done — epic E1, archived in [docs/plan/E1.md](docs/plan/E1.md) — and epic E2 of [RUN.md](RUN.md) builds the handwriting sheet and the samples page task by task. So far there is the package's skeleton, `@altnovatrail/canvas`, with its tools; no release has come out yet.
+Code started. The detailing is done — epic E1, archived in [docs/plan/E1.md](docs/plan/E1.md) — and epic E2 of [RUN.md](RUN.md), replanned for the MVP on 2026-10-22, builds the handwriting sheet as the element `<novatrail-canvas>` first: tutor's check board can take it in place of its own sheet. The samples page waits for the author's decision on the big measurement. So far there is the package's skeleton, `@altnovatrail/canvas`, with its tools; no release has come out yet.
 
 ## Code
 
