@@ -5,7 +5,8 @@
 # older checks until its Д6. Only ci-licenses reads spec/: it runs spec's recipe
 # licenses-check-repo, and the licenses job alone gets the submodule. The code and its tests read
 # nothing of spec/, and the documents are checked by spec's own recipe, just -f spec/justfile
-# docs-check-repo.
+# docs-check-repo. One more recipe is for the author's hands: demo serves a page to try the
+# element on.
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
@@ -56,6 +57,13 @@ build: _install
 # Format and fix the code in place, the way ci-lint checks it.
 fmt: _install
     {{ bin }}/biome check --write
+
+# Serve a page to try the element on by hand — with a mouse, a pen or a finger — as tutor's check
+# board would have it (RUN.md, T34; R20): Vite's dev server on 127.0.0.1:5173, which VS Code
+# forwards to a browser outside the container. It serves the page, the element's sources and the
+# packages they import, and nothing else of the repository; it builds nothing.
+demo: _install
+    {{ bin }}/vite --config demo/vite.config.ts
 
 # Install the packages from package-lock.json, again whenever package.json or the lock file changes:
 # the stamp holds their hashes, as spec's _tools does. In CI each job starts from a fresh checkout,

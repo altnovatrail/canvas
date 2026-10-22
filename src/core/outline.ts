@@ -25,21 +25,35 @@ const OPTIONS = {
   end: { cap: true, taper: false },
 } satisfies StrokeOptions;
 
+/** Whether a stroke's line widens with its pressure on the screen: only a pen's does (R05, R18). */
+export function followsPressure(stroke: Stroke): boolean {
+  return stroke.kind === "pen";
+}
+
 /**
- * The outline of a stroke, as perfect-freehand draws it: a closed polygon around the stroke's
- * points, in sheet units, to be filled. A pen's line widens with its pressure; a mouse's or a
- * finger's is as wide all along (R18). `complete` says the stroke has ended: its last point is then
- * taken as it is, rather than eased toward.
+ * The outline of a stroke on the screen, as perfect-freehand draws it: a closed polygon around the
+ * stroke's points, in sheet units, to be filled. A pen's line widens with its pressure; a mouse's
+ * or a finger's is as wide all along (R18). `complete` says the stroke has ended: its last point is
+ * then taken as it is, rather than eased toward.
  */
 export function outline(stroke: Stroke, complete: boolean): Vec2[] {
+  return polygon(stroke, followsPressure(stroke) ? PEN_THINNING : 0, complete);
+}
+
+/**
+ * The outline of a finished stroke on the picture of the work: as wide all along, whatever the
+ * pointer and its pressure, for the pressure goes into no picture for checking (spec 3.1 of
+ * canvas-api; R20). A mouse's or a finger's is its outline on the screen.
+ */
+export function evenOutline(stroke: Stroke): Vec2[] {
+  return polygon(stroke, 0, true);
+}
+
+function polygon(stroke: Stroke, thinning: number, complete: boolean): Vec2[] {
   const points = stroke.points.map(({ x, y, p }) => [x, y, p]);
   // One point alone perfect-freehand pairs with another a unit off and draws as an oval. The same
   // point twice it draws as a round dot, as wide as the line.
   const [only] = points;
   if (points.length === 1 && only !== undefined) points.push(only);
-  return getStroke(points, {
-    ...OPTIONS,
-    thinning: stroke.kind === "pen" ? PEN_THINNING : 0,
-    last: complete,
-  });
+  return getStroke(points, { ...OPTIONS, thinning, last: complete });
 }
