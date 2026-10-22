@@ -12,9 +12,10 @@ Code started. The detailing is done — epic E1, archived in [docs/plan/E1.md](d
 
 - `src/core/` — the DOM-free part, `@altnovatrail/canvas/core`: it runs the same in a browser and in Node.
 - `src/element/` — the element `<novatrail-canvas>`, `@altnovatrail/canvas`: importing it registers the element.
-- `scripts/` — the check of every package's license, and the check of the package as a consumer takes it.
+- `scripts/` — the check of the package as a consumer takes it.
+- `licenses.json` — the packages the license check accepts by name, each with why.
 
-`just build` builds the package into `lib/`, and `just ci` runs the checks CI runs: format, lint and types; the tests in Node and in Chromium; advisories; licenses. They run in the devcontainer, whose toolchain stage holds the browser the tests run in. The license check needs `ALLOWED_LICENSES`, the list CI takes from .github's `typescript.yml`: how to set it is in [CLAUDE.md](CLAUDE.md), Environment.
+`just build` builds the package into `lib/`, and `just ci` runs the checks CI runs: format, lint and types; the tests in Node and in Chromium; advisories; licenses. They run in the devcontainer, whose toolchain stage holds the browser the tests run in. The license check is spec's recipe, run from the `spec/` submodule with the exceptions in `licenses.json`, so it needs `spec/` checked out: see [CLAUDE.md](CLAUDE.md), Environment.
 
 ## Documents
 

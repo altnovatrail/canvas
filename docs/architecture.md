@@ -471,15 +471,15 @@ sheet_box = [B.ymin − m/s, B.xmin − m/s, B.ymin − m/s + h/s, B.xmin − m/
 - **CI `tutor`** берёт архив синтетики из релиза по точному тегу и сумме (T32 tutor; R38 spec). Подпись — по рекомендации Т-27: SAN — общий `release.yml` на SHA релиза `.github`, репозиторий и workflow — `canvas`, коммит — тот, на котором тег.
 - **Взрослый** скачивает сборку страницы со страницы релиза (R25 spec). Проверять подпись от него никто не ждёт, а `SHA256SUMS` открыт любому.
 
-**Рецепты для общих workflow.** Такими их ждут обёртка TypeScript и общий релиз. Договор обёртки — R19 .github, с двумя поправками к нему, а сама обёртка — `typescript.yml` в релизе `.github` v0.1.5. По договору T08 написала рецепты, `.npmrc`, стадию `toolchain` и вызывающий job (architecture 3.1 и 3.3 .github; раздел 4). Что выбрал `canvas` там, где договор оставил выбор ему, — раздел 3.7 (R12–R14).
+**Рецепты для общих workflow.** Такими их ждут обёртка TypeScript и общий релиз. Договор обёртки — R19 .github, с поправками к нему, а сама обёртка — `typescript.yml` в релизе `.github` v0.1.8. По договору T08 написала рецепты, `.npmrc`, стадию `toolchain` и вызывающий job — тогда на v0.1.5 (architecture 3.1 и 3.3 .github; раздел 4), а T32 перевела `ci-licenses` на рецепт `spec`. Что выбрал `canvas` там, где договор оставил выбор ему, — раздел 3.7 (R12–R14).
 - **Рецепты** — четыре, с теми же именами, что у `go.yml` (R16 .github). Чем проверять и в каких версиях, решает и закрепляет `canvas`:
   - `ci-lint` — формат, линт и проверка типов;
   - `ci-test` — тесты, и в браузере тоже;
   - `ci-vuln` — уязвимости пакетов lock-файла по опубликованным советам;
-  - `ci-licenses` — лицензия каждого пакета lock-файла, инструментов разработки тоже, по `ALLOWED_LICENSES` из окружения. Исключение — по имени и только для инструмента, который никуда не поставляется, каждое со своим решением (R12 spec). Сверх договора `canvas` проверяет и то, что несёт сборка страницы (T19, T21).
+  - `ci-licenses` — лицензия каждого пакета lock-файла, инструментов разработки тоже, рецептом `spec` `licenses-check-repo`: список и правило исключения — у `spec`, на теге подмодуля (R39 spec; поправка 2026-10-22 к R19 .github). Исключение — по имени и только для инструмента, который никуда не поставляется, каждое со своим решением (R12 spec), — в `licenses.json`. Сверх договора `canvas` проверяет и то, что несёт сборка страницы (T19, T21).
 
   Рецепт `ci`, который зовёт все четыре, — для разработчика: обёртка его не зовёт.
-- **Как их зовёт обёртка.** Каждый job — новый контейнер стадии `toolchain`, собранной без контекста. Он идёт от пользователя раннера, с `HOME=/tmp`, с сетью и с флагом `--init`, а у job `test`, где запускается браузер, — ещё и с `--ipc=host`. Из окружения шага в контейнер идут `CI` и `ALLOWED_LICENSES`: по `CI` Vitest по умолчанию запускает браузер headless и не пускает `test.only` (R16 .github; R19 .github, с поправкой к нему). У `canvas` headless задан в конфиге явно — дисплея нет и в контейнере разработки, — а `test.only` по-прежнему держит `CI` (R12). Checkout — без подмодуля: ни код, ни тесты, ни `justfile` `canvas` ничего не берут из `spec/` (R21 spec). Пакеты `ci-lint` и `ci-test` ставят сами, `npm ci` из lock-файла, а `ci-vuln` и `ci-licenses` хватает самого lock-файла.
+- **Как их зовёт обёртка.** Каждый job — новый контейнер стадии `toolchain`, собранной без контекста. Он идёт от пользователя раннера, с `HOME=/tmp`, с сетью и с флагом `--init`, а у job `test`, где запускается браузер, — ещё и с `--ipc=host`. Из окружения шага в контейнер идут `CI` и `ALLOWED_LICENSES`: по `CI` Vitest по умолчанию запускает браузер headless и не пускает `test.only` (R16 .github; R19 .github, с поправкой к нему). У `canvas` headless задан в конфиге явно — дисплея нет и в контейнере разработки, — а `test.only` по-прежнему держит `CI` (R12). `ALLOWED_LICENSES` `canvas` с T32 не читает, а уберёт его из обёртки Д6 в RUN.md `.github`. Checkout — без подмодуля, кроме job `licenses`: там подмодуль `spec` — инструмент проверки, и `ci-licenses` зовёт из него рецепт (поправка 2026-10-22 к R19 .github). Код и тесты `canvas` ничего не берут из `spec/` (R21 spec). Пакеты `ci-lint` и `ci-test` ставят сами, `npm ci` из lock-файла, а `ci-vuln` и `ci-licenses` хватает самого lock-файла.
 - **Что лежит в репозитории:**
   - lock-файл и `.npmrc` с `ignore-scripts=true` и `save-exact=true`;
   - Node — в стадии `toolchain`, по точной версии и с суммой архива (R34 spec), он там уже есть. Пакеты ставит npm, который идёт с Node, а другой менеджер пакетов — по точной версии в той же стадии и со своим решением;
@@ -496,8 +496,8 @@ sheet_box = [B.ymin − m/s, B.xmin − m/s, B.ymin − m/s + h/s, B.xmin − m/
   - все четыре проверки «TypeScript / …» зелёные, а тест в Chromium прошёл headless, от пользователя раннера и с `HOME=/tmp`;
   - Vitest тянет Vite, а с ним `lightningcss` под MPL-2.0 — 12 пакетов, все dev. Без исключения для них «TypeScript / licenses» красная. Исключение по имени, как в R48 canvas-api, — R14;
   - стадия `toolchain` с браузерами собиралась за 46–56 секунд на job, без них — за 21. `.github` оставил одну стадию без кеша и пересмотрит это, если стадия `canvas` выйдет заметно тяжелее: её замеряет T08.
-- **Рекомендации `.github`**, не условия договора: `ci-vuln` — `npm audit --omit=dev --audit-level=high`, как R48 canvas-api; `ci-licenses` — свой скрипт по lock-файлу, как `licenses-check` `spec` и `web/scripts/licenses.ts` canvas-api, пока `spec` не даст общую проверку (В20 в RUN.md `.github`). `canvas` взял обе (R12). Общую проверку `spec` дал — рецепты `licenses-allowed` и `licenses-check-repo` (R39 spec), с границей `dev` из `canvas` (поправка 2026-10-22 к R39 spec). `canvas` переходит на них в T32, когда job `licenses` обёртки возьмёт подмодуль `spec`: без него рецепт в CI не найти (Д15 в RUN.md `spec`).
-- **Вызов.** Пробы по SHA ветки нет: обёртка вышла в v0.1.5 раньше кода `canvas` (поправка к R19 .github). Вызывающий job написала T08 — по тексту architecture 3.3 .github, сразу по SHA релиза: job `typescript` с `name: TypeScript` и `uses: altnovatrail/.github/.github/workflows/typescript.yml@c772cc86973240e21cebb310fd0cda221a752ade # v0.1.5`. На настоящем коде обёртка прошла на первом pull request T08, #18, а ошибку в самой обёртке исправит следующий релиз `.github`. Проверки «TypeScript / lint», «TypeScript / test», «TypeScript / vuln» и «TypeScript / licenses» стоят в ruleset `main` каждая своим именем, с `integration_id` 15368, как остальные его проверки GitHub Actions, а рядом с ними — «CodeQL / analyze (javascript-typescript)» (R30 spec; раздел 4). Их поставил шаг T08 2026-10-21, после мержа, с подтверждением автора по правилу 4.
+- **Рекомендации `.github`**, не условия договора: `ci-vuln` — `npm audit --omit=dev --audit-level=high`, как R48 canvas-api; `ci-licenses` — свой скрипт по lock-файлу, как `licenses-check` `spec` и `web/scripts/licenses.ts` canvas-api, пока `spec` не даст общую проверку (В20 в RUN.md `.github`). `canvas` взял обе (R12). Общую проверку `spec` дал — рецепты `licenses-allowed` и `licenses-check-repo` (R39 spec), с границей `dev` из `canvas` (поправка 2026-10-22 к R39 spec). `canvas` перешёл на `licenses-check-repo` в T32, когда job `licenses` обёртки v0.1.8 взял подмодуль `spec`, а `scripts/licenses.ts` ушёл (поправка 2026-10-22 к R12).
+- **Вызов.** Пробы по SHA ветки нет: обёртка вышла в v0.1.5 раньше кода `canvas` (поправка к R19 .github). Вызывающий job написала T08 — по тексту architecture 3.3 .github, сразу по SHA релиза: job `typescript` с `name: TypeScript` и `uses: altnovatrail/.github/.github/workflows/typescript.yml@c772cc86973240e21cebb310fd0cda221a752ade # v0.1.5`. На настоящем коде обёртка прошла на первом pull request T08, #18, а ошибку в самой обёртке исправит следующий релиз `.github`. T32 подняла ссылку до `typescript.yml@0ab279940126dadbde0f5a3912ce196ed39470ab # v0.1.8` тем же изменением, что перевело `ci-licenses` на рецепт `spec`: у v0.1.5 в job `licenses` нет `spec/`, и раньше подъёма переводить нельзя (architecture 3.3 .github). Проверки «TypeScript / lint», «TypeScript / test», «TypeScript / vuln» и «TypeScript / licenses» стоят в ruleset `main` каждая своим именем, с `integration_id` 15368, как остальные его проверки GitHub Actions, а рядом с ними — «CodeQL / analyze (javascript-typescript)» (R30 spec; раздел 4). Их поставил шаг T08 2026-10-21, после мержа, с подтверждением автора по правилу 4.
 - **`release-files <версия>`** пишет в `dist/` только простые файлы с безопасными именами (R18 .github).
 
 **Шаги автора** до первого релиза, по правилу 4, — в T24:
@@ -711,18 +711,18 @@ Vitest тянет Vite 8.3.4, а с ним `lightningcss` под MPL-2.0 — н�
 | `ci-lint` | `biome ci` и три программы `tsc` |
 | `ci-test` | сборка, `vitest run` и проверка пакета |
 | `ci-vuln` | `npm audit --omit=dev --audit-level=high`: советы об инструментах разработки приносят алерты Dependabot |
-| `ci-licenses` | `node scripts/licenses.ts` по `ALLOWED_LICENSES` |
+| `ci-licenses` | рецепт `spec` `licenses-check-repo` по lock-файлу, с исключениями из `licenses.json` |
 | `ci` | все четыре — для разработчика |
 | `build`, `fmt` | сборка в `lib/`; формат и правки Biome на месте |
 
-`ci-lint` и `ci-test` ставят пакеты сами, `npm ci --ignore-scripts`. В контейнере разработки — только когда изменились `package.json` или lock-файл: это держит штамп с их суммами. Список для `ci-licenses` — тот, что задаёт `typescript.yml` `.github`: в контейнере его берут оттуда (CLAUDE.md, Environment).
+`ci-lint` и `ci-test` ставят пакеты сами, `npm ci --ignore-scripts`. В контейнере разработки — только когда изменились `package.json` или lock-файл: это держит штамп с их суммами. Список для `ci-licenses` — категория A у `spec`, на теге подмодуля: `just -f spec/justfile licenses-allowed` его печатает (R39 spec). Из окружения проверке ничего не нужно, а нужен извлечённый `spec/` (CLAUDE.md, Environment).
 
-**Проверка лицензий** — `scripts/licenses.ts` (R12, R14):
+**Проверка лицензий** — рецепт `spec` `just -f spec/justfile licenses-check-repo package-lock.json licenses.json` (R12, R14; R39 spec):
 - каждый пакет lock-файла, инструменты разработки тоже, по выражению SPDX;
-- без `ALLOWED_LICENSES` и на lock-файле без `packages` — отказ;
-- исключение — по имени и лицензии, только для `dev`, вместе со сборками под платформы, которые инструмент сам называет в `optionalDependencies`, — если они `dev` и под его лицензией. Ненужное исключение — ошибка.
+- lock-файл без `packages`, файл исключений не того вида и путь, который выходит из репозитория, — отказ;
+- исключение — в `licenses.json`: у пакета `license` — то, что говорит lock-файл, — и `reason` с решением, и ничего больше. Лицензию вне списка оно принимает только у пакета `dev`, вместе со сборками под платформы, которые инструмент сам называет в `optionalDependencies`, — если они `dev` и под его лицензией. Ненужное исключение — ошибка. Исключение одно — `lightningcss` (R14).
 
-Это та же граница, что `spec` записал в свой рецепт `licenses-check-repo` (поправка 2026-10-22 к R39 spec). На рецепт `ci-licenses` переходит T32, вместе с исключением `lightningcss` в файле исключений рецепта, а `scripts/licenses.ts` тогда уходит.
+Ту же границу до T32 держал свой `scripts/licenses.ts`, а `spec` перенёс её в рецепт поправкой 2026-10-22 к R39 spec. Скрипт ушёл вместе с тестами (поправка 2026-10-22 к R12).
 
 **Браузер** — в стадии `toolchain` (R13):
 - только Chrome Headless Shell 1248 — папка `/ms-playwright/chromium_headless_shell-1248` образа Playwright v1.64.1, закреплённого по тегу и digest;
@@ -732,7 +732,7 @@ Vitest тянет Vite 8.3.4, а с ним `lightningcss` под MPL-2.0 — н�
 
 **Dependabot** — запись `npm` по тексту architecture 3.3 .github и два добавления: группа `vitest` с `@vitest/*` и `ignore` major-версий `@types/node` (R12).
 
-**CI** — job «TypeScript» в `ci.yml` по SHA `typescript.yml` v0.1.5, CodeQL — со входом `languages: javascript-typescript`.
+**CI** — job «TypeScript» в `ci.yml` по SHA `typescript.yml` v0.1.8, у которого job `licenses` берёт подмодуль `spec` (T32), CodeQL — со входом `languages: javascript-typescript`.
 
 **`samples/`** закрыт для агентов: правило в CLAUDE.md, `.gitignore` и правила `deny` Claude Code. Правила Bash закрывают имя папки — отдельным словом, частью пути, в кавычках, после `=` и в перенаправлении, — а не само слово: оно есть в именах файлов релиза (R15).
 
