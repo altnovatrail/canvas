@@ -42,7 +42,7 @@
 - как пакет стыкуется с приложением и где публикуется, решили ответы `canvas` на Т-21 и Т-26 — R36 и R37 spec (раздел 2.3; R16). Стыковка — веб-компонент `<novatrail-canvas>` с типами данных из релизов `spec` (R07, раздел 3.3). Пакет — в npm, а сборка страницы образцов и синтетические образцы — файлами релиза GitHub (R08, раздел 3.4);
 - образцы взрослых со страницы образцов уходят организатору замера или, для eval-набора, через pull request в `modules`, а образцы детей — без него, туда, куда решат П-10 и П-12 (R25 spec; R11). Формат образцов задаёт протокол eval из `spec` (R15 spec; architecture 3.2 spec), а что лежит в файле образца до него — раздел 3.5 (R09). Согласие добровольцев — открытый вопрос П-16 (раздел 2.4), а шаги страницы — раздел 3.6 (R11);
 - лицензия — Apache-2.0, а зависимости — только с лицензиями, совместимыми с ней (R12 spec; R20 spec);
-- этап 2. Вместе с `tutor` это первый код этапа. По repositories 6 spec и product 11 spec замер чтения ИИ по каждому виду канвы и ответа шёл раньше остального, а лист для рукописи и страница образцов — эпиком E2 рядом с детализацией, раньше пунктов 3 и 4 repositories 6 spec (R02; repositories 6 spec, пункт 5). С 2026-10-22 большой замер отложен (R19 tutor; В20 tutor), и E2 перепланирован под MVP — доску проверки `tutor`: сначала лист и элемент, а страница образцов ждёт решения по данным доски (R17; В29).
+- этап 2. Вместе с `tutor` это первый код этапа. По repositories 6 spec и product 11 spec замер чтения ИИ по каждому виду канвы и ответа шёл раньше остального, а лист для рукописи и страница образцов — эпиком E2 рядом с детализацией, раньше пунктов 3 и 4 repositories 6 spec (R02; repositories 6 spec, пункт 5). С 2026-10-22 большой замер отложен (R19 tutor; В20 tutor), и E2 перепланирован под MVP — доску проверки `tutor`: сначала лист и элемент, а страница образцов ждёт решения по данным доски (R17; В29). Лист MVP сделан, а остальной лист и страница образцов — с того же дня эпики E4 и E5 в таблице 2 [RUN.md](../RUN.md), после E3 (поправка 2026-10-22 к R17).
 
 ## 2. Решить при детализации
 
@@ -270,7 +270,7 @@
 
 Снята ли версия виджета с публикации (Т-30), хост сам не узнает: `api` и индекса он не знает, а по сети ни к кому не обращается (раздел 1). Это решается до него — у `app`, который даёт канве задачу.
 
-**Первый код** — лист и страница образцов, эпик E2 (repositories 6 spec). Странице образцов движок рисования даёт только лист:
+**Первый код** — лист и страница образцов (repositories 6 spec): лист для MVP — эпик E2, а с 2026-10-22 остальной лист — E4, страница образцов — E5 (поправка 2026-10-22 к R17). Странице образцов движок рисования даёт только лист:
 - ввод пера, пальца и мыши; чернила с нажимом; ластик целым штрихом; отмену и историю письма;
 - сетку и условие на слое шаблона;
 - группы и вырезку из части без DOM; сборку одним файлом (T19).
@@ -372,7 +372,7 @@ sheet_box = [B.ymin − m/s, B.xmin − m/s, B.ymin − m/s + h/s, B.xmin − m/
 
 **С устройства не уходят** `sheet_box`, таблица групп, штрихи и их время (R09 spec). Как `canvas` отдаёт их потребителю вместе с вырезкой и принимает обратно с пометками — раздел 3.3. Это правило проверки, а у образца для eval свой путь и свой состав — раздел 3.5.
 
-**Набросок «как начать» на пустом месте** вырезкой не адресуется: вырезка покрывает только работу, а у пустого листа её нет. Где он встаёт, решается вместе с ним — с первым срезом `app` и `api` (эпик E2, «Не входит»).
+**Набросок «как начать» на пустом месте** вырезкой не адресуется: вырезка покрывает только работу, а у пустого листа её нет. Где он встаёт, решается вместе с ним — с первым срезом `app` и `api` (архив E2, [docs/plan/E2.md](plan/E2.md), «Не входит»).
 
 ### 3.3. Стыковка с приложением
 
@@ -630,7 +630,7 @@ sheet_box = [B.ymin − m/s, B.xmin − m/s, B.ymin − m/s + h/s, B.xmin − m/
 
 Расхождения уходят в протокол — эпик E3 в RUN.md `spec`.
 
-**Что решается после протокола:** имена полей, схема, контейнер и версии — эпик E3 в RUN.md `spec`. До него запасной путь — временный формат `tutor` (эпик E2, «Риски»). Контейнер, который предлагает `canvas`, — один JSON на образец, совместимый с JSON-отображением proto3 (R11 spec), а вырезки в нём — PNG в base64.
+**Что решается после протокола:** имена полей, схема, контейнер и версии — эпик E3 в RUN.md `spec`. До него запасной путь — временный формат `tutor` (архив E2, [docs/plan/E2.md](plan/E2.md), «Риски отложенных задач»; эпик E5). Контейнер, который предлагает `canvas`, — один JSON на образец, совместимый с JSON-отображением proto3 (R11 spec), а вырезки в нём — PNG в base64.
 
 ### 3.6. Шаги страницы образцов
 
@@ -915,7 +915,7 @@ Vite 8.3.4 работает и под Vitest, и сервером `just demo`, �
   - между v0.1.8 и v0.1.9 изменились `release.yml` и документы `.github`, а `typescript.yml` — нет (`gh api …/compare`);
   - релиз неизменяемый и Latest, опубликован 2026-10-22 (`gh release view`, `gh release list`), тег — на 41d5144e304cfad05c681de6934405c08a7435db (`git ls-remote`), а `gh release verify v0.1.9 -R altnovatrail/.github` отвечает «Release v0.1.9 verified!».
 
-  На теге [v0.1.10](https://github.com/altnovatrail/.github/tree/v0.1.10), коммит f3addb7, прочитано 2026-10-22 (T36 в [RUN.md](../RUN.md)). О релизе в тот же день сообщила сессия `.github` по своей T29:
+  На теге [v0.1.10](https://github.com/altnovatrail/.github/tree/v0.1.10), коммит f3addb7, прочитано 2026-10-22 (разделы 3.4 и 3.7; T36 в [docs/plan/E2.md](plan/E2.md)). О релизе в тот же день сообщила сессия `.github` по своей T29:
   - поправка 2026-10-22 к R19 .github, «по Д6, задача T29»: «В `typescript.yml` больше нет `ALLOWED_LICENSES`, и в контейнер он не идёт. Его единственный вызывающий, `canvas`, с T32 проверяет lock-файл рецептом `spec` и переменную не читает» и «Из окружения шага в контейнер идёт только `CI`». Отвергнуто — «оставить переменную в обёртке ещё на релиз, на всякий случай»;
   - в самом `typescript.yml` — «Of the step's environment only CI goes in» и «So this file carries no copy of the list: its callers take the list from spec». Между v0.1.9 и v0.1.10 в нём изменились только комментарии, окружение шага и флаги `docker run` (`gh api …/compare`), а между v0.1.8 и v0.1.9 он не менялся;
   - в его RUN.md — «Д6 закрыт 2026-10-22 в T29: копии списка в `typescript.yml` больше нет». В «Сделать» T29 там же — «промпт сессии `canvas`: поднять ссылку на новый релиз и убрать из шапки `justfile` и из документов `canvas` „until its Д6“»;
@@ -924,7 +924,7 @@ Vite 8.3.4 работает и под Vitest, и сервером `just demo`, �
   - релиз неизменяемый и Latest, опубликован 2026-10-22 (`gh release view`, `gh release list`), тег — на f3addb7403d084c560c61481e217b93f8e7ee1f3 (`git ls-remote`), а `gh release verify v0.1.10 -R altnovatrail/.github` отвечает «Release v0.1.10 verified!».
 
   Остальные пять ссылок — с v0.1.0 на тот же релиз, прочитано 2026-10-22 на `main` c97ed06 (поправка 2026-10-22 к R12):
-  - architecture 3.3 .github: «Общие workflow закреплены по SHA первого релиза `.github`, `v0.1.0`» и «Копируя, берут последний релиз `.github`». Тексты `ci.yml`, `codeql.yml` и `scorecard.yml` там те же, что у `canvas`, кроме входа `languages` и его комментария;
+  - architecture 3.3 .github: «Общие workflow закреплены по SHA первого релиза `.github`, `v0.1.0`» и «Копируя, берут последний релиз `.github`». Тексты там те же, что у `canvas`, кроме того, что `canvas` добавил: `scorecard.yml` совпадает слово в слово, у `codeql.yml` добавлен вход `languages` с комментарием, а у `ci.yml` — job «TypeScript», который приносит вид typescript;
   - между v0.1.0 и v0.1.10 из пяти общих workflow изменился один — `codeql.yml` (`gh api …/compare`). Он берёт язык `go` и новый вход `paths-ignore`, по умолчанию пустой. Имена job — `languages` и `analyze (<язык>)` — и права у него прежние, так что обязательные проверки ruleset `main` не меняются. `secrets.yml`, `dco.yml`, `documents.yml` и `scorecard.yml` — те же, что в v0.1.0.
 - **module-kit** (разделы 3.4 и 3.5), прочитано 2026-10-21:
   - [релиз v0.1.0](https://github.com/altnovatrail/module-kit/releases/tag/v0.1.0) от 2026-10-21 — неизменяемый. В нём шесть программ, `LICENSE`, `LICENSE-go` и `SHA256SUMS`, и у каждого файла — свой `.sigstore.json` (API GitHub);
@@ -978,7 +978,7 @@ Vite 8.3.4 работает и под Vitest, и сервером `just demo`, �
   - [`spellcheck`](https://html.spec.whatwg.org/multipage/interaction.html#spelling-and-grammar-checking), состояние `false`: «Spelling and grammar will not be checked»; «If the checking is enabled for a word/sentence/text, the user agent should indicate spelling and grammar errors in that text»; «This specification does not define the user interface for spelling and grammar checkers». В порядке, по которому браузер решает, проверять ли текст, выбор пользователя идёт раньше атрибута: «Otherwise, if the user has forced the checking for this text to always be enabled, then the checking is enabled»;
   - [`writingsuggestions`](https://html.spec.whatwg.org/multipage/interaction.html#attr-writingsuggestions), состояние `false`: «Writing suggestions should not be offered on this element»;
   - [`autocapitalize`](https://html.spec.whatwg.org/multipage/interaction.html#autocapitalization): «User agents or input methods may choose to ignore or override the used autocapitalization hint in certain circumstances»; «the attribute must not be relied on for any sort of input validation».
-- **Анализ «Базовая канва и контракт „канва ↔ агент“»** (разделы 2.5 и 3.1; эпик E2 в [RUN.md](../RUN.md)) — его прислал автор 2026-10-21, в репозитории его нет. Писала модель, которая не видела ни кода, ни принятых решений NovaTrail, поэтому отсюда берутся вопросы, а не факты. В `spec` v0.2.14 тот же анализ — источник product 14 spec и architecture 8 spec: из него О-21, вариант О-8, Т-30 и то, что протоколу виджета решать по architecture 3.4 spec (раздел 3.1). Раздел 2.5 отсюда T29 в RUN.md `spec` берёт входом.
+- **Анализ «Базовая канва и контракт „канва ↔ агент“»** (разделы 2.5 и 3.1; архив E2, [docs/plan/E2.md](plan/E2.md)) — его прислал автор 2026-10-21, в репозитории его нет. Писала модель, которая не видела ни кода, ни принятых решений NovaTrail, поэтому отсюда берутся вопросы, а не факты. В `spec` v0.2.14 тот же анализ — источник product 14 spec и architecture 8 spec: из него О-21, вариант О-8, Т-30 и то, что протоколу виджета решать по architecture 3.4 spec (раздел 3.1). Раздел 2.5 отсюда T29 в RUN.md `spec` берёт входом.
 - **Apache License 2.0** (раздел 3.6) — [LICENSE](../LICENSE) этого репозитория, раздел 2, прочитано 2026-10-21: «each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce, prepare Derivative Works of, publicly display, publicly perform, sublicense, and distribute the Work and such Derivative Works in Source or Object form».
 - **Developer Certificate of Origin 1.1** (раздел 3.6; П-18) — [developercertificate.org](https://developercertificate.org/), прочитано 2026-10-21: (c) «The contribution was provided directly to me by some other person who certified (a), (b) or (c) and I have not modified it»; (d) «a record of the contribution (including all personal information I submit with it, including my sign-off) is maintained indefinitely».
 - **GitHub Docs: удаление данных из репозитория** (раздел 3.6) — [github/docs](https://github.com/github/docs/blob/efd4783/content/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository.md), коммит efd4783, прочитано 2026-10-21: «If you only rewrite your history and force push it, the commits with sensitive data may still be accessible elsewhere», среди прочего — «Through any pull requests that reference them». И о Support GitHub: он «won't remove non-sensitive data».
