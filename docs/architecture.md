@@ -754,7 +754,7 @@ Vite 8.3.4 работает и под Vitest, и сервером `just demo`, �
 
 **Dependabot** — запись `npm` по тексту architecture 3.3 .github и два добавления: группа `vitest` с `@vitest/*` и Vite, а ещё `ignore` major-версий `@types/node` (R12).
 
-**CI** — job «TypeScript» в `ci.yml` по SHA `typescript.yml` v0.1.8, у которого job `licenses` берёт подмодуль `spec` (T32), CodeQL — со входом `languages: javascript-typescript`.
+**CI** — общие workflow `.github`, все шесть по SHA одного релиза, v0.1.10. Job «TypeScript» в `ci.yml` зовёт `typescript.yml`, у которого job `licenses` берёт подмодуль `spec` (T32), а из окружения шага в контейнер идёт только `CI` (T36). CodeQL — со входом `languages: javascript-typescript`.
 
 **`samples/`** закрыт для агентов: правило в CLAUDE.md, `.gitignore` и правила `deny` Claude Code. Правила Bash закрывают имя папки — отдельным словом, частью пути, в кавычках, после `=` и в перенаправлении, — а не само слово: оно есть в именах файлов релиза (R15).
 
@@ -922,6 +922,10 @@ Vite 8.3.4 работает и под Vitest, и сервером `just demo`, �
   - architecture 3.3 .github закрепляет `typescript.yml@f3addb7403d084c560c61481e217b93f8e7ee1f3 # v0.1.10` на `main` c97ed06, коммите после релиза, а на самом теге — ещё v0.1.8;
   - architecture 2.8 .github на том же коммите: «Поднимет ли Dependabot такую ссылку, покажет первый релиз после `v0.1.0`». Поиск pull request Dependabot по организации `altnovatrail` нашёл один — spec#7, образ devcontainer (`gh search prs`), а у `canvas` их не было;
   - релиз неизменяемый и Latest, опубликован 2026-10-22 (`gh release view`, `gh release list`), тег — на f3addb7403d084c560c61481e217b93f8e7ee1f3 (`git ls-remote`), а `gh release verify v0.1.10 -R altnovatrail/.github` отвечает «Release v0.1.10 verified!».
+
+  Остальные пять ссылок — с v0.1.0 на тот же релиз, прочитано 2026-10-22 на `main` c97ed06 (поправка 2026-10-22 к R12):
+  - architecture 3.3 .github: «Общие workflow закреплены по SHA первого релиза `.github`, `v0.1.0`» и «Копируя, берут последний релиз `.github`». Тексты `ci.yml`, `codeql.yml` и `scorecard.yml` там те же, что у `canvas`, кроме входа `languages` и его комментария;
+  - между v0.1.0 и v0.1.10 из пяти общих workflow изменился один — `codeql.yml` (`gh api …/compare`). Он берёт язык `go` и новый вход `paths-ignore`, по умолчанию пустой. Имена job — `languages` и `analyze (<язык>)` — и права у него прежние, так что обязательные проверки ruleset `main` не меняются. `secrets.yml`, `dco.yml`, `documents.yml` и `scorecard.yml` — те же, что в v0.1.0.
 - **module-kit** (разделы 3.4 и 3.5), прочитано 2026-10-21:
   - [релиз v0.1.0](https://github.com/altnovatrail/module-kit/releases/tag/v0.1.0) от 2026-10-21 — неизменяемый. В нём шесть программ, `LICENSE`, `LICENSE-go` и `SHA256SUMS`, и у каждого файла — свой `.sigstore.json` (API GitHub);
   - [altnovatrail/module-kit](https://github.com/altnovatrail/module-kit/tree/1a54028), коммит 1a54028: в таблице 3 его RUN.md В6 «в реестр spec» — о том, из каких путей собран релиз, а В7 — «Как CI `modules` и `canvas` берут CLI `module-kit` по точному тегу». Рекомендация В7 — бинарник релиза, сверенный подписью, «с тем, что решит T37 `spec` о Т-27».
