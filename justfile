@@ -1,8 +1,11 @@
 # canvas's own recipes: the package's build, and the four checks .github's typescript.yml runs in
 # CI, one job each, in a new container of the toolchain stage of .devcontainer/Dockerfile — as the
-# runner's user, with HOME=/tmp, without the spec submodule, with CI and ALLOWED_LICENSES from the
-# step's environment (R19 .github; R12 in docs/decisions.md). Nothing here reads spec/: the
-# documents are checked by spec's own recipe, just -f spec/justfile docs-check-repo.
+# runner's user, with HOME=/tmp, with CI and ALLOWED_LICENSES from the step's environment (R19
+# .github; R12 in docs/decisions.md). Nothing here reads ALLOWED_LICENSES, which .github keeps for
+# older checks until its Д6. Only ci-licenses reads spec/: it runs spec's recipe
+# licenses-check-repo, and the licenses job alone gets the submodule. The code and its tests read
+# nothing of spec/, and the documents are checked by spec's own recipe, just -f spec/justfile
+# docs-check-repo.
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
@@ -10,8 +13,7 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 # fetched on the fly.
 bin := "node_modules/.bin"
 
-# Run the four checks CI runs, before a pull request. ci-licenses needs ALLOWED_LICENSES: the list is
-# in .github's typescript.yml (CLAUDE.md, Environment).
+# Run the four checks CI runs, before a pull request.
 ci: ci-lint ci-test ci-vuln ci-licenses
 
 # Fail on code Biome would format or flag, and on a type error in any of the three programs: the
@@ -35,10 +37,15 @@ ci-test: build
 ci-vuln:
     npm audit --omit=dev --audit-level=high
 
-# Fail if a package of package-lock.json, the tools of development too, carries a license outside
-# ALLOWED_LICENSES and is no named exception (R12, R14). It reads the lock file alone.
+# Fail if a package of package-lock.json, the tools of development too, carries a license that
+# spec's list does not allow and is no exception that licenses.json names (R12, R14). The list,
+# the reading of SPDX expressions and the rule of an exception are spec's, at the tag spec/ is on:
+# an exception off the list holds only for a package the lock file marks dev, and covers the
+# builds for each platform it names in optionalDependencies while they are dev too and under the
+# same license (R39 spec). It reads the lock file, licenses.json and spec/ at its tag, so nothing
+# is installed first, but spec/ has to be checked out. spec's recipe runs under this same just.
 ci-licenses:
-    node scripts/licenses.ts
+    {{ quote(just_executable()) }} -f spec/justfile licenses-check-repo package-lock.json licenses.json
 
 # Build the package into lib/: JavaScript and its declarations. lib/ is emptied first, so that no
 # file of an older build ships.

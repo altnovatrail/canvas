@@ -1,0 +1,6 @@
+{
+  "lightningcss": {
+    "license": "MPL-2.0",
+    "reason": "Vite's CSS minifier, a tool of development: it comes with vite, which Vitest requires, never ships and puts nothing of its own into the package; its builds for each platform come with it (R14 in canvas's docs/decisions.md)"
+  }
+}

@@ -128,7 +128,7 @@ E1 — детализация — сделан 2026-10-21 и лежит в ар�
 - `spec` vX.Y.Z — Т-27: что проверять у подписи общего релиза (T37 в RUN.md `spec`), — к T21 и T24, через переход на этот тег. До него — по рекомендации `canvas`, которую записал Т-27: одно правило и одна его реализация на всех, кто берёт файлы общего релиза;
 - `.github` v0.1.5 — `typescript.yml`, эпик E5 в RUN.md `.github`, — пришёл 2026-10-21, коммит c772cc8, к T08. Договор с рецептами `canvas` — R19 .github, с двумя поправками к нему. Пробы по SHA ветки нет: обёртку проверила проба в самом `.github`, T08 зовёт её сразу по SHA релиза, а T23 слита с T08. На настоящем коде обёртка прошла на pull request #18 T08, и её четыре проверки стоят в ruleset `main` ([docs/architecture.md](docs/architecture.md), раздел 3.4);
 - `.github` vX.Y.Z — `release.yml` с подписью и шагом npm — к T24. С подписью он вышел в v0.1.4 (R18 .github), а шага npm ещё нет: его пишет T27 в RUN.md `.github`, поправкой к R18 .github (R37 spec). С v0.1.6 от 2026-10-22 общий релиз зовёт рецепты `spec` скриптом `spec/tools/toolchain/toolchain.sh` из подмодуля вызывающего и требует подмодуль `altnovatrail/spec` на теге v0.2.17 или новее, а иначе останавливает прогон Release на `main` (поправка 2026-10-22 к R18 .github). Подмодуль `canvas` с T31 — на v0.2.18, где скрипт есть, так что T24 другого перехода не ждёт ([docs/architecture.md](docs/architecture.md), разделы 3.4 и 4);
-- `.github` v0.1.8 — `typescript.yml`, у которого job `licenses` берёт подмодуль `spec` для `licenses-check-repo` (R39 spec; Д15 в RUN.md `spec`), — пришёл 2026-10-22, коммит 0ab2799, к T32. Его выпустила T26 в RUN.md `.github`, поправкой 2026-10-22 к R19 .github. `ALLOWED_LICENSES` обёртка по-прежнему передаёт — для `scripts/licenses.ts`, до T32, — так что подъём ссылки на v0.1.8 зелёный и сам по себе. Рецепт есть в `spec` с v0.2.17, граница `dev` — с v0.2.18, и T31 их уже дала ([docs/architecture.md](docs/architecture.md), раздел 4);
+- `.github` v0.1.8 — `typescript.yml`, у которого job `licenses` берёт подмодуль `spec` для `licenses-check-repo` (R39 spec; Д15 в RUN.md `spec`), — пришёл 2026-10-22, коммит 0ab2799, к T32. Его выпустила T26 в RUN.md `.github`, поправкой 2026-10-22 к R19 .github. `ALLOWED_LICENSES` обёртка по-прежнему передаёт — для `scripts/licenses.ts`, до T32, — так что подъём ссылки на v0.1.8 зелёный и сам по себе. Рецепт есть в `spec` с v0.2.17, граница `dev` — с v0.2.18, и T31 их уже дала ([docs/architecture.md](docs/architecture.md), раздел 4). T32 зовёт обёртку по SHA v0.1.8 и перевела на рецепт `ci-licenses` (поправка 2026-10-22 к R12);
 - `tutor` vX.Y.Z — файл открытых видов задач замера, по поправке 2026-10-21 к R25 spec, — к T21; раннер, который читает образцы `canvas`, — к T25 (R38 spec);
 - `module-kit` vX.Y.Z и `modules` vX.Y.Z — CLI открытых видов и первое содержание — когда у `modules` выйдет первое содержание: тогда задачи замера в сборке страницы — снова из релиза `modules` через CLI `module-kit` (поправка 2026-10-21 к R25 spec), своей задачей (Д4).
 
@@ -149,7 +149,7 @@ E1 — детализация — сделан 2026-10-21 и лежит в ар�
 | [?] | T29 | Проба: сборка из файла на устройствах | я + Claude | да | — |
 | [x] | T08 | Каркас пакета и инструменты | я + Claude | да | T01, T03, T27 |
 | [x] | T31 | Переход на `spec` v0.2.18 | Claude | — | — |
-| [ ] | T32 | Проверка лицензий рецептом `spec` | Claude | — | T31; `.github` v0.1.8 (`typescript.yml` с подмодулем `spec` в job `licenses`) — пришёл |
+| [x] | T32 | Проверка лицензий рецептом `spec` | Claude | — | T31; `.github` v0.1.8 (`typescript.yml` с подмодулем `spec` в job `licenses`) — пришёл |
 | [x] | T09 | Ввод пера, пальца и мыши | Claude, проверяю я | да | T02, T08 |
 | [x] | T33 | Отмена штриха и очистка | Claude, проверяю я | да | T09 |
 | [ ] | T34 | Элемент для доски: PNG работы и пробный потребитель | Claude, проверяю я | да | T09, T33 |
@@ -508,6 +508,31 @@ E1 — детализация — сделан 2026-10-21 и лежит в ар�
   - в отчёте — письмо для `.github`, которое автор переносит, когда T32 слита: `ci-licenses` `canvas` больше не читает `ALLOWED_LICENSES`, и Д6 в RUN.md `.github` убирает его из `typescript.yml`.
 - **Как проверить:** `just ci` — зелёный; на пробе рецепт отказывает пакету с лицензией вне списка и исключению, которому нечего принимать; на pull request — «TypeScript / licenses» по новому релизу `.github`; `just -f spec/justfile docs-check-repo`; `/code-review high`.
 - **Разделы:** R12 spec, R30 spec, R39 spec; R16 .github, R19 .github; architecture 3.3 .github; T26 и Д6 в RUN.md `.github`; Д15 и Д16 в RUN.md `spec`; R12, R14, R16; architecture 3.4, 3.7, 4; T08, T31.
+- **Решено автором (2026-10-22):**
+  - работа — на `main` abd723a, без своей ветки до коммита;
+  - после отчёта: коммит, push, pull request и мерж в `main` — исполнитель, по моему поручению («доведи до main»). Это отступление от правила 7 только для T32 и подтверждение по правилу 4. Правило 7 действует снова со следующей задачи.
+- **Сделано (2026-10-22):**
+  - `.github/workflows/ci.yml`: job «TypeScript» зовёт `typescript.yml` v0.1.8 по SHA 0ab279940126dadbde0f5a3912ce196ed39470ab, тем же изменением, что переводит `ci-licenses`. Комментарий говорит, почему ссылке нельзя опускаться ниже;
+  - `justfile`: `ci-licenses` — `licenses-check-repo package-lock.json licenses.json` из `spec/justfile`, под тем же `just`, что зовёт рецепт (`just_executable()`). Шапка называет `spec/` у одного `ci-licenses` и `ALLOWED_LICENSES`, который никто здесь не читает;
+  - `licenses.json` в корне — одно исключение `lightningcss`, `MPL-2.0`, а причина называет R14. `scripts/licenses.ts` и `scripts/licenses.test.ts`, 17 тестов, убраны;
+  - CLAUDE.md, Environment, и README — без `ALLOWED_LICENSES`: проверке нужен извлечённый `spec/`;
+  - журнал — поправки 2026-10-22 к R12 и R14; [docs/architecture.md](docs/architecture.md) — разделы 3.4 и 3.7;
+  - правило 12, 2026-10-22: SonarCloud на `main` abd723a — quality gate «OK», 0 находок и 0 hotspot; CodeQL — открытых находок нет; Scorecard — 6 открытых, все из списка R33 spec (`Code-Review`, `Branch-Protection`, `Pinned-Dependencies`, `Maintained`, `CII-Best-Practices`, `Fuzzing`). Закрывать нечего;
+  - проверено:
+    - `just ci` без `ALLOWED_LICENSES` — зелёный: Biome — 30 файлов, три программы `tsc`, сборка, 57 тестов — 31 в Node и 26 в Chromium, — проверка пакета, `npm audit` — 0 уязвимостей, лицензии — «ok — 115 packages, 1 exceptions»;
+    - пробы рецепта на выдуманных lock-файлах в папке сессии: пакет под GPL-3.0-only — отказ; исключение `lightningcss` без такого пакета — «an exception for a package the lock file no longer has»; файл исключений с лишним полем `decision` — остановка с кодом 2. На копии настоящего lock-файла, где `lightningcss` не `dev`, — 12 отказов: сам он и 11 сборок. Без файла исключений — те же 12;
+    - как в обёртке: каждый `ci-*` в копии дерева через `env -i` — только `PATH`, путь к браузерам, временный `HOME` и `CI=true`. `ci-lint`, `ci-test` и `ci-vuln` — без `spec/`, `ci-licenses` — с ним: все зелёные. Без `spec/` `ci-licenses` отказывает и называет `spec/justfile`. Docker в контейнере нет, так что это замена прогона в стадии `toolchain`, как в T08;
+    - `just -f spec/justfile docs-check-repo` — «ok»;
+  - `/code-review high`, один круг, — пять находок, все исправлены:
+    - T32 не отмечена в таблице 1, без «Сделано» и «Открыто» — отмечена здесь;
+    - шапка `justfile` молчала об `ALLOWED_LICENSES`, который v0.1.8 ещё передаёт, — теперь называет;
+    - комментарий `ci-licenses` говорил «читает только lock-файл» — теперь называет и `licenses.json`, и `spec/`;
+    - вложенный `just` брался из `PATH` — теперь тот же, что зовёт рецепт;
+    - README не говорил, что проверке нужен извлечённый `spec/`, — говорит и ведёт в CLAUDE.md.
+- **Открыто:**
+  - «TypeScript / licenses» по v0.1.8 видна только на pull request. Его открывает и мержит исполнитель («Решено автором»), а мерж держит ruleset `main`: без этой зелёной проверки его не будет;
+  - письмо для `.github` — в отчёте. Я переношу его, когда T32 слита: тогда Д6 в RUN.md `.github` убирает `ALLOWED_LICENSES` из `typescript.yml`;
+  - «в реестр spec» — ничего.
 
 #### T09. Ввод пера, пальца и мыши
 
