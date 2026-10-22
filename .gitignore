@@ -11,5 +11,6 @@
 *.tsbuildinfo
 # The release's files: only release-files writes them (R08).
 /dist/
-# The screenshots Vitest takes of a failed test in the browser.
+# The screenshots Vitest takes of a failed test in the browser: Vitest 5 puts them under .vitest/.
 __screenshots__/
+/.vitest/

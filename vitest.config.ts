@@ -25,7 +25,18 @@ export default defineConfig({
             // Headless whatever CI says: there is no display in the container or on the runner.
             // CI still keeps test.only out of CI, as Vitest's allowOnly does by default.
             headless: true,
-            instances: [{ browser: "chromium" }],
+            // Twice: at the density of a plain screen, and at the double density of most laptops
+            // and tablets, which the canvas's buffer follows (R18). The second browser has that
+            // density from the start: one that the DevTools protocol sets in the middle of a test
+            // tells the test's frame nothing, no media query's change.
+            instances: [
+              { browser: "chromium" },
+              {
+                browser: "chromium",
+                name: "chromium 2x",
+                provider: playwright({ contextOptions: { deviceScaleFactor: 2 } }),
+              },
+            ],
           },
         },
       },
