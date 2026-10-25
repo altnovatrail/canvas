@@ -5,15 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>novatrail-canvas, by hand</title>
 <!-- The page to try the element on by hand, as tutor's check board would have it (RUN.md, T34),
-     with an eraser the board has not (T10). -->
+     with an eraser the board has not (T10), and a task's grid and statement, in a light or a dark
+     theme (T11). -->
 <style>
   body { margin: 0; padding: 16px; background: #f4f4f1; color: #1d1d1b;
          font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  body.dark { background: #1b1d21; color: #e7e7e3; }
   main { max-width: 1040px; margin: 0 auto; }
-  novatrail-canvas { height: 600px; background: #fff; border: 1px solid #d4d4cf; }
+  novatrail-canvas { height: 600px; border: 1px solid #d4d4cf; }
+  /* The dark theme: the element's custom properties, which its shadow tree inherits. */
+  body.dark novatrail-canvas { border-color: #3a3d44;
+    --novatrail-canvas-paper: #24272d; --novatrail-canvas-grid: #3d434d;
+    --novatrail-canvas-ink: #f1f1ec; }
   .tools { display: flex; gap: 8px; align-items: center; margin: 10px 0; flex-wrap: wrap; }
-  button { font: inherit; padding: 6px 14px; border: 1px solid #d4d4cf; border-radius: 6px;
-           background: #fff; color: inherit; cursor: pointer; }
+  button, select, input { font: inherit; padding: 6px 14px; border: 1px solid #d4d4cf; border-radius: 6px;
+           background: #fff; color: #1d1d1b; }
+  input { width: 5em; padding: 6px 8px; }
+  button { cursor: pointer; }
   button:disabled { opacity: 0.5; cursor: default; }
   button[aria-pressed="true"] { background: #1d1d1b; border-color: #1d1d1b; color: #fff; }
   #status { color: #6b6b66; }
@@ -34,6 +42,15 @@
     <button id="check">Check</button>
     <button id="next">Next task</button>
     <span id="status" role="status"></span>
+  </div>
+  <div class="tools">
+    <label>Grid <select id="grid">
+      <option value="squares">squares</option>
+      <option value="lines">lines</option>
+      <option value="dots">dots</option>
+    </select></label>
+    <label>Step <input id="step" type="number" min="20" max="500" value="50"></label>
+    <button id="dark" aria-pressed="false">Dark theme</button>
   </div>
   <figure>
     <img id="picture" alt="The picture of the work, as Check would send it">

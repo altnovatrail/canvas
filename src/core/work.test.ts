@@ -369,4 +369,6 @@ test("every sequence of six writes, erasings, clears and undos agrees with a sta
     const parsed = JSON.parse(JSON.stringify(work.history)) as HistoryEvent[];
     expect(idsOf(replay(parsed))).toEqual(ids(work));
   }
-});
+  // All 15,625 sequences take a second and a half here, but up to five on a CI runner, where the
+  // browsers of the other projects run beside them: past Vitest's default of five.
+}, 30_000);
