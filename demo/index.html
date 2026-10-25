@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>novatrail-canvas, by hand</title>
-<!-- The page to try the element on by hand, as tutor's check board would have it (RUN.md, T34). -->
+<!-- The page to try the element on by hand, as tutor's check board would have it (RUN.md, T34),
+     with an eraser the board has not (T10). -->
 <style>
   body { margin: 0; padding: 16px; background: #f4f4f1; color: #1d1d1b;
          font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
@@ -14,6 +15,7 @@
   button { font: inherit; padding: 6px 14px; border: 1px solid #d4d4cf; border-radius: 6px;
            background: #fff; color: inherit; cursor: pointer; }
   button:disabled { opacity: 0.5; cursor: default; }
+  button[aria-pressed="true"] { background: #1d1d1b; border-color: #1d1d1b; color: #fff; }
   #status { color: #6b6b66; }
   figure { margin: 0; }
   #picture { display: block; width: 300px; background: #fff; border: 1px solid #d4d4cf; }
@@ -26,6 +28,7 @@
   <p id="counter"></p>
   <div id="place"></div>
   <div class="tools">
+    <button id="eraser" aria-pressed="false">Eraser</button>
     <button id="undo">Undo stroke</button>
     <button id="clear">Clear</button>
     <button id="check">Check</button>

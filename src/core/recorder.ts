@@ -1,3 +1,4 @@
+import { Clock } from "./clock.js";
 import type { InkPoint, Stroke } from "./ink.js";
 
 /**
@@ -30,9 +31,9 @@ export interface PointerSample {
 export const MIN_STEP = 0.1;
 
 /** `button` of the primary button: a pen's tip, a finger, a mouse's left button. */
-const PRIMARY = 0;
+export const PRIMARY = 0;
 /** The primary button's bit in `buttons`. */
-const PRIMARY_HELD = 1;
+export const PRIMARY_HELD = 1;
 
 /** The stroke being written, with what the recorder needs to go on with it. */
 interface Live {
@@ -48,17 +49,18 @@ interface Live {
  * The strokes of one sheet, from the pointer's samples (R18; architecture 3.1 in
  * docs/architecture.md). One pointer writes at a time, with its primary button: a second pointer,
  * and any other button, write nothing while a stroke is under way. A finished stroke goes to the
- * handler the recorder is made with — onto the work on the sheet (R19).
+ * handler the recorder is made with — onto the work on the sheet (R19). Its points take their time
+ * from the sheet's clock, which the sheet's other actions keep too (R22).
  */
 export class Recorder {
   readonly #finished: (stroke: Stroke) => void;
+  readonly #clock: Clock;
   #live: Live | undefined;
   #nextId = 1;
-  #origin: number | undefined;
-  #lastT = 0;
 
-  constructor(finished: (stroke: Stroke) => void) {
+  constructor(finished: (stroke: Stroke) => void, clock = new Clock()) {
     this.#finished = finished;
+    this.#clock = clock;
   }
 
   /** The stroke being written, or nothing between strokes. */
@@ -144,9 +146,6 @@ export class Recorder {
 
   /** A point of the sample, its time counted from the sheet's first event and never going back. */
   #point(sample: PointerSample, pressure: number): InkPoint {
-    this.#origin ??= sample.time;
-    const t = Math.max(sample.time - this.#origin, this.#lastT);
-    this.#lastT = t;
-    return { x: sample.x, y: sample.y, t, p: pressure };
+    return { x: sample.x, y: sample.y, t: this.#clock.at(sample.time), p: pressure };
   }
 }

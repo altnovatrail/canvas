@@ -4,12 +4,15 @@
 // one pointer at a time (RUN.md, T09; R18), its undo and clearing, which the consumer calls from
 // buttons of its own (T33; R19), and what tutor's check board needs to take it in place of its own
 // sheet: the picture of the work and an event after every change of the work (T34; R20). Its
-// other layers and the element's other properties, methods and events come with the tasks of the
-// sheet (T10–T15).
+// eraser takes strokes off whole, by the path of a press, as the consumer's tool or a pen's eraser,
+// and the sheet keeps the history of writing (T10; R22). Its other layers and the element's other
+// properties, methods and events come with the tasks of the sheet (T11–T15).
 
 import type { Vec2 } from "perfect-freehand";
+import { Clock } from "../core/clock.js";
+import { ERASER_BUTTON, Eraser } from "../core/eraser.js";
 import type { Stroke } from "../core/ink.js";
-import { evenOutline, followsPressure, outline } from "../core/outline.js";
+import { evenOutline, followsPressure, INK_REACH, outline } from "../core/outline.js";
 import { type PointerSample, Recorder } from "../core/recorder.js";
 import { scaleFor, toSheet, type View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
@@ -25,6 +28,28 @@ const INK = "#111";
 const PAPER = "#fff";
 /** The event the element sends after every change of the work (R20). */
 const WORK_CHANGE = "workchange";
+
+/**
+ * What a press of the primary button does on the sheet: the pen writes, the eraser erases (R22). A
+ * pen's eraser erases whatever the tool.
+ */
+export type Tool = "pen" | "eraser";
+const TOOLS: readonly unknown[] = ["pen", "eraser"] satisfies readonly Tool[];
+
+function isTool(value: unknown): value is Tool {
+  return TOOLS.includes(value);
+}
+
+/** What is wrong with a value given as the tool. */
+function toolProblem(value: unknown): string {
+  return `the tool of <${TAG}> is "pen" or "eraser", not ${JSON.stringify(value)}`;
+}
+
+/**
+ * How near a stroke's ink the eraser takes it, in CSS pixels: the same on every screen, whatever
+ * the sheet's scale (R22). T22 tries it on devices.
+ */
+const ERASER_RADIUS_PX = 10;
 
 // The sheet scrolls in a container of its own, by the browser's own scrolling: the wheel, the
 // scroll bar and the keyboard work as anywhere on a page. The canvas stays in the container's
@@ -62,13 +87,23 @@ export class NovatrailCanvas extends HTMLElement {
   readonly #sheet = document.createElement("div");
   readonly #canvas = document.createElement("canvas");
   readonly #context = this.#canvas.getContext("2d");
-  /** The strokes on the sheet and the actions undo takes back (R19). */
-  readonly #work = new Work();
+  /** The sheet's clock, for its strokes and its actions alike (R22). */
+  readonly #clock = new Clock();
+  /** The strokes on the sheet, the actions undo takes back and the history of writing (R19, R22). */
+  readonly #work = new Work(this.#clock);
   /** The input: a finished stroke goes onto the work, and the work has changed. */
   readonly #recorder = new Recorder((stroke) => {
     this.#work.write(stroke);
     this.#changed();
-  });
+  }, this.#clock);
+  /** The eraser: what a press came near leaves the work when it lifts, if still on the sheet. */
+  readonly #eraser = new Eraser(
+    (from, to, reach) => this.#work.near(from, to, reach),
+    (ids, time) => {
+      if (this.#work.erase(ids, time)) this.#changed();
+    },
+  );
+  #tool: Tool = "pen";
   /** The path of each finished stroke, outlined once (R18). */
   readonly #inks = new WeakMap<Stroke, Ink>();
   /** The path of each pen's stroke on the picture of the work, without its pressure, outlined once. */
@@ -102,12 +137,15 @@ export class NovatrailCanvas extends HTMLElement {
     this.#canvas.addEventListener("pointermove", (event) => this.#move(event));
     this.#canvas.addEventListener("pointerup", (event) => this.#up(event));
     this.#canvas.addEventListener("pointercancel", (event) => {
-      if (this.#recorder.cancel(event.pointerId)) this.#request();
+      const dropped =
+        this.#recorder.cancel(event.pointerId) || this.#eraser.cancel(event.pointerId);
+      if (dropped) this.#request();
     });
-    // A stroke that ends here, or on its pointerup, lands through the recorder's handler, which
+    // A stroke or an erasing that ends here, or on its pointerup, lands through its handler, which
     // draws the sheet anew.
     this.#canvas.addEventListener("lostpointercapture", (event) => {
       this.#recorder.end(event.pointerId);
+      this.#eraser.end(event.pointerId);
     });
     // A long press of a pen or a finger, or a right click, opens no menu over the sheet.
     this.#canvas.addEventListener("contextmenu", (event) => event.preventDefault());
@@ -116,9 +154,35 @@ export class NovatrailCanvas extends HTMLElement {
     attachProbe(this, () => ({
       strokes: this.#work.strokes,
       live: this.#recorder.live,
+      history: this.#work.history,
+      pending: [...this.#eraser.pending],
       outlines: this.#outlines,
       view: this.#view(),
     }));
+
+    // A tool given before the element was defined is the instance's own property, which hides the
+    // class's accessor: it goes to the element instead. One the element does not take stays the
+    // pen, with a warning, rather than fail the element's upgrade, which would leave it dead.
+    if (Object.hasOwn(this, "tool")) {
+      const tool: unknown = Reflect.get(this, "tool");
+      Reflect.deleteProperty(this, "tool");
+      if (isTool(tool)) this.#tool = tool;
+      else console.warn(`${toolProblem(tool)}: it stays "pen"`);
+    }
+  }
+
+  /**
+   * What a press of the primary button does: "pen" writes, as the element starts, and "eraser"
+   * erases (R22). It is the consumer's to switch, from a button of its own, and a press under way
+   * goes on as it began. A pen's eraser erases whatever the tool.
+   */
+  get tool(): Tool {
+    return this.#tool;
+  }
+
+  set tool(tool: Tool) {
+    if (!isTool(tool)) throw new TypeError(toolProblem(tool));
+    this.#tool = tool;
   }
 
   connectedCallback(): void {
@@ -127,12 +191,13 @@ export class NovatrailCanvas extends HTMLElement {
   }
 
   /**
-   * Takes back the last action on the sheet — the last stroke written, or the clearing — and says
-   * whether there was one (R19), with a `workchange` if there was (R20). A stroke under way stays:
-   * it lands when it ends.
+   * Takes back the last action on the sheet — the last stroke written, the last erasing, or the
+   * clearing — and says whether there was one (R19, R22), with a `workchange` if there was (R20). A
+   * stroke under way stays: it lands when it ends. So does an erasing: what it came near leaves the
+   * sheet when it lifts, if it is on the sheet then.
    */
   undo(): boolean {
-    const undone = this.#work.undo();
+    const undone = this.#work.undo(performance.now());
     if (undone) this.#changed();
     return undone;
   }
@@ -143,7 +208,7 @@ export class NovatrailCanvas extends HTMLElement {
    * ends.
    */
   clear(): boolean {
-    const cleared = this.#work.clear();
+    const cleared = this.#work.clear(performance.now());
     if (cleared) this.#changed();
     return cleared;
   }
@@ -184,9 +249,11 @@ export class NovatrailCanvas extends HTMLElement {
   }
 
   disconnectedCallback(): void {
-    // A stroke under way ends where it is: its pointerup will not reach a sheet off the page. Its
-    // workchange reaches only the element's own listeners, for the element is in no tree now.
+    // A stroke or an erasing under way ends where it is: its pointerup will not reach a sheet off
+    // the page. Its workchange reaches only the element's own listeners, for the element is in no
+    // tree now.
     this.#recorder.end();
+    this.#eraser.end();
     this.#resize.disconnect();
     this.#unwatchDensity?.();
     this.#unwatchDensity = undefined;
@@ -194,11 +261,22 @@ export class NovatrailCanvas extends HTMLElement {
     this.#frame = 0;
   }
 
+  /**
+   * One pointer at a time writes or erases (R18, R22): the primary button does what the tool says,
+   * and a pen's eraser erases.
+   */
   #down(event: PointerEvent): void {
+    if (this.#recorder.pointer !== undefined || this.#eraser.pointer !== undefined) return;
     const screen = this.#view();
-    if (screen === undefined || !this.#recorder.down(this.#sample(event, screen))) return;
-    // The stroke goes on beyond the canvas, clamped to the sheet's edge, until the pointer
-    // comes up.
+    if (screen === undefined) return;
+    const sample = this.#sample(event, screen);
+    const began =
+      this.#tool === "eraser" || sample.button === ERASER_BUTTON
+        ? this.#eraser.down(sample, ERASER_RADIUS_PX / screen.k + INK_REACH)
+        : this.#recorder.down(sample);
+    if (!began) return;
+    // The stroke or the erasing goes on beyond the canvas, clamped to the sheet's edge, until the
+    // pointer comes up.
     try {
       this.#canvas.setPointerCapture(event.pointerId);
     } catch {
@@ -208,21 +286,34 @@ export class NovatrailCanvas extends HTMLElement {
   }
 
   #move(event: PointerEvent): void {
-    if (this.#recorder.pointer !== event.pointerId) return;
+    const input = this.#inputOf(event.pointerId);
+    if (input === undefined) return;
     const screen = this.#view();
     if (screen === undefined) return;
     let changed = false;
     for (const each of coalesced(event)) {
-      changed = this.#recorder.move(this.#sample(each, screen)) || changed;
+      const sample = this.#sample(each, screen);
+      const moved =
+        input === this.#eraser ? input.move(sample, inSight(each, screen)) : input.move(sample);
+      changed = moved || changed;
     }
     if (changed) this.#request();
   }
 
   #up(event: PointerEvent): void {
-    if (this.#recorder.pointer !== event.pointerId) return;
+    const input = this.#inputOf(event.pointerId);
+    if (input === undefined) return;
     const screen = this.#view();
-    if (screen === undefined) this.#recorder.end(event.pointerId);
-    else this.#recorder.up(this.#sample(event, screen));
+    if (screen === undefined) input.end(event.pointerId);
+    else if (input === this.#eraser) input.up(this.#sample(event, screen), inSight(event, screen));
+    else input.up(this.#sample(event, screen));
+  }
+
+  /** The input a pointer drives: the recorder while it writes, the eraser while it erases. */
+  #inputOf(pointerId: number): Recorder | Eraser | undefined {
+    if (this.#recorder.pointer === pointerId) return this.#recorder;
+    if (this.#eraser.pointer === pointerId) return this.#eraser;
+    return undefined;
   }
 
   #sample(event: PointerEvent, screen: Screen): PointerSample {
@@ -316,7 +407,8 @@ export class NovatrailCanvas extends HTMLElement {
 
   /**
    * The strokes in the visible part, in device pixels: each finished stroke by the path it was
-   * given once, the stroke under way outlined anew.
+   * given once, the stroke under way outlined anew. What the eraser under way has come near is out
+   * of sight already, though still on the sheet until it lifts.
    */
   #draw(): void {
     const context = this.#context;
@@ -332,7 +424,9 @@ export class NovatrailCanvas extends HTMLElement {
     context.setTransform(across, 0, 0, down, 0, -screen.vy * down);
     context.fillStyle = INK;
     const bottom = screen.vy + screen.height / screen.k;
+    const erasing = this.#eraser.pending;
     for (const stroke of this.#work.strokes) {
+      if (erasing.has(stroke.id)) continue;
       const ink = this.#finished(stroke);
       if (ink.bottom >= screen.vy && ink.top <= bottom) context.fill(ink.path);
     }
@@ -370,6 +464,16 @@ export class NovatrailCanvas extends HTMLElement {
     this.#outlines++;
     return outline(stroke, complete);
   }
+}
+
+/**
+ * Whether a pointer event is over the part of the sheet on the screen — the canvas — rather than
+ * beyond it, where a captured pointer goes on and its place is clamped to the sheet's edge.
+ */
+function inSight(event: PointerEvent, screen: Screen): boolean {
+  const x = event.clientX - screen.left;
+  const y = event.clientY - screen.top;
+  return x >= 0 && y >= 0 && x <= SHEET.width * screen.k && y <= screen.height;
 }
 
 /**

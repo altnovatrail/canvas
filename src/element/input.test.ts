@@ -1,8 +1,8 @@
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { cdp } from "vitest/browser";
 import { toScreen, type View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
-import "./index.js";
+import { NovatrailCanvas, type Tool } from "./index.js";
 import { probe } from "./probe.js";
 
 // The sheet's input in Chromium (R18): events that a script makes, with their coalesced points,
@@ -406,4 +406,240 @@ test("the picture draws each stroke by the path it was given once, and a stroke 
   await element.exportPNG();
   await element.exportPNG();
   expect(probe(element).outlines).toBe(4);
+});
+
+// The eraser (R22): a press takes off the sheet, whole, every stroke its way comes near — with the
+// primary button when the tool is the eraser, and with a pen's eraser whatever the tool.
+
+/**
+ * A press of the eraser made by a script, at points of the sheet: a mouse's primary button, or a
+ * pen's eraser — button 5, held by the bit 32 of `buttons`.
+ */
+function eraserHand(
+  canvas: HTMLCanvasElement,
+  view: () => View,
+  by: "primary" | "pen eraser" = "primary",
+  pointerId = 9,
+) {
+  const pen = by === "pen eraser";
+  const pointer = { pointerId, pointerType: pen ? "pen" : "mouse", isPrimary: true, bubbles: true };
+  const button = pen ? 5 : 0;
+  const buttons = pen ? 32 : 1;
+  const send = (type: string, x: number, y: number, init: PointerEventInit) =>
+    canvas.dispatchEvent(
+      new PointerEvent(type, { ...pointer, ...at(canvas, view(), x, y), ...init }),
+    );
+  return {
+    down: (x: number, y: number) => send("pointerdown", x, y, { button, buttons, pressure: 0.5 }),
+    move: (x: number, y: number) =>
+      send("pointermove", x, y, { button: -1, buttons, pressure: 0.5 }),
+    up: (x: number, y: number) => send("pointerup", x, y, { button, buttons: 0, pressure: 0 }),
+    cancel: (x: number, y: number) => send("pointercancel", x, y, { button: 0, buttons: 0 }),
+  };
+}
+
+/** Whether the picture of the work has ink at a point of the sheet: a pixel to a unit. */
+async function pictureInk(png: Blob | null, x: number, y: number): Promise<boolean> {
+  if (png === null) return false;
+  const bitmap = await createImageBitmap(png);
+  const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext("2d");
+  if (context === null) throw new Error("no context to read the picture with");
+  context.drawImage(bitmap, 0, 0);
+  return (context.getImageData(x, y, 1, 1).data[0] ?? 255) < 128;
+}
+
+const idsOn = (element: HTMLElement) => probe(element).strokes.map((stroke) => stroke.id);
+
+test("the eraser takes strokes off whole along a press, out of sight at once and off the sheet when it lifts, and undo() brings them back", async () => {
+  const { element, canvas, view } = await sheet(400);
+  for (const y of [300, 600, 900]) level(canvas, view(), y, 100, 300);
+  await settle();
+  const outlined = probe(element).outlines;
+  let heard = 0;
+  element.addEventListener("workchange", () => heard++);
+  // Whether there is ink in the middle of each stroke.
+  const ink = () => [300, 600, 900].map((y) => inkAt(canvas, view(), 200, y) > 0);
+
+  element.tool = "eraser";
+  const hand = eraserHand(canvas, view);
+  // Down across the first two strokes, from above the first to below the second.
+  hand.down(200, 250);
+  hand.move(200, 650);
+  await settle();
+  expect(probe(element).pending).toEqual([1, 2]);
+  expect(ink()).toEqual([false, false, true]);
+  // Off the sheet only when the eraser lifts: the work and its picture have them still.
+  expect(idsOn(element)).toEqual([1, 2, 3]);
+  expect(await pictureInk(await element.exportPNG(), 200, 300)).toBe(true);
+  expect(heard).toBe(0);
+
+  hand.up(200, 650);
+  await settle();
+  expect(idsOn(element)).toEqual([3]);
+  expect(heard).toBe(1);
+  expect(probe(element).history.at(-1)).toMatchObject({ kind: "erase", ids: [1, 2] });
+  expect(ink()).toEqual([false, false, true]);
+  expect(await pictureInk(await element.exportPNG(), 200, 300)).toBe(false);
+
+  expect(element.undo()).toBe(true);
+  await settle();
+  expect(idsOn(element)).toEqual([1, 2, 3]);
+  expect(ink()).toEqual([true, true, true]);
+  expect(heard).toBe(2);
+  expect(probe(element).history.at(-1)).toMatchObject({ kind: "undo", restored: [1, 2] });
+  // The strokes come back by the paths they were given once.
+  expect(probe(element).outlines).toBe(outlined);
+});
+
+test("a press of the eraser that the device cancels erases nothing, and the ink comes back", async () => {
+  const { element, canvas, view } = await sheet(400);
+  level(canvas, view(), 300, 100, 300);
+  await settle();
+  let heard = 0;
+  element.addEventListener("workchange", () => heard++);
+  element.tool = "eraser";
+  const hand = eraserHand(canvas, view);
+  hand.down(200, 250);
+  hand.move(200, 350);
+  await settle();
+  expect(inkAt(canvas, view(), 200, 300)).toBe(0);
+  hand.cancel(200, 350);
+  await settle();
+  expect(probe(element).pending).toEqual([]);
+  expect(inkAt(canvas, view(), 200, 300)).toBeGreaterThan(0);
+  expect(idsOn(element)).toEqual([1]);
+  expect(heard).toBe(0);
+});
+
+test("a pen's eraser erases whatever the tool, and its barrel button neither erases nor writes", async () => {
+  const { element, canvas, view } = await sheet(400);
+  level(canvas, view(), 300, 100, 300);
+  expect(element.tool).toBe("pen");
+  const pen = { pointerId: 10, pointerType: "pen", isPrimary: true, bubbles: true };
+  const send = (type: string, y: number, init: PointerEventInit) =>
+    canvas.dispatchEvent(
+      new PointerEvent(type, { ...pen, ...at(canvas, view(), 200, y), ...init }),
+    );
+  send("pointerdown", 250, { button: 2, buttons: 2, pressure: 0.5 });
+  send("pointermove", 350, { button: -1, buttons: 2, pressure: 0.5 });
+  send("pointerup", 350, { button: 2, buttons: 0, pressure: 0 });
+  expect(idsOn(element)).toEqual([1]);
+
+  const eraser = eraserHand(canvas, view, "pen eraser");
+  eraser.down(200, 250);
+  eraser.move(200, 350);
+  eraser.up(200, 350);
+  expect(idsOn(element)).toEqual([]);
+  expect(probe(element).history.at(-1)).toMatchObject({ kind: "erase", ids: [1] });
+});
+
+test("one pointer at a time writes or erases, and a press goes on as it began when the tool changes", async () => {
+  const { element, canvas, view } = await sheet(400);
+  level(canvas, view(), 300, 100, 300);
+  // A stroke under way: a pen's eraser that comes down meanwhile erases nothing.
+  const pen = { pointerId: 11, pointerType: "pen", isPrimary: true, bubbles: true };
+  const send = (type: string, x: number, init: PointerEventInit) =>
+    canvas.dispatchEvent(
+      new PointerEvent(type, { ...pen, ...at(canvas, view(), x, 600), ...init }),
+    );
+  send("pointerdown", 100, { button: 0, buttons: 1, pressure: 0.5 });
+  const eraser = eraserHand(canvas, view, "pen eraser", 12);
+  eraser.down(200, 250);
+  eraser.move(200, 350);
+  eraser.up(200, 350);
+  send("pointermove", 300, { button: -1, buttons: 1, pressure: 0.5 });
+  send("pointerup", 300, { button: 0, buttons: 0, pressure: 0 });
+  expect(idsOn(element)).toEqual([1, 2]);
+
+  // An erasing under way: a mouse that writes meanwhile writes nothing, and the tool switched to
+  // the pen leaves the press erasing.
+  element.tool = "eraser";
+  const hand = eraserHand(canvas, view);
+  hand.down(200, 250);
+  level(canvas, view(), 1200, 100, 300);
+  element.tool = "pen";
+  hand.move(200, 650);
+  hand.up(200, 650);
+  expect(idsOn(element)).toEqual([]);
+  expect(probe(element).history.map((event) => event.kind)).toEqual(["write", "write", "erase"]);
+});
+
+test("a real mouse erases with the tool, and pointer-events: none on the element lets it erase nothing", async () => {
+  const { element, canvas, view } = await sheet(400);
+  level(canvas, view(), 300, 100, 300);
+  element.tool = "eraser";
+  const drag = async () => {
+    const pressed = { force: 0.5 };
+    await input("mousePressed", at(canvas, view(), 200, 250), pressed);
+    await input("mouseMoved", at(canvas, view(), 200, 350), pressed);
+    await input("mouseReleased", at(canvas, view(), 200, 350), { force: 0 });
+  };
+  element.style.pointerEvents = "none";
+  await drag();
+  expect(idsOn(element)).toEqual([1]);
+  element.style.pointerEvents = "";
+  await drag();
+  expect(idsOn(element)).toEqual([]);
+});
+
+test("the tool is the pen until the consumer switches it, is the pen or the eraser alone, and one given before the element is upgraded goes through its accessor", () => {
+  const element = document.createElement("novatrail-canvas");
+  expect(element.tool).toBe("pen");
+  element.tool = "eraser";
+  expect(element.tool).toBe("eraser");
+  expect(() => {
+    element.tool = "brush" as Tool;
+  }).toThrow(TypeError);
+  expect(element.tool).toBe("eraser");
+
+  // An element of an inert template is not upgraded until it comes into the page.
+  const template = document.createElement("template");
+  template.innerHTML = "<novatrail-canvas></novatrail-canvas>";
+  const early = template.content.firstElementChild;
+  if (!(early instanceof HTMLElement)) throw new Error("the template has no element");
+  expect(early).not.toBeInstanceOf(NovatrailCanvas);
+  Reflect.set(early, "tool", "eraser");
+  document.body.append(early);
+  made.push(early);
+  expect(early).toBeInstanceOf(NovatrailCanvas);
+  expect(Object.hasOwn(early, "tool")).toBe(false);
+  expect(early instanceof NovatrailCanvas && early.tool).toBe("eraser");
+});
+
+test("a tool the element does not take, given before it is upgraded, leaves it the pen with a warning rather than fail its upgrade", () => {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    const template = document.createElement("template");
+    template.innerHTML = "<novatrail-canvas></novatrail-canvas>";
+    const early = template.content.firstElementChild;
+    if (!(early instanceof HTMLElement)) throw new Error("the template has no element");
+    Reflect.set(early, "tool", "brush");
+    document.body.append(early);
+    made.push(early);
+    expect(early).toBeInstanceOf(NovatrailCanvas);
+    expect(early.shadowRoot).not.toBeNull();
+    expect(early instanceof NovatrailCanvas && early.tool).toBe("pen");
+    expect(warn).toHaveBeenCalledOnce();
+  } finally {
+    warn.mockRestore();
+  }
+});
+
+test("the eraser takes nothing beyond the part of the sheet on the screen, where a captured pointer goes on", async () => {
+  const { element, canvas, view } = await sheet(400, 200);
+  // One stroke in sight, at 300, and one below the part on the screen, at 1000: the screen shows
+  // the sheet down to 500 at k 0.4.
+  level(canvas, view(), 300, 100, 300);
+  level(canvas, view(), 1000, 100, 300);
+  element.tool = "eraser";
+  const hand = eraserHand(canvas, view);
+  hand.down(200, 250);
+  hand.move(200, 350);
+  // Below the canvas, 300 CSS pixels: 1250 on the sheet, past the stroke at 1000.
+  const below = canvas.getBoundingClientRect().bottom + 300;
+  const pointer = { pointerId: 9, pointerType: "mouse", isPrimary: true, bubbles: true };
+  const out = { ...pointer, clientX: at(canvas, view(), 200, 0).clientX, clientY: below };
+  canvas.dispatchEvent(new PointerEvent("pointermove", { ...out, button: -1, buttons: 1 }));
+  canvas.dispatchEvent(new PointerEvent("pointerup", { ...out, button: 0, buttons: 0 }));
+  expect(idsOn(element)).toEqual([2]);
 });
