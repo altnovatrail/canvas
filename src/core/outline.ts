@@ -11,6 +11,13 @@ export const INK_WIDTH = 3;
 const PEN_THINNING = 0.5;
 
 /**
+ * How far the ink reaches from a stroke's points, in sheet units, at most: half the widest line, a
+ * pen's at full pressure. perfect-freehand's radius at a point is `size × (0.5 − thinning × (0.5 −
+ * pressure))`, so 2.25 units with a pressure of 1.
+ */
+export const INK_REACH = INK_WIDTH * (0.5 + PEN_THINNING / 2);
+
+/**
  * Every option of perfect-freehand 1.2.3 is given: its code's defaults are not its README's
  * (R18). The pressure is the pointer's own, the third number of each point, never simulated, and
  * the ends are round, without a taper.

@@ -2,10 +2,12 @@
 // in docs/decisions.md). The board's buttons call the element's methods; Check takes the picture
 // the board would send and stops the writing for a moment, as the board does while the models
 // think; Next task puts a new element in place of the old one. The page listens for workchange
-// above the element, where the event still comes from the next task's element. just demo serves
-// it.
+// above the element, where the event still comes from the next task's element. Eraser, which the
+// board has not, switches the element's tool between the pen and the eraser (T10; R22): a pen's
+// eraser erases whichever it is. just demo serves it.
 
 import "../src/element/index.js";
+import type { Tool } from "../src/element/index.js";
 
 /** An element of the page, of the type the page has it as. */
 function part<T extends HTMLElement>(id: string, type: new () => T): T {
@@ -19,7 +21,10 @@ const counter = part("counter", HTMLParagraphElement);
 const status = part("status", HTMLSpanElement);
 const picture = part("picture", HTMLImageElement);
 const caption = part("caption", HTMLElement);
-const buttons = ["undo", "clear", "check", "next"].map((id) => part(id, HTMLButtonElement));
+const eraser = part("eraser", HTMLButtonElement);
+const buttons = ["eraser", "undo", "clear", "check", "next"].map((id) =>
+  part(id, HTMLButtonElement),
+);
 
 /** How long Check holds the writing, standing in for the minutes the models take. */
 const THINKING_MS = 1000;
@@ -31,6 +36,12 @@ place.append(sheet);
 
 function count(): void {
   counter.textContent = `Task ${task} · workchange × ${changes}`;
+}
+
+/** The sheet's tool, and the Eraser button pressed while it is the eraser. */
+function use(tool: Tool): void {
+  sheet.tool = tool;
+  eraser.setAttribute("aria-pressed", String(tool === "eraser"));
 }
 
 function showPicture(png: Blob | null): void {
@@ -84,6 +95,7 @@ place.addEventListener("workchange", () => {
   // The picture was of the sheet as it was: once the work changes, it is out of date.
   showPicture(null);
 });
+eraser.addEventListener("click", () => use(sheet.tool === "eraser" ? "pen" : "eraser"));
 part("undo", HTMLButtonElement).addEventListener("click", () => sheet.undo());
 part("clear", HTMLButtonElement).addEventListener("click", () => {
   sheet.clear();
@@ -94,6 +106,8 @@ part("next", HTMLButtonElement).addEventListener("click", () => {
   const next = document.createElement("novatrail-canvas");
   sheet.replaceWith(next);
   sheet = next;
+  // A new sheet starts with the pen.
+  use("pen");
   task++;
   changes = 0;
   showPicture(null);
