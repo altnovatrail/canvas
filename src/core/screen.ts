@@ -16,9 +16,24 @@ export interface Point {
   readonly y: number;
 }
 
-/** `k` for a sheet that fits an area `width` CSS pixels wide: k = A / W. */
+/**
+ * The most CSS pixels to a unit: on a wide screen the sheet is at most 1000 CSS pixels wide, a
+ * pixel to a unit as on the picture of the work, and stands in the middle (R23).
+ */
+export const K_MAX = 1;
+
+/** `k` of a sheet `width` CSS pixels wide as it is on the screen: k = A / W. */
 export function scaleFor(width: number): number {
   return width / SHEET.width;
+}
+
+/**
+ * `k` for a sheet laid out in an area `width` CSS pixels wide: it fits the width, up to `K_MAX`.
+ * This is the layout's `k`, before any transform the page puts on the element; input takes `k`
+ * from the sheet's rectangle on the screen, by `scaleFor`.
+ */
+export function fitScale(width: number): number {
+  return Math.min(width / SHEET.width, K_MAX);
 }
 
 /**
