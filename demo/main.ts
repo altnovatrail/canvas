@@ -6,14 +6,20 @@
 // board has not, switches the element's tool between the pen and the eraser (T10; R22): a pen's
 // eraser erases whichever it is. Each element has a task: its grid, which the page's controls
 // change by a new task, and its statement above the sheet, with a picture the page draws and one
-// that never comes. Dark theme sets the element's custom properties (T11; R23). The page's tasks
+// that never comes. Dark theme sets the element's custom properties (T11; R23). Under the sheet
+// the page draws the groups of its strokes after every workchange, by the sheet's rule or by the
+// pause and the reaches its fields give (T12; R24): it reads the strokes through the probe of the
+// tests, for the element hands out no strokes yet (T15), and it keeps nothing. The page's tasks
 // are its own, made up. just demo serves it.
 
+import { GROUP_RULE, type GroupRule, groupsOf, rectOf } from "../src/core/groups.js";
+import { SHEET } from "../src/core/sheet.js";
 import "../src/element/index.js";
 import type { GridKind, Media, Task, Tool } from "../src/element/index.js";
+import { probe } from "../src/element/probe.js";
 
 /** An element of the page, of the type the page has it as. */
-function part<T extends HTMLElement>(id: string, type: new () => T): T {
+function part<T extends Element>(id: string, type: new () => T): T {
   const element = document.getElementById(id);
   if (!(element instanceof type)) throw new Error(`the page has no #${id}`);
   return element;
@@ -31,6 +37,11 @@ const dark = part("dark", HTMLButtonElement);
 const buttons = ["eraser", "undo", "clear", "check", "next"].map((id) =>
   part(id, HTMLButtonElement),
 );
+const preview = part("groups", SVGSVGElement);
+const table = part("table", HTMLTableSectionElement);
+const pause = part("pause", HTMLInputElement);
+const across = part("across", HTMLInputElement);
+const down = part("down", HTMLInputElement);
 
 /** How long Check holds the writing, standing in for the minutes the models take. */
 const THINKING_MS = 1000;
@@ -101,6 +112,64 @@ function showPicture(png: Blob | null): void {
   };
 }
 
+const SVG = "http://www.w3.org/2000/svg";
+/** The height of a group's label in the preview, in sheet units: the font size of `#groups .label`. */
+const LABEL = 40;
+
+/** The rule the fields give: the sheet's own for a field left empty or below 0. */
+function rule(): GroupRule {
+  const read = (field: HTMLInputElement, fallback: number) => {
+    const value = field.valueAsNumber;
+    return Number.isFinite(value) && value >= 0 ? value : fallback;
+  };
+  return {
+    pause: read(pause, GROUP_RULE.pause),
+    across: read(across, GROUP_RULE.across),
+    down: read(down, GROUP_RULE.down),
+  };
+}
+
+/** A shape of the preview, with its attributes. */
+function shape(name: string, attributes: Record<string, string | number>): SVGElement {
+  const element = document.createElementNS(SVG, name);
+  for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, String(value));
+  return element;
+}
+
+/**
+ * The groups of the sheet's strokes, drawn under it in sheet units: each stroke a line through its
+ * points, each group a box with its label, and the table of labels and stroke IDs (R24).
+ */
+function showGroups(): void {
+  const { strokes } = probe(sheet);
+  const shapes = strokes.map(({ points }) => {
+    // A dot is a line of no length, which round caps draw.
+    const spots = points.length === 1 ? [...points, ...points] : points;
+    return shape("polyline", {
+      class: "ink",
+      points: spots.map(({ x, y }) => `${x},${y}`).join(" "),
+    });
+  });
+  const rows = groupsOf(strokes, rule()).map(({ label, ids }) => {
+    const { minX, minY, maxX, maxY } = rectOf(ids, strokes);
+    const box = { x: minX - 6, y: minY - 6, width: maxX - minX + 12, height: maxY - minY + 12 };
+    // The label stands over the box's top left corner, or under the box at the sheet's top edge,
+    // and within the sheet across.
+    const text = shape("text", {
+      class: "label",
+      x: Math.min(Math.max(minX - 6, 0), SHEET.width - LABEL * label.length),
+      y: minY - 12 >= LABEL ? minY - 12 : maxY + 6 + LABEL,
+    });
+    text.textContent = label;
+    shapes.push(shape("rect", { class: "group", ...box }), text);
+    const row = document.createElement("tr");
+    for (const cell of [label, ids.join(", ")]) row.insertCell().textContent = cell;
+    return row;
+  });
+  preview.replaceChildren(...shapes);
+  table.replaceChildren(...rows);
+}
+
 let checking = false;
 
 /**
@@ -148,6 +217,7 @@ place.addEventListener("workchange", () => {
   count();
   // The picture was of the sheet as it was: once the work changes, it is out of date.
   showPicture(null);
+  showGroups();
 });
 eraser.addEventListener("click", () => use(sheet.tool === "eraser" ? "pen" : "eraser"));
 part("undo", HTMLButtonElement).addEventListener("click", () => sheet.undo());
@@ -167,6 +237,7 @@ part("next", HTMLButtonElement).addEventListener("click", () => {
   use("pen");
   changes = 0;
   showPicture(null);
+  showGroups();
   status.textContent = "";
   count();
 });
@@ -176,4 +247,10 @@ dark.addEventListener("click", () => {
   const on = document.body.classList.toggle("dark");
   dark.setAttribute("aria-pressed", String(on));
 });
+preview.setAttribute("viewBox", `0 0 ${SHEET.width} ${SHEET.height}`);
+pause.value = String(GROUP_RULE.pause);
+across.value = String(GROUP_RULE.across);
+down.value = String(GROUP_RULE.down);
+for (const field of [pause, across, down]) field.addEventListener("input", showGroups);
 count();
+showGroups();
