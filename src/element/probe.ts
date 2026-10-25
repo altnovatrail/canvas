@@ -1,7 +1,8 @@
 // What a test sees of an element: its strokes, its history of writing, what the eraser is about to
-// take, its view of the sheet and how many outlines it has drawn. This module is no entry point of
-// the package, so the element's interface stays what the tasks of the sheet make it (R07, R12,
-// R19, R22; RUN.md, T10, T33, T34).
+// take, its view of the sheet and how many outlines it has drawn. The page to try the element on
+// by hand, demo/, reads the strokes here too, to draw their groups (R24). This module is no entry
+// point of the package, so the element's interface stays what the tasks of the sheet make it (R07,
+// R12, R19, R22; RUN.md, T10, T12, T33, T34).
 
 import type { HistoryEvent } from "../core/history.js";
 import type { Stroke } from "../core/ink.js";

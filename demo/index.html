@@ -5,8 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>novatrail-canvas, by hand</title>
 <!-- The page to try the element on by hand, as tutor's check board would have it (RUN.md, T34),
-     with an eraser the board has not (T10), and a task's grid and statement, in a light or a dark
-     theme (T11). -->
+     with an eraser the board has not (T10), a task's grid and statement, in a light or a dark
+     theme (T11), and the groups of the strokes under the sheet, by a rule the page can change
+     (T12). -->
 <style>
   body { margin: 0; padding: 16px; background: #f4f4f1; color: #1d1d1b;
          font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
@@ -29,6 +30,16 @@
   #picture { display: block; width: 300px; background: #fff; border: 1px solid #d4d4cf; }
   #picture:not([src]) { display: none; }
   figcaption { color: #6b6b66; font-size: 0.9rem; }
+  /* The groups of the strokes: a small sheet, its strokes as lines, each group a labelled box. */
+  .groups { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin: 10px 0; }
+  #groups { width: 250px; background: #fff; border: 1px solid #d4d4cf; }
+  #groups .ink { fill: none; stroke: #1d1d1b; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  #groups .group { fill: none; stroke: #2f6fb3; stroke-width: 3; }
+  /* A white edge keeps a label legible over ink and over a neighbour's box. */
+  #groups .label { fill: #2f6fb3; font: bold 40px system-ui, sans-serif;
+                   stroke: #fff; stroke-width: 8; paint-order: stroke; }
+  table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 2px 12px 2px 0; vertical-align: top; }
 </style>
 </head>
 <body>
@@ -51,6 +62,19 @@
     </select></label>
     <label>Step <input id="step" type="number" min="20" max="500" value="50"></label>
     <button id="dark" aria-pressed="false">Dark theme</button>
+  </div>
+  <div class="tools">
+    <span>Groups</span>
+    <label>Pause, ms <input id="pause" type="number" min="0" step="100"></label>
+    <label>Across <input id="across" type="number" min="0"></label>
+    <label>Down <input id="down" type="number" min="0"></label>
+  </div>
+  <div class="groups">
+    <svg id="groups" role="img" aria-label="The groups of the strokes on the sheet"></svg>
+    <table>
+      <thead><tr><th>Label</th><th>Stroke IDs</th></tr></thead>
+      <tbody id="table"></tbody>
+    </table>
   </div>
   <figure>
     <img id="picture" alt="The picture of the work, as Check would send it">
