@@ -1,6 +1,7 @@
 import RBush from "rbush";
-import { type Box, boxOf } from "./geometry.js";
+import { type Box, boxOf, tenths } from "./geometry.js";
 import type { Stroke } from "./ink.js";
+import { Sets } from "./sets.js";
 
 /**
  * The rule of the groups of strokes (R24): two strokes are neighbours if no more than `pause`
@@ -188,14 +189,6 @@ function gap(low: number, high: number, otherLow: number, otherHigh: number): nu
   return Math.max(0, low - otherHigh, otherLow - high);
 }
 
-/**
- * A length or a place in whole tenths of a unit, as a sample file keeps them (R09), rounded half
- * up: 100.05 units, 1000.5 tenths, are 1001.
- */
-function tenths(value: number): number {
-  return Math.round(value * 10);
-}
-
 /** Where a group is, as its label takes it: its rectangle in tenths, then when it was begun. */
 interface Place extends Box {
   readonly start: number;
@@ -230,33 +223,4 @@ function byPlace(a: Place, b: Place): number {
 
 function byNumber(a: number, b: number): number {
   return a - b;
-}
-
-/** The sets the groups grow in: each piece's root, joined by pairs. */
-class Sets {
-  readonly #parent: number[];
-
-  constructor(size: number) {
-    this.#parent = Array.from({ length: size }, (_, at) => at);
-  }
-
-  root(at: number): number {
-    let root = at;
-    while (this.#parent[root] !== root) root = this.#parent[root] ?? root;
-    // Each piece on the way points at the root itself from now on.
-    for (let next = at; this.#parent[next] !== root; ) {
-      const parent = this.#parent[next] ?? root;
-      this.#parent[next] = root;
-      next = parent;
-    }
-    return root;
-  }
-
-  join(a: number, b: number): void {
-    const rootA = this.root(a);
-    const rootB = this.root(b);
-    // The smaller root stays: which pair comes first changes no root of the groups.
-    if (rootA < rootB) this.#parent[rootB] = rootA;
-    else if (rootB < rootA) this.#parent[rootA] = rootB;
-  }
 }

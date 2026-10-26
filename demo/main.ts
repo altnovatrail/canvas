@@ -8,11 +8,16 @@
 // change by a new task, and its statement above the sheet, with a picture the page draws and one
 // that never comes. Dark theme sets the element's custom properties (T11; R23). Under the sheet
 // the page draws the groups of its strokes after every workchange, by the sheet's rule or by the
-// pause and the reaches its fields give (T12; R24): it reads the strokes through the probe of the
-// tests, for the element hands out no strokes yet (T15), and it keeps nothing. The page's tasks
-// are its own, made up. just demo serves it.
+// pause and the reaches its fields give (T12; R24), and the crop for checking at the height of
+// digits its field gives, with the frames of those groups and the crop's size at every height of
+// eval (T13; R25): it reads the strokes through the probe of the tests, for the element hands out
+// no strokes yet (T15), and it keeps nothing. The page's tasks are its own, made up. just demo
+// serves it.
 
-import { GROUP_RULE, type GroupRule, groupsOf, rectOf } from "../src/core/groups.js";
+import { CROP, type Crop, cropOf, tokensOf } from "../src/core/crop.js";
+import { GROUP_RULE, type Group, type GroupRule, groupsOf, rectOf } from "../src/core/groups.js";
+import type { Stroke } from "../src/core/ink.js";
+import { pictureOf } from "../src/core/raster.js";
 import { SHEET } from "../src/core/sheet.js";
 import "../src/element/index.js";
 import type { GridKind, Media, Task, Tool } from "../src/element/index.js";
@@ -42,6 +47,11 @@ const table = part("table", HTMLTableSectionElement);
 const pause = part("pause", HTMLInputElement);
 const across = part("across", HTMLInputElement);
 const down = part("down", HTMLInputElement);
+const crop = part("crop", HTMLImageElement);
+const frames = part("frames", SVGSVGElement);
+const cropCaption = part("crop-caption", HTMLElement);
+const heights = part("heights", HTMLTableSectionElement);
+const digit = part("digit", HTMLSelectElement);
 
 /** How long Check holds the writing, standing in for the minutes the models take. */
 const THINKING_MS = 1000;
@@ -138,10 +148,12 @@ function shape(name: string, attributes: Record<string, string | number>): SVGEl
 
 /**
  * The groups of the sheet's strokes, drawn under it in sheet units: each stroke a line through its
- * points, each group a box with its label, and the table of labels and stroke IDs (R24).
+ * points, each group a box with its label, and the table of labels and stroke IDs (R24). Then the
+ * crop of the strokes, with the frames of these groups (R25).
  */
 function showGroups(): void {
   const { strokes } = probe(sheet);
+  const groups = groupsOf(strokes, rule());
   const shapes = strokes.map(({ points }) => {
     // A dot is a line of no length, which round caps draw.
     const spots = points.length === 1 ? [...points, ...points] : points;
@@ -150,7 +162,7 @@ function showGroups(): void {
       points: spots.map(({ x, y }) => `${x},${y}`).join(" "),
     });
   });
-  const rows = groupsOf(strokes, rule()).map(({ label, ids }) => {
+  const rows = groups.map(({ label, ids }) => {
     const { minX, minY, maxX, maxY } = rectOf(ids, strokes);
     const box = { x: minX - 6, y: minY - 6, width: maxX - minX + 12, height: maxY - minY + 12 };
     // The label stands over the box's top left corner, or under the box at the sheet's top edge,
@@ -168,6 +180,95 @@ function showGroups(): void {
   });
   preview.replaceChildren(...shapes);
   table.replaceChildren(...rows);
+  // The groups stand whatever becomes of the crop.
+  try {
+    showCrop(strokes, groups);
+  } catch (error) {
+    cropCaption.textContent = `The crop failed: ${error instanceof Error ? error.message : error}`;
+  }
+}
+
+/**
+ * The PNGs drawn for the strokes on the sheet, by height of digits. A crop's pixels come from the
+ * strokes and the height alone, not from the groups, so the fields of the rule redraw only its
+ * frames; new strokes draw the pictures again.
+ */
+const pictures = new Map<number, Uint8Array<ArrayBuffer>>();
+let picturesOf: readonly Stroke[] | undefined;
+
+function pictureFor(strokes: readonly Stroke[], shown: Crop): Uint8Array<ArrayBuffer> {
+  if (picturesOf !== strokes) {
+    pictures.clear();
+    picturesOf = strokes;
+  }
+  let png = pictures.get(shown.digit);
+  if (png === undefined) {
+    png = pictureOf(strokes, shown);
+    pictures.set(shown.digit, png);
+  }
+  return png;
+}
+
+/**
+ * The crop for checking of the strokes, at the height of digits the field gives, with the frames of
+ * the groups over it, and the crop's size at every height of eval (R25).
+ */
+function showCrop(strokes: readonly Stroke[], groups: readonly Group[]): void {
+  if (crop.src !== "") URL.revokeObjectURL(crop.src);
+  const shown = cropOf(strokes, groups, Number(digit.value));
+  if (shown === null) {
+    crop.removeAttribute("src");
+    frames.replaceChildren();
+    cropCaption.textContent = "";
+    heights.replaceChildren();
+    return;
+  }
+  const png = pictureFor(strokes, shown);
+  crop.width = shown.width;
+  crop.height = shown.height;
+  crop.src = URL.createObjectURL(new Blob([png], { type: "image/png" }));
+  frames.setAttribute("viewBox", `0 0 ${shown.width} ${shown.height}`);
+  frames.replaceChildren(
+    ...shown.frames.flatMap(({ label, box: [y0, x0, y1, x1] }) => {
+      const [top, left] = [(y0 * shown.height) / 1000, (x0 * shown.width) / 1000];
+      const frame = shape("rect", {
+        class: "frame",
+        x: left,
+        y: top,
+        width: ((x1 - x0) * shown.width) / 1000,
+        height: ((y1 - y0) * shown.height) / 1000,
+      });
+      const text = shape("text", { class: "label", x: left + 2, y: Math.max(top - 2, 11) });
+      text.textContent = label;
+      return [frame, text];
+    }),
+  );
+  cropCaption.textContent = [
+    `${shown.width} × ${shown.height} px`,
+    `digits ${shown.drawn} px of ${shown.digit}`,
+    `s ${shown.scale.toFixed(3)} px a unit`,
+    `h_med ${shown.median} units`,
+    `${tokensOf(shown)} tokens`,
+    `${(png.length / 1024).toFixed(1)} KB`,
+  ].join(" · ");
+  heights.replaceChildren(
+    ...CROP.heights.map((height) => {
+      const each = cropOf(strokes, groups, height);
+      const row = document.createElement("tr");
+      const cells =
+        each === null
+          ? [String(height)]
+          : [
+              String(height),
+              String(each.drawn),
+              `${each.width} × ${each.height}`,
+              String(tokensOf(each)),
+              `${(pictureFor(strokes, each).length / 1024).toFixed(1)} KB`,
+            ];
+      for (const cell of cells) row.insertCell().textContent = cell;
+      return row;
+    }),
+  );
 }
 
 let checking = false;
@@ -252,5 +353,6 @@ pause.value = String(GROUP_RULE.pause);
 across.value = String(GROUP_RULE.across);
 down.value = String(GROUP_RULE.down);
 for (const field of [pause, across, down]) field.addEventListener("input", showGroups);
+digit.addEventListener("change", showGroups);
 count();
 showGroups();

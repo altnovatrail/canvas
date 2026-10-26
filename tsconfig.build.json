@@ -9,5 +9,5 @@
     "noEmit": false
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["src/**/*.test.ts", "src/**/*.check.ts"]
+  "exclude": ["src/**/*.test.ts", "src/**/*.check.ts", "src/**/*.fixture.ts"]
 }

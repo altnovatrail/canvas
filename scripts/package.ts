@@ -16,8 +16,8 @@ import { fileURLToPath } from "node:url";
 const ALWAYS = new Set(["package.json", "README.md", "LICENSE"]);
 /** A file of the build: JavaScript or a declaration, at any depth under lib/core or lib/element. */
 const BUILT = /^lib\/(core|element)\/(?:[^/]+\/)*[^/]+\.(js|d\.ts)$/;
-/** What the build leaves out (tsconfig.build.json): the tests and the type-only checks. */
-const NOT_SHIPPED = /\.(test|check)\.(js|d\.ts)$/;
+/** What the build leaves out (tsconfig.build.json): tests, their fixtures and type-only checks. */
+const NOT_SHIPPED = /\.(test|fixture|check)\.(js|d\.ts)$/;
 
 /** Every problem with the files npm pack takes. */
 export function packProblems(paths: readonly string[]): string[] {

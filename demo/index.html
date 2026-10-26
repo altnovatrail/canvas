@@ -6,8 +6,8 @@
 <title>novatrail-canvas, by hand</title>
 <!-- The page to try the element on by hand, as tutor's check board would have it (RUN.md, T34),
      with an eraser the board has not (T10), a task's grid and statement, in a light or a dark
-     theme (T11), and the groups of the strokes under the sheet, by a rule the page can change
-     (T12). -->
+     theme (T11), the groups of the strokes under the sheet, by a rule the page can change
+     (T12), and the crop for checking at a height of digits the page can change (T13). -->
 <style>
   body { margin: 0; padding: 16px; background: #f4f4f1; color: #1d1d1b;
          font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
@@ -38,6 +38,16 @@
   /* A white edge keeps a label legible over ink and over a neighbour's box. */
   #groups .label { fill: #2f6fb3; font: bold 40px system-ui, sans-serif;
                    stroke: #fff; stroke-width: 8; paint-order: stroke; }
+  /* The crop for checking: its pixels at their own size, the frames of its groups over them. */
+  .crop { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin: 10px 0; }
+  .crop figure { max-width: 100%; }
+  .cropped { position: relative; display: inline-block; max-width: 100%; line-height: 0; }
+  #crop { display: block; max-width: 100%; height: auto; border: 1px solid #d4d4cf; }
+  #crop:not([src]) { display: none; }
+  #frames { position: absolute; left: 1px; top: 1px; width: calc(100% - 2px); height: calc(100% - 2px);
+            pointer-events: none; }
+  #frames .frame { fill: none; stroke: #c2410c; stroke-width: 1.5; }
+  #frames .label { fill: #c2410c; font: bold 12px system-ui, sans-serif; }
   table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
   th, td { text-align: left; padding: 2px 12px 2px 0; vertical-align: top; }
 </style>
@@ -74,6 +84,28 @@
     <table>
       <thead><tr><th>Label</th><th>Stroke IDs</th></tr></thead>
       <tbody id="table"></tbody>
+    </table>
+  </div>
+  <div class="tools">
+    <span>Crop</span>
+    <label>Digits, px <select id="digit">
+      <option>16</option>
+      <option>24</option>
+      <option selected>32</option>
+      <option>48</option>
+    </select></label>
+  </div>
+  <div class="crop">
+    <figure>
+      <div class="cropped">
+        <img id="crop" alt="The crop for checking of the work on the sheet">
+        <svg id="frames" aria-hidden="true"></svg>
+      </div>
+      <figcaption id="crop-caption"></figcaption>
+    </figure>
+    <table>
+      <thead><tr><th>Digits</th><th>Drawn</th><th>Size, px</th><th>Tokens</th><th>PNG</th></tr></thead>
+      <tbody id="heights"></tbody>
     </table>
   </div>
   <figure>

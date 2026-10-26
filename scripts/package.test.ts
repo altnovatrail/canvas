@@ -21,17 +21,19 @@ test("the build may have folders of its own", () => {
   );
 });
 
-test("anything else in the package is a problem: sources, tests, a build nested a level deeper", () => {
+test("anything else in the package is a problem: sources, tests and their fixtures, a build nested a level deeper", () => {
   expect(
     packProblems([
       ...build,
       "src/core/index.ts",
       "lib/core/sheet.test.js",
+      "lib/core/sheets.fixture.js",
       "lib/src/core/index.js",
     ]),
   ).toEqual([
     "npm pack takes src/core/index.ts, which is not part of the build",
     "npm pack takes lib/core/sheet.test.js, which is not part of the build",
+    "npm pack takes lib/core/sheets.fixture.js, which is not part of the build",
     "npm pack takes lib/src/core/index.js, which is not part of the build",
   ]);
 });
