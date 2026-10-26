@@ -85,6 +85,14 @@ export class Work {
   }
 
   /**
+   * Whether undo has an action to take back (R19): the stack is not empty. The element's Undo
+   * button stands unavailable while it is (R28).
+   */
+  get undoable(): boolean {
+    return this.#done.length > 0;
+  }
+
+  /**
    * The history of writing: every action, in the order it landed, frozen through. An array once
    * handed out never changes: after an action the history is a new one, made when it is next asked
    * for.

@@ -113,3 +113,31 @@ test("with forced colours the sheet takes the system's colours, whatever the con
   if (work === null || own === null) throw new Error("the sheet gave no work for checking");
   expect(new Uint8Array(await work.png.arrayBuffer())).toEqual(own.png);
 });
+
+test("with forced colours the row of buttons takes the system's colours of buttons: the tool in use the highlight's, an unavailable button the grey of disabled text", async () => {
+  const theme = document.createElement("div");
+  theme.style.setProperty("--novatrail-canvas-ink", "rgb(0, 0, 255)");
+  theme.style.setProperty("--novatrail-canvas-paper", "rgb(255, 255, 200)");
+  document.body.append(theme);
+  made.push(theme);
+  const element = document.createElement("novatrail-canvas");
+  element.style.width = "400px";
+  theme.append(element);
+  await settle();
+  const root = element.shadowRoot;
+  const row = root?.querySelector(".tools");
+  const [pen, eraser, undo] = [...(root?.querySelectorAll(".tools button") ?? [])];
+  if (!row || !pen || !eraser || !undo) throw new Error("the element has no row of buttons");
+  expect(getComputedStyle(row).backgroundColor).toBe(system("Canvas"));
+  expect(getComputedStyle(eraser).backgroundColor).toBe(system("ButtonFace"));
+  expect(getComputedStyle(eraser).color).toBe(system("ButtonText"));
+  expect(getComputedStyle(eraser).borderTopColor).toBe(system("ButtonBorder"));
+  // The pen is in use: not by its background alone, which the mode would take away.
+  expect(pen.getAttribute("aria-checked")).toBe("true");
+  expect(getComputedStyle(pen).backgroundColor).toBe(system("Highlight"));
+  expect(getComputedStyle(pen).color).toBe(system("HighlightText"));
+  // Nothing to undo yet.
+  expect(undo.getAttribute("aria-disabled")).toBe("true");
+  expect(getComputedStyle(undo).color).toBe(system("GrayText"));
+  expect(getComputedStyle(undo).borderTopColor).toBe(system("GrayText"));
+});

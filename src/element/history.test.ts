@@ -1,7 +1,8 @@
 import { afterEach, expect, test, vi } from "vitest";
 import type { HistoryEvent } from "../core/history.js";
-import { toScreen, type View } from "../core/screen.js";
+import type { View } from "../core/screen.js";
 import { type HistoryChange, NovatrailCanvas } from "./index.js";
+import { at } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The history of writing as the element takes and gives it (R27): read as the sheet has it, told
@@ -37,13 +38,6 @@ async function sheet(width = 400, height?: number) {
     return view;
   };
   return { element, canvas, viewport, view };
-}
-
-/** The client point over a point of the sheet. */
-function at(canvas: HTMLCanvasElement, view: View, x: number, y: number) {
-  const rect = canvas.getBoundingClientRect();
-  const onScreen = toScreen(view, x, y);
-  return { clientX: rect.left + onScreen.x, clientY: rect.top + onScreen.y };
 }
 
 /** A pointer on the canvas, made by a script, at points of the sheet: a mouse's, or as given. */

@@ -1,8 +1,8 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { cdp } from "vitest/browser";
-import { toScreen, type View } from "../core/screen.js";
+import type { View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
 import { NovatrailCanvas, type Tool } from "./index.js";
+import { at, input, level } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The sheet's input in Chromium (R18): events that a script makes, with their coalesced points,
@@ -40,13 +40,6 @@ function viewOf(element: HTMLElement): View {
   return view;
 }
 
-/** The client point over a point of the sheet. */
-function at(canvas: HTMLCanvasElement, view: View, x: number, y: number) {
-  const rect = canvas.getBoundingClientRect();
-  const onScreen = toScreen(view, x, y);
-  return { clientX: rect.left + onScreen.x, clientY: rect.top + onScreen.y };
-}
-
 /** The alpha of the canvas's device pixel over a point of the sheet: 0 where there is no ink. */
 function inkAt(canvas: HTMLCanvasElement, view: View, x: number, y: number): number {
   const scale = canvas.width / SHEET.width;
@@ -54,46 +47,6 @@ function inkAt(canvas: HTMLCanvasElement, view: View, x: number, y: number): num
     .getContext("2d")
     ?.getImageData(Math.floor(x * scale), Math.floor((y - view.vy) * scale), 1, 1);
   return pixel?.data[3] ?? 0;
-}
-
-/** A level stroke at `y`, from `from` to `to`, made by a script: a mouse's, pointerId 1. */
-function level(canvas: HTMLCanvasElement, view: View, y: number, from: number, to: number) {
-  const mouse = { pointerId: 1, pointerType: "mouse", isPrimary: true, bubbles: true };
-  const event = (type: string, x: number, init: PointerEventInit) =>
-    new PointerEvent(type, { ...mouse, ...at(canvas, view, x, y), ...init });
-  canvas.dispatchEvent(event("pointerdown", from, { button: 0, buttons: 1, pressure: 0.5 }));
-  canvas.dispatchEvent(event("pointermove", to, { button: -1, buttons: 1, pressure: 0.5 }));
-  canvas.dispatchEvent(event("pointerup", to, { button: 0, buttons: 0, pressure: 0 }));
-}
-
-/**
- * Real input, through the DevTools protocol: the point of the page over a client point of this
- * test's frame, which the runner may have moved and scaled.
- */
-async function input(
-  type: "mousePressed" | "mouseMoved" | "mouseReleased",
-  client: { clientX: number; clientY: number },
-  extra: { pointerType?: "mouse" | "pen"; force?: number } = {},
-): Promise<void> {
-  const frameElement = window.frameElement;
-  let x = client.clientX;
-  let y = client.clientY;
-  if (frameElement !== null && "offsetWidth" in frameElement) {
-    const host = frameElement as HTMLElement;
-    const rect = host.getBoundingClientRect();
-    const scale = rect.width / host.offsetWidth;
-    x = rect.left + (host.clientLeft + x) * scale;
-    y = rect.top + (host.clientTop + y) * scale;
-  }
-  await cdp().send("Input.dispatchMouseEvent", {
-    type,
-    x,
-    y,
-    button: "left",
-    buttons: type === "mouseReleased" ? 0 : 1,
-    clickCount: 1,
-    ...extra,
-  });
 }
 
 test("pointer events on the canvas, with their coalesced points, make a stroke in sheet units and ink where it went", async () => {
@@ -169,7 +122,10 @@ test("a real pen writes with its pressure", async () => {
 
 test("a sheet taller than the element scrolls, and input lands where its visible part shows", async () => {
   const { element, canvas, viewport, view } = await sheet(400, 200);
-  expect(canvas.getBoundingClientRect().height).toBeCloseTo(200, 6);
+  // The container takes what the element's height leaves under its row of buttons (R28).
+  const row = element.shadowRoot?.querySelector(".tools")?.getBoundingClientRect().height ?? 0;
+  expect(row).toBeGreaterThan(0);
+  expect(canvas.getBoundingClientRect().height).toBeCloseTo(200 - row, 6);
   viewport.scrollTop = 100;
   await settle();
   // 100 CSS pixels down: 250 units at k 0.4, a little more if a scroll bar takes some width.
@@ -558,7 +514,7 @@ test("a real mouse erases with the tool, and pointer-events: none on the element
   expect(idsOn(element)).toEqual([]);
 });
 
-test("the tool is the pen until the consumer switches it, is the pen or the eraser alone, and one given before the element is upgraded goes through its accessor", () => {
+test("the tool is the pen until it is switched, is the pen or the eraser alone, and one given before the element is upgraded goes through its accessor", () => {
   const element = document.createElement("novatrail-canvas");
   expect(element.tool).toBe("pen");
   element.tool = "eraser";
@@ -603,15 +559,15 @@ test("a tool the element does not take, given before it is upgraded, leaves it t
 
 test("the eraser takes nothing beyond the part of the sheet on the screen, where a captured pointer goes on", async () => {
   const { element, canvas, view } = await sheet(400, 200);
-  // One stroke in sight, at 300, and one below the part on the screen, at 1000: the screen shows
-  // the sheet down to 500 at k 0.4.
+  // One stroke in sight, at 300, and one below the part on the screen, at 1000: under the row of
+  // buttons the screen shows the sheet down to 350 at k 0.4.
   level(canvas, view(), 300, 100, 300);
   level(canvas, view(), 1000, 100, 300);
   element.tool = "eraser";
   const hand = eraserHand(canvas, view);
   hand.down(200, 250);
   hand.move(200, 350);
-  // Below the canvas, 300 CSS pixels: 1250 on the sheet, past the stroke at 1000.
+  // Below the canvas, 300 CSS pixels: 1100 on the sheet, past the stroke at 1000.
   const below = canvas.getBoundingClientRect().bottom + 300;
   const pointer = { pointerId: 9, pointerType: "mouse", isPrimary: true, bubbles: true };
   const out = { ...pointer, clientX: at(canvas, view(), 200, 0).clientX, clientY: below };

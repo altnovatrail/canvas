@@ -1,8 +1,9 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
-import { toScreen, type View } from "../core/screen.js";
+import type { View } from "../core/screen.js";
 import "./index.js";
 import type { Media, Task } from "./index.js";
+import { at, level } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The task's statement above the sheet in Chromium (R23): its text, its language and its pictures,
@@ -51,22 +52,6 @@ function viewOf(element: HTMLElement): View {
   return view;
 }
 
-/** The client point over a point of the sheet. */
-function at(canvas: HTMLCanvasElement, view: View, x: number, y: number) {
-  const rect = canvas.getBoundingClientRect();
-  const onScreen = toScreen(view, x, y);
-  return { clientX: rect.left + onScreen.x, clientY: rect.top + onScreen.y };
-}
-
-function level(canvas: HTMLCanvasElement, view: View, y: number, from: number, to: number) {
-  const mouse = { pointerId: 1, pointerType: "mouse", isPrimary: true, bubbles: true };
-  const event = (type: string, x: number, init: PointerEventInit) =>
-    new PointerEvent(type, { ...mouse, ...at(canvas, view, x, y), ...init });
-  canvas.dispatchEvent(event("pointerdown", from, { button: 0, buttons: 1, pressure: 0.5 }));
-  canvas.dispatchEvent(event("pointermove", to, { button: -1, buttons: 1, pressure: 0.5 }));
-  canvas.dispatchEvent(event("pointerup", to, { button: 0, buttons: 0, pressure: 0 }));
-}
-
 const sheetKind = { kind: "handwriting-sheet" } as const;
 
 /** A picture's file: a small SVG, which a browser shows. */
@@ -97,7 +82,7 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-test("the statement stands above the sheet as text, in the task's language, and the element is as tall as both", async () => {
+test("the statement stands above the sheet as text, in the task's language, and the element is as tall as both and the row of buttons", async () => {
   const { element, root, statement, canvas, view } = await sheet(400, {
     canvas: sheetKind,
     statement: [{ text: "<b>Count</b> the posts." }, { text: "Then write the answer." }],
@@ -114,7 +99,13 @@ test("the statement stands above the sheet as text, in the task's language, and 
   const sheetBox = root.querySelector(".sheet")?.getBoundingClientRect();
   const above = statement.getBoundingClientRect();
   expect(sheetBox?.top).toBeGreaterThanOrEqual(above.bottom);
-  expect(element.getBoundingClientRect().height).toBeCloseTo(above.height + 1400 * 0.4, 0);
+  // The row of the element's own buttons stands above the statement (R28).
+  const row = root.querySelector(".tools")?.getBoundingClientRect();
+  expect(above.top).toBeGreaterThanOrEqual(row?.bottom ?? Number.NaN);
+  expect(element.getBoundingClientRect().height).toBeCloseTo(
+    (row?.height ?? Number.NaN) + above.height + 1400 * 0.4,
+    0,
+  );
 
   // The sheet below the statement takes its strokes where they are on it.
   level(canvas, view(), 100, 100, 300);
@@ -301,10 +292,12 @@ test("with the statement in sight, the eraser takes nothing below the container'
     300,
   );
   const shownBottom = viewport.getBoundingClientRect().bottom;
-  expect(canvas.getBoundingClientRect().bottom).toBeGreaterThan(shownBottom);
-  // One stroke in sight, at 100, and one on the canvas but below the container, at 650.
+  const { top, bottom } = canvas.getBoundingClientRect();
+  expect(bottom).toBeGreaterThan(shownBottom);
+  // One stroke in sight, at 100, and one on the canvas but below the container: halfway between
+  // the container's bottom and the canvas's.
   level(canvas, view(), 100, 100, 300);
-  const hidden = 650;
+  const hidden = Math.round(((shownBottom + bottom) / 2 - top) / view().k);
   expect(at(canvas, view(), 200, hidden).clientY).toBeGreaterThan(shownBottom);
   expect(at(canvas, view(), 200, hidden).clientY).toBeLessThan(
     canvas.getBoundingClientRect().bottom,

@@ -30,6 +30,37 @@ describe("undo", () => {
     expect(work.undo(30)).toBe(false);
     expect(ids(work)).toEqual([]);
   });
+
+  test("says whether it has an action to take back, till every one is taken back", () => {
+    const work = new Work();
+    expect(work.undoable).toBe(false);
+    work.write(stroke(1));
+    expect(work.undoable).toBe(true);
+    work.undo(10);
+    expect(work.undoable).toBe(false);
+    // Clearing an empty sheet is no action; an erasing and a clearing are.
+    expect(work.clear(20)).toBe(false);
+    expect(work.undoable).toBe(false);
+    work.write(stroke(2));
+    work.erase([2], 30);
+    work.undo(40);
+    expect(work.undoable).toBe(true);
+    work.clear(50);
+    work.undo(60);
+    work.undo(70);
+    expect(work.undoable).toBe(false);
+    // A history given to the sheet leaves the stack its actions build.
+    const written: HistoryEvent = {
+      kind: "write",
+      t: 0,
+      stroke: { id: 1, kind: "pen", points: [{ x: 10, y: 10, t: 0, p: 0.5 }] },
+    };
+    const undone: HistoryEvent = { kind: "undo", t: 5, removed: [1], restored: [] };
+    const clock = new Clock();
+    expect(Work.restore([written], clock).undoable).toBe(true);
+    expect(Work.restore([written, undone], clock).undoable).toBe(false);
+    expect(Work.restore([], clock).undoable).toBe(false);
+  });
 });
 
 describe("clear", () => {

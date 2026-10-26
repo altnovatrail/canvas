@@ -1,6 +1,6 @@
 // Type-checked by ci-lint and never built: the element's interface as a consumer's types see it
-// (R07, R27). What a consumer may do type-checks; each line under a directive must be an error,
-// and were it not, the directive would go unused, and that would be the error instead.
+// (R07, R27, R28). What a consumer may do type-checks; each line under a directive must be an
+// error, and were it not, the directive would go unused, and that would be the error instead.
 
 import type {
   ExportedWork,
@@ -8,6 +8,8 @@ import type {
   HistoryEvent,
   NovatrailCanvas,
   Submission,
+  Tool,
+  ToolChangeEvent,
 } from "./index.js";
 
 declare const sheet: NovatrailCanvas;
@@ -24,6 +26,14 @@ document.addEventListener("historychange", (event) => {
   return events;
 });
 
+/** The learner's choice of tool is told on the element and on the document alike (R28). */
+sheet.addEventListener("toolchange", (event: ToolChangeEvent) => event.detail.tool);
+document.addEventListener("toolchange", (event) => {
+  const tool: Tool = event.detail.tool;
+  return tool;
+});
+sheet.tool = "eraser";
+
 export const work: Promise<ExportedWork | null> = sheet.exportWork();
 export const history: readonly HistoryEvent[] = sheet.history;
 sheet.history = undefined;
@@ -37,5 +47,11 @@ document.addEventListener("historychange", (event) => {
   // @ts-expect-error The events told are the sheet's, to read.
   event.detail.events.push(event.detail.events[0]);
 });
+document.addEventListener("toolchange", (event) => {
+  // @ts-expect-error The tool told is the learner's choice, to read.
+  event.detail.tool = "pen";
+});
+// @ts-expect-error A tool the sheet has not is no tool of it.
+sheet.tool = "ruler";
 // @ts-expect-error Marks whose submission has no digest are no marks of a submission (R27).
 sheet.marks = { submission: { crop, groups: [] }, marks: [] };

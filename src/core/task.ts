@@ -13,6 +13,19 @@ import {
 /** The canvas kind of the handwriting sheet, as concepts 16.1 spec's illustration names it. */
 export const SHEET_KIND = "handwriting-sheet";
 
+/**
+ * What a press of the primary button does on the sheet: the pen writes, the eraser erases (R22). A
+ * pen's eraser erases whatever the tool, if the task allows the eraser (R28).
+ */
+export type Tool = "pen" | "eraser";
+
+/** The sheet's tools, in the order their buttons stand: the pen, the eraser. */
+export const TOOLS: readonly Tool[] = Object.freeze(["pen", "eraser"]);
+
+export function isTool(value: unknown): value is Tool {
+  return (TOOLS as readonly unknown[]).includes(value);
+}
+
 /** A paragraph of a task's statement. */
 export interface TextPart {
   readonly text: string;
@@ -39,8 +52,8 @@ export type StatementPart = TextPart | PicturePart;
  * The open view of a task, as much of it as the sheet reads: its canvas — the kind and the
  * kind's settings — and its statement, in its language (R23). The type is the sheet's own, for
  * now, of the composition spec's format v0 is to give (T28 and T35 in spec's RUN.md; R36 spec).
- * Fields the sheet does not read are passed over: the open view has more, its items, its answer
- * cells and its tools among them.
+ * Fields the sheet does not read are passed over: the open view has more, its items and its answer
+ * cells among them.
  */
 export interface Task {
   readonly canvas: {
@@ -52,6 +65,13 @@ export interface Task {
      * module's canvas, 32 unless given (R25, R27; «Вход» of T28 in spec's RUN.md).
      */
     readonly digit?: number;
+    /**
+     * The tools the task allows (concepts 8 spec; R28): the sheet takes "pen" and "eraser", and
+     * passes over the names it does not know — a ruler, a calculator — which are app's to show or
+     * come with new versions of the sheet. The pen and the eraser unless given; a list without the
+     * pen is a TypeError, for the sheet writes with it.
+     */
+    readonly tools?: readonly string[];
   };
   readonly statement?: readonly StatementPart[];
   /** The language of the statement, a BCP 47 tag; the element's own `lang` if none is given. */
@@ -59,22 +79,27 @@ export interface Task {
 }
 
 /**
- * What the sheet makes of a task: the grid on the sheet and the statement above it, and the height
- * of a digit its crop for checking is drawn at.
+ * What the sheet makes of a task: the grid on the sheet and the statement above it, the height of
+ * a digit its crop for checking is drawn at, and the tools it allows, in the order of `TOOLS`.
  */
 export interface Template {
   readonly grid: Grid;
   readonly statement: readonly StatementPart[];
   readonly lang: string | undefined;
   readonly digit: number;
+  readonly tools: readonly Tool[];
 }
 
-/** The template of a sheet without a task: squares of 50 units, no statement, digits of 32 px. */
+/**
+ * The template of a sheet without a task: squares of 50 units, no statement, digits of 32 px, the
+ * pen and the eraser.
+ */
 export const NO_TASK: Template = Object.freeze({
   grid: DEFAULT_GRID,
   statement: Object.freeze([]),
   lang: undefined,
   digit: CROP.digit,
+  tools: TOOLS,
 });
 
 /**
@@ -116,12 +141,21 @@ export function templateOf(task: unknown): Template {
     statement: statementOf(fields.statement),
     lang,
     digit,
+    tools: toolsOf(canvas.tools),
   };
 }
 
-/** Whether two templates show the same: the same grid, the same statement, the same language. */
+/**
+ * Whether two templates show the same: the same grid, the same statement in the same language, the
+ * same tools.
+ */
 export function sameTemplate(a: Template, b: Template): boolean {
-  return sameGrid(a, b) && sameStatement(a, b);
+  return sameGrid(a, b) && sameStatement(a, b) && sameTools(a, b);
+}
+
+/** Whether two templates allow the same tools. */
+export function sameTools(a: Template, b: Template): boolean {
+  return a.tools.length === b.tools.length && a.tools.every((tool, i) => tool === b.tools[i]);
 }
 
 /** Whether two templates rule the sheet alike. */
@@ -133,6 +167,32 @@ export function sameGrid(a: Template, b: Template): boolean {
 export function sameStatement(a: Template, b: Template): boolean {
   if (a.lang !== b.lang || a.statement.length !== b.statement.length) return false;
   return a.statement.every((part, i) => samePart(part, b.statement[i]));
+}
+
+/**
+ * The tools a task allows, of those the sheet has, in the order of `TOOLS` (R28). A name repeated
+ * counts once, and one the sheet does not know is passed over.
+ */
+function toolsOf(value: unknown): readonly Tool[] {
+  if (value === undefined) return TOOLS;
+  if (!Array.isArray(value)) {
+    throw new TypeError(`task.canvas.tools: a list of tools, not ${shown(value)}`);
+  }
+  // Array.from visits every index, a hole too, which map would pass over unchecked.
+  const names = new Set(
+    Array.from(value, (name: unknown, i) => {
+      if (typeof name !== "string") {
+        throw new TypeError(`task.canvas.tools[${i}]: a tool's name, a string, not ${shown(name)}`);
+      }
+      return name;
+    }),
+  );
+  if (!names.has("pen")) {
+    throw new TypeError(
+      `task.canvas.tools: the handwriting sheet writes with "pen", which ${shown(value)} lacks`,
+    );
+  }
+  return TOOLS.filter((tool) => names.has(tool));
 }
 
 function statementOf(value: unknown): readonly StatementPart[] {

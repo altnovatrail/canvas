@@ -2,10 +2,11 @@ import { afterEach, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import { CROP } from "../core/crop.js";
 import { gridPath } from "../core/grid.js";
-import { toScreen, type View } from "../core/screen.js";
+import type { View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
 import { workForCheck } from "../core/submission.js";
 import { NovatrailCanvas, type Task } from "./index.js";
+import { at, level } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The sheet's layers in Chromium (R23): the stack in the order of concepts 8 spec, one view for
@@ -47,23 +48,6 @@ function viewOf(element: HTMLElement): View {
   return view;
 }
 
-/** The client point over a point of the sheet. */
-function at(canvas: HTMLCanvasElement, view: View, x: number, y: number) {
-  const rect = canvas.getBoundingClientRect();
-  const onScreen = toScreen(view, x, y);
-  return { clientX: rect.left + onScreen.x, clientY: rect.top + onScreen.y };
-}
-
-/** A level stroke at `y`, from `from` to `to`, made by a script: a mouse's. */
-function level(canvas: HTMLCanvasElement, view: View, y: number, from: number, to: number) {
-  const mouse = { pointerId: 1, pointerType: "mouse", isPrimary: true, bubbles: true };
-  const event = (type: string, x: number, init: PointerEventInit) =>
-    new PointerEvent(type, { ...mouse, ...at(canvas, view, x, y), ...init });
-  canvas.dispatchEvent(event("pointerdown", from, { button: 0, buttons: 1, pressure: 0.5 }));
-  canvas.dispatchEvent(event("pointermove", to, { button: -1, buttons: 1, pressure: 0.5 }));
-  canvas.dispatchEvent(event("pointerup", to, { button: 0, buttons: 0, pressure: 0 }));
-}
-
 /** The red, green and blue of the canvas's device pixel over a point of the sheet, and its alpha. */
 function rgbaAt(canvas: HTMLCanvasElement, view: View, x: number, y: number): number[] {
   const scale = canvas.width / SHEET.width;
@@ -75,7 +59,7 @@ function rgbaAt(canvas: HTMLCanvasElement, view: View, x: number, y: number): nu
 
 const sheetKind = { kind: "handwriting-sheet" } as const;
 
-test("the sheet is a stack of layers in the order of concepts 8 spec, and the canvas alone takes pointer events, as the element does", async () => {
+test("the sheet is a stack of layers in the order of concepts 8 spec, and of them the canvas alone takes pointer events, as the element does, and so do the buttons of the row", async () => {
   const { element, root, canvas, stage, viewport } = await sheet(400);
   const layers = [...stage.children];
   expect(layers.map((layer) => layer.getAttribute("class") ?? layer.localName)).toEqual([
@@ -106,7 +90,10 @@ test("the sheet is a stack of layers in the order of concepts 8 spec, and the ca
   }
   const sheetBox = root.querySelector(".sheet");
   if (!sheetBox) throw new Error("the element has no sheet");
-  for (const box of [canvas, stage, sheetBox, viewport]) {
+  // The row of the element's own buttons sets no pointer-events of its own either (R28).
+  const buttons = [...root.querySelectorAll(".tools button")];
+  expect(buttons).toHaveLength(4);
+  for (const box of [canvas, stage, sheetBox, viewport, ...buttons]) {
     expect(getComputedStyle(box).pointerEvents).toBe("auto");
   }
   // The marks over the ink take no pointer: what is under the pointer is the canvas.
@@ -114,9 +101,9 @@ test("the sheet is a stack of layers in the order of concepts 8 spec, and the ca
   const hit = root.elementFromPoint(middle.left + 100, middle.top + 100);
   expect(hit).toBe(canvas);
 
-  // The consumer's pointer-events: none reaches the canvas.
+  // The consumer's pointer-events: none reaches the canvas, and the buttons.
   element.style.pointerEvents = "none";
-  for (const box of [canvas, stage, sheetBox, viewport]) {
+  for (const box of [canvas, stage, sheetBox, viewport, ...buttons]) {
     expect(getComputedStyle(box).pointerEvents).toBe("none");
   }
 });
@@ -162,17 +149,19 @@ test("a new width puts the layers on the new k in the frame it is laid out in, b
   const { element, root, viewport } = await sheet(400, 200);
   const template = root.querySelector<SVGSVGElement>(".template");
   if (!template) throw new Error("the element has no template");
-  expect(template.viewBox.baseVal.height).toBeCloseTo(200 / 0.4, 3);
+  // The sheet shows in what the element's height leaves under its row of buttons (R28).
+  expect(template.viewBox.baseVal.height).toBeCloseTo(viewport.clientHeight / 0.4, 3);
   element.style.width = "300px";
   // An observer made after the element's own reports after it, in the same frame, before paint.
-  const height = await new Promise<number>((resolve) => {
+  // The row may wrap at the new width, and the container is shorter then.
+  const shown = await new Promise<{ height: number; port: number }>((resolve) => {
     const observer = new ResizeObserver(() => {
       observer.disconnect();
-      resolve(template.viewBox.baseVal.height);
+      resolve({ height: template.viewBox.baseVal.height, port: viewport.clientHeight });
     });
     observer.observe(viewport);
   });
-  expect(height).toBeCloseTo(200 / 0.3, 3);
+  expect(shown.height).toBeCloseTo(shown.port / 0.3, 3);
 });
 
 test("the top of the visible part stays where it was on the sheet when the width changes, at the cap and under it", async () => {
@@ -304,11 +293,19 @@ function near(rgb: readonly number[], expected: readonly number[]): boolean {
 
 test("on the screen the ink lies over the grid, and the grid's lines and dots over the paper", async () => {
   // k is 0.41, so that the ruling at 50 falls in the middle of a CSS pixel, at 20.5.
-  const { element, canvas, view } = await sheet(410);
+  const { element, root, canvas, view } = await sheet(410);
   dense(canvas, view(), 300, 20, 330);
   await settle();
-  const pixel = await screenshot(element);
   const k = 0.41;
+  // The sheet stands under the row of buttons (R28), a whole number of CSS pixels down.
+  const sheetTop = root.querySelector(".sheet")?.getBoundingClientRect().top ?? Number.NaN;
+  const down = sheetTop - element.getBoundingClientRect().top;
+  expect(Number.isInteger(down)).toBe(true);
+  const shot = async () => {
+    const at = await screenshot(element);
+    return (x: number, y: number) => at(x, down + y);
+  };
+  const pixel = await shot();
   const dark = (rgb: number[]) => rgb.every((channel) => channel < 90);
   const paper = (rgb: number[]) => rgb.every((channel) => channel > 250);
   // The ink over the line down at 50: the ink's colour, not the grid's.
@@ -321,7 +318,7 @@ test("on the screen the ink lies over the grid, and the grid's lines and dots ov
 
   element.task = { canvas: { ...sheetKind, grid: "dots" } };
   await settle();
-  const dotted = await screenshot(element);
+  const dotted = await shot();
   const dot = dotted(50 * k, 50 * k);
   expect(paper(dot) || dark(dot)).toBe(false);
   // Between the dots, along where a line of squares would be: paper.
@@ -361,7 +358,7 @@ test("writing, erasing, undo() and clear() leave the template as it was", async 
   observer.disconnect();
 });
 
-test("the consumer's custom properties colour the paper, the grid and the ink, and a new ink is drawn without a scroll; the crop for checking keeps its own", async () => {
+test("the consumer's custom properties colour the paper, the grid, the ink and the row of buttons, and a new ink is drawn without a scroll; the crop for checking keeps its own", async () => {
   const theme = document.createElement("div");
   theme.style.setProperty("--novatrail-canvas-paper", "rgb(10, 20, 30)");
   theme.style.setProperty("--novatrail-canvas-grid", "rgb(200, 0, 0)");
@@ -372,6 +369,14 @@ test("the consumer's custom properties colour the paper, the grid and the ink, a
   if (!paper) throw new Error("the element has no sheet");
   expect(getComputedStyle(paper).backgroundColor).toBe("rgb(10, 20, 30)");
   expect(getComputedStyle(grid).stroke).toBe("rgb(200, 0, 0)");
+  // The row of buttons in paper and ink as well, the tool in use filled with the ink (R28).
+  const row = root.querySelector(".tools");
+  const inUse = root.querySelector('.tools [aria-checked="true"]');
+  if (!row || !inUse) throw new Error("the element has no row of buttons");
+  expect(getComputedStyle(row).backgroundColor).toBe("rgb(10, 20, 30)");
+  expect(getComputedStyle(row).color).toBe("rgb(0, 0, 255)");
+  expect(getComputedStyle(inUse).backgroundColor).toBe("rgb(0, 0, 255)");
+  expect(getComputedStyle(inUse).color).toBe("rgb(10, 20, 30)");
 
   dense(canvas, view(), 300, 100, 300);
   await settle();
