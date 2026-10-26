@@ -55,9 +55,27 @@ async function main(): Promise<string[]> {
   // By the package's name, as a consumer imports it. The name is held in a variable, so that the
   // type checker, which runs before the build, does not look for the build's declarations.
   const core = `${manifest.name}/core`;
-  const { SHEET } = (await import(core)) as { SHEET?: { width: number; height: number } };
+  const entry = (await import(core)) as {
+    SHEET?: { width: number; height: number };
+    replay?: (history: readonly unknown[]) => { id: number }[];
+  };
+  const { SHEET, replay } = entry;
   if (SHEET?.width !== 1000 || SHEET.height !== 1400) {
     problems.push(`${core} does not give the sheet of 1000 × 1400 units`);
+  }
+  // The sheet's size and the fold of a history, and none of the rules (R27).
+  const given = Object.keys(entry);
+  if (given.length !== 2 || !given.includes("SHEET") || !given.includes("replay")) {
+    problems.push(`${core} gives ${given.join(", ")}, not SHEET and replay`);
+  }
+  const point = { x: 1, y: 1, t: 0, p: 0.5 };
+  const folded = replay?.([
+    { kind: "write", t: 0, stroke: { id: 1, kind: "pen", points: [point] } },
+    { kind: "write", t: 0, stroke: { id: 2, kind: "pen", points: [point] } },
+    { kind: "erase", t: 1, ids: [1] },
+  ]);
+  if (folded?.map(({ id }) => id).join() !== "2") {
+    problems.push(`${core}'s replay does not fold a history into the strokes it leaves`);
   }
   const element = fileURLToPath(import.meta.resolve(manifest.name));
   if (!element.endsWith("/lib/element/index.js")) {

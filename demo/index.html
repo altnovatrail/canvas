@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>novatrail-canvas, by hand</title>
-<!-- The page to try the element on by hand, as tutor's check board would have it (RUN.md, T34),
-     with an eraser the board has not (T10), a task's grid and statement, in a light or a dark
-     theme (T11), the groups of the strokes under the sheet, by a rule the page can change
-     (T12), the crop for checking at a height of digits the page can change (T13), and the
-     tutor's marks, given back over the crop Check sent (T14). -->
+<!-- The page to try the element on by hand, as app is to have it (RUN.md, T15): the history of
+     writing kept as the element tells it and given back to a sheet opened again, an eraser
+     (T10), a task's grid, statement and height of digits, in a light or a dark theme (T11), the
+     groups of the strokes under the sheet, by a rule the page can change (T12), the crop for
+     checking (T13), and the tutor's marks, given back over the crop Check sent (T14). -->
 <style>
   body { margin: 0; padding: 16px; background: #f4f4f1; color: #1d1d1b;
          font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
@@ -28,8 +28,6 @@
   button[aria-pressed="true"] { background: #1d1d1b; border-color: #1d1d1b; color: #fff; }
   #status { color: #6b6b66; }
   figure { margin: 0; }
-  #picture { display: block; width: 300px; background: #fff; border: 1px solid #d4d4cf; }
-  #picture:not([src]) { display: none; }
   figcaption { color: #6b6b66; font-size: 0.9rem; }
   /* The groups of the strokes: a small sheet, its strokes as lines, each group a labelled box. */
   .groups { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin: 10px 0; }
@@ -70,6 +68,7 @@
     <button id="undo">Undo stroke</button>
     <button id="clear">Clear</button>
     <button id="check">Check</button>
+    <button id="reopen">Reopen</button>
     <button id="next">Next task</button>
     <span id="status" role="status"></span>
   </div>
@@ -131,10 +130,6 @@
     </figure>
     <div id="sent-groups"></div>
   </div>
-  <figure>
-    <img id="picture" alt="The picture of the work, as Check would send it">
-    <figcaption id="caption"></figcaption>
-  </figure>
 </main>
 <script type="module" src="./main.ts"></script>
 </body>

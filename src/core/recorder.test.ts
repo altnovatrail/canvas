@@ -179,3 +179,29 @@ describe("the sheet", () => {
     ]);
   });
 });
+
+describe("a sheet given another history", () => {
+  test("drops the stroke under way and numbers the next stroke as it is told", () => {
+    const { recorder, strokes } = recording();
+    recorder.down(down(10, 10, 0));
+    recorder.up(up(20, 10, 10));
+    recorder.down(down(30, 10, 20));
+    recorder.restart(8);
+    expect(recorder.live).toBeUndefined();
+    expect(recorder.pointer).toBeUndefined();
+    // The dropped stroke's pointer writes nothing more, and lands nothing.
+    expect(recorder.move(move(40, 10, 30))).toBe(false);
+    expect(recorder.up(up(50, 10, 40))).toBe(false);
+    recorder.down(down(60, 10, 50));
+    recorder.up(up(70, 10, 60));
+    expect(strokes.map((stroke) => stroke.id)).toEqual([1, 8]);
+  });
+});
+
+test("a pressure beyond 0 to 1, as an event a script makes may give it, is kept to that range", () => {
+  const { recorder, strokes } = recording();
+  recorder.down(down(10, 10, 0, { pressure: 1.5 }));
+  recorder.move(move(20, 10, 10, { pressure: -0.5 }));
+  recorder.up(up(30, 10, 20));
+  expect(strokes[0]?.points.map((point) => point.p)).toEqual([1, 0, 0]);
+});

@@ -5,6 +5,7 @@ import { groupsOf } from "./groups.js";
 import type { HistoryEvent } from "./history.js";
 import type { Stroke } from "./ink.js";
 import {
+  digestOf,
   type Mark,
   type Marks,
   marksOf,
@@ -30,9 +31,10 @@ import {
 
 // The tutor's marks on the sheet (R26), on strokes code draws, as every test's strokes are
 // (CLAUDE.md): the synthetic sheets, crowded sheets of a seeded generator, and a few strokes of a
-// test's own. A submission is what the element is to give with its crop (T15): the crop's numbers
-// and the groups. The rule of snapping is checked against the rule written out once more in
-// BigInt from its words — the box laid on the sheet by the crop's sheet_box — where nothing rounds.
+// test's own. A submission is what the element gives with its crop (R27): the crop's numbers, the
+// groups and their digest. The rule of snapping is checked against the rule written out once more
+// in BigInt from its words — the box laid on the sheet by the crop's sheet_box — where nothing
+// rounds.
 
 const SHEETS_OF_THE_MARKS = [...SHEETS, ...CROP_SHEETS];
 
@@ -40,7 +42,10 @@ const DIGITS = CROP.heights;
 
 type Fractions = readonly [number, number, number, number];
 
-/** What the element is to give with its crop at `digit` (T15): the crop's numbers and the groups. */
+/**
+ * What the element gives with its crop at `digit` (R27): the crop's numbers, the groups and their
+ * digest — the crop whole here, for the tests read its heights too.
+ */
 function submissionOf(
   strokes: readonly Stroke[],
   digit: number = CROP.digit,
@@ -48,7 +53,7 @@ function submissionOf(
   const groups = groupsOf(strokes);
   const crop = cropOf(strokes, groups, digit);
   if (crop === null) throw new Error("the sheet has no crop");
-  return { crop, groups };
+  return { crop, groups, digest: digestOf(strokes, crop, groups) };
 }
 
 /** Every stroke a history wrote, erased or not: what the sheet has known. */
@@ -383,6 +388,123 @@ describe("a mark", () => {
     expect(() => placesOf(marks, knownOf(other.work.history))).toThrow(/not this sheet's/);
     // A sheet that has known none of them.
     expect(() => placesOf(marks, [])).toThrow(/not this sheet's/);
+    // The same strokes, but for a point a tenth of a unit off: another sheet's too.
+    const nudged = knownOf(hand.work.history).map((stroke) =>
+      stroke.id === three[0]
+        ? {
+            ...stroke,
+            points: stroke.points.map((point, n) =>
+              n === 0 ? { ...point, x: point.x + 0.1 } : point,
+            ),
+          }
+        : stroke,
+    );
+    expect(() => placesOf(marks, nudged)).toThrow(/not this sheet's/);
+  });
+
+  test("is not placed by a context changed since the sheet gave it", () => {
+    const { hand, submission } = sent();
+    const known = knownOf(hand.work.history);
+    const marks: Marks = { submission, marks: [frameAt(frameOf(submission.crop, "B"))] };
+    expect(() => placesOf(marks, known)).not.toThrow();
+    const [first, second] = submission.crop.frames;
+    if (first === undefined || second === undefined) throw new Error("two groups");
+    const changes: Submission[] = [
+      // A frame of another group's place: the frames are the context's, and the digest holds them.
+      {
+        ...submission,
+        crop: { ...submission.crop, frames: [{ ...first, box: second.box }, second] },
+      },
+      // The table in another order: the IDs of a group as the sheet did not give them.
+      {
+        ...submission,
+        groups: submission.groups.map((group) => ({ ...group, ids: [...group.ids].reverse() })),
+      },
+      // A digest of its own.
+      { ...submission, digest: "0".repeat(16) },
+    ];
+    for (const changed of changes) {
+      const given = marksOf(JSON.parse(JSON.stringify({ ...marks, submission: changed })));
+      expect(() => placesOf(given, known)).toThrow(/not this sheet's, or it was changed/);
+    }
+  });
+});
+
+describe("the digest of a submission", () => {
+  const { work } = staircase();
+  const strokes = work.strokes;
+  const groups = groupsOf(strokes);
+  const crop = cropOf(strokes, groups);
+  if (crop === null) throw new Error("the sheet has no crop");
+  const digest = digestOf(strokes, crop, groups);
+
+  test("is 16 hex digits, the same for the strokes in any order", () => {
+    expect(digest).toMatch(/^[0-9a-f]{16}$/);
+    // A context a consumer kept goes on matching only while the digest does: a new way of writing
+    // it is a new version of the context, and this test says so.
+    expect(digest).toBe("90ceddb590b89425");
+    expect(digestOf([...strokes].reverse(), crop, groups)).toBe(digest);
+  });
+
+  test("holds every point as the rules see it: in tenths of a unit and whole milliseconds", () => {
+    const [first] = strokes;
+    if (first === undefined) throw new Error("no stroke");
+    const moved = (change: (point: Stroke["points"][number]) => Stroke["points"][number]) =>
+      digestOf(
+        strokes.map((stroke) =>
+          stroke === first
+            ? { ...first, points: first.points.map((p, n) => (n === 0 ? change(p) : p)) }
+            : stroke,
+        ),
+        crop,
+        groups,
+      );
+    // Less than a tenth, and less than half a millisecond: nothing the rules see.
+    const near = (v: number) =>
+      Math.round(10 * v + 0.2) === Math.round(10 * v) ? v + 0.02 : v - 0.02;
+    expect(moved((p) => ({ ...p, x: near(p.x) }))).toBe(digest);
+    expect(
+      moved((p) => ({
+        ...p,
+        t: Math.round(p.t) === Math.round(p.t + 0.2) ? p.t + 0.2 : p.t - 0.2,
+      })),
+    ).toBe(digest);
+    // The pressure is none of it.
+    expect(moved((p) => ({ ...p, p: 1 - p.p }))).toBe(digest);
+    // A tenth, a millisecond, or the points in another order: another digest.
+    expect(moved((p) => ({ ...p, x: p.x + 0.1 }))).not.toBe(digest);
+    expect(moved((p) => ({ ...p, y: p.y - 0.1 }))).not.toBe(digest);
+    expect(moved((p) => ({ ...p, t: p.t + 1 }))).not.toBe(digest);
+    expect(
+      digestOf(
+        strokes.map((stroke) =>
+          stroke === first ? { ...first, points: [...first.points].reverse() } : stroke,
+        ),
+        crop,
+        groups,
+      ),
+    ).not.toBe(first.points.length > 1 ? digest : "");
+  });
+
+  test("holds the whole numbers of the context, but not sheet_box", () => {
+    expect(digestOf(strokes, { ...crop, drawn: crop.drawn - 1 }, groups)).not.toBe(digest);
+    expect(
+      digestOf(strokes, { ...crop, margins: [crop.margins[0] + 1, crop.margins[1]] }, groups),
+    ).not.toBe(digest);
+    const { box, median } = crop.exact;
+    expect(
+      digestOf(
+        strokes,
+        { ...crop, exact: { box: { ...box, maxY: box.maxY + 1 }, median } },
+        groups,
+      ),
+    ).not.toBe(digest);
+    expect(digestOf(strokes, { ...crop, exact: { box, median: median + 1 } }, groups)).not.toBe(
+      digest,
+    );
+    // sheet_box comes from the numbers above, and is checked against them within its slack.
+    const elsewhere = { ...crop, sheetBox: [0, 0, 1, 1] as const };
+    expect(digestOf(strokes, elsewhere, groups)).toBe(digest);
   });
 });
 
@@ -521,6 +643,10 @@ describe("the marks given", () => {
         ]),
         /^marks\.submission\.crop\.frames\[0\]\.box/,
       ],
+      [changed([["submission", "digest"], undefined]), /^marks\.submission\.digest/],
+      [changed([["submission", "digest"], 1234]), /^marks\.submission\.digest/],
+      [changed([["submission", "digest"], "0123456789abcde"]), /^marks\.submission\.digest/],
+      [changed([["submission", "digest"], "0123456789ABCDEF"]), /^marks\.submission\.digest/],
     ];
     for (const [value, message] of cases) {
       expect(() => marksOf(value), String(message)).toThrow(TypeError);

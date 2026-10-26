@@ -1,14 +1,15 @@
 import { afterEach, expect, test } from "vitest";
-import { cropOf } from "../core/crop.js";
-import { groupsOf } from "../core/groups.js";
+import { CROP } from "../core/crop.js";
 import { toScreen, type View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
+import { workForCheck } from "../core/submission.js";
 import "./index.js";
 import { probe } from "./probe.js";
 
 // The sheet with forced colours, in a browser context that is in the mode from the start (R23):
 // the system's colours stand in for the consumer's theme on the screen, the tutor's frames too, and
-// the picture of the work is as it always is. vitest.config.ts runs this file alone, in a project of its own.
+// the crop for checking is as it always is. vitest.config.ts runs this file alone, in a project of
+// its own.
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -36,7 +37,7 @@ function channels(colour: string): number[] {
   return (colour.match(/\d+(\.\d+)?/g) ?? []).slice(0, 3).map(Number);
 }
 
-test("with forced colours the sheet takes the system's colours, whatever the consumer's theme, and the picture of the work keeps its own", async () => {
+test("with forced colours the sheet takes the system's colours, whatever the consumer's theme, and the crop for checking keeps its own", async () => {
   expect(matchMedia("(forced-colors: active)").matches).toBe(true);
   // The mode forces colours, not the media query alone: a page's own colour gives way.
   expect(system("rgb(255, 0, 0)")).toBe(system("CanvasText"));
@@ -95,12 +96,10 @@ test("with forced colours the sheet takes the system's colours, whatever the con
   }
 
   // A frame of the tutor's round the strokes: the system's highlight, not the theme's colour.
-  const { strokes } = probe(element);
-  const groups = groupsOf(strokes);
-  const crop = cropOf(strokes, groups);
-  if (crop === null) throw new Error("the sheet has no crop");
+  const sent = await element.exportWork();
+  if (sent === null) throw new Error("the sheet gave no work for checking");
   element.marks = {
-    submission: { crop, groups },
+    submission: sent.submission,
     marks: [{ kind: "frame", at: { group: "A" }, name: "This line" }],
   };
   await settle();
@@ -108,11 +107,9 @@ test("with forced colours the sheet takes the system's colours, whatever the con
   if (!frame) throw new Error("no frame drawn");
   expect(getComputedStyle(frame).stroke).toBe(system("Highlight"));
 
-  const png = await element.exportPNG();
-  if (png === null) throw new Error("the sheet gave no picture");
-  const bitmap = await createImageBitmap(png);
-  const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext("2d");
-  context?.drawImage(bitmap, 0, 0);
-  expect([...(context?.getImageData(200, 300, 1, 1).data ?? [])]).toEqual([17, 17, 17, 255]);
-  expect([...(context?.getImageData(200, 600, 1, 1).data ?? [])]).toEqual([255, 255, 255, 255]);
+  // The crop for checking is the sheet's own raster, whatever colours the system forces (R25).
+  const work = await element.exportWork();
+  const own = workForCheck(probe(element).strokes, CROP.digit);
+  if (work === null || own === null) throw new Error("the sheet gave no work for checking");
+  expect(new Uint8Array(await work.png.arrayBuffer())).toEqual(own.png);
 });

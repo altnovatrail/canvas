@@ -1,8 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
-import { cropOf } from "../core/crop.js";
 import { type Box, boxOf } from "../core/geometry.js";
-import { groupsOf } from "../core/groups.js";
 import type { Mark, Marks, Submission } from "../core/marks.js";
 import { toScreen, type View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
@@ -12,7 +10,7 @@ import { probe } from "./probe.js";
 // The tutor's marks on the sheet in Chromium (R26): a frame round the strokes a mark holds on to,
 // as they are now, over the work and through to the pen, read by its name; fading while a stroke
 // comes into it; and nothing written while nothing changes. The submissions are the element's own,
-// made as T15's exportWork() is to make them: the crop's numbers and the groups.
+// from its exportWork() (R27): the crop's numbers, the groups and their digest.
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -92,15 +90,11 @@ function twoGroups(canvas: HTMLCanvasElement, view: () => View): void {
   draw(canvas, view, [600, 600], [800, 600]);
 }
 
-/** The element's submission, as exportWork() is to give it (T15): its crop at 32 px, its groups. */
-function submissionOf(
-  element: HTMLElement,
-): Submission & { crop: NonNullable<ReturnType<typeof cropOf>> } {
-  const { strokes } = probe(element);
-  const groups = groupsOf(strokes);
-  const crop = cropOf(strokes, groups);
-  if (crop === null) throw new Error("the sheet has no crop");
-  return { crop, groups };
+/** The element's submission, as its exportWork() gives it (R27): its crop at 32 px, its groups. */
+async function sentOf(element: NovatrailCanvas): Promise<Submission> {
+  const work = await element.exportWork();
+  if (work === null) throw new Error("the sheet gave no work for checking");
+  return work.submission;
 }
 
 function frameOf(name: string, at: Mark["at"]): Mark {
@@ -148,7 +142,7 @@ test("a frame stands round its strokes, 10 units off their points, over the work
   const { element, root, canvas, layer, view } = await sheet(500);
   twoGroups(canvas, view);
   await settle();
-  const submission = submissionOf(element);
+  const submission = await sentOf(element);
   expect(submission.groups.map(({ ids }) => ids)).toEqual([[1, 2], [3]]);
   const marks: Marks = { submission, marks: [frameOf("Look at these lines", { group: "A" })] };
   element.marks = marks;
@@ -177,7 +171,7 @@ test("a box on the crop takes the strokes the model saw there, and what is writt
   const { element, canvas, view } = await sheet(500);
   twoGroups(canvas, view);
   await settle();
-  const submission = submissionOf(element);
+  const submission = await sentOf(element);
   // Written after the submission, from inside the frame of «A» to well past it.
   draw(canvas, view, [150, 120], [300, 120]);
   await settle();
@@ -194,7 +188,7 @@ test("the frame follows its strokes as they are erased, is gone when all are, an
   const { element, canvas, layer, view } = await sheet(500);
   twoGroups(canvas, view);
   await settle();
-  element.marks = { submission: submissionOf(element), marks: [frameOf("This", { group: "A" })] };
+  element.marks = { submission: await sentOf(element), marks: [frameOf("This", { group: "A" })] };
   await settle();
   element.tool = "eraser";
   const eraser = press(canvas, view);
@@ -220,7 +214,7 @@ test("strokes under the eraser take the frame off at once; a cancelled press bri
   const { element, canvas, view } = await sheet(500);
   twoGroups(canvas, view);
   await settle();
-  element.marks = { submission: submissionOf(element), marks: [frameOf("This", { group: "A" })] };
+  element.marks = { submission: await sentOf(element), marks: [frameOf("This", { group: "A" })] };
   await settle();
   element.tool = "eraser";
   const eraser = press(canvas, view);
@@ -246,7 +240,7 @@ test("new strokes inside a frame do not move it, and marks given after clear() s
   const { element, canvas, view } = await sheet(500);
   twoGroups(canvas, view);
   await settle();
-  const submission = submissionOf(element);
+  const submission = await sentOf(element);
   element.clear();
   element.marks = { submission, marks: [frameOf("This", { group: "A" })] };
   await settle();
@@ -266,7 +260,7 @@ test("a box over empty paper, and an answer cell while the task has none, have n
   twoGroups(canvas, view);
   await settle();
   element.marks = {
-    submission: submissionOf(element),
+    submission: await sentOf(element),
     marks: [
       frameOf("Nothing here", { box: [0, 0, 1, 1] }),
       frameOf("The answer", { cell: "answer" }),
@@ -282,7 +276,7 @@ test("a frame fades while the stroke under way comes into it, back when it lands
   const { element, canvas, layer, view } = await sheet(500);
   twoGroups(canvas, view);
   await settle();
-  element.marks = { submission: submissionOf(element), marks: [frameOf("This", { group: "A" })] };
+  element.marks = { submission: await sentOf(element), marks: [frameOf("This", { group: "A" })] };
   await settle();
   const [rect] = shown(layer);
   if (rect === undefined) throw new Error("no frame drawn");
@@ -314,7 +308,7 @@ test("a frame fades while the stroke under way comes into it, back when it lands
   hand.down([150, 120]);
   hand.move([160, 125]);
   await settle();
-  element.marks = { submission: submissionOf(element), marks: [frameOf("This", { group: "A" })] };
+  element.marks = { submission: await sentOf(element), marks: [frameOf("This", { group: "A" })] };
   await settle();
   const [late] = shown(layer);
   expect(late?.classList.contains("under")).toBe(true);
@@ -328,7 +322,7 @@ test("marks equal to those shown, writing far from every frame and a scroll writ
   twoGroups(canvas, view);
   await settle();
   const marks: Marks = {
-    submission: submissionOf(element),
+    submission: await sentOf(element),
     marks: [frameOf("This", { group: "A" })],
   };
   element.marks = marks;
@@ -355,7 +349,7 @@ test("a frame at the sheet's edge stays whole on it, and two marks of one name a
   draw(canvas, view, [700, 700], [800, 700]);
   await settle();
   element.marks = {
-    submission: submissionOf(element),
+    submission: await sentOf(element),
     marks: [frameOf("Here", { group: "A" }), frameOf("Here", { group: "B" })],
   };
   await settle();
@@ -366,7 +360,7 @@ test("a frame at the sheet's edge stays whole on it, and two marks of one name a
   expect(page.getByRole("img", { name: "Here" }).elements()).toHaveLength(2);
   // The same object, its list grown, given again: every value is checked as it comes.
   const list: Mark[] = [frameOf("Here", { group: "A" })];
-  const marks: Marks = { submission: submissionOf(element), marks: list };
+  const marks: Marks = { submission: await sentOf(element), marks: list };
   element.marks = marks;
   await settle();
   expect(probe(element).marks).toHaveLength(1);
@@ -382,7 +376,7 @@ test("the frame takes the theme's colour, and leaves its own strokes' ink as it 
   for (let i = 0; i < 6; i++) draw(canvas, view, [100, 300], [300, 300]);
   await settle();
   element.style.setProperty("--novatrail-canvas-mark", "rgb(0, 160, 0)");
-  element.marks = { submission: submissionOf(element), marks: [frameOf("This", { group: "A" })] };
+  element.marks = { submission: await sentOf(element), marks: [frameOf("This", { group: "A" })] };
   await settle();
   const [rect] = shown(layer);
   if (rect === undefined) throw new Error("no frame drawn");
@@ -423,7 +417,7 @@ test("marks not of a submission of this sheet are a TypeError, undefined takes t
   twoGroups(canvas, view);
   await settle();
   const own: Marks = {
-    submission: submissionOf(element),
+    submission: await sentOf(element),
     marks: [frameOf("This", { group: "A" })],
   };
   expect(() => {
@@ -435,7 +429,7 @@ test("marks not of a submission of this sheet are a TypeError, undefined takes t
   draw(other.canvas, other.view, [500, 840], [700, 840]);
   draw(other.canvas, other.view, [100, 1200], [300, 1200]);
   await settle();
-  const theirs: Marks = { submission: submissionOf(other.element), marks: own.marks };
+  const theirs: Marks = { submission: await sentOf(other.element), marks: own.marks };
   expect(() => {
     element.marks = theirs;
   }).toThrow(/not this sheet's/);
@@ -463,4 +457,76 @@ test("marks not of a submission of this sheet are a TypeError, undefined takes t
   } finally {
     warn.mockRestore();
   }
+});
+
+test("a new history puts the marks back on their strokes, or takes them off; the same history in another element takes them, and marks before their history are a TypeError", async () => {
+  const { element, canvas, layer, view } = await sheet(500);
+  twoGroups(canvas, view);
+  await settle();
+  const marks: Marks = {
+    submission: await sentOf(element),
+    marks: [frameOf("This", { group: "A" })],
+  };
+  element.marks = marks;
+  await settle();
+  const drawn = probe(element).marks;
+  expect(drawn).toHaveLength(1);
+
+  // The history with the writing of «B» undone: the marks' strokes are all in it, and the frame of
+  // «A» stays as it was, nothing written to it.
+  const records: MutationRecord[] = [];
+  const observer = new MutationObserver((list) => records.push(...list));
+  observer.observe(layer, { subtree: true, attributes: true, childList: true });
+  const history = JSON.parse(JSON.stringify(element.history));
+  const last = element.history.at(-1)?.t ?? 0;
+  element.history = [...history, { kind: "undo", t: last + 10, removed: [3], restored: [] }];
+  await settle();
+  observer.disconnect();
+  expect(probe(element).strokes.map(({ id }) => id)).toEqual([1, 2]);
+  expect(element.marks).toBe(marks);
+  expect(probe(element).marks).toEqual(drawn);
+  expect(records.filter((record) => record.attributeName !== "viewBox")).toEqual([]);
+
+  // The same history in another element, as after the page is opened again.
+  const other = await sheet(500);
+  other.element.history = history;
+  other.element.marks = marks;
+  await settle();
+  expect(probe(other.element).marks.map(({ ids }) => ids)).toEqual(drawn.map(({ ids }) => ids));
+
+  // Marks given before their history: the sheet knows none of their strokes.
+  const early = await sheet(500);
+  expect(() => {
+    early.element.marks = marks;
+  }).toThrow(/not this sheet's/);
+
+  // A history without their strokes takes them off.
+  element.history = undefined;
+  await settle();
+  expect(element.marks).toBeUndefined();
+  expect(rects(layer)).toEqual([]);
+  expect(probe(element).marks).toEqual([]);
+});
+
+test("a new history places the marks as they were checked when given, whatever the consumer did to its object since", async () => {
+  const { element, canvas, view } = await sheet(500);
+  twoGroups(canvas, view);
+  await settle();
+  const given = JSON.parse(
+    JSON.stringify({ submission: await sentOf(element), marks: [frameOf("This", { group: "A" })] }),
+  );
+  element.marks = given;
+  await settle();
+  const drawn = probe(element).marks;
+  // The consumer reuses its object: a mark the sheet would not take, and «A» gone from its table.
+  given.marks.push({ kind: "underline", at: { group: "A" }, name: "Not a frame" });
+  given.submission.groups = given.submission.groups.slice(1);
+  const last = element.history.at(-1)?.t ?? 0;
+  element.history = [
+    ...JSON.parse(JSON.stringify(element.history)),
+    { kind: "undo", t: last + 10, removed: [3], restored: [] },
+  ];
+  await settle();
+  expect(element.marks).toBe(given);
+  expect(probe(element).marks).toEqual(drawn);
 });

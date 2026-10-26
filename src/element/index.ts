@@ -2,26 +2,35 @@
 // canvas kind, with its markup in an open shadow root (R07). Importing it registers the element,
 // once: a page has one element of this name. So far it is the handwriting sheet with its input,
 // one pointer at a time (RUN.md, T09; R18), its undo and clearing, which the consumer calls from
-// buttons of its own (T33; R19), and what tutor's check board needs to take it in place of its own
-// sheet: the picture of the work and an event after every change of the work (T34; R20). Its
-// eraser takes strokes off whole, by the path of a press, as the consumer's tool or a pen's eraser,
-// and the sheet keeps the history of writing (T10; R22). The sheet is a stack of layers, the
-// task's grid on its template and the task's statement above it, its look the consumer's to theme
-// (T11; R23). The tutor's marks of a submission hold on to the learner's strokes, and a frame
-// shows where each is, over the work (T14; R26). The element's other properties, methods and
-// events come with the interface of the package (T15).
+// buttons of its own (T33; R19). Its eraser takes strokes off whole, by the path of a press, as
+// the consumer's tool or a pen's eraser, and the sheet keeps the history of writing (T10; R22).
+// The sheet is a stack of layers, the task's grid on its template and the task's statement above
+// it, its look the consumer's to theme (T11; R23). The tutor's marks of a submission hold on to
+// the learner's strokes, and a frame shows where each is, over the work (T14; R26). The history
+// of writing comes in and goes out, an event tells of every action, and the work for checking is
+// the crop with the context of its submission (T15; R27). The element's own buttons, with their
+// labels in its `lang`, come with T41.
 
 import type { Vec2 } from "perfect-freehand";
 import { Clock } from "../core/clock.js";
 import { ERASER_BUTTON, Eraser } from "../core/eraser.js";
 import { type Box, boxOf } from "../core/geometry.js";
 import { gridPath } from "../core/grid.js";
+import { begins, type HistoryEvent, sameHistory } from "../core/history.js";
 import type { InkPoint, Stroke } from "../core/ink.js";
-import { type Marks, marksOf, type Placed, placesOf, shownOf } from "../core/marks.js";
-import { evenOutline, followsPressure, INK_REACH, outline } from "../core/outline.js";
+import {
+  type Marks,
+  marksOf,
+  type Placed,
+  placesOf,
+  type Submission,
+  shownOf,
+} from "../core/marks.js";
+import { INK_REACH, outline } from "../core/outline.js";
 import { type PointerSample, Recorder } from "../core/recorder.js";
 import { fitScale, K_MAX, scaleFor, toSheet, type View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
+import { workForCheck } from "../core/submission.js";
 import {
   NO_TASK,
   sameGrid,
@@ -30,7 +39,7 @@ import {
   type Template,
   templateOf,
 } from "../core/task.js";
-import { Work } from "../core/work.js";
+import { nextIdOf, resumeOf, Work } from "../core/work.js";
 import { attachProbe } from "./probe.js";
 import { type Media, Statement } from "./statement.js";
 
@@ -38,6 +47,8 @@ export type { Crop, Frame } from "../core/crop.js";
 export type { Box } from "../core/geometry.js";
 export type { GridKind } from "../core/grid.js";
 export type { Group } from "../core/groups.js";
+export type { HistoryEvent } from "../core/history.js";
+export type { InkPoint, Stroke } from "../core/ink.js";
 export type { Anchor, CropNumbers, Mark, Marks, Submission } from "../core/marks.js";
 export type { PicturePart, StatementPart, Task, TextPart } from "../core/task.js";
 export type { Media } from "./statement.js";
@@ -45,12 +56,30 @@ export type { Media } from "./statement.js";
 /** The name the element is registered under. */
 export const TAG = "novatrail-canvas";
 
-/** The colour of the ink on the picture of the work: the check board's (R19 tutor). */
+/**
+ * What a `historychange` tells (R27): the events the history of writing has gained, in its order,
+ * and where the first of them stands in it — `history` is what was there before, and these.
+ */
+export interface HistoryChange {
+  readonly events: readonly HistoryEvent[];
+  readonly from: number;
+}
+
+/** The event the element sends after every action on the sheet (R27). */
+export type HistoryChangeEvent = CustomEvent<HistoryChange>;
+
+/** The work for checking (R27): the PNG of the crop, and the context of the submission. */
+export interface ExportedWork {
+  readonly png: Blob;
+  readonly submission: Submission;
+}
+
+/** The colour of the ink unless the consumer's theme gives one. */
 const INK = "#111";
-/** The colour of the sheet on the picture of the work: the board's white. */
+/** The colour of the sheet unless the consumer's theme gives one. */
 const PAPER = "#fff";
-/** The event the element sends after every change of the work (R20). */
-const WORK_CHANGE = "workchange";
+/** The event the element sends after every action on the sheet, with the history's new events. */
+const HISTORY_CHANGE = "historychange";
 /**
  * The colour of the tutor's frames unless the consumer's theme gives one: a blue, for now, and not
  * a red, which would read as «wrong» (E4 in RUN.md, «Не входит»).
@@ -224,8 +253,14 @@ export class NovatrailCanvas extends HTMLElement {
   readonly #statement = new Statement();
   /** The sheet's clock, for its strokes and its actions alike (R22). */
   readonly #clock = new Clock();
-  /** The strokes on the sheet, the actions undo takes back and the history of writing (R19, R22). */
-  readonly #work = new Work(this.#clock);
+  /**
+   * The strokes on the sheet, the actions undo takes back and the history of writing (R19, R22): a
+   * new work when the sheet is given another history (R27).
+   */
+  #work = new Work(this.#clock);
+  /** How many events of the history `historychange` has told of, and whether it is telling now. */
+  #told = 0;
+  #telling = false;
   /** The input: a finished stroke goes onto the work, and the work has changed. */
   readonly #recorder = new Recorder((stroke) => {
     this.#work.write(stroke);
@@ -243,6 +278,15 @@ export class NovatrailCanvas extends HTMLElement {
   #shownTemplate: Template = NO_TASK;
   /** The tutor's marks as the consumer gave them, and those of them that have a place (R26). */
   #marks: Marks | undefined;
+  /** The marks as they were checked when given: a new history places these, whatever became of those. */
+  #given: Marks | undefined;
+  /**
+   * The last history given that was the sheet's, how long it was then and the sheet's history it
+   * was: given again, as long, while the sheet's is still that one, it is not walked through again.
+   */
+  #equal:
+    | { readonly given: unknown; readonly length: number; readonly history: unknown }
+    | undefined;
   #shown: readonly Shown[] = [];
   /** The strokes on the sheet by ID, kept while the sheet's strokes are the same array. */
   #onSheet: { readonly strokes: readonly Stroke[]; readonly byId: ReadonlyMap<number, Stroke> } = {
@@ -255,8 +299,6 @@ export class NovatrailCanvas extends HTMLElement {
   #writing: { readonly stroke: Stroke; seen: number } | undefined;
   /** The path of each finished stroke, outlined once (R18). */
   readonly #inks = new WeakMap<Stroke, Ink>();
-  /** The path of each pen's stroke on the picture of the work, without its pressure, outlined once. */
-  readonly #evens = new WeakMap<Stroke, Path2D>();
   readonly #resize = new ResizeObserver((entries) => {
     for (const entry of entries) {
       if (entry.target !== this.#viewport) continue;
@@ -333,7 +375,6 @@ export class NovatrailCanvas extends HTMLElement {
     attachProbe(this, () => ({
       strokes: this.#work.strokes,
       live: this.#recorder.live,
-      history: this.#work.history,
       pending: [...this.#eraser.pending],
       outlines: this.#outlines,
       view: this.#view(),
@@ -343,6 +384,8 @@ export class NovatrailCanvas extends HTMLElement {
     this.#adopt("tool");
     this.#adopt("task");
     this.#adopt("media");
+    // The history before the marks: they hold on to its strokes.
+    this.#adopt("history");
     this.#adopt("marks");
   }
 
@@ -404,32 +447,101 @@ export class NovatrailCanvas extends HTMLElement {
   }
 
   /**
+   * The history of writing (R22, R27): every stroke, erasing, clearing and undo on the sheet, in the
+   * order they landed, at the sheet's time — frozen, and the same array until the next action. The
+   * consumer keeps it, adding what `historychange` tells, and gives it back to open the sheet as it
+   * was: the strokes, and the actions undo takes back.
+   *
+   * The history the sheet has changes nothing: the very array, or one whose every event says the
+   * same — fields the sheet does not keep are passed over, and `undefined` is the empty one. A
+   * stroke under way goes on, and the marks stay. Any other history replaces the sheet, with no
+   * event: it must be one the sheet could have written, or it is a TypeError that names the field,
+   * and the sheet stays as it was. A stroke or an erasing under way goes: its IDs and its times are
+   * the last sheet's. The clock goes on more than the pause of the groups after the history's last
+   * event, the next stroke takes the next ID, and the tutor's marks go back on the strokes, or off,
+   * if the history has not their strokes. A history that is where the sheet's began loses what came
+   * after, and says so in the console. The task and the history are each the consumer's to give, in
+   * either order.
+   */
+  get history(): readonly HistoryEvent[] {
+    return this.#work.history;
+  }
+
+  set history(history: readonly HistoryEvent[] | undefined) {
+    const before = this.#work.history;
+    const equal = this.#equal;
+    // A consumer that gives back the same array of its own on every render, as long as it was, is
+    // not walked through point by point each time. One it has added to is compared again.
+    if (
+      equal !== undefined &&
+      equal.given === history &&
+      equal.history === before &&
+      Array.isArray(history) &&
+      history.length === equal.length
+    ) {
+      return;
+    }
+    if (sameHistory(history, before)) {
+      this.#equal = {
+        given: history,
+        length: Array.isArray(history) ? history.length : 0,
+        history: before,
+      };
+      return;
+    }
+    // undefined, and undefined alone, is the empty history: null is a value, and a wrong one.
+    const work = Work.restore(history === undefined ? [] : history, this.#clock);
+    const after = work.history;
+    // The empty history is a new sheet, which a consumer asks for on purpose.
+    if (after.length > 0 && begins(after, before)) {
+      console.warn(
+        `<${TAG}> takes a history that is where its own began: the ${before.length - after.length} actions after it are gone`,
+      );
+    }
+    this.#recorder.restart(nextIdOf(after));
+    const erasing = this.#eraser.pointer;
+    if (erasing !== undefined) this.#eraser.cancel(erasing);
+    this.#clock.resume(resumeOf(after));
+    this.#work = work;
+    this.#told = after.length;
+    this.#writing = undefined;
+    this.#equal = undefined;
+    // The marks as they were checked when given go back on their strokes, if this history has them.
+    if (this.#given !== undefined) {
+      try {
+        this.#showMarks(this.#places(this.#given));
+      } catch (error) {
+        if (!(error instanceof TypeError)) throw error;
+        this.#marks = undefined;
+        this.#given = undefined;
+        this.#showMarks([]);
+      }
+    }
+    this.#request();
+  }
+
+  /**
    * The tutor's marks of one submission, with the context the element gave with its crop (R07,
    * R26): each a frame where a group of strokes is, or a box on the crop the model saw. A mark
    * holds on to the strokes the model saw there and is drawn around those of them the sheet shows,
    * as they are now: new strokes do not move it, and when all of them are erased it is gone, till
    * undo brings them back. A box that comes near no stroke, and an answer cell while the task has
    * none, have no frame: the question is asked without one. The type is the element's own until
-   * spec's contract gives one. A submission goes back to the element that gave it: one whose
-   * strokes this sheet does not have where it has them is a TypeError, and so are marks that are
-   * not marks. `undefined` takes the marks off. Every value is checked as it comes, and marks
-   * equal to those shown write nothing.
+   * spec's contract gives one. A submission goes back to a sheet whose history holds its strokes,
+   * as its digest tells (R27): one of other strokes is a TypeError, and so are marks given before
+   * the history they hold on to, and marks that are not marks. A new history puts the marks back
+   * on their strokes, or takes them off. `undefined` takes the marks off. Every value is checked as
+   * it comes, and marks equal to those shown write nothing.
    */
   get marks(): Marks | undefined {
     return this.#marks;
   }
 
   set marks(marks: Marks | undefined) {
-    let shown: { readonly name: string; readonly placed: Placed }[] = [];
-    if (marks !== undefined) {
-      const given = marksOf(marks);
-      const places = placesOf(given, this.#known());
-      shown = given.marks.flatMap(({ name }, n) => {
-        const placed = places[n];
-        return placed ? [{ name, placed }] : [];
-      });
-    }
+    const given = marks === undefined ? undefined : marksOf(marks);
+    const shown = given === undefined ? [] : this.#places(given);
     this.#marks = marks;
+    this.#given = given;
     this.#showMarks(shown);
   }
 
@@ -443,9 +555,9 @@ export class NovatrailCanvas extends HTMLElement {
 
   /**
    * Takes back the last action on the sheet — the last stroke written, the last erasing, or the
-   * clearing — and says whether there was one (R19, R22), with a `workchange` if there was (R20). A
-   * stroke under way stays: it lands when it ends. So does an erasing: what it came near leaves the
-   * sheet when it lifts, if it is on the sheet then.
+   * clearing — and says whether there was one (R19, R22), with a `historychange` if there was
+   * (R27). A stroke under way stays: it lands when it ends. So does an erasing: what it came near
+   * leaves the sheet when it lifts, if it is on the sheet then.
    */
   undo(): boolean {
     const undone = this.#work.undo(performance.now());
@@ -455,8 +567,8 @@ export class NovatrailCanvas extends HTMLElement {
 
   /**
    * Takes every stroke off the sheet, an action that undo takes back, and says whether there were
-   * any (R19), with a `workchange` if there were (R20). A stroke under way stays: it lands when it
-   * ends.
+   * any (R19), with a `historychange` if there were (R27). A stroke under way stays: it lands when
+   * it ends.
    */
   clear(): boolean {
     const cleared = this.#work.clear(performance.now());
@@ -465,44 +577,25 @@ export class NovatrailCanvas extends HTMLElement {
   }
 
   /**
-   * The picture of the work, a PNG, as tutor's check board sends its sheet to the models (R20; R19
-   * tutor): the whole sheet, a pixel to a unit — 1000 × 1400, whatever the screen and the
-   * element's size — its strokes in ink on white, whatever the theme. The line is as wide all
-   * along, a pen's too: the pressure goes into no picture for checking. The browser's own canvas
-   * draws it, so its bytes are the browser's.
-   *
-   * It is the sheet as it is when this is called: a stroke under way is not on it yet, and one that
-   * ends before the promise settles is not in it. A sheet without strokes has no picture, and the
-   * promise gives null; it is rejected if the browser cannot draw or encode the picture.
+   * The work for checking (R07, R27), when the consumer asks for it, at Check: the crop of the
+   * strokes the sheet shows, at the height of a digit the task asks for (R25), its PNG, and the
+   * context of the submission — the crop's numbers, the groups and their digest (R26, R27) — which
+   * the consumer keeps, sends only the PNG to be checked (R09 spec), and gives back with the tutor's
+   * marks. It is the sheet as it is when this is called: a stroke under way is not on it yet, while
+   * the strokes under an eraser not yet lifted still are. A sheet without strokes has no work to
+   * check, and the promise gives null (H3).
    */
-  async exportPNG(): Promise<Blob | null> {
-    const strokes = this.#work.strokes;
-    if (strokes.length === 0) return null;
-    // A canvas of its own, in no document: toBlob is older in browsers than OffscreenCanvas.
-    const picture = document.createElement("canvas");
-    picture.width = SHEET.width;
-    picture.height = SHEET.height;
-    const context = picture.getContext("2d");
-    // Not null: a consumer would take it for an empty sheet.
-    if (context === null) throw new Error("the browser gives no 2D context to draw the picture on");
-    context.fillStyle = PAPER;
-    context.fillRect(0, 0, SHEET.width, SHEET.height);
-    context.fillStyle = INK;
-    for (const stroke of strokes) context.fill(this.#even(stroke));
-    // toBlob copies the canvas as it is now, before anything else can write on the sheet, and
-    // encodes the copy after (HTML Standard).
-    return new Promise((resolve, reject) => {
-      picture.toBlob((png) => {
-        if (png === null) reject(new Error("the browser could not encode the picture"));
-        else resolve(png);
-      }, "image/png");
-    });
+  async exportWork(): Promise<ExportedWork | null> {
+    const work = workForCheck(this.#work.strokes, this.#shownTemplate.digit);
+    if (work === null) return null;
+    const png = new Blob([work.png], { type: "image/png" });
+    return Object.freeze({ png, submission: work.submission });
   }
 
   disconnectedCallback(): void {
     // A stroke or an erasing under way ends where it is: its pointerup will not reach a sheet off
-    // the page. Its workchange reaches only the element's own listeners, for the element is in no
-    // tree now.
+    // the page. Its historychange reaches only the element's own listeners, for the element is in
+    // no tree now.
     this.#recorder.end();
     this.#eraser.end();
     this.#statement.disconnect();
@@ -521,7 +614,7 @@ export class NovatrailCanvas extends HTMLElement {
    * take leaves the property as the element starts it, with a warning, rather than fail the
    * element's upgrade, which would leave it dead.
    */
-  #adopt(name: "tool" | "task" | "media" | "marks"): void {
+  #adopt(name: "tool" | "task" | "media" | "history" | "marks"): void {
     if (!Object.hasOwn(this, name)) return;
     const value: unknown = Reflect.get(this, name);
     Reflect.deleteProperty(this, name);
@@ -542,6 +635,18 @@ export class NovatrailCanvas extends HTMLElement {
   /** Every stroke the sheet has known, erased or not, as its history wrote them. */
   #known(): Stroke[] {
     return this.#work.history.flatMap((event) => (event.kind === "write" ? [event.stroke] : []));
+  }
+
+  /**
+   * The marks of a submission, as `marksOf` checked them, that have a place on this sheet, each
+   * with its name: a TypeError for a submission that is not this sheet's (R26, R27).
+   */
+  #places(given: Marks): { readonly name: string; readonly placed: Placed }[] {
+    const places = placesOf(given, this.#known());
+    return given.marks.flatMap(({ name }, n) => {
+      const placed = places[n];
+      return placed ? [{ name, placed }] : [];
+    });
   }
 
   /**
@@ -756,14 +861,32 @@ export class NovatrailCanvas extends HTMLElement {
   }
 
   /**
-   * The work has changed — a stroke landed, an undo, a clearing: the sheet is drawn anew, and
-   * whoever listens hears of it at once, the work already as it now is (R20). The event goes up
-   * from the element itself, and out of a consumer's own shadow tree too, should the element be
-   * in one.
+   * The work has changed — a stroke landed, an erasing, an undo, a clearing: the sheet is drawn
+   * anew, and whoever listens hears of it at once, the history already as it now is, with the
+   * events it has gained (R27). The event goes up from the element itself, and out of a consumer's
+   * own shadow tree too, should the element be in one. An action a listener takes while it hears is
+   * told of next, once every listener has heard of the one before: each hears the history's events
+   * in its order. A history given meanwhile is no action, and what it replaced is told of no more.
    */
   #changed(): void {
     this.#request();
-    this.dispatchEvent(new Event(WORK_CHANGE, { bubbles: true, composed: true }));
+    if (this.#telling) return;
+    this.#telling = true;
+    try {
+      let history = this.#work.history;
+      while (this.#told < history.length) {
+        const from = this.#told;
+        const events = Object.freeze(history.slice(from));
+        this.#told = history.length;
+        const detail: HistoryChange = Object.freeze({ events, from });
+        this.dispatchEvent(
+          new CustomEvent(HISTORY_CHANGE, { bubbles: true, composed: true, detail }),
+        );
+        history = this.#work.history;
+      }
+    } finally {
+      this.#telling = false;
+    }
   }
 
   #request(): void {
@@ -880,9 +1003,10 @@ export class NovatrailCanvas extends HTMLElement {
 
   /**
    * The layers in the visible part, and the strokes there, in device pixels: each finished stroke
-   * by the path it was given once, the stroke under way outlined anew. What the eraser under way
-   * has come near is out of sight already, though still on the sheet until it lifts. The ink's
-   * colour is the canvas's, as the theme makes it.
+   * by the path it was given once, the stroke under way outlined anew. A stroke whose points lie
+   * far out of sight is not outlined till it comes into sight: a history given to the sheet may
+   * hold thousands (R27). What the eraser under way has come near is out of sight already, though
+   * still on the sheet until it lifts. The ink's colour is the canvas's, as the theme makes it.
    */
   #draw(): void {
     const screen = this.#view();
@@ -906,6 +1030,9 @@ export class NovatrailCanvas extends HTMLElement {
     const erasing = this.#eraser.pending;
     for (const stroke of this.#work.strokes) {
       if (erasing.has(stroke.id)) continue;
+      // The outline keeps within half the widest line of the points: twice that is out of sight.
+      const box = this.#pointBoxOf(stroke);
+      if (box.maxY + 2 * INK_REACH < screen.vy || box.minY - 2 * INK_REACH > bottom) continue;
       const ink = this.#finished(stroke);
       if (ink.bottom >= screen.vy && ink.top <= bottom) context.fill(ink.path);
     }
@@ -922,21 +1049,6 @@ export class NovatrailCanvas extends HTMLElement {
       this.#inks.set(stroke, ink);
     }
     return ink;
-  }
-
-  /**
-   * A finished stroke's path on the picture of the work: a mouse's or a finger's is its path on the
-   * screen, and a pen's its own, as wide all along, outlined once.
-   */
-  #even(stroke: Stroke): Path2D {
-    if (!followsPressure(stroke)) return this.#finished(stroke).path;
-    let path = this.#evens.get(stroke);
-    if (path === undefined) {
-      this.#outlines++;
-      path = pathOf(evenOutline(stroke));
-      this.#evens.set(stroke, path);
-    }
-    return path;
   }
 
   #outline(stroke: Stroke, complete: boolean): Vec2[] {
@@ -1018,5 +1130,10 @@ if (registered === undefined) {
 declare global {
   interface HTMLElementTagNameMap {
     "novatrail-canvas": NovatrailCanvas;
+  }
+  // The event bubbles and leaves shadow trees: its type holds on the element, on its ancestors and
+  // on the document alike.
+  interface GlobalEventHandlersEventMap {
+    historychange: HistoryChangeEvent;
   }
 }

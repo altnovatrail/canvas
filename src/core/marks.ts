@@ -3,6 +3,7 @@ import { record, shown } from "./fields.js";
 import { around, type Box, boxOf, tenths } from "./geometry.js";
 import type { Group } from "./groups.js";
 import type { Stroke } from "./ink.js";
+import { adler32, crc32 } from "./png.js";
 import type { Point } from "./screen.js";
 import { SHEET } from "./sheet.js";
 
@@ -43,14 +44,17 @@ export type CropNumbers = Pick<
 /**
  * The context of one submission, which the element gives with its crop and takes back with the
  * tutor's marks (R07; R36 spec): the crop's numbers — its `sheet_box`, the frames of the groups and
- * the whole numbers they come from — and the groups of the strokes, the table «label → stroke
- * IDs». It goes back to the element it came from, and to no other: each element numbers its
- * strokes from 1. The type is the element's own until spec's contract gives one (epic E3 in spec's
- * RUN.md).
+ * the whole numbers they come from — the groups of the strokes, the table «label → stroke IDs», and
+ * the digest of it all (R27). It goes back to a sheet whose history holds its strokes: the same
+ * sheet, or one given the same history later. Each sheet numbers its strokes from 1, so a sheet of
+ * other strokes with the same IDs tells it by the digest. The type is the element's own until
+ * spec's contract gives one (epic E3 in spec's RUN.md).
  */
 export interface Submission {
   readonly crop: CropNumbers;
   readonly groups: readonly Group[];
+  /** What the submission was made of, `digestOf` it: 16 hex digits. */
+  readonly digest: string;
 }
 
 /**
@@ -93,11 +97,15 @@ export interface Placed {
  */
 const SHEET_BOX_SLACK = 1e-6;
 
+/** A digest as `digestOf` writes it. */
+const DIGEST = /^[0-9a-f]{16}$/;
+
 /**
  * The tutor's marks a value gives, checked (R26). A value that is not the marks of a submission is
  * a TypeError that names the field; fields the sheet does not read are passed over. The crop's
  * `sheet_box` must be the one its whole numbers give, to a millionth of a unit, its frames the
- * groups', in their order, and a group's label must be one of the submission's.
+ * groups', in their order, a group's label must be one of the submission's, and the digest 16 hex
+ * digits. Whether the submission is this sheet's, its strokes tell (`placesOf`).
  */
 export function marksOf(value: unknown): Marks {
   const fields = record(value, "marks");
@@ -148,9 +156,11 @@ export function snapOf(
  * box's the strokes it snaps to; an answer cell's holds none while the task has no cells.
  *
  * A submission of other strokes is a TypeError: a stroke of its groups the sheet does not know, or
- * one outside its group's frame, as a submission of another element would have them — each
- * numbers its strokes from 1 (R20). A frame holds every point of its group, rounded outward
- * (R25), so the sheet's own submission always passes.
+ * a digest the sheet's strokes of those IDs do not give with the submission's numbers (R27). A
+ * sheet of other strokes would have those IDs too — each numbers its strokes from 1 — and a
+ * context changed since the sheet gave it would place the marks by other numbers. The sheet's own
+ * submission always passes, the strokes erased since too, and so does the same history given to
+ * another sheet.
  */
 export function placesOf(
   marks: Marks,
@@ -158,7 +168,7 @@ export function placesOf(
   rule: SnapRule = SNAP_RULE,
 ): (Placed | null)[] {
   checkRule(rule);
-  const { crop, groups } = marks.submission;
+  const { crop, groups, digest } = marks.submission;
   const byId = new Map(known.map((stroke) => [stroke.id, stroke]));
   const sent: Stroke[] = [];
   for (const [n, { label, ids }] of groups.entries()) {
@@ -166,17 +176,22 @@ export function placesOf(
     if (frame === undefined || frame.label !== label) {
       throw new TypeError(`marks.submission.crop.frames[${n}]: the frame of the group ${label}`);
     }
-    const within = withinOf(frame.box, crop, 0);
     for (const id of ids) {
       const stroke = byId.get(id);
-      if (stroke === undefined || !stroke.points.every(within)) {
+      if (stroke === undefined) {
         throw new TypeError(
-          `marks.submission: the stroke ${id} of the group ${label} is not where the submission ` +
-            "has it: the submission is not this sheet's",
+          `marks.submission: the sheet has no stroke ${id}, of the group ${label}: the ` +
+            "submission is not this sheet's",
         );
       }
       sent.push(stroke);
     }
+  }
+  if (digestOf(sent, crop, groups) !== digest) {
+    throw new TypeError(
+      "marks.submission.digest: the sheet's strokes of its IDs give another with its numbers: " +
+        "the submission is not this sheet's, or it was changed",
+    );
   }
   const tables = new Map(groups.map(({ label, ids }) => [label, ids]));
   return marks.marks.map(({ at }) => {
@@ -197,6 +212,44 @@ export function placesOf(
 export function shownOf(placed: Placed, shown: (id: number) => Box | undefined): Box | null {
   const boxes = placed.ids.flatMap((id) => shown(id) ?? []);
   return boxes.length > 0 ? around(boxes) : null;
+}
+
+/**
+ * The digest of a submission (R27): what it was made of, in 16 hex digits — the CRC-32 and then the
+ * Adler-32 of PNG and zlib (png.ts) of a text that holds its strokes, by ID ascending, each with its
+ * points in tenths of a unit and whole milliseconds, as the rules see them (R24, R25), and its whole
+ * numbers: D′, the crop's size and margins, the box and the median it comes from, the groups and
+ * their frames. `sheet_box` is not in it: it comes from those numbers, and is checked against them
+ * within its slack. The same strokes and numbers give the same digest in every engine, through any
+ * store that keeps them as JSON does. The digest tells an accidental difference, not a forged one:
+ * CRC-32 tells every change within 32 bits running, and any other change keeps both sums with a
+ * chance of about one in 2^32 at most.
+ */
+export function digestOf(
+  strokes: readonly Stroke[],
+  crop: Pick<CropNumbers, "drawn" | "width" | "height" | "margins" | "frames" | "exact">,
+  groups: readonly Group[],
+): string {
+  const lines = [...strokes]
+    .sort((a, b) => a.id - b.id)
+    .map(
+      ({ id, points }) =>
+        `${id}${points.map(({ x, y, t }) => `;${tenths(x)},${tenths(y)},${Math.round(t)}`).join("")}`,
+    );
+  const {
+    drawn,
+    width,
+    height,
+    margins: [top, left],
+    exact: { box, median },
+  } = crop;
+  lines.push(
+    `crop ${drawn} ${width} ${height} ${top} ${left} ${box.minX} ${box.minY} ${box.maxX} ${box.maxY} ${median}`,
+  );
+  for (const { label, ids } of groups) lines.push(`group ${label} ${ids.join(",")}`);
+  for (const { label, box: frame } of crop.frames) lines.push(`frame ${label} ${frame.join(",")}`);
+  const bytes = utf8(lines.join("\n"));
+  return hex(crc32(bytes)) + hex(adler32(bytes));
 }
 
 /**
@@ -252,7 +305,14 @@ function checkRule({ margin, share }: SnapRule): void {
 function submissionOf(value: unknown, path: string): Submission {
   const fields = record(value, path);
   const groups = tableOf(fields.groups, `${path}.groups`);
-  return { crop: numbersOf(fields.crop, `${path}.crop`, groups), groups };
+  const crop = numbersOf(fields.crop, `${path}.crop`, groups);
+  const { digest } = fields;
+  if (typeof digest !== "string" || !DIGEST.test(digest)) {
+    throw new TypeError(
+      `${path}.digest: what the submission was made of, 16 hex digits, not ${shown(digest)}`,
+    );
+  }
+  return { crop, groups, digest };
 }
 
 /** The groups of a submission: each label once, each stroke in one group. */
@@ -404,4 +464,24 @@ function whole(value: unknown, path: string, least: number, most: number): numbe
 
 function byNumber(a: number, b: number): number {
   return a - b;
+}
+
+/**
+ * A text's bytes in UTF-8, its code units one by one — a lone surrogate too, as three bytes: the
+ * labels are the consumer's to give. The DOM-free part has no TextEncoder (R05).
+ */
+function utf8(text: string): Uint8Array {
+  const bytes: number[] = [];
+  for (let i = 0; i < text.length; i++) {
+    const unit = text.charCodeAt(i);
+    if (unit < 0x80) bytes.push(unit);
+    else if (unit < 0x800) bytes.push(0xc0 | (unit >> 6), 0x80 | (unit & 0x3f));
+    else bytes.push(0xe0 | (unit >> 12), 0x80 | ((unit >> 6) & 0x3f), 0x80 | (unit & 0x3f));
+  }
+  return Uint8Array.from(bytes);
+}
+
+/** A 32-bit checksum in eight hex digits. */
+function hex(sum: number): string {
+  return sum.toString(16).padStart(8, "0");
 }

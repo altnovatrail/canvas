@@ -1,12 +1,15 @@
 import { afterEach, expect, test } from "vitest";
-import { SHEET } from "../core/index.js";
-import "./index.js";
+import { page } from "vitest/browser";
+import { type HistoryEvent, SHEET, type Submission } from "../core/index.js";
+import { type ExportedWork, type Marks, NovatrailCanvas, type Task } from "./index.js";
 
-// The trial consumer (RUN.md, T34; R20): a page that takes the element as tutor's check board
-// would take it in place of its own sheet. It writes, undoes, clears, takes the picture of the
-// work and goes on to the next task through the element's interface alone — its methods and its
-// event, never the probe the other tests read. It writes as a script does: pointer events on the
-// canvas in the element's open shadow root, at the points the canvas's rectangle gives.
+// The trial consumer (R27; RUN.md, T15): a page that takes the element as app is to take it. It
+// gives the task and the media, keeps the history of writing as historychange tells it and gives
+// it back, takes the work for checking at Check, and gives the tutor's marks back with their
+// submission's context, then opens the sheet again in a new element. It goes through the package's
+// entry points alone, never the probe the other tests read. It writes as a script does: pointer
+// events on the canvas in the element's open shadow root, at the points the canvas's rectangle
+// gives.
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -14,47 +17,70 @@ afterEach(() => {
 });
 
 const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-
-/** A sheet as the board would have it: the element at the size the board gives it. */
-async function board() {
-  const sheet = document.createElement("novatrail-canvas");
-  sheet.style.width = "500px";
-  sheet.style.height = "300px";
-  document.body.append(sheet);
-  made.push(sheet);
+async function settle(): Promise<void> {
   await frame();
   await frame();
-  return sheet;
 }
 
-/**
- * A pointer on a sheet, at points of the sheet: a mouse's unless told otherwise. The sheet is not
- * scrolled, so a unit is the canvas's width over the sheet's in CSS pixels, from its top left.
- */
+/** The open view of a task, as app is to have it from api: a statement with a picture. */
+const TASK: Task = {
+  canvas: { kind: "handwriting-sheet", grid: "squares", step: 50, digit: 24 },
+  statement: [
+    { text: "How many posts stand along a path 20 m long, one every 4 m?" },
+    { picture: "path.svg", alt: "A path with posts along it", width: 200, height: 60 },
+  ],
+  lang: "en",
+};
+
+const PATH = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="60"><rect width="200" height="60" fill="#eee"/></svg>`;
+
+/** app's sheet: the element with the task and the media, and the history it keeps for it. */
+async function app(history?: readonly HistoryEvent[]) {
+  const sheet = document.createElement("novatrail-canvas");
+  sheet.style.width = "500px";
+  sheet.style.height = "400px";
+  sheet.task = TASK;
+  sheet.media = async () => new Blob([PATH], { type: "image/svg+xml" });
+  // The history first, then the marks: they hold on to its strokes.
+  if (history !== undefined) sheet.history = history;
+  // app listens on the element itself: an event of a sheet taken off the page reaches no ancestor.
+  const store: HistoryEvent[] = [...(history ?? [])];
+  sheet.addEventListener("historychange", ({ detail }) => {
+    expect(detail.from).toBe(store.length);
+    store.push(...detail.events);
+  });
+  document.body.append(sheet);
+  made.push(sheet);
+  await settle();
+  return { sheet, store };
+}
+
+/** A pointer on a sheet, at points of the sheet: a mouse's, pointerId 1, unless told otherwise. */
 function pointer(sheet: HTMLElement, init: PointerEventInit = {}) {
   const canvas = sheet.shadowRoot?.querySelector("canvas");
   if (!canvas) throw new Error("the element has no canvas");
   const send = (type: string, x: number, y: number, state: PointerEventInit) => {
+    // The sheet is not scrolled: a unit is the canvas's width over the sheet's, from its top left.
     const rect = canvas.getBoundingClientRect();
     const k = rect.width / SHEET.width;
     const at = { clientX: rect.left + x * k, clientY: rect.top + y * k };
-    const pointer = { pointerId: 1, pointerType: "mouse", isPrimary: true, bubbles: true };
-    canvas.dispatchEvent(new PointerEvent(type, { ...pointer, ...init, ...at, ...state }));
+    const mouse = { pointerId: 1, pointerType: "mouse", isPrimary: true, bubbles: true };
+    canvas.dispatchEvent(new PointerEvent(type, { ...mouse, ...init, ...at, ...state }));
   };
-  const pressure = init.pressure ?? 0.5;
   return {
-    down: (x: number, y: number) => send("pointerdown", x, y, { button: 0, buttons: 1, pressure }),
-    move: (x: number, y: number) => send("pointermove", x, y, { button: -1, buttons: 1, pressure }),
+    down: (x: number, y: number) =>
+      send("pointerdown", x, y, { button: 0, buttons: 1, pressure: 0.5 }),
+    move: (x: number, y: number) =>
+      send("pointermove", x, y, { button: -1, buttons: 1, pressure: 0.5 }),
     up: (x: number, y: number) => send("pointerup", x, y, { button: 0, buttons: 0, pressure: 0 }),
-    cancel: (x: number, y: number) =>
-      send("pointercancel", x, y, { button: 0, buttons: 0, pressure: 0 }),
   };
 }
 
 /** A level stroke at `y`, from `from` to `to`. */
-function write(sheet: HTMLElement, y: number, from: number, to: number, init?: PointerEventInit) {
-  const hand = pointer(sheet, init);
+function write(sheet: HTMLElement, y: number, from: number, to: number) {
+  const hand = pointer(sheet);
   hand.down(from, y);
+  hand.move((from + to) / 2, y);
   hand.move(to, y);
   hand.up(to, y);
 }
@@ -62,162 +88,174 @@ function write(sheet: HTMLElement, y: number, from: number, to: number, init?: P
 /** The PNG signature, the first eight bytes of every PNG file. */
 const SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
 
-/** A picture of the work, read as its consumer reads it: its bytes, and its pixels decoded. */
-async function read(png: Blob | null) {
-  if (png === null) throw new Error("the sheet gave no picture");
+/** The crop of the work for checking, read as app would: its bytes, and its pixels decoded. */
+async function read(work: ExportedWork) {
+  const { png, submission } = work;
   const bytes = new Uint8Array(await png.arrayBuffer());
-  // IHDR is the first chunk: its width and its height, big-endian, at bytes 16 and 20.
   const header = new DataView(bytes.buffer);
   const bitmap = await createImageBitmap(png);
-  const { width, height } = bitmap;
-  const context = new OffscreenCanvas(width, height).getContext("2d");
-  if (context === null) throw new Error("no context to read the picture with");
+  const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext("2d");
+  if (context === null) throw new Error("no context to read the crop with");
   context.drawImage(bitmap, 0, 0);
-  const pixels = context.getImageData(0, 0, width, height).data;
-  /** The red, green, blue and alpha of the pixel under a point of the sheet: a pixel to a unit. */
-  const rgba = (x: number, y: number) => [
-    ...pixels.subarray((y * width + x) * 4, (y * width + x) * 4 + 4),
-  ];
+  const pixels = context.getImageData(0, 0, bitmap.width, bitmap.height).data;
+  const { width, height, sheetBox } = submission.crop;
+  const [ymin, xmin, ymax, xmax] = sheetBox;
+  /** The grey of the crop's pixel over a point of the sheet: sheet_box says where the crop lies. */
+  const grey = (x: number, y: number) => {
+    const px = Math.floor(((x - xmin) / (xmax - xmin)) * width);
+    const py = Math.floor(((y - ymin) / (ymax - ymin)) * height);
+    return pixels[(py * width + px) * 4] ?? 255;
+  };
   return {
+    bytes,
     type: png.type,
     signature: [...bytes.subarray(0, 8)],
     size: [header.getUint32(16), header.getUint32(20)],
-    decoded: [width, height],
-    /** Whether there is ink at a point: darker than halfway from the ink to white. */
-    ink: (x: number, y: number) => (rgba(x, y)[0] ?? 255) < 128,
-    rgba,
-    /** How many pixels of a column, from `top` to `bottom`, have ink: the width of a level line. */
-    across: (x: number, top: number, bottom: number) => {
-      let count = 0;
-      for (let y = top; y <= bottom; y++) if ((rgba(x, y)[0] ?? 255) < 128) count++;
-      return count;
-    },
+    decoded: [bitmap.width, bitmap.height],
+    grey,
   };
 }
 
-const WHITE = [255, 255, 255, 255];
+/** The work for checking, which a sheet with strokes has. */
+async function check(sheet: NovatrailCanvas): Promise<ExportedWork> {
+  const work = await sheet.exportWork();
+  if (work === null) throw new Error("the sheet gave no work for checking");
+  return work;
+}
 
-test("the board's path: write, undo, clear and check, then a new sheet for the next task", async () => {
-  const sheet = await board();
-  // The board listens on the page above the sheet: the event bubbles from the element itself.
-  const heard: Event[] = [];
-  const listen = (event: Event) => heard.push(event);
-  document.addEventListener("workchange", listen);
+/** The tutor's marks of a submission as app has them back from api, through JSON. */
+function marksOf(submission: Submission, name: string): Marks {
+  return JSON.parse(
+    JSON.stringify({ submission, marks: [{ kind: "frame", at: { group: "A" }, name }] }),
+  );
+}
+
+test("app's path: write and keep the history as it is told, give it back, check, and take the tutor's marks", async () => {
+  const { sheet, store } = await app();
+  const onDocument: Event[] = [];
+  const listen = (event: Event) => onDocument.push(event);
+  document.addEventListener("historychange", listen);
   try {
-    // Check on an empty sheet: there is no picture, and the board asks for a solution first.
-    expect(await sheet.exportPNG()).toBeNull();
+    // Check on an empty sheet: there is no work, and app asks for a solution first.
+    expect(await sheet.exportWork()).toBeNull();
 
+    // «A», two lines 40 units apart, and «B» far off: a group is strokes within 50 units (R24).
     write(sheet, 100, 100, 300);
-    write(sheet, 200, 100, 300);
-    expect(heard).toHaveLength(2);
-    expect(heard.every((event) => event.target === sheet && event.bubbles)).toBe(true);
-
-    // Check: a PNG of the whole sheet, a pixel to a unit, with ink where the strokes are.
-    const both = await read(await sheet.exportPNG());
-    expect(both.type).toBe("image/png");
-    expect(both.signature).toEqual(SIGNATURE);
-    expect(both.size).toEqual([SHEET.width, SHEET.height]);
-    expect(both.decoded).toEqual([SHEET.width, SHEET.height]);
-    expect([both.ink(200, 100), both.ink(200, 200)]).toEqual([true, true]);
-    // White and opaque between the strokes, below them and in every corner.
-    for (const [x, y] of [
-      [200, 150],
-      [500, 1000],
-      [0, 0],
-      [SHEET.width - 1, 0],
-      [0, SHEET.height - 1],
-      [SHEET.width - 1, SHEET.height - 1],
-    ] as const) {
-      expect(both.rgba(x, y)).toEqual(WHITE);
-    }
-
-    // Undo stroke.
+    write(sheet, 140, 100, 300);
+    write(sheet, 600, 500, 800);
+    sheet.tool = "eraser";
+    write(sheet, 600, 600, 700);
+    sheet.tool = "pen";
     expect(sheet.undo()).toBe(true);
-    expect(heard).toHaveLength(3);
-    const first = await read(await sheet.exportPNG());
-    expect([first.ink(200, 100), first.ink(200, 200)]).toEqual([true, false]);
-
-    // Clear: no picture, and a second clearing is nothing to hear of.
     expect(sheet.clear()).toBe(true);
-    expect(heard).toHaveLength(4);
-    expect(await sheet.exportPNG()).toBeNull();
-    expect(sheet.clear()).toBe(false);
-    expect(heard).toHaveLength(4);
-
-    // Undo takes the clearing back, with the one stroke it took.
     expect(sheet.undo()).toBe(true);
-    expect(heard).toHaveLength(5);
-    const back = await read(await sheet.exportPNG());
-    expect([back.ink(200, 100), back.ink(200, 200)]).toEqual([true, false]);
+    // Every action told, from the element, bubbling and leaving shadow trees: app's store is the
+    // history.
+    expect(onDocument).toHaveLength(7);
+    expect(
+      onDocument.every((event) => event.target === sheet && event.bubbles && event.composed),
+    ).toBe(true);
+    expect(store).toEqual(sheet.history);
 
-    // The next task: a new element in place of the old one, and nothing of the old work on it,
-    // not even by undo, which clear() would have let back (R19).
-    const next = document.createElement("novatrail-canvas");
-    next.style.width = "500px";
-    next.style.height = "300px";
-    made.push(next);
-    sheet.replaceWith(next);
-    await frame();
-    expect(await next.exportPNG()).toBeNull();
-    expect(next.undo()).toBe(false);
-    expect(heard).toHaveLength(5);
+    // A render gives the store back: nothing changes, and a stroke under way lands.
+    const before = sheet.history;
+    sheet.history = store;
+    expect(sheet.history).toBe(before);
+    const hand = pointer(sheet);
+    hand.down(100, 220);
+    hand.move(300, 220);
+    sheet.history = [...store];
+    hand.up(300, 220);
+    expect(sheet.history).toHaveLength(before.length + 1);
+    expect(store).toEqual(sheet.history);
+
+    // Check: the crop as a PNG and the context of its submission, which app keeps.
+    const work = await check(sheet);
+    const crop = await read(work);
+    expect(crop.type).toBe("image/png");
+    expect(crop.signature).toEqual(SIGNATURE);
+    expect(crop.size).toEqual([work.submission.crop.width, work.submission.crop.height]);
+    expect(crop.decoded).toEqual(crop.size);
+    // The ink of the strokes where sheet_box puts them, and white far from them.
+    expect(crop.grey(200, 100)).toBeLessThan(128);
+    expect(crop.grey(650, 600)).toBeLessThan(128);
+    expect(crop.grey(450, 400)).toBe(255);
+    expect(work.submission.groups.map(({ label }) => label)).toEqual(["A", "B", "C"]);
+
+    // The tutor's marks come back with the context, through JSON: a frame read by its name.
+    sheet.marks = marksOf(work.submission, "Look at this line");
+    await settle();
+    await expect.element(page.getByRole("img", { name: "Look at this line" })).toBeVisible();
   } finally {
-    document.removeEventListener("workchange", listen);
+    document.removeEventListener("historychange", listen);
   }
 });
 
-test("the picture is the sheet as it was when asked for: a stroke under way is not in it", async () => {
-  const sheet = await board();
+test("a sheet opened again from app's store is the same sheet, its context and marks too, and goes on from where it was", async () => {
+  const first = await app();
+  write(first.sheet, 100, 100, 300);
+  write(first.sheet, 140, 100, 300);
+  write(first.sheet, 600, 500, 800);
+  first.sheet.undo();
+  write(first.sheet, 700, 500, 800);
+  const work = await check(first.sheet);
+  const marks = marksOf(work.submission, "These two lines");
+  first.sheet.marks = marks;
+  const kept = JSON.parse(JSON.stringify(first.store));
+  first.sheet.remove();
+
+  // Another element, as after the page is opened again: the history first, then the marks.
+  const { sheet, store } = await app(kept);
+  expect(sheet.history).toEqual(first.sheet.history);
+  const again = await check(sheet);
+  expect((await read(again)).bytes).toEqual((await read(work)).bytes);
+  expect(again.submission).toEqual(work.submission);
+  sheet.marks = marks;
+  await settle();
+  await expect.element(page.getByRole("img", { name: "These two lines" })).toBeVisible();
+
+  // Undo goes on across the reload, and a stroke written right next to the old ones after it is a
+  // group of its own: the clock goes on more than the groups' pause later.
+  expect(sheet.undo()).toBe(true);
+  write(sheet, 170, 100, 300);
+  expect(store).toEqual(sheet.history);
+  const groups = (await check(sheet)).submission.groups;
+  expect(groups.map(({ ids }) => ids)).toEqual([[1, 2], [5]]);
+
+  // Another element's context with the same IDs is not this sheet's.
+  const other = await app();
+  write(other.sheet, 900, 100, 300);
+  write(other.sheet, 960, 100, 300);
+  expect(() => {
+    other.sheet.marks = marks;
+  }).toThrow(TypeError);
+});
+
+test("a history without the marked strokes takes the marks off, and the next task is a new, empty element", async () => {
+  const { sheet } = await app();
   write(sheet, 100, 100, 300);
-  const hand = pointer(sheet, { pointerId: 2 });
-  hand.down(100, 200);
-  hand.move(300, 200);
-  const asked = sheet.exportPNG();
-  // The stroke lands before the promise settles, and the picture asked for before stays without it.
-  hand.up(300, 200);
-  const before = await read(await asked);
-  const after = await read(await sheet.exportPNG());
-  expect([before.ink(200, 100), before.ink(200, 200)]).toEqual([true, false]);
-  expect([after.ink(200, 100), after.ink(200, 200)]).toEqual([true, true]);
+  sheet.marks = marksOf((await check(sheet)).submission, "This line");
+  await settle();
+  await expect.element(page.getByRole("img", { name: "This line" })).toBeVisible();
+  sheet.history = [];
+  await settle();
+  expect(sheet.marks).toBeUndefined();
+  await expect.element(page.getByRole("img", { name: "This line" })).not.toBeInTheDocument();
+
+  // The next task: a new element in place of the old one, with nothing of the old work.
+  const next = document.createElement("novatrail-canvas");
+  next.style.width = "500px";
+  next.style.height = "400px";
+  next.task = TASK;
+  made.push(next);
+  sheet.replaceWith(next);
+  await settle();
+  expect(await next.exportWork()).toBeNull();
+  expect(next.undo()).toBe(false);
+  expect(next.history).toEqual([]);
 });
 
-test("the picture is the whole sheet, the part out of sight too", async () => {
-  // 500 px wide, the sheet is 0.5 px to a unit, and 300 px show its top 600 units. An event a
-  // script makes reaches the canvas wherever its point is: the stroke lies below the visible part,
-  // where a pointer the canvas holds would write too.
-  const sheet = await board();
-  write(sheet, 1200, 100, 300);
-  const picture = await read(await sheet.exportPNG());
-  expect(picture.ink(200, 1200)).toBe(true);
-});
-
-test("a pen's line on the picture is as wide as a mouse's, however hard the pen pressed", async () => {
-  const sheet = await board();
-  write(sheet, 100, 100, 300, { pointerType: "pen", pressure: 1 });
-  write(sheet, 200, 100, 300, { pointerType: "mouse" });
-  const picture = await read(await sheet.exportPNG());
-  const pen = picture.across(200, 90, 110);
-  expect(pen).toBeGreaterThan(0);
-  expect(pen).toBe(picture.across(200, 190, 210));
-});
-
-test("workchange comes as a stroke lands: not while it is under way, nor for one the device cancels", async () => {
-  const sheet = await board();
-  let heard = 0;
-  sheet.addEventListener("workchange", () => heard++);
-  const hand = pointer(sheet);
-  hand.down(100, 100);
-  hand.move(300, 100);
-  expect(heard).toBe(0);
-  hand.cancel(300, 100);
-  expect(heard).toBe(0);
-  expect(await sheet.exportPNG()).toBeNull();
-
-  write(sheet, 100, 100, 300);
-  expect(heard).toBe(1);
-});
-
-test("workchange goes out of a consumer's own shadow tree too, from the host it is in", async () => {
+test("historychange goes out of a consumer's own shadow tree too, from the host it is in", async () => {
   // A consumer that is a custom element itself, with the sheet in its own shadow tree.
   const host = document.createElement("div");
   const root = host.attachShadow({ mode: "open" });
@@ -227,36 +265,38 @@ test("workchange goes out of a consumer's own shadow tree too, from the host it 
   root.append(sheet);
   document.body.append(host);
   made.push(host);
-  await frame();
-  await frame();
+  await settle();
   const heard: (EventTarget | null)[] = [];
   const listen = (event: Event) => heard.push(event.target);
-  document.addEventListener("workchange", listen);
+  document.addEventListener("historychange", listen);
   try {
     write(sheet, 100, 100, 300);
-    expect(heard).toHaveLength(1);
-    expect(heard[0]).toBe(host);
+    expect(heard).toEqual([host]);
   } finally {
-    document.removeEventListener("workchange", listen);
+    document.removeEventListener("historychange", listen);
   }
 });
 
-test("a sheet taken off the page in the middle of a stroke tells its own listeners and no one above", async () => {
-  const sheet = await board();
-  let own = 0;
-  let page = 0;
-  const onPage = () => page++;
-  sheet.addEventListener("workchange", () => own++);
-  document.addEventListener("workchange", onPage);
+test("a sheet taken off the page in the middle of a stroke tells its own listeners, and no one above", async () => {
+  const { sheet, store } = await app();
+  let onDocument = 0;
+  const onPage = () => onDocument++;
+  document.addEventListener("historychange", onPage);
   try {
     const hand = pointer(sheet);
     hand.down(100, 100);
     hand.move(300, 100);
     sheet.remove();
-    expect([own, page]).toEqual([1, 0]);
-    // The stroke landed where it was, and a sheet off the page still gives its picture.
-    expect((await read(await sheet.exportPNG())).ink(200, 100)).toBe(true);
+    expect(onDocument).toBe(0);
+    expect(store).toEqual(sheet.history);
+    expect(store.map((event) => event.kind)).toEqual(["write"]);
+    // The stroke landed where it was, and a sheet off the page still gives its work.
+    expect(await sheet.exportWork()).not.toBeNull();
   } finally {
-    document.removeEventListener("workchange", onPage);
+    document.removeEventListener("historychange", onPage);
   }
+});
+
+test("the element is the package's, by its tag", () => {
+  expect(document.createElement("novatrail-canvas")).toBeInstanceOf(NovatrailCanvas);
 });

@@ -338,10 +338,10 @@ test("a stroke under way stays through undo() and lands after the strokes left",
 
 // A consumer stops the writing with a style of its own, as the board would while it checks
 // (R20): pointer-events inherits into the shadow tree, and a real pointer then hits nothing of it.
-test("pointer-events: none on the element lets no real pointer write, and one workchange comes for each stroke", async () => {
+test("pointer-events: none on the element lets no real pointer write, and one historychange comes for each stroke", async () => {
   const { element, canvas, view } = await sheet(400);
   let heard = 0;
-  element.addEventListener("workchange", () => heard++);
+  element.addEventListener("historychange", () => heard++);
   const drag = async () => {
     const pressed = { force: 0.5 };
     await input("mousePressed", at(canvas, view(), 100, 100), pressed);
@@ -365,7 +365,7 @@ test("pointer-events: none on the element lets no real pointer write, and one wo
 test("a stroke under way when pointer-events: none comes goes on to its end: the canvas holds its pointer", async () => {
   const { element, canvas, view } = await sheet(400);
   let heard = 0;
-  element.addEventListener("workchange", () => heard++);
+  element.addEventListener("historychange", () => heard++);
   const pressed = { force: 0.5 };
   await input("mousePressed", at(canvas, view(), 100, 100), pressed);
   await input("mouseMoved", at(canvas, view(), 200, 100), pressed);
@@ -379,33 +379,13 @@ test("a stroke under way when pointer-events: none comes goes on to its end: the
   expect(heard).toBe(1);
 });
 
-test("the picture draws each stroke by the path it was given once, and a stroke it outlines first keeps its path for the screen", async () => {
+test("the work for checking outlines no stroke: its crop is a raster of its own (R25)", async () => {
   const { element, canvas, view } = await sheet(400);
   level(canvas, view(), 100, 100, 300);
   await settle();
   expect(probe(element).outlines).toBe(1);
-  await element.exportPNG();
+  expect(await element.exportWork()).not.toBeNull();
   expect(probe(element).outlines).toBe(1);
-
-  // Asked for before a frame has drawn the stroke: the picture outlines it, and no frame again.
-  level(canvas, view(), 200, 100, 300);
-  await element.exportPNG();
-  expect(probe(element).outlines).toBe(2);
-  await settle();
-  expect(probe(element).outlines).toBe(2);
-
-  // A pen's stroke has a path of its own on the picture, without its pressure, outlined once.
-  const pen = { pointerId: 8, pointerType: "pen", isPrimary: true, bubbles: true };
-  const event = (type: string, x: number, init: PointerEventInit) =>
-    new PointerEvent(type, { ...pen, ...at(canvas, view(), x, 300), ...init });
-  canvas.dispatchEvent(event("pointerdown", 100, { button: 0, buttons: 1, pressure: 0.9 }));
-  canvas.dispatchEvent(event("pointermove", 300, { button: -1, buttons: 1, pressure: 0.9 }));
-  canvas.dispatchEvent(event("pointerup", 300, { button: 0, buttons: 0, pressure: 0 }));
-  await settle();
-  expect(probe(element).outlines).toBe(3);
-  await element.exportPNG();
-  await element.exportPNG();
-  expect(probe(element).outlines).toBe(4);
 });
 
 // The eraser (R22): a press takes off the sheet, whole, every stroke its way comes near — with the
@@ -438,14 +418,10 @@ function eraserHand(
   };
 }
 
-/** Whether the picture of the work has ink at a point of the sheet: a pixel to a unit. */
-async function pictureInk(png: Blob | null, x: number, y: number): Promise<boolean> {
-  if (png === null) return false;
-  const bitmap = await createImageBitmap(png);
-  const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext("2d");
-  if (context === null) throw new Error("no context to read the picture with");
-  context.drawImage(bitmap, 0, 0);
-  return (context.getImageData(x, y, 1, 1).data[0] ?? 255) < 128;
+/** The IDs of the strokes the work for checking is made of, ascending: those on the sheet. */
+async function sent(element: NovatrailCanvas): Promise<number[]> {
+  const work = await element.exportWork();
+  return (work?.submission.groups ?? []).flatMap(({ ids }) => ids).sort((a, b) => a - b);
 }
 
 const idsOn = (element: HTMLElement) => probe(element).strokes.map((stroke) => stroke.id);
@@ -456,7 +432,7 @@ test("the eraser takes strokes off whole along a press, out of sight at once and
   await settle();
   const outlined = probe(element).outlines;
   let heard = 0;
-  element.addEventListener("workchange", () => heard++);
+  element.addEventListener("historychange", () => heard++);
   // Whether there is ink in the middle of each stroke.
   const ink = () => [300, 600, 900].map((y) => inkAt(canvas, view(), 200, y) > 0);
 
@@ -468,25 +444,25 @@ test("the eraser takes strokes off whole along a press, out of sight at once and
   await settle();
   expect(probe(element).pending).toEqual([1, 2]);
   expect(ink()).toEqual([false, false, true]);
-  // Off the sheet only when the eraser lifts: the work and its picture have them still.
+  // Off the sheet only when the eraser lifts: the work and the work for checking have them still.
   expect(idsOn(element)).toEqual([1, 2, 3]);
-  expect(await pictureInk(await element.exportPNG(), 200, 300)).toBe(true);
+  expect(await sent(element)).toEqual([1, 2, 3]);
   expect(heard).toBe(0);
 
   hand.up(200, 650);
   await settle();
   expect(idsOn(element)).toEqual([3]);
   expect(heard).toBe(1);
-  expect(probe(element).history.at(-1)).toMatchObject({ kind: "erase", ids: [1, 2] });
+  expect(element.history.at(-1)).toMatchObject({ kind: "erase", ids: [1, 2] });
   expect(ink()).toEqual([false, false, true]);
-  expect(await pictureInk(await element.exportPNG(), 200, 300)).toBe(false);
+  expect(await sent(element)).toEqual([3]);
 
   expect(element.undo()).toBe(true);
   await settle();
   expect(idsOn(element)).toEqual([1, 2, 3]);
   expect(ink()).toEqual([true, true, true]);
   expect(heard).toBe(2);
-  expect(probe(element).history.at(-1)).toMatchObject({ kind: "undo", restored: [1, 2] });
+  expect(element.history.at(-1)).toMatchObject({ kind: "undo", restored: [1, 2] });
   // The strokes come back by the paths they were given once.
   expect(probe(element).outlines).toBe(outlined);
 });
@@ -496,7 +472,7 @@ test("a press of the eraser that the device cancels erases nothing, and the ink 
   level(canvas, view(), 300, 100, 300);
   await settle();
   let heard = 0;
-  element.addEventListener("workchange", () => heard++);
+  element.addEventListener("historychange", () => heard++);
   element.tool = "eraser";
   const hand = eraserHand(canvas, view);
   hand.down(200, 250);
@@ -530,7 +506,7 @@ test("a pen's eraser erases whatever the tool, and its barrel button neither era
   eraser.move(200, 350);
   eraser.up(200, 350);
   expect(idsOn(element)).toEqual([]);
-  expect(probe(element).history.at(-1)).toMatchObject({ kind: "erase", ids: [1] });
+  expect(element.history.at(-1)).toMatchObject({ kind: "erase", ids: [1] });
 });
 
 test("one pointer at a time writes or erases, and a press goes on as it began when the tool changes", async () => {
@@ -561,7 +537,7 @@ test("one pointer at a time writes or erases, and a press goes on as it began wh
   hand.move(200, 650);
   hand.up(200, 650);
   expect(idsOn(element)).toEqual([]);
-  expect(probe(element).history.map((event) => event.kind)).toEqual(["write", "write", "erase"]);
+  expect(element.history.map((event) => event.kind)).toEqual(["write", "write", "erase"]);
 });
 
 test("a real mouse erases with the tool, and pointer-events: none on the element lets it erase nothing", async () => {

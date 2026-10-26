@@ -1,3 +1,4 @@
+import { CROP } from "./crop.js";
 import { record, shown } from "./fields.js";
 import {
   DEFAULT_GRID,
@@ -46,24 +47,34 @@ export interface Task {
     readonly kind: typeof SHEET_KIND;
     readonly grid?: GridKind;
     readonly step?: number;
+    /**
+     * The height of a digit on the crop for checking, in whole px from 1 to 256: a setting of the
+     * module's canvas, 32 unless given (R25, R27; «Вход» of T28 in spec's RUN.md).
+     */
+    readonly digit?: number;
   };
   readonly statement?: readonly StatementPart[];
   /** The language of the statement, a BCP 47 tag; the element's own `lang` if none is given. */
   readonly lang?: string;
 }
 
-/** What the sheet shows of a task: the grid on the sheet and the statement above it. */
+/**
+ * What the sheet makes of a task: the grid on the sheet and the statement above it, and the height
+ * of a digit its crop for checking is drawn at.
+ */
 export interface Template {
   readonly grid: Grid;
   readonly statement: readonly StatementPart[];
   readonly lang: string | undefined;
+  readonly digit: number;
 }
 
-/** The template of a sheet without a task: squares of 50 units, and no statement. */
+/** The template of a sheet without a task: squares of 50 units, no statement, digits of 32 px. */
 export const NO_TASK: Template = Object.freeze({
   grid: DEFAULT_GRID,
   statement: Object.freeze([]),
   lang: undefined,
+  digit: CROP.digit,
 });
 
 /**
@@ -90,6 +101,12 @@ export function templateOf(task: unknown): Template {
       `task.canvas.step: a number of units from ${GRID_STEP_MIN} to ${GRID_STEP_MAX}, not ${shown(step)}`,
     );
   }
+  const digit = canvas.digit === undefined ? CROP.digit : canvas.digit;
+  if (typeof digit !== "number" || !Number.isInteger(digit) || digit < 1 || digit > CROP.tallest) {
+    throw new TypeError(
+      `task.canvas.digit: a whole number of px from 1 to ${CROP.tallest}, not ${shown(digit)}`,
+    );
+  }
   const lang = fields.lang;
   if (lang !== undefined && (typeof lang !== "string" || lang === "")) {
     throw new TypeError(`task.lang: a language tag, not ${shown(lang)}`);
@@ -98,6 +115,7 @@ export function templateOf(task: unknown): Template {
     grid: { kind: kind as GridKind, step },
     statement: statementOf(fields.statement),
     lang,
+    digit,
   };
 }
 

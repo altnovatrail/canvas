@@ -134,6 +134,15 @@ export class Recorder {
     return this.#finish();
   }
 
+  /**
+   * The sheet has taken another history of writing (R27): the stroke under way goes, as on
+   * `pointercancel` — its ID and its times are the last sheet's — and the next stroke is `nextId`.
+   */
+  restart(nextId: number): void {
+    this.#live = undefined;
+    this.#nextId = nextId;
+  }
+
   #finish(): boolean {
     const live = this.#live;
     if (live === undefined) return false;
@@ -144,8 +153,13 @@ export class Recorder {
     return true;
   }
 
-  /** A point of the sample, its time counted from the sheet's first event and never going back. */
+  /**
+   * A point of the sample, its time the sheet's and never going back. Its pressure is kept to 0–1,
+   * the range Pointer Events gives it: an event a script makes may say more, and the sheet would
+   * write a history it does not take back (R27).
+   */
   #point(sample: PointerSample, pressure: number): InkPoint {
-    return { x: sample.x, y: sample.y, t: this.#clock.at(sample.time), p: pressure };
+    const p = Math.min(Math.max(pressure, 0), 1);
+    return { x: sample.x, y: sample.y, t: this.#clock.at(sample.time), p };
   }
 }

@@ -6,7 +6,12 @@ const sheet = { kind: "handwriting-sheet" };
 test("a task that says only its canvas kind is ruled in squares of 50 units, without a statement", () => {
   expect(templateOf({ canvas: sheet })).toEqual(NO_TASK);
   expect(templateOf(undefined)).toBe(NO_TASK);
-  expect(NO_TASK).toEqual({ grid: { kind: "squares", step: 50 }, statement: [], lang: undefined });
+  expect(NO_TASK).toEqual({
+    grid: { kind: "squares", step: 50 },
+    statement: [],
+    lang: undefined,
+    digit: 32,
+  });
 });
 
 test("a task gives the grid's kind and step, and a statement of texts and pictures in its language", () => {
@@ -25,10 +30,18 @@ test("a task gives the grid's kind and step, and a statement of texts and pictur
       { picture: "path.svg", alt: "A path with posts along it", width: 320, height: 120 },
     ],
     lang: "en",
+    digit: 32,
   });
   for (const grid of ["squares", "lines", "dots"]) {
     expect(templateOf({ canvas: { ...sheet, grid } }).grid.kind).toBe(grid);
   }
+});
+
+test("a task gives the height of a digit on the crop for checking, 32 px unless it says another", () => {
+  expect(templateOf({ canvas: { ...sheet, digit: 48 } }).digit).toBe(48);
+  expect(templateOf({ canvas: { ...sheet, digit: 1 } }).digit).toBe(1);
+  expect(templateOf({ canvas: { ...sheet, digit: 256 } }).digit).toBe(256);
+  expect(templateOf({ canvas: sheet }).digit).toBe(32);
 });
 
 test("the fields the sheet does not read are passed over, at every level", () => {
@@ -56,6 +69,11 @@ test("a value the sheet cannot show is a TypeError that names its field", () => 
     // null leaves out no field: it is a value, and not one the field takes.
     [{ canvas: { ...sheet, grid: null } }, /^task\.canvas\.grid: .* not null$/],
     [{ canvas: { ...sheet, step: null } }, /^task\.canvas\.step: .* not null$/],
+    [{ canvas: { ...sheet, digit: 0 } }, /^task\.canvas\.digit: .* from 1 to 256, not 0$/],
+    [{ canvas: { ...sheet, digit: 257 } }, /^task\.canvas\.digit:/],
+    [{ canvas: { ...sheet, digit: 32.5 } }, /^task\.canvas\.digit:/],
+    [{ canvas: { ...sheet, digit: "32" } }, /^task\.canvas\.digit: .* not "32"$/],
+    [{ canvas: { ...sheet, digit: null } }, /^task\.canvas\.digit: .* not null$/],
     [{ canvas: sheet, statement: null }, /^task\.statement: a list/],
     [{ canvas: sheet, lang: null }, /^task\.lang:/],
     [{ canvas: sheet, lang: "" }, /^task\.lang:/],
