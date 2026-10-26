@@ -1,9 +1,11 @@
 // What a test sees of an element: its strokes, its history of writing, what the eraser is about to
-// take, its view of the sheet and how many outlines it has drawn. The page to try the element on
-// by hand, demo/, reads the strokes here too, to draw their groups and their crop (R24, R25). This
-// module is no entry point of the package, so the element's interface stays what the tasks of the
-// sheet make it (R07, R12, R19, R22; RUN.md, T10, T12, T13, T33, T34).
+// take, its view of the sheet, how many outlines it has drawn and the tutor's marks it shows. The
+// page to try the element on by hand, demo/, reads the strokes here too, to draw their groups and
+// their crop (R24, R25) and to send the marks back (R26). This module is no entry point of the
+// package, so the element's interface stays what the tasks of the sheet make it (R07, R12, R19,
+// R22; RUN.md, T10, T12, T13, T14, T33, T34).
 
+import type { Box } from "../core/geometry.js";
 import type { HistoryEvent } from "../core/history.js";
 import type { Stroke } from "../core/ink.js";
 import type { View } from "../core/screen.js";
@@ -22,6 +24,16 @@ export interface Probe {
   readonly outlines: number;
   /** Where the sheet is on the screen, or nothing while the element is not laid out. */
   readonly view: View | undefined;
+  /**
+   * The tutor's marks the sheet shows, in their order: each one's name, the strokes it holds on to
+   * and its frame as last drawn, in sheet units — null while none of its strokes is on the screen.
+   * A mark without a place is not among them (R26).
+   */
+  readonly marks: readonly {
+    readonly name: string;
+    readonly ids: readonly number[];
+    readonly frame: Box | null;
+  }[];
 }
 
 const probes = new WeakMap<object, () => Probe>();

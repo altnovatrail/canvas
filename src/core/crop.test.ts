@@ -8,6 +8,7 @@ import {
   atFloor,
   CROP_SHEETS,
   type CropSheet,
+  crowd,
   dashes,
   dot,
   fraction,
@@ -419,23 +420,6 @@ function reference(strokes: readonly Stroke[], groups: readonly Group[], digit: 
       },
     };
   }
-}
-
-/** A crowded sheet: up to 40 strokes of one to five points, writing and lines, to hundredths. */
-function crowd(seed: number): Stroke[] {
-  const next = random(seed);
-  const place = (from: number, span: number, size: number) =>
-    Math.min(size, Math.round((from + next() * span) * 100) / 100);
-  return Array.from({ length: 1 + Math.floor(next() * 40) }, (_, n) => {
-    const x = place(0, 940, 1000);
-    const y = place(0, 1300, 1400);
-    const reach = next() < 0.3 ? 12 : 90;
-    const points = Array.from(
-      { length: 1 + Math.floor(next() * 5) },
-      (_, k) => [place(x, reach, 1000), place(y, reach, 1400), 2500 * n + 60 * k] as const,
-    );
-    return stroke(1000 - n, ...points);
-  });
 }
 
 describe("the rule written out once more", () => {

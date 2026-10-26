@@ -1,12 +1,14 @@
 import { afterEach, expect, test } from "vitest";
+import { cropOf } from "../core/crop.js";
+import { groupsOf } from "../core/groups.js";
 import { toScreen, type View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
 import "./index.js";
 import { probe } from "./probe.js";
 
 // The sheet with forced colours, in a browser context that is in the mode from the start (R23):
-// the system's colours stand in for the consumer's theme on the screen, and the picture of the
-// work is as it always is. vitest.config.ts runs this file alone, in a project of its own.
+// the system's colours stand in for the consumer's theme on the screen, the tutor's frames too, and
+// the picture of the work is as it always is. vitest.config.ts runs this file alone, in a project of its own.
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -41,6 +43,7 @@ test("with forced colours the sheet takes the system's colours, whatever the con
   const theme = document.createElement("div");
   theme.style.setProperty("--novatrail-canvas-ink", "rgb(0, 0, 255)");
   theme.style.setProperty("--novatrail-canvas-grid", "rgb(200, 0, 0)");
+  theme.style.setProperty("--novatrail-canvas-mark", "rgb(0, 160, 0)");
   document.body.append(theme);
   made.push(theme);
   const element = document.createElement("novatrail-canvas");
@@ -90,6 +93,20 @@ test("with forced colours the sheet takes the system's colours, whatever the con
   for (const [i, channel] of channels(text).entries()) {
     expect(Math.abs((drawn[i] ?? Number.NaN) - channel)).toBeLessThanOrEqual(3);
   }
+
+  // A frame of the tutor's round the strokes: the system's highlight, not the theme's colour.
+  const { strokes } = probe(element);
+  const groups = groupsOf(strokes);
+  const crop = cropOf(strokes, groups);
+  if (crop === null) throw new Error("the sheet has no crop");
+  element.marks = {
+    submission: { crop, groups },
+    marks: [{ kind: "frame", at: { group: "A" }, name: "This line" }],
+  };
+  await settle();
+  const frame = root?.querySelector(".marks rect");
+  if (!frame) throw new Error("no frame drawn");
+  expect(getComputedStyle(frame).stroke).toBe(system("Highlight"));
 
   const png = await element.exportPNG();
   if (png === null) throw new Error("the sheet gave no picture");
