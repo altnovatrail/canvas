@@ -11,8 +11,11 @@
 // pause and the reaches its fields give (T12; R24), and the crop for checking at the height of
 // digits its field gives, with the frames of those groups and the crop's size at every height of
 // eval (T13; R25): it reads the strokes through the probe of the tests, for the element hands out
-// no strokes yet (T15), and it keeps nothing. The page's tasks are its own, made up. just demo
-// serves it.
+// no strokes yet (T15), and it keeps nothing. Check sends the crop as well, as exportWork() is to
+// (T15): the page keeps that submission, and a box dragged over its crop, or a group picked, comes
+// back to the element as a mark of the tutor's, which holds on to the strokes it takes and follows
+// them as they are written over, erased and undone (T14; R26). The page's tasks are its own, made
+// up. just demo serves it.
 
 import { CROP, type Crop, cropOf, tokensOf } from "../src/core/crop.js";
 import { GROUP_RULE, type Group, type GroupRule, groupsOf, rectOf } from "../src/core/groups.js";
@@ -20,7 +23,7 @@ import type { Stroke } from "../src/core/ink.js";
 import { pictureOf } from "../src/core/raster.js";
 import { SHEET } from "../src/core/sheet.js";
 import "../src/element/index.js";
-import type { GridKind, Media, Task, Tool } from "../src/element/index.js";
+import type { GridKind, Mark, Media, Submission, Task, Tool } from "../src/element/index.js";
 import { probe } from "../src/element/probe.js";
 
 /** An element of the page, of the type the page has it as. */
@@ -52,6 +55,11 @@ const frames = part("frames", SVGSVGElement);
 const cropCaption = part("crop-caption", HTMLElement);
 const heights = part("heights", HTMLTableSectionElement);
 const digit = part("digit", HTMLSelectElement);
+const sent = part("sent", HTMLImageElement);
+const sentBoxes = part("sent-boxes", SVGSVGElement);
+const sentGroups = part("sent-groups", HTMLDivElement);
+const sentCaption = part("sent-caption", HTMLElement);
+const unmark = part("unmark", HTMLButtonElement);
 
 /** How long Check holds the writing, standing in for the minutes the models take. */
 const THINKING_MS = 1000;
@@ -271,6 +279,162 @@ function showCrop(strokes: readonly Stroke[], groups: readonly Group[]): void {
   );
 }
 
+/** The submission of the last Check, as exportWork() is to give it (T15), and the marks given so far. */
+let submission: Submission | undefined;
+let given: readonly Mark[] = [];
+
+/**
+ * What Check sends: the crop of the strokes at the height of digits the field gives, and their
+ * groups by the sheet's rule. Marks given before go: they were of the last submission.
+ */
+function send(): void {
+  const { strokes } = probe(sheet);
+  const groups = groupsOf(strokes);
+  const shown = cropOf(strokes, groups, Number(digit.value));
+  given = [];
+  sheet.marks = undefined;
+  submission = shown === null ? undefined : { crop: shown, groups };
+  if (sent.src !== "") URL.revokeObjectURL(sent.src);
+  sentGroups.replaceChildren();
+  if (shown === null) {
+    sent.removeAttribute("src");
+    showMarks();
+    return;
+  }
+  sent.width = shown.width;
+  sent.height = shown.height;
+  sent.src = URL.createObjectURL(new Blob([pictureOf(strokes, shown)], { type: "image/png" }));
+  sentBoxes.setAttribute("viewBox", `0 0 ${shown.width} ${shown.height}`);
+  for (const { label } of groups) {
+    const button = document.createElement("button");
+    button.textContent = label;
+    button.addEventListener("click", () =>
+      mark({ kind: "frame", at: { group: label }, name: `Group ${label}` }),
+    );
+    sentGroups.append(button);
+  }
+  showMarks();
+}
+
+/** One more mark of the submission, back to the element with the others. */
+function mark(each: Mark): void {
+  if (submission === undefined) return;
+  try {
+    sheet.marks = { submission, marks: [...given, each] };
+    given = [...given, each];
+    showMarks();
+  } catch (error) {
+    sentCaption.textContent = `The marks failed: ${error instanceof Error ? error.message : error}`;
+  }
+}
+
+/** The boxes given, over the crop sent, and what the element made of the marks. */
+function showMarks(): void {
+  if (submission === undefined) {
+    sentBoxes.replaceChildren();
+    sentCaption.textContent = "Check sends the crop of the work; it comes here.";
+    return;
+  }
+  const { width, height } = submission.crop;
+  sentBoxes.replaceChildren(
+    ...given.flatMap(({ at }) =>
+      "box" in at
+        ? [
+            shape("rect", {
+              class: "given",
+              x: (at.box[1] * width) / 1000,
+              y: (at.box[0] * height) / 1000,
+              width: ((at.box[3] - at.box[1]) * width) / 1000,
+              height: ((at.box[2] - at.box[0]) * height) / 1000,
+            }),
+          ]
+        : [],
+    ),
+  );
+  const placed = probe(sheet).marks;
+  sentCaption.textContent =
+    given.length === 0
+      ? "Drag a box over the crop, or pick a group, to mark the place on the sheet."
+      : [
+          `${given.length} given, ${placed.length} with a place`,
+          ...placed.map(({ name, ids }) => `${name}: strokes ${ids.join(", ")}`),
+        ].join(" · ");
+}
+
+/** A place on the crop sent, in its px, from a pointer over it. */
+function onSent(event: PointerEvent): { readonly x: number; readonly y: number } {
+  const rect = sentBoxes.getBoundingClientRect();
+  const { width, height } = submission?.crop ?? { width: 0, height: 0 };
+  const along = (at: number, from: number, size: number) =>
+    Math.min(Math.max((at - from) / size, 0), 1);
+  return {
+    x: along(event.clientX, rect.left, rect.width) * width,
+    y: along(event.clientY, rect.top, rect.height) * height,
+  };
+}
+
+/** The box between two places on the crop, in whole thousandths, min < max (Т-32). */
+function fractions(
+  a: { readonly x: number; readonly y: number },
+  b: { readonly x: number; readonly y: number },
+): [number, number, number, number] | null {
+  if (submission === undefined) return null;
+  const { width, height } = submission.crop;
+  const span = (p: number, q: number, size: number): [number, number] => {
+    const low = Math.floor((1000 * Math.min(p, q)) / size);
+    const high = Math.ceil((1000 * Math.max(p, q)) / size);
+    return high > low ? [low, high] : low < 1000 ? [low, low + 1] : [999, 1000];
+  };
+  const [ymin, ymax] = span(a.y, b.y, height);
+  const [xmin, xmax] = span(a.x, b.x, width);
+  return [ymin, xmin, ymax, xmax];
+}
+
+let dragFrom: { readonly x: number; readonly y: number } | undefined;
+const dragged = shape("rect", { class: "dragged" });
+
+sentBoxes.addEventListener("pointerdown", (event) => {
+  if (submission === undefined || event.button !== 0) return;
+  dragFrom = onSent(event);
+  sentBoxes.setPointerCapture(event.pointerId);
+  for (const [key, value] of Object.entries({
+    x: dragFrom.x,
+    y: dragFrom.y,
+    width: 0,
+    height: 0,
+  })) {
+    dragged.setAttribute(key, String(value));
+  }
+  sentBoxes.append(dragged);
+});
+sentBoxes.addEventListener("pointermove", (event) => {
+  if (dragFrom === undefined) return;
+  const to = onSent(event);
+  dragged.setAttribute("x", String(Math.min(dragFrom.x, to.x)));
+  dragged.setAttribute("y", String(Math.min(dragFrom.y, to.y)));
+  dragged.setAttribute("width", String(Math.abs(to.x - dragFrom.x)));
+  dragged.setAttribute("height", String(Math.abs(to.y - dragFrom.y)));
+});
+sentBoxes.addEventListener("pointerup", (event) => {
+  if (dragFrom === undefined) return;
+  const box = fractions(dragFrom, onSent(event));
+  dragFrom = undefined;
+  dragged.remove();
+  if (box !== null) mark({ kind: "frame", at: { box }, name: "The place the model named" });
+});
+// A drag the browser cancels, or whose pointer goes, makes no mark and leaves no box behind.
+for (const type of ["pointercancel", "lostpointercapture"] as const) {
+  sentBoxes.addEventListener(type, () => {
+    dragFrom = undefined;
+    dragged.remove();
+  });
+}
+unmark.addEventListener("click", () => {
+  given = [];
+  sheet.marks = undefined;
+  showMarks();
+});
+
 let checking = false;
 
 /**
@@ -285,6 +449,7 @@ async function check(): Promise<void> {
   checked.style.pointerEvents = "none";
   for (const button of buttons) button.disabled = true;
   status.textContent = "Checking: no writing until it ends…";
+  send();
   try {
     const png = await checked.exportPNG();
     if (png === null) {
@@ -339,6 +504,12 @@ part("next", HTMLButtonElement).addEventListener("click", () => {
   changes = 0;
   showPicture(null);
   showGroups();
+  submission = undefined;
+  given = [];
+  if (sent.src !== "") URL.revokeObjectURL(sent.src);
+  sent.removeAttribute("src");
+  sentGroups.replaceChildren();
+  showMarks();
   status.textContent = "";
   count();
 });
@@ -356,3 +527,4 @@ for (const field of [pause, across, down]) field.addEventListener("input", showG
 digit.addEventListener("change", showGroups);
 count();
 showGroups();
+showMarks();

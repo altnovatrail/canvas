@@ -7,14 +7,17 @@
 // eraser takes strokes off whole, by the path of a press, as the consumer's tool or a pen's eraser,
 // and the sheet keeps the history of writing (T10; R22). The sheet is a stack of layers, the
 // task's grid on its template and the task's statement above it, its look the consumer's to theme
-// (T11; R23). The element's other properties, methods and events come with the tasks of the sheet
-// (T12–T15).
+// (T11; R23). The tutor's marks of a submission hold on to the learner's strokes, and a frame
+// shows where each is, over the work (T14; R26). The element's other properties, methods and
+// events come with the interface of the package (T15).
 
 import type { Vec2 } from "perfect-freehand";
 import { Clock } from "../core/clock.js";
 import { ERASER_BUTTON, Eraser } from "../core/eraser.js";
+import { type Box, boxOf } from "../core/geometry.js";
 import { gridPath } from "../core/grid.js";
-import type { Stroke } from "../core/ink.js";
+import type { InkPoint, Stroke } from "../core/ink.js";
+import { type Marks, marksOf, type Placed, placesOf, shownOf } from "../core/marks.js";
 import { evenOutline, followsPressure, INK_REACH, outline } from "../core/outline.js";
 import { type PointerSample, Recorder } from "../core/recorder.js";
 import { fitScale, K_MAX, scaleFor, toSheet, type View } from "../core/screen.js";
@@ -31,7 +34,11 @@ import { Work } from "../core/work.js";
 import { attachProbe } from "./probe.js";
 import { type Media, Statement } from "./statement.js";
 
+export type { Crop, Frame } from "../core/crop.js";
+export type { Box } from "../core/geometry.js";
 export type { GridKind } from "../core/grid.js";
+export type { Group } from "../core/groups.js";
+export type { Anchor, CropNumbers, Mark, Marks, Submission } from "../core/marks.js";
 export type { PicturePart, StatementPart, Task, TextPart } from "../core/task.js";
 export type { Media } from "./statement.js";
 
@@ -44,6 +51,15 @@ const INK = "#111";
 const PAPER = "#fff";
 /** The event the element sends after every change of the work (R20). */
 const WORK_CHANGE = "workchange";
+/**
+ * The colour of the tutor's frames unless the consumer's theme gives one: a blue, for now, and not
+ * a red, which would read as «wrong» (E4 in RUN.md, «Не входит»).
+ */
+const MARK = "#2563eb";
+/** How far a frame stands off the points of its strokes, in sheet units, as canvas-api's (R26). */
+const MARK_PADDING = 10;
+/** The rounding of a frame's corners, in sheet units. */
+const MARK_CORNER = 6;
 
 /**
  * What a press of the primary button does on the sheet: the pen writes, the eraser erases (R22). A
@@ -107,10 +123,16 @@ canvas {
   display: block; color: var(--novatrail-canvas-ink, ${INK}); transition: color 1ms step-end;
   touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
 }
+.marks rect {
+  fill: none; stroke: var(--novatrail-canvas-mark, ${MARK}); stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}
+.marks rect.under { opacity: 0.25; }
 @media (forced-colors: active) {
   .sheet { outline: 1px solid CanvasText; }
   .grid { stroke: GrayText; }
   canvas { color: CanvasText; }
+  .marks rect { stroke: Highlight; }
 }
 `;
 
@@ -135,12 +157,37 @@ interface Ink {
   readonly bottom: number;
 }
 
+/**
+ * A mark the sheet shows (R26): its name and where it is, its frame on the layer of the marks, the
+ * frame as last drawn, in sheet units, and whether the stroke under way is writing over it.
+ */
+interface Shown {
+  readonly name: string;
+  readonly placed: Placed;
+  readonly rect: SVGRectElement;
+  frame: Box | null;
+  under: boolean;
+  /** What the frame's attributes say, so that a frame that has not changed writes nothing. */
+  drawn: string;
+}
+
 /** An `<svg>` layer of the sheet, which counts in sheet units and hides from screen readers. */
 function svgLayer(name: string): SVGSVGElement {
   const svg = document.createElementNS(SVG, "svg");
   svg.setAttribute("class", name);
   svg.setAttribute("preserveAspectRatio", "none");
   svg.setAttribute("aria-hidden", "true");
+  return svg;
+}
+
+/**
+ * The layer of the tutor's marks, over the work: a screen reader reads each mark by its name, and
+ * the layer itself is no picture of its own (R26).
+ */
+function marksLayer(): SVGSVGElement {
+  const svg = svgLayer("marks");
+  svg.removeAttribute("aria-hidden");
+  svg.setAttribute("role", "none");
   return svg;
 }
 
@@ -169,7 +216,7 @@ export class NovatrailCanvas extends HTMLElement {
   readonly #sketch = svgLayer("sketch");
   /** The learner's work: the ink. */
   readonly #canvas = document.createElement("canvas");
-  readonly #marks = svgLayer("marks");
+  readonly #marksLayer = marksLayer();
   readonly #context = this.#canvas.getContext("2d");
   /** The canvas's style as it is computed, read live: its colour is the ink's on the screen. */
   readonly #canvasStyle = getComputedStyle(this.#canvas);
@@ -194,6 +241,18 @@ export class NovatrailCanvas extends HTMLElement {
   #tool: Tool = "pen";
   #task: Task | undefined;
   #shownTemplate: Template = NO_TASK;
+  /** The tutor's marks as the consumer gave them, and those of them that have a place (R26). */
+  #marks: Marks | undefined;
+  #shown: readonly Shown[] = [];
+  /** The strokes on the sheet by ID, kept while the sheet's strokes are the same array. */
+  #onSheet: { readonly strokes: readonly Stroke[]; readonly byId: ReadonlyMap<number, Stroke> } = {
+    strokes: [],
+    byId: new Map(),
+  };
+  /** The box of each stroke's points, worked out once: a stroke never changes (R22). */
+  readonly #pointBoxes = new WeakMap<Stroke, Box>();
+  /** The stroke under way, and how many of its points the marks have been checked against. */
+  #writing: { readonly stroke: Stroke; seen: number } | undefined;
   /** The path of each finished stroke, outlined once (R18). */
   readonly #inks = new WeakMap<Stroke, Ink>();
   /** The path of each pen's stroke on the picture of the work, without its pressure, outlined once. */
@@ -241,7 +300,7 @@ export class NovatrailCanvas extends HTMLElement {
       this.#show,
       this.#sketch,
       this.#canvas,
-      this.#marks,
+      this.#marksLayer,
     );
     this.#sheet.append(this.#stage);
     this.#column.append(this.#statement.element, this.#sheet);
@@ -278,11 +337,13 @@ export class NovatrailCanvas extends HTMLElement {
       pending: [...this.#eraser.pending],
       outlines: this.#outlines,
       view: this.#view(),
+      marks: this.#shown.map(({ name, placed, frame }) => ({ name, ids: placed.ids, frame })),
     }));
 
     this.#adopt("tool");
     this.#adopt("task");
     this.#adopt("media");
+    this.#adopt("marks");
   }
 
   /**
@@ -340,6 +401,36 @@ export class NovatrailCanvas extends HTMLElement {
       );
     }
     this.#statement.media = media;
+  }
+
+  /**
+   * The tutor's marks of one submission, with the context the element gave with its crop (R07,
+   * R26): each a frame where a group of strokes is, or a box on the crop the model saw. A mark
+   * holds on to the strokes the model saw there and is drawn around those of them the sheet shows,
+   * as they are now: new strokes do not move it, and when all of them are erased it is gone, till
+   * undo brings them back. A box that comes near no stroke, and an answer cell while the task has
+   * none, have no frame: the question is asked without one. The type is the element's own until
+   * spec's contract gives one. A submission goes back to the element that gave it: one whose
+   * strokes this sheet does not have where it has them is a TypeError, and so are marks that are
+   * not marks. `undefined` takes the marks off. Every value is checked as it comes, and marks
+   * equal to those shown write nothing.
+   */
+  get marks(): Marks | undefined {
+    return this.#marks;
+  }
+
+  set marks(marks: Marks | undefined) {
+    let shown: { readonly name: string; readonly placed: Placed }[] = [];
+    if (marks !== undefined) {
+      const given = marksOf(marks);
+      const places = placesOf(given, this.#known());
+      shown = given.marks.flatMap(({ name }, n) => {
+        const placed = places[n];
+        return placed ? [{ name, placed }] : [];
+      });
+    }
+    this.#marks = marks;
+    this.#showMarks(shown);
   }
 
   connectedCallback(): void {
@@ -430,7 +521,7 @@ export class NovatrailCanvas extends HTMLElement {
    * take leaves the property as the element starts it, with a warning, rather than fail the
    * element's upgrade, which would leave it dead.
    */
-  #adopt(name: "tool" | "task" | "media"): void {
+  #adopt(name: "tool" | "task" | "media" | "marks"): void {
     if (!Object.hasOwn(this, name)) return;
     const value: unknown = Reflect.get(this, name);
     Reflect.deleteProperty(this, name);
@@ -446,6 +537,36 @@ export class NovatrailCanvas extends HTMLElement {
   #rule(template: Template): void {
     this.#grid.setAttribute("d", gridPath(template.grid));
     this.#grid.classList.toggle("dots", template.grid.kind === "dots");
+  }
+
+  /** Every stroke the sheet has known, erased or not, as its history wrote them. */
+  #known(): Stroke[] {
+    return this.#work.history.flatMap((event) => (event.kind === "write" ? [event.stroke] : []));
+  }
+
+  /**
+   * The marks to show, each a frame of its own on the layer of the marks, hidden till it is drawn.
+   * Marks of the names and the strokes of those shown keep their frames, and nothing is written.
+   */
+  #showMarks(marks: readonly { readonly name: string; readonly placed: Placed }[]): void {
+    const same =
+      marks.length === this.#shown.length &&
+      marks.every(({ name, placed }, n) => {
+        const shown = this.#shown[n];
+        return shown !== undefined && shown.name === name && sameIds(shown.placed.ids, placed.ids);
+      });
+    if (same) return;
+    for (const { rect } of this.#shown) rect.remove();
+    this.#shown = marks.map(({ name, placed }) => {
+      const rect = document.createElementNS(SVG, "rect");
+      rect.setAttribute("role", "img");
+      rect.setAttribute("aria-label", name);
+      rect.setAttribute("rx", String(MARK_CORNER));
+      rect.setAttribute("display", "none");
+      this.#marksLayer.append(rect);
+      return { name, placed, rect, frame: null, under: false, drawn: "none" };
+    });
+    this.#request();
   }
 
   /**
@@ -664,9 +785,97 @@ export class NovatrailCanvas extends HTMLElement {
     const viewBox = `0 ${screen.vy} ${SHEET.width} ${height}`;
     if (viewBox === this.#viewBox) return;
     this.#viewBox = viewBox;
-    for (const layer of [this.#template, this.#sketch, this.#marks]) {
+    for (const layer of [this.#template, this.#sketch, this.#marksLayer]) {
       layer.setAttribute("viewBox", viewBox);
     }
+  }
+
+  /**
+   * The frames of the marks, around their strokes as the sheet shows them now (R26): off their
+   * points by the padding, in sheet units, and kept to the sheet by half the frame's line, so that
+   * a frame at its edge stays whole. A frame the stroke under way comes into fades till the stroke
+   * lands, and only what has changed is written.
+   */
+  #drawMarks(screen: Screen): void {
+    const fresh = this.#freshPoints();
+    if (this.#shown.length === 0) return;
+    const byId = this.#byId();
+    const pending = this.#eraser.pending;
+    const onScreen = (id: number): Box | undefined => {
+      const stroke = pending.has(id) ? undefined : byId.get(id);
+      return stroke && this.#pointBoxOf(stroke);
+    };
+    const half = 1 / screen.k;
+    for (const mark of this.#shown) {
+      const shown = shownOf(mark.placed, onScreen);
+      const frame = shown && {
+        minX: Math.max(shown.minX - MARK_PADDING, half),
+        minY: Math.max(shown.minY - MARK_PADDING, half),
+        maxX: Math.min(shown.maxX + MARK_PADDING, SHEET.width - half),
+        maxY: Math.min(shown.maxY + MARK_PADDING, SHEET.height - half),
+      };
+      if (this.#writing === undefined || frame === null) mark.under = false;
+      else if (!mark.under) {
+        // A frame that came or moved while the stroke was under way is checked against all of it.
+        const points = sameBox(frame, mark.frame) ? fresh : this.#writing.stroke.points;
+        mark.under = points.some((point) => near(point, frame, INK_REACH + half));
+      }
+      mark.frame = frame;
+      const drawn =
+        frame === null
+          ? "none"
+          : `${frame.minX} ${frame.minY} ${frame.maxX} ${frame.maxY} ${mark.under}`;
+      if (drawn === mark.drawn) continue;
+      mark.drawn = drawn;
+      const { rect } = mark;
+      if (frame === null) {
+        rect.setAttribute("display", "none");
+        continue;
+      }
+      rect.setAttribute("x", String(frame.minX));
+      rect.setAttribute("y", String(frame.minY));
+      rect.setAttribute("width", String(frame.maxX - frame.minX));
+      rect.setAttribute("height", String(frame.maxY - frame.minY));
+      rect.classList.toggle("under", mark.under);
+      rect.removeAttribute("display");
+    }
+  }
+
+  /**
+   * The points the stroke under way has gained since the marks last looked at it. A new stroke
+   * starts with every mark as it is, unfaded.
+   */
+  #freshPoints(): readonly InkPoint[] {
+    const live = this.#recorder.live;
+    if (live === undefined) {
+      this.#writing = undefined;
+      return [];
+    }
+    if (this.#writing?.stroke !== live) {
+      this.#writing = { stroke: live, seen: 0 };
+      for (const mark of this.#shown) mark.under = false;
+    }
+    const fresh = live.points.slice(this.#writing.seen);
+    this.#writing.seen = live.points.length;
+    return fresh;
+  }
+
+  /** The strokes on the sheet by ID: each action on the work gives a new array of them (R19). */
+  #byId(): ReadonlyMap<number, Stroke> {
+    const strokes = this.#work.strokes;
+    if (this.#onSheet.strokes !== strokes) {
+      this.#onSheet = { strokes, byId: new Map(strokes.map((stroke) => [stroke.id, stroke])) };
+    }
+    return this.#onSheet.byId;
+  }
+
+  #pointBoxOf(stroke: Stroke): Box {
+    let box = this.#pointBoxes.get(stroke);
+    if (box === undefined) {
+      box = boxOf(stroke.points);
+      this.#pointBoxes.set(stroke, box);
+    }
+    return box;
   }
 
   /**
@@ -681,6 +890,7 @@ export class NovatrailCanvas extends HTMLElement {
     // Read before anything is written: the colour as the style now computes it.
     const colour = this.#canvasStyle.color;
     this.#place(screen);
+    this.#drawMarks(screen);
     const context = this.#context;
     const { width, height } = this.#canvas;
     if (context === null || width === 0 || height === 0) return;
@@ -748,6 +958,22 @@ function inSight(event: PointerEvent, screen: Screen): boolean {
     event.clientY >= shown.top &&
     event.clientY <= shown.bottom
   );
+}
+
+/** Whether a point lies within a box widened by `reach`, in sheet units. */
+function near({ x, y }: InkPoint, box: Box, reach: number): boolean {
+  return (
+    x >= box.minX - reach && x <= box.maxX + reach && y >= box.minY - reach && y <= box.maxY + reach
+  );
+}
+
+function sameIds(a: readonly number[], b: readonly number[]): boolean {
+  return a.length === b.length && a.every((id, n) => id === b[n]);
+}
+
+function sameBox(a: Box | null, b: Box | null): boolean {
+  if (a === null || b === null) return a === b;
+  return a.minX === b.minX && a.minY === b.minY && a.maxX === b.maxX && a.maxY === b.maxY;
 }
 
 /**

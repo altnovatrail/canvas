@@ -31,6 +31,21 @@ export function boxOf(points: readonly Point[]): Box {
   return { minX, minY, maxX, maxY };
 }
 
+/** The box around boxes. */
+export function around(boxes: readonly Box[]): Box {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const box of boxes) {
+    minX = Math.min(minX, box.minX);
+    minY = Math.min(minY, box.minY);
+    maxX = Math.max(maxX, box.maxX);
+    maxY = Math.max(maxY, box.maxY);
+  }
+  return { minX, minY, maxX, maxY };
+}
+
 /** The box around a segment, wider by `margin` on every side. */
 export function segmentBox(a: Point, b: Point, margin: number): Box {
   return {

@@ -93,8 +93,12 @@ test("the sheet is a stack of layers in the order of concepts 8 spec, and the ca
       box.width,
       box.height,
     ]);
-    if (layer !== canvas) {
-      expect(getComputedStyle(layer).pointerEvents).toBe("none");
+    if (layer !== canvas) expect(getComputedStyle(layer).pointerEvents).toBe("none");
+    // The marks' layer is no picture of its own: a screen reader reads each mark by its name (R26).
+    if (layer.classList.contains("marks")) {
+      expect(layer.getAttribute("role")).toBe("none");
+      expect(layer.hasAttribute("aria-hidden")).toBe(false);
+    } else if (layer !== canvas) {
       expect(layer.getAttribute("aria-hidden")).toBe("true");
     }
   }

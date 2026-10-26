@@ -1,3 +1,4 @@
+import { record, shown } from "./fields.js";
 import {
   DEFAULT_GRID,
   GRID_KINDS,
@@ -166,23 +167,4 @@ function samePart(a: StatementPart, b: StatementPart | undefined): boolean {
     a.width === b.width &&
     a.height === b.height
   );
-}
-
-function record(value: unknown, path: string): Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    throw new TypeError(`${path}: an object, not ${shown(value)}`);
-  }
-  return value as Record<string, unknown>;
-}
-
-/** A value as an error message shows it. */
-function shown(value: unknown): string {
-  if (typeof value === "number") return String(value);
-  if (value === undefined) return "undefined";
-  if (typeof value === "function") return "a function";
-  try {
-    return JSON.stringify(value) ?? String(value);
-  } catch {
-    return String(value);
-  }
 }

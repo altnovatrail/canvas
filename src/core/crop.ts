@@ -1,5 +1,5 @@
 import RBush from "rbush";
-import { type Box, tenths } from "./geometry.js";
+import { around, type Box, tenths } from "./geometry.js";
 import type { Group } from "./groups.js";
 import type { Stroke } from "./ink.js";
 import { Sets } from "./sets.js";
@@ -79,7 +79,7 @@ export interface Crop {
 }
 
 /** A stroke as the crop sees it: the box of its points in tenths. */
-interface Mark extends Box {
+interface Extent extends Box {
   readonly id: number;
 }
 
@@ -89,14 +89,14 @@ interface Mark extends Box {
  * bundles by their smallest ID.
  */
 export function bundlesOf(strokes: readonly Stroke[]): number[][] {
-  return bundled(marksOf(strokes))
+  return bundled(extentsOf(strokes))
     .map((bundle) => bundle.map(({ id }) => id).sort(byNumber))
     .sort((a, b) => (a[0] ?? 0) - (b[0] ?? 0));
 }
 
 /** h_med (R25): the lower median of the heights of the bundles, in units; `CROP.flat` if none. */
 export function medianOf(strokes: readonly Stroke[]): number {
-  return medianTenths(marksOf(strokes)) / 10;
+  return medianTenths(extentsOf(strokes)) / 10;
 }
 
 /**
@@ -114,11 +114,11 @@ export function cropOf(
       `a digit ${digit} px high: a crop takes whole px from 1 to ${CROP.tallest}`,
     );
   }
-  const marks = marksOf(strokes);
-  const members = membersOf(groups, marks);
-  if (marks.length === 0) return null;
-  const box = around(marks);
-  const median = medianTenths(marks);
+  const extents = extentsOf(strokes);
+  const members = membersOf(groups, extents);
+  if (extents.length === 0) return null;
+  const box = around(extents);
+  const median = medianTenths(extents);
   const unit = Math.min(median, CROP.ceiling * 10);
   let size = sizeOf(box, unit, digit);
   // At a digit of 1 px every sheet fits: its sides are 200 px, for (14000 / 150 + 24) px is less.
@@ -143,6 +143,8 @@ export function cropOf(
       ],
     };
   });
+  const margins = [top, left] as const;
+  const exact = { box, median: unit };
   return {
     digit,
     drawn,
@@ -151,23 +153,41 @@ export function cropOf(
     line: line / 12,
     width,
     height,
-    margins: [top, left],
-    sheetBox: [
-      (box.minY * drawn - top * unit) / (10 * drawn),
-      (box.minX * drawn - left * unit) / (10 * drawn),
-      (box.minY * drawn - top * unit + height * unit) / (10 * drawn),
-      (box.minX * drawn - left * unit + width * unit) / (10 * drawn),
-    ],
+    margins,
+    sheetBox: sheetBoxOf({ drawn, width, height, margins, exact }),
     frames,
-    exact: { box, median: unit },
+    exact,
   };
+}
+
+/**
+ * Where a crop with its margins lies on the sheet, its `sheet_box` (R25): [ymin, xmin, ymax, xmax]
+ * in units, each one division of two whole numbers, from the whole numbers of the crop. A
+ * submission's `sheet_box` is checked by it when the tutor's marks come back with it (R26).
+ */
+export function sheetBoxOf(
+  crop: Pick<Crop, "drawn" | "width" | "height" | "margins" | "exact">,
+): readonly [number, number, number, number] {
+  const {
+    drawn,
+    width,
+    height,
+    margins: [top, left],
+    exact: { box, median: unit },
+  } = crop;
+  return [
+    (box.minY * drawn - top * unit) / (10 * drawn),
+    (box.minX * drawn - left * unit) / (10 * drawn),
+    (box.minY * drawn - top * unit + height * unit) / (10 * drawn),
+    (box.minX * drawn - left * unit + width * unit) / (10 * drawn),
+  ];
 }
 
 /**
  * The strokes as the crop sees them. A stroke without points, or an ID twice, is no sheet's, and a
  * point that is no finite place on the sheet is no point of it.
  */
-function marksOf(strokes: readonly Stroke[]): Mark[] {
+function extentsOf(strokes: readonly Stroke[]): Extent[] {
   const seen = new Set<number>();
   return strokes.map(({ id, points }) => {
     if (seen.has(id)) throw new TypeError(`the stroke ${id} is on the sheet twice`);
@@ -198,70 +218,55 @@ function onSheet(value: number, size: number): boolean {
  * Each group's strokes. The groups are those of the strokes given: each stroke in one of them, and
  * no stroke of a group missing from the sheet.
  */
-function membersOf(groups: readonly Group[], marks: readonly Mark[]): Mark[][] {
-  const byId = new Map(marks.map((mark) => [mark.id, mark]));
+function membersOf(groups: readonly Group[], extents: readonly Extent[]): Extent[][] {
+  const byId = new Map(extents.map((extent) => [extent.id, extent]));
   const grouped = new Set<number>();
   const members = groups.map(({ label, ids }) => {
     if (ids.length === 0) throw new TypeError(`the group ${label} has no strokes`);
     return ids.map((id) => {
-      const mark = byId.get(id);
-      if (mark === undefined)
+      const extent = byId.get(id);
+      if (extent === undefined)
         throw new TypeError(`the group ${label} has a stroke ${id} not on the sheet`);
       if (grouped.has(id)) throw new TypeError(`the stroke ${id} is in two groups`);
       grouped.add(id);
-      return mark;
+      return extent;
     });
   });
-  for (const { id } of marks) {
+  for (const { id } of extents) {
     if (!grouped.has(id)) throw new TypeError(`the stroke ${id} is in no group`);
   }
   return members;
 }
 
-/** The bundles, each the marks of its strokes: the index finds the boxes that touch. */
-function bundled(marks: readonly Mark[]): Mark[][] {
-  const tall = marks.filter(({ minY, maxY }) => maxY - minY >= CROP.flat * 10);
-  const index = new RBush<Mark & { readonly at: number }>().load(
-    tall.map((mark, at) => ({ ...mark, at })),
+/** The bundles, each the extents of its strokes: the index finds the boxes that touch. */
+function bundled(extents: readonly Extent[]): Extent[][] {
+  const tall = extents.filter(({ minY, maxY }) => maxY - minY >= CROP.flat * 10);
+  const index = new RBush<Extent & { readonly at: number }>().load(
+    tall.map((extent, at) => ({ ...extent, at })),
   );
   const sets = new Sets(tall.length);
-  for (const [at, mark] of tall.entries()) {
-    for (const other of index.search(mark)) sets.join(at, other.at);
+  for (const [at, extent] of tall.entries()) {
+    for (const other of index.search(extent)) sets.join(at, other.at);
   }
-  const bundles = new Map<number, Mark[]>();
-  for (const [at, mark] of tall.entries()) {
+  const bundles = new Map<number, Extent[]>();
+  for (const [at, extent] of tall.entries()) {
     const root = sets.root(at);
     const bundle = bundles.get(root);
-    if (bundle === undefined) bundles.set(root, [mark]);
-    else bundle.push(mark);
+    if (bundle === undefined) bundles.set(root, [extent]);
+    else bundle.push(extent);
   }
   return [...bundles.values()];
 }
 
 /** h_med in tenths: the height of the bundle in the lower middle, ⌊(n − 1) / 2⌋ from the lowest. */
-function medianTenths(marks: readonly Mark[]): number {
-  const heights = bundled(marks)
+function medianTenths(extents: readonly Extent[]): number {
+  const heights = bundled(extents)
     .map((bundle) => {
       const { minY, maxY } = around(bundle);
       return maxY - minY;
     })
     .sort(byNumber);
   return heights[Math.floor((heights.length - 1) / 2)] ?? CROP.flat * 10;
-}
-
-/** The box around boxes. */
-function around(boxes: readonly Box[]): Box {
-  let minX = Number.POSITIVE_INFINITY;
-  let minY = Number.POSITIVE_INFINITY;
-  let maxX = Number.NEGATIVE_INFINITY;
-  let maxY = Number.NEGATIVE_INFINITY;
-  for (const box of boxes) {
-    minX = Math.min(minX, box.minX);
-    minY = Math.min(minY, box.minY);
-    maxX = Math.max(maxX, box.maxX);
-    maxY = Math.max(maxY, box.maxY);
-  }
-  return { minX, minY, maxX, maxY };
 }
 
 /** The size of the crop with digits `drawn` px high, and the margins that centre the work in it. */

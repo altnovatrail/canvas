@@ -1,9 +1,9 @@
 // The synthetic sheets of the tests, drawn by code as every test's strokes are: no hand wrote them
 // (CLAUDE.md). Each sheet comes with what a teacher sees on it, set down before any run of the
-// code: its groups (R24) and the median height its crop scales by (R25). The tests of the groups
-// and of the crop take them, and so do their test vectors. A module of the tests alone: the build
-// leaves it out, as it leaves out the tests (tsconfig.build.json), and the package check holds to
-// that (scripts/package.ts).
+// code: its groups (R24) and the median height its crop scales by (R25). The tests of the groups,
+// of the crop and of the marks take them, and so do their test vectors. A module of the tests
+// alone: the build leaves it out, as it leaves out the tests (tsconfig.build.json), and the
+// package check holds to that (scripts/package.ts).
 
 import { Clock } from "./clock.js";
 import type { Stroke } from "./ink.js";
@@ -25,6 +25,26 @@ export function random(seed: number): () => number {
 /** A stroke of these points, each [x, y, t]: sheet units and the sheet's milliseconds. */
 export function stroke(id: number, ...points: (readonly [number, number, number])[]): Stroke {
   return { id, kind: "pen", points: points.map(([x, y, t]) => ({ x, y, t, p: 0.5 })) };
+}
+
+/**
+ * A crowded sheet of a seed: up to 40 strokes of one to five points, writing and lines, anywhere on
+ * the sheet, to hundredths of a unit, which the rules round. The crop's test and the marks' take it.
+ */
+export function crowd(seed: number): Stroke[] {
+  const next = random(seed);
+  const place = (from: number, span: number, size: number) =>
+    Math.min(size, Math.round((from + next() * span) * 100) / 100);
+  return Array.from({ length: 1 + Math.floor(next() * 40) }, (_, n) => {
+    const x = place(0, 940, 1000);
+    const y = place(0, 1300, 1400);
+    const reach = next() < 0.3 ? 12 : 90;
+    const points = Array.from(
+      { length: 1 + Math.floor(next() * 5) },
+      (_, k) => [place(x, reach, 1000), place(y, reach, 1400), 2500 * n + 60 * k] as const,
+    );
+    return stroke(1000 - n, ...points);
+  });
 }
 
 // The synthetic sheets. A hand writes them as the element hands a pen's events over: through the
