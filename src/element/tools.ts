@@ -3,31 +3,33 @@
 // the arrow keys from button to button, and the tools a group of radio buttons that the arrows go
 // through without choosing one. Undo and Clear with nothing to take back or to clear stay where the
 // focus can reach them, marked unavailable: a last undo from the keyboard leaves the focus where it
-// was. The labels are in the element's language (labels.ts). This module is no entry point of the
-// package.
+// was. In pen mode a last button lets a finger write again (R29). The labels are in the element's
+// language (labels.ts). This module is no entry point of the package.
 
 import type { Tool } from "../core/task.js";
 import { labelsFor } from "./labels.js";
 
 /**
  * What the row asks of the element: a tool the learner chose — perhaps the one in use — an undo, a
- * clearing.
+ * clearing, and the finger to write again, out of pen mode.
  */
 export interface ToolActions {
   readonly choose: (tool: Tool) => void;
   readonly undo: () => void;
   readonly clear: () => void;
+  readonly fingers: () => void;
 }
 
 /**
- * What the row shows: the tools the task allows, the one in use, and whether undo and clearing
- * have anything to do.
+ * What the row shows: the tools the task allows, the one in use, whether undo and clearing have
+ * anything to do, and whether the finger may be asked to write again.
  */
 export interface ToolState {
   readonly tools: readonly Tool[];
   readonly tool: Tool;
   readonly undoable: boolean;
   readonly clearable: boolean;
+  readonly finger: boolean;
 }
 
 /** The row of the element's own buttons, as the element shows it. */
@@ -39,12 +41,14 @@ export class Tools {
   readonly #eraser = radioButton();
   readonly #undo = plainButton();
   readonly #clear = plainButton();
+  readonly #finger = plainButton();
   /** The buttons in the order the arrow keys go through them. */
   readonly #buttons: readonly HTMLButtonElement[] = [
     this.#pen,
     this.#eraser,
     this.#undo,
     this.#clear,
+    this.#finger,
   ];
   /** The language of the labels shown. */
   #lang: string | undefined;
@@ -55,7 +59,8 @@ export class Tools {
     this.#group.className = "choice";
     this.#group.setAttribute("role", "radiogroup");
     this.#group.append(this.#pen, this.#eraser);
-    this.element.append(this.#group, this.#undo, this.#clear);
+    this.element.append(this.#group, this.#undo, this.#clear, this.#finger);
+    this.#finger.hidden = true;
     // Tab comes to the first button, until another has had the focus.
     this.#stopAt(this.#pen);
     // The element decides whether a choice is a change: the tool in use, chosen again, is none.
@@ -69,6 +74,7 @@ export class Tools {
     };
     doing(this.#undo, actions.undo);
     doing(this.#clear, actions.clear);
+    this.#finger.addEventListener("click", () => actions.fingers());
     this.element.addEventListener("keydown", (event) => this.#key(event));
     // The button that had the focus last is the one Tab comes back to.
     this.element.addEventListener("focusin", (event) => {
@@ -79,15 +85,9 @@ export class Tools {
   }
 
   /** The row as the sheet now is. Only what has changed is written. */
-  show({ tools, tool, undoable, clearable }: ToolState): void {
-    const erasable = tools.includes("eraser");
-    if (this.#eraser.hidden === erasable) {
-      // A button that goes takes its stop of Tab and the focus with it: both go to the pen.
-      const focused = this.#eraser.matches(":focus");
-      this.#eraser.hidden = !erasable;
-      if (!erasable && this.#eraser.tabIndex === 0) this.#stopAt(this.#pen);
-      if (!erasable && focused) this.#pen.focus();
-    }
+  show({ tools, tool, undoable, clearable, finger }: ToolState): void {
+    this.#reveal(this.#eraser, tools.includes("eraser"));
+    this.#reveal(this.#finger, finger);
     write(this.#pen, "aria-checked", String(tool === "pen"));
     write(this.#eraser, "aria-checked", String(tool === "eraser"));
     write(this.#undo, "aria-disabled", undoable ? null : "true");
@@ -109,6 +109,7 @@ export class Tools {
     this.#eraser.textContent = labels.eraser;
     this.#undo.textContent = labels.undo;
     this.#clear.textContent = labels.clear;
+    this.#finger.textContent = labels.finger;
   }
 
   /**
@@ -128,6 +129,16 @@ export class Tools {
     else return;
     event.preventDefault();
     next?.focus();
+  }
+
+  /** A button comes or goes, and one that goes takes its stop of Tab and the focus to the pen. */
+  #reveal(button: HTMLButtonElement, shown: boolean): void {
+    if (button.hidden !== shown) return;
+    const focused = button.matches(":focus");
+    button.hidden = !shown;
+    if (shown) return;
+    if (button.tabIndex === 0) this.#stopAt(this.#pen);
+    if (focused) this.#pen.focus();
   }
 
   /** The one button Tab comes to: the arrow keys reach the others. */

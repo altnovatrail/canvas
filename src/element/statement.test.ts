@@ -1,4 +1,4 @@
-import { afterEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, type MockInstance, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import type { View } from "../core/screen.js";
 import "./index.js";
@@ -11,6 +11,11 @@ import { probe } from "./probe.js";
 // their files, which go when the pictures leave.
 
 const made: HTMLElement[] = [];
+/** The decodes the element asks for: a picture shows only once its file is decoded. */
+let decodes: MockInstance<HTMLImageElement["decode"]>;
+beforeEach(() => {
+  decodes = vi.spyOn(HTMLImageElement.prototype, "decode");
+});
 afterEach(() => {
   for (const element of made.splice(0)) element.remove();
   vi.restoreAllMocks();
@@ -22,9 +27,14 @@ async function settle(): Promise<void> {
   await frame();
 }
 
-/** The promises in flight settle, the pictures decode, and the frames after them come. */
+/**
+ * The loads that settled run on, the pictures they gave decode, and the frames after them come.
+ * It waits for the decodes themselves, not for a time: under the load of the whole suite a decode
+ * can take longer than any time the test would guess.
+ */
 async function arrive(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  await new Promise((resolve) => setTimeout(resolve));
+  await Promise.allSettled(decodes.mock.results.map((result) => result.value));
   await settle();
 }
 

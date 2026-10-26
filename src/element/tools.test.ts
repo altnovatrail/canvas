@@ -1,11 +1,11 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import type { HistoryEvent } from "../core/history.js";
-import type { View } from "../core/screen.js";
 import { NovatrailCanvas, type ToolChange } from "./index.js";
 import { labelsFor } from "./labels.js";
-import { at, input, level } from "./pointer.fixture.js";
+import { at, input, level, placed, settle } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
+import { PEN_MODE } from "./session.js";
 
 // The element's own row of buttons in Chromium (R28): a toolbar of the tools the task allows and of
 // undo and clearing, found by its roles and names in the element's language, worked with the
@@ -15,38 +15,16 @@ import { probe } from "./probe.js";
 const made: HTMLElement[] = [];
 afterEach(() => {
   for (const element of made.splice(0)) element.remove();
+  // A pen puts the whole page in pen mode: the next test starts without it.
+  PEN_MODE.on = false;
   window.scrollTo(0, 0);
 });
-
-const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-/** Two frames: one for the element's layout, one for its drawing. */
-async function settle(): Promise<void> {
-  await frame();
-  await frame();
-}
 
 const sheetKind = { kind: "handwriting-sheet" } as const;
 
 /** A sheet `width` CSS pixels wide, as tall as its row and the sheet unless given a height. */
-async function sheet(width = 400, height?: number, parent: HTMLElement = document.body) {
-  const element = document.createElement("novatrail-canvas");
-  element.style.width = `${width}px`;
-  if (height !== undefined) element.style.height = `${height}px`;
-  parent.append(element);
-  made.push(parent === document.body ? element : parent);
-  await settle();
-  const root = element.shadowRoot;
-  const canvas = root?.querySelector("canvas");
-  const viewport = root?.querySelector<HTMLElement>(".viewport");
-  const row = root?.querySelector<HTMLElement>(".tools");
-  if (!root || !canvas || !viewport || !row) throw new Error("the element has no row and canvas");
-  const view = (): View => {
-    const { view } = probe(element);
-    if (view === undefined) throw new Error("the element is not laid out");
-    return view;
-  };
-  return { element, root, canvas, viewport, row, view };
-}
+const sheet = (width = 400, height?: number, parent: HTMLElement = document.body) =>
+  placed(made, width, height, { parent });
 
 /** The row's buttons by their roles and names, as a screen reader finds them, in the element. */
 function buttons(element: HTMLElement, names = labelsFor(null).labels) {
@@ -100,13 +78,16 @@ test("the row is a toolbar of the pen and the eraser, undo and clear, named in E
   await expect.element(found.eraser).not.toBeChecked();
   await expect.element(found.undo).toBeVisible();
   await expect.element(found.clear).toBeVisible();
-  // The order the arrow keys go through, and the language the names are in.
+  // The order the arrow keys go through, and the language the names are in. The last button is
+  // pen mode's, and out of it the row hides it (R29).
   expect([...row.querySelectorAll("button")].map((each) => each.textContent)).toEqual([
     "Pen",
     "Eraser",
     "Undo",
     "Clear",
+    "Draw with finger",
   ]);
+  expect(row.querySelectorAll("button[hidden]")).toHaveLength(1);
   expect(row.lang).toBe("en");
 });
 
@@ -124,6 +105,7 @@ test("the labels follow the element's own lang: Russian for ru and its regions, 
     "Ластик",
     "Отменить",
     "Очистить",
+    "Рисовать пальцем",
   ]);
   // A language the labels are not in reads as English, in English: the row says its own.
   for (const tag of ["de", "", "constructor", "x-ru", "zh-Hant-CN"]) {
@@ -401,16 +383,25 @@ test("an eraser given before the element is upgraded, with a task without it, le
   }
 });
 
-test("every button is at least 44 CSS pixels square, in English and in Russian, on a narrow sheet", async () => {
-  const { element, row } = await sheet(400);
-  for (const tag of ["en", "ru"]) {
-    element.setAttribute("lang", tag);
-    await settle();
-    for (const each of row.querySelectorAll("button")) {
-      const rect = each.getBoundingClientRect();
-      expect(rect.width).toBeGreaterThanOrEqual(44);
-      expect(rect.height).toBeGreaterThanOrEqual(44);
+test("every button is at least 44 CSS pixels square, in English and in Russian, on a narrow sheet, pen mode's too", async () => {
+  // A device with touch, in pen mode: the row shows every button it has (R29).
+  Object.defineProperty(navigator, "maxTouchPoints", { value: 5, configurable: true });
+  try {
+    const { element, row } = await sheet(400);
+    PEN_MODE.on = true;
+    for (const tag of ["en", "ru"]) {
+      element.setAttribute("lang", tag);
+      await settle();
+      const shown = row.querySelectorAll("button:not([hidden])");
+      expect(shown).toHaveLength(5);
+      for (const each of shown) {
+        const rect = each.getBoundingClientRect();
+        expect(rect.width).toBeGreaterThanOrEqual(44);
+        expect(rect.height).toBeGreaterThanOrEqual(44);
+      }
     }
+  } finally {
+    Reflect.deleteProperty(navigator, "maxTouchPoints");
   }
 });
 
