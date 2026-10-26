@@ -1,9 +1,9 @@
 import { expect, test } from "vitest";
-import { NO_TASK, sameGrid, sameStatement, sameTemplate, templateOf } from "./task.js";
+import { NO_TASK, sameGrid, sameStatement, sameTemplate, sameTools, templateOf } from "./task.js";
 
 const sheet = { kind: "handwriting-sheet" };
 
-test("a task that says only its canvas kind is ruled in squares of 50 units, without a statement", () => {
+test("a task that says only its canvas kind is ruled in squares of 50 units, without a statement, with the pen and the eraser", () => {
   expect(templateOf({ canvas: sheet })).toEqual(NO_TASK);
   expect(templateOf(undefined)).toBe(NO_TASK);
   expect(NO_TASK).toEqual({
@@ -11,6 +11,7 @@ test("a task that says only its canvas kind is ruled in squares of 50 units, wit
     statement: [],
     lang: undefined,
     digit: 32,
+    tools: ["pen", "eraser"],
   });
 });
 
@@ -31,6 +32,7 @@ test("a task gives the grid's kind and step, and a statement of texts and pictur
     ],
     lang: "en",
     digit: 32,
+    tools: ["pen", "eraser"],
   });
   for (const grid of ["squares", "lines", "dots"]) {
     expect(templateOf({ canvas: { ...sheet, grid } }).grid.kind).toBe(grid);
@@ -44,11 +46,21 @@ test("a task gives the height of a digit on the crop for checking, 32 px unless 
   expect(templateOf({ canvas: sheet }).digit).toBe(32);
 });
 
+test("a task gives the tools it allows of the sheet's, in the sheet's order, and passes over the names the sheet does not know", () => {
+  const tools = (list: unknown) => templateOf({ canvas: { ...sheet, tools: list } }).tools;
+  expect(templateOf({ canvas: sheet }).tools).toEqual(["pen", "eraser"]);
+  expect(tools(["pen"])).toEqual(["pen"]);
+  expect(tools(["eraser", "pen"])).toEqual(["pen", "eraser"]);
+  // A ruler, a calculator: app's to show, or the sheet's in a version to come.
+  expect(tools(["pen", "ruler", "calculator", "pen"])).toEqual(["pen"]);
+  expect(tools(["protractor", "eraser", "pen", "microphone"])).toEqual(["pen", "eraser"]);
+});
+
 test("the fields the sheet does not read are passed over, at every level", () => {
   const template = templateOf({
     id: "posts-1",
     items: [{ cell: { zone: [100, 100, 300, 200] } }],
-    canvas: { ...sheet, grid: "lines", tools: ["pen", "eraser"], digitHeight: 32 },
+    canvas: { ...sheet, grid: "lines", background: "white", digitHeight: 32 },
     statement: [{ text: "Count the posts.", emphasis: "none" }],
   });
   expect(template.grid).toEqual({ kind: "lines", step: 50 });
@@ -56,6 +68,9 @@ test("the fields the sheet does not read are passed over, at every level", () =>
 });
 
 test("a value the sheet cannot show is a TypeError that names its field", () => {
+  // A list with a hole, which a list made by hand may have: the hole is checked too.
+  const holed: string[] = ["pen"];
+  holed[2] = "eraser";
   const wrong: [unknown, RegExp][] = [
     [null, /^task: an object/],
     [[], /^task: an object/],
@@ -74,6 +89,16 @@ test("a value the sheet cannot show is a TypeError that names its field", () => 
     [{ canvas: { ...sheet, digit: 32.5 } }, /^task\.canvas\.digit:/],
     [{ canvas: { ...sheet, digit: "32" } }, /^task\.canvas\.digit: .* not "32"$/],
     [{ canvas: { ...sheet, digit: null } }, /^task\.canvas\.digit: .* not null$/],
+    [{ canvas: { ...sheet, tools: "pen" } }, /^task\.canvas\.tools: a list of tools, not "pen"$/],
+    [{ canvas: { ...sheet, tools: null } }, /^task\.canvas\.tools: a list of tools, not null$/],
+    // The sheet writes with the pen: a list without it is no task the sheet can show.
+    [
+      { canvas: { ...sheet, tools: [] } },
+      /^task\.canvas\.tools: .* writes with "pen", which \[\] lacks$/,
+    ],
+    [{ canvas: { ...sheet, tools: ["eraser"] } }, /^task\.canvas\.tools: .* "pen"/],
+    [{ canvas: { ...sheet, tools: ["pen", 7] } }, /^task\.canvas\.tools\[1\]: .* a string, not 7$/],
+    [{ canvas: { ...sheet, tools: holed } }, /^task\.canvas\.tools\[1\]: .* not undefined$/],
     [{ canvas: sheet, statement: null }, /^task\.statement: a list/],
     [{ canvas: sheet, lang: null }, /^task\.lang:/],
     [{ canvas: sheet, lang: "" }, /^task\.lang:/],
@@ -118,6 +143,7 @@ test("two templates are the same when they show the same, whatever objects they 
     { canvas: sheet, statement: [{ text: "Count." }], lang: "ru" },
     { canvas: sheet, statement: [{ text: "Count." }, { text: "Then write." }] },
     { canvas: sheet, statement: [{ picture: "a.png", alt: "Count.", width: 10, height: 10 }] },
+    { canvas: { ...sheet, tools: ["pen"] }, statement: [{ text: "Count." }] },
   ];
   for (const other of others) {
     expect(sameTemplate(templateOf(one), templateOf(other))).toBe(false);
@@ -136,4 +162,10 @@ test("two templates are the same when they show the same, whatever objects they 
   const reworded = templateOf({ ...one, statement: [{ text: "Count!" }] });
   expect(sameGrid(templateOf(one), reworded)).toBe(true);
   expect(sameStatement(templateOf(one), reworded)).toBe(false);
+  // The tools apart too, and in the sheet's order whatever the list's.
+  const penOnly = templateOf({ ...one, canvas: { ...sheet, tools: ["pen"] } });
+  expect(sameTools(templateOf(one), penOnly)).toBe(false);
+  expect(sameStatement(templateOf(one), penOnly)).toBe(true);
+  const turned = templateOf({ ...one, canvas: { ...sheet, tools: ["eraser", "pen"] } });
+  expect(sameTemplate(templateOf(one), turned)).toBe(true);
 });

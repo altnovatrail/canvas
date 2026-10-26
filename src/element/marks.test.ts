@@ -2,9 +2,10 @@ import { afterEach, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import { type Box, boxOf } from "../core/geometry.js";
 import type { Mark, Marks, Submission } from "../core/marks.js";
-import { toScreen, type View } from "../core/screen.js";
+import type { View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
 import { NovatrailCanvas } from "./index.js";
+import { at } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The tutor's marks on the sheet in Chromium (R26): a frame round the strokes a mark holds on to,
@@ -44,13 +45,6 @@ function viewOf(element: HTMLElement): View {
   const { view } = probe(element);
   if (view === undefined) throw new Error("the element is not laid out");
   return view;
-}
-
-/** The client point over a point of the sheet. */
-function at(canvas: HTMLCanvasElement, view: View, x: number, y: number) {
-  const rect = canvas.getBoundingClientRect();
-  const onScreen = toScreen(view, x, y);
-  return { clientX: rect.left + onScreen.x, clientY: rect.top + onScreen.y };
 }
 
 const mouse = { pointerId: 1, pointerType: "mouse", isPrimary: true, bubbles: true };

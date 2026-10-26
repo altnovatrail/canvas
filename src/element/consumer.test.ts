@@ -1,15 +1,17 @@
 import { afterEach, expect, test } from "vitest";
-import { page } from "vitest/browser";
+import { page, userEvent } from "vitest/browser";
 import { type HistoryEvent, SHEET, type Submission } from "../core/index.js";
-import { type ExportedWork, type Marks, NovatrailCanvas, type Task } from "./index.js";
+import { type ExportedWork, type Marks, NovatrailCanvas, type Task, type Tool } from "./index.js";
 
-// The trial consumer (R27; RUN.md, T15): a page that takes the element as app is to take it. It
-// gives the task and the media, keeps the history of writing as historychange tells it and gives
-// it back, takes the work for checking at Check, and gives the tutor's marks back with their
-// submission's context, then opens the sheet again in a new element. It goes through the package's
-// entry points alone, never the probe the other tests read. It writes as a script does: pointer
-// events on the canvas in the element's open shadow root, at the points the canvas's rectangle
-// gives.
+// The trial consumer (R27, R28; RUN.md, T15, T41): a page that takes the element as app is to take
+// it. It gives the task, the media and the language, keeps the history of writing as
+// historychange tells it and gives it back, hears the learner's choice of tool, takes the work for
+// checking at Check, and gives the tutor's marks back with their submission's context, then opens
+// the sheet again in a new element. It goes through the package's entry points alone, never the
+// probe the other tests read. It writes as a script does: pointer events on the canvas in the
+// element's open shadow root, at the points the canvas's rectangle gives. The learner's erasing,
+// undo and clearing go through the sheet's own buttons, found by their roles and their Russian
+// names.
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -39,6 +41,8 @@ async function app(history?: readonly HistoryEvent[]) {
   const sheet = document.createElement("novatrail-canvas");
   sheet.style.width = "500px";
   sheet.style.height = "400px";
+  // The language of app's interface: the sheet's buttons are labelled in it.
+  sheet.lang = "ru";
   sheet.task = TASK;
   sheet.media = async () => new Blob([PATH], { type: "image/svg+xml" });
   // The history first, then the marks: they hold on to its strokes.
@@ -49,10 +53,24 @@ async function app(history?: readonly HistoryEvent[]) {
     expect(detail.from).toBe(store.length);
     store.push(...detail.events);
   });
+  // The tool the learner chooses with the sheet's own buttons, which app keeps up with.
+  const chosen: Tool[] = [];
+  sheet.addEventListener("toolchange", ({ detail }) => chosen.push(detail.tool));
   document.body.append(sheet);
   made.push(sheet);
   await settle();
-  return { sheet, store };
+  return { sheet, store, chosen };
+}
+
+/** The sheet's own buttons, as the learner finds them: by their roles and names, in Russian. */
+function buttons(sheet: HTMLElement) {
+  const within = page.elementLocator(sheet);
+  return {
+    pen: within.getByRole("radio", { name: "Перо" }),
+    eraser: within.getByRole("radio", { name: "Ластик" }),
+    undo: within.getByRole("button", { name: "Отменить" }),
+    clear: within.getByRole("button", { name: "Очистить" }),
+  };
 }
 
 /** A pointer on a sheet, at points of the sheet: a mouse's, pointerId 1, unless told otherwise. */
@@ -130,8 +148,8 @@ function marksOf(submission: Submission, name: string): Marks {
   );
 }
 
-test("app's path: write and keep the history as it is told, give it back, check, and take the tutor's marks", async () => {
-  const { sheet, store } = await app();
+test("app's path: write, erase, undo and clear with the sheet's buttons, keep the history as it is told, give it back, check, and take the tutor's marks", async () => {
+  const { sheet, store, chosen } = await app();
   const onDocument: Event[] = [];
   const listen = (event: Event) => onDocument.push(event);
   document.addEventListener("historychange", listen);
@@ -143,12 +161,16 @@ test("app's path: write and keep the history as it is told, give it back, check,
     write(sheet, 100, 100, 300);
     write(sheet, 140, 100, 300);
     write(sheet, 600, 500, 800);
-    sheet.tool = "eraser";
+    // The learner erases «B» with the sheet's Eraser and takes up the Pen again: app hears both.
+    await userEvent.click(buttons(sheet).eraser);
     write(sheet, 600, 600, 700);
-    sheet.tool = "pen";
-    expect(sheet.undo()).toBe(true);
-    expect(sheet.clear()).toBe(true);
-    expect(sheet.undo()).toBe(true);
+    await userEvent.click(buttons(sheet).pen);
+    expect(chosen).toEqual(["eraser", "pen"]);
+    expect(sheet.tool).toBe("pen");
+    // Undo brings «B» back, Clear takes everything off, and Undo brings it all back.
+    await userEvent.click(buttons(sheet).undo);
+    await userEvent.click(buttons(sheet).clear);
+    await userEvent.click(buttons(sheet).undo);
     // Every action told, from the element, bubbling and leaving shadow trees: app's store is the
     // history.
     expect(onDocument).toHaveLength(7);
@@ -216,7 +238,8 @@ test("a sheet opened again from app's store is the same sheet, its context and m
 
   // Undo goes on across the reload, and a stroke written right next to the old ones after it is a
   // group of its own: the clock goes on more than the groups' pause later.
-  expect(sheet.undo()).toBe(true);
+  await userEvent.click(buttons(sheet).undo);
+  expect(sheet.history.at(-1)?.kind).toBe("undo");
   write(sheet, 170, 100, 300);
   expect(store).toEqual(sheet.history);
   const groups = (await check(sheet)).submission.groups;
@@ -246,6 +269,7 @@ test("a history without the marked strokes takes the marks off, and the next tas
   const next = document.createElement("novatrail-canvas");
   next.style.width = "500px";
   next.style.height = "400px";
+  next.lang = "ru";
   next.task = TASK;
   made.push(next);
   sheet.replaceWith(next);
@@ -253,6 +277,11 @@ test("a history without the marked strokes takes the marks off, and the next tas
   expect(await next.exportWork()).toBeNull();
   expect(next.undo()).toBe(false);
   expect(next.history).toEqual([]);
+  // Nothing to undo nor to clear: the sheet's buttons say so, and the pen is the tool again.
+  await expect
+    .element(page.elementLocator(next).getByRole("button", { name: "Отменить", disabled: true }))
+    .toBeVisible();
+  await expect.element(buttons(next).pen).toBeChecked();
 });
 
 test("historychange goes out of a consumer's own shadow tree too, from the host it is in", async () => {

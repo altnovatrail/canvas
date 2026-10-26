@@ -1,21 +1,23 @@
 // The page to try the element on by hand, as app is to have it (RUN.md, T15; R27 in
-// docs/decisions.md). The page's buttons call the element's methods and switch its tool, for the
-// element has no buttons of its own yet (T41); a pen's eraser erases whichever the tool is (T10;
-// R22). The page keeps the history of writing as historychange tells it, listening on the element
-// itself, as app is to; Reopen puts a new element in place of the old one with that history and
-// the marks given, as a page opened again would, and Next task a new, empty one. Each element has
-// a task: its grid and the height of its digits, which the page's controls change by a new task,
-// and its statement above the sheet, with a picture the page draws and one that never comes. Dark
-// theme sets the element's custom properties (T11; R23). Under the sheet the page draws the groups
-// of the strokes the history leaves, after every historychange, by the sheet's rule or by the
-// pause and the reaches its fields give (T12; R24), and their crop for checking at the height of
-// digits the task gives, with the frames of those groups and the crop's size at every height of
-// eval (T13; R25). Check takes the work for checking from exportWork() and stops the writing for a
-// moment, as while the models think: the page keeps the submission, and a box dragged over its
-// crop, or a group picked, comes back to the element as a mark of the tutor's, which holds on to
-// the strokes it takes and follows them as they are written over, erased and undone (T14; R26).
-// The page reads what the element made of the marks through the probe of the tests. Its tasks are
-// its own, made up, and it keeps nothing once it is closed. just demo serves it.
+// docs/decisions.md). The element's own buttons switch its tool and undo and clear (T41; R28): the
+// page gives the element its language and the task the tools it allows, and counts the learner's
+// choices of tool that toolchange tells; a pen's eraser erases whichever the tool is, if the task
+// allows the eraser (T10; R22). The page keeps the history of writing as historychange tells it,
+// listening on the element itself, as app is to; Reopen puts a new element in place of the old
+// one with that history and the marks given, as a page opened again would, and Next task a new,
+// empty one. Each element has a task: its grid, its tools and the height of its digits, which the
+// page's controls change by a new task, and its statement above the sheet, with a picture the page
+// draws and one that never comes. Dark theme sets the element's custom properties (T11; R23).
+// Under the sheet the page draws the groups of the strokes the history leaves, after every
+// historychange, by the sheet's rule or by the pause and the reaches its fields give (T12; R24),
+// and their crop for checking at the height of digits the task gives, with the frames of those
+// groups and the crop's size at every height of eval (T13; R25). Check takes the work for checking
+// from exportWork() and stops the writing for a moment, as while the models think: the page keeps
+// the submission, and a box dragged over its crop, or a group picked, comes back to the element as
+// a mark of the tutor's, which holds on to the strokes it takes and follows them as they are
+// written over, erased and undone (T14; R26). The page reads what the element made of the marks
+// through the probe of the tests. Its tasks are its own, made up, and it keeps nothing once it is
+// closed. just demo serves it.
 
 import { CROP, type Crop, cropOf, tokensOf } from "../src/core/crop.js";
 import { GROUP_RULE, type Group, type GroupRule, groupsOf, rectOf } from "../src/core/groups.js";
@@ -31,7 +33,6 @@ import type {
   NovatrailCanvas,
   Submission,
   Task,
-  Tool,
 } from "../src/element/index.js";
 import { probe } from "../src/element/probe.js";
 
@@ -45,13 +46,12 @@ function part<T extends Element>(id: string, type: new () => T): T {
 const place = part("place", HTMLDivElement);
 const counter = part("counter", HTMLParagraphElement);
 const status = part("status", HTMLSpanElement);
-const eraser = part("eraser", HTMLButtonElement);
 const grid = part("grid", HTMLSelectElement);
 const step = part("step", HTMLInputElement);
 const dark = part("dark", HTMLButtonElement);
-const buttons = ["eraser", "undo", "clear", "check", "reopen", "next"].map((id) =>
-  part(id, HTMLButtonElement),
-);
+const language = part("lang", HTMLSelectElement);
+const tools = part("tools", HTMLSelectElement);
+const buttons = ["check", "reopen", "next"].map((id) => part(id, HTMLButtonElement));
 const preview = part("groups", SVGSVGElement);
 const table = part("table", HTMLTableSectionElement);
 const pause = part("pause", HTMLInputElement);
@@ -95,6 +95,7 @@ function taskFor(n: number): Task {
       grid: grid.value as GridKind,
       step: Number(step.value),
       digit: Number(digit.value),
+      tools: tools.value.split(" "),
     },
     statement: [
       {
@@ -115,10 +116,12 @@ function taskFor(n: number): Task {
 let kept: HistoryEvent[] = [];
 let taskNumber = 1;
 let changes = 0;
+let choices = 0;
 
 /** A new element for the page's task, with the history and the marks given, if any. */
 function mount(history?: readonly HistoryEvent[], marks?: Marks): NovatrailCanvas {
   const element = document.createElement("novatrail-canvas");
+  speak(element);
   element.task = taskFor(taskNumber);
   element.media = media;
   // The history first, then the marks: they hold on to its strokes.
@@ -126,20 +129,28 @@ function mount(history?: readonly HistoryEvent[], marks?: Marks): NovatrailCanva
   if (marks !== undefined) element.marks = marks;
   // On the element itself: an ancestor would miss a stroke that lands as the element leaves.
   element.addEventListener("historychange", told);
+  element.addEventListener("toolchange", chose);
   return element;
+}
+
+/** The language the page gives an element, which its buttons are labelled in: none for "". */
+function speak(element: NovatrailCanvas): void {
+  if (language.value === "") element.removeAttribute("lang");
+  else element.lang = language.value;
+}
+
+/** What toolchange tells: the learner chose another tool with the element's own buttons. */
+function chose(): void {
+  choices++;
+  count();
 }
 
 let sheet = mount();
 place.append(sheet);
 
 function count(): void {
-  counter.textContent = `Task ${taskNumber} · historychange × ${changes} · ${kept.length} events kept`;
-}
-
-/** The sheet's tool, and the Eraser button pressed while it is the eraser. */
-function use(tool: Tool): void {
-  sheet.tool = tool;
-  eraser.setAttribute("aria-pressed", String(tool === "eraser"));
+  const told = `historychange × ${changes} · ${kept.length} events kept`;
+  counter.textContent = `Task ${taskNumber} · ${told} · toolchange × ${choices}, ${sheet.tool}`;
 }
 
 const SVG = "http://www.w3.org/2000/svg";
@@ -460,7 +471,8 @@ async function check(): Promise<void> {
   const checked = sheet;
   checked.style.pointerEvents = "none";
   for (const button of buttons) button.disabled = true;
-  status.textContent = "Checking: no writing until it ends…";
+  // The pointer writes nothing meanwhile; the keys of the element's buttons still work (R28).
+  status.textContent = "Checking: no writing with the pointer until it ends…";
   try {
     if (!(await send())) {
       status.textContent = "Write a solution first.";
@@ -495,6 +507,8 @@ function regrid(): void {
 function told({ detail }: HistoryChangeEvent): void {
   // The events begin where the page's history ends, unless it missed some: then it reads them all.
   kept = detail.from === kept.length ? [...kept, ...detail.events] : [...sheet.history];
+  // A clearing starts the sheet over: what the page said of the last one is no longer so.
+  if (detail.events.some((event) => event.kind === "clear")) status.textContent = "";
   changes++;
   count();
   showGroups();
@@ -505,21 +519,16 @@ function mounted(next: NovatrailCanvas): void {
   // The old sheet is no longer heard: a stroke that lands as it leaves the page is of its task.
   const old = sheet;
   old.removeEventListener("historychange", told);
+  old.removeEventListener("toolchange", chose);
   sheet = next;
   old.replaceWith(next);
   // A new sheet starts with the pen.
-  use("pen");
   changes = 0;
+  choices = 0;
   showGroups();
   showMarks();
   count();
 }
-eraser.addEventListener("click", () => use(sheet.tool === "eraser" ? "pen" : "eraser"));
-part("undo", HTMLButtonElement).addEventListener("click", () => sheet.undo());
-part("clear", HTMLButtonElement).addEventListener("click", () => {
-  sheet.clear();
-  status.textContent = "";
-});
 part("check", HTMLButtonElement).addEventListener("click", () => void check());
 // Reopen: the sheet as a page opened again has it, from the history the page keeps, through JSON as
 // a store keeps it, and with the marks given, which go back on their strokes.
@@ -546,6 +555,12 @@ part("next", HTMLButtonElement).addEventListener("click", () => {
   status.textContent = "";
 });
 grid.addEventListener("change", regrid);
+// The tools allowed are the task's, and a task without the eraser puts the pen back.
+tools.addEventListener("change", () => {
+  regrid();
+  count();
+});
+language.addEventListener("change", () => speak(sheet));
 step.addEventListener("change", regrid);
 dark.addEventListener("click", () => {
   const on = document.body.classList.toggle("dark");

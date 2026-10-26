@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>novatrail-canvas, by hand</title>
 <!-- The page to try the element on by hand, as app is to have it (RUN.md, T15): the history of
-     writing kept as the element tells it and given back to a sheet opened again, an eraser
-     (T10), a task's grid, statement and height of digits, in a light or a dark theme (T11), the
-     groups of the strokes under the sheet, by a rule the page can change (T12), the crop for
-     checking (T13), and the tutor's marks, given back over the crop Check sent (T14). -->
+     writing kept as the element tells it and given back to a sheet opened again, the element's
+     own buttons in the language the page gives it, with the tools the task allows (T41), a
+     task's grid, statement and height of digits, in a light or a dark theme (T11), the groups of
+     the strokes under the sheet, by a rule the page can change (T12), the crop for checking
+     (T13), and the tutor's marks, given back over the crop Check sent (T14). -->
 <style>
   body { margin: 0; padding: 16px; background: #f4f4f1; color: #1d1d1b;
          font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
@@ -64,9 +65,6 @@
   <p id="counter"></p>
   <div id="place"></div>
   <div class="tools">
-    <button id="eraser" aria-pressed="false">Eraser</button>
-    <button id="undo">Undo stroke</button>
-    <button id="clear">Clear</button>
     <button id="check">Check</button>
     <button id="reopen">Reopen</button>
     <button id="next">Next task</button>
@@ -80,6 +78,17 @@
     </select></label>
     <label>Step <input id="step" type="number" min="20" max="500" value="50"></label>
     <button id="dark" aria-pressed="false">Dark theme</button>
+  </div>
+  <div class="tools">
+    <label>Language <select id="lang">
+      <option value="en">en</option>
+      <option value="ru">ru</option>
+      <option value="">none</option>
+    </select></label>
+    <label>Tools <select id="tools">
+      <option value="pen eraser">pen and eraser</option>
+      <option value="pen">pen alone</option>
+    </select></label>
   </div>
   <div class="tools">
     <span>Groups</span>

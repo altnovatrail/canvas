@@ -1,15 +1,15 @@
 // The package's entry point @altnovatrail/canvas: the canvas as a custom element, one for every
 // canvas kind, with its markup in an open shadow root (R07). Importing it registers the element,
 // once: a page has one element of this name. So far it is the handwriting sheet with its input,
-// one pointer at a time (RUN.md, T09; R18), its undo and clearing, which the consumer calls from
-// buttons of its own (T33; R19). Its eraser takes strokes off whole, by the path of a press, as
-// the consumer's tool or a pen's eraser, and the sheet keeps the history of writing (T10; R22).
-// The sheet is a stack of layers, the task's grid on its template and the task's statement above
-// it, its look the consumer's to theme (T11; R23). The tutor's marks of a submission hold on to
-// the learner's strokes, and a frame shows where each is, over the work (T14; R26). The history
-// of writing comes in and goes out, an event tells of every action, and the work for checking is
-// the crop with the context of its submission (T15; R27). The element's own buttons, with their
-// labels in its `lang`, come with T41.
+// one pointer at a time (RUN.md, T09; R18), its undo and clearing (T33; R19). Its eraser takes
+// strokes off whole, by the path of a press, as the tool or a pen's eraser, and the sheet keeps the
+// history of writing (T10; R22). The sheet is a stack of layers, the task's grid on its template
+// and the task's statement above it, its look the consumer's to theme (T11; R23). The tutor's
+// marks of a submission hold on to the learner's strokes, and a frame shows where each is, over
+// the work (T14; R26). The history of writing comes in and goes out, an event tells of every
+// action, and the work for checking is the crop with the context of its submission (T15; R27).
+// Above it all stands the element's own row of buttons — the tools the task allows, undo and
+// clearing — labelled in the element's `lang` (T41; R28).
 
 import type { Vec2 } from "perfect-freehand";
 import { Clock } from "../core/clock.js";
@@ -32,16 +32,20 @@ import { fitScale, K_MAX, scaleFor, toSheet, type View } from "../core/screen.js
 import { SHEET } from "../core/sheet.js";
 import { workForCheck } from "../core/submission.js";
 import {
+  isTool,
   NO_TASK,
   sameGrid,
   sameStatement,
+  sameTools,
   type Task,
   type Template,
+  type Tool,
   templateOf,
 } from "../core/task.js";
 import { nextIdOf, resumeOf, Work } from "../core/work.js";
 import { attachProbe } from "./probe.js";
 import { type Media, Statement } from "./statement.js";
+import { Tools } from "./tools.js";
 
 export type { Crop, Frame } from "../core/crop.js";
 export type { Box } from "../core/geometry.js";
@@ -50,7 +54,7 @@ export type { Group } from "../core/groups.js";
 export type { HistoryEvent } from "../core/history.js";
 export type { InkPoint, Stroke } from "../core/ink.js";
 export type { Anchor, CropNumbers, Mark, Marks, Submission } from "../core/marks.js";
-export type { PicturePart, StatementPart, Task, TextPart } from "../core/task.js";
+export type { PicturePart, StatementPart, Task, TextPart, Tool } from "../core/task.js";
 export type { Media } from "./statement.js";
 
 /** The name the element is registered under. */
@@ -74,12 +78,22 @@ export interface ExportedWork {
   readonly submission: Submission;
 }
 
+/** What a `toolchange` tells (R28): the tool the learner chose with the element's own buttons. */
+export interface ToolChange {
+  readonly tool: Tool;
+}
+
+/** The event the element sends when the learner changes the tool with its buttons (R28). */
+export type ToolChangeEvent = CustomEvent<ToolChange>;
+
 /** The colour of the ink unless the consumer's theme gives one. */
 const INK = "#111";
 /** The colour of the sheet unless the consumer's theme gives one. */
 const PAPER = "#fff";
 /** The event the element sends after every action on the sheet, with the history's new events. */
 const HISTORY_CHANGE = "historychange";
+/** The event the element sends when the learner chooses another tool with its buttons. */
+const TOOL_CHANGE = "toolchange";
 /**
  * The colour of the tutor's frames unless the consumer's theme gives one: a blue, for now, and not
  * a red, which would read as «wrong» (E4 in RUN.md, «Не входит»).
@@ -89,17 +103,6 @@ const MARK = "#2563eb";
 const MARK_PADDING = 10;
 /** The rounding of a frame's corners, in sheet units. */
 const MARK_CORNER = 6;
-
-/**
- * What a press of the primary button does on the sheet: the pen writes, the eraser erases (R22). A
- * pen's eraser erases whatever the tool.
- */
-export type Tool = "pen" | "eraser";
-const TOOLS: readonly unknown[] = ["pen", "eraser"] satisfies readonly Tool[];
-
-function isTool(value: unknown): value is Tool {
-  return TOOLS.includes(value);
-}
 
 /**
  * How near a stroke's ink the eraser takes it, in CSS pixels: the same on every screen, whatever
@@ -114,14 +117,37 @@ const SVG = "http://www.w3.org/2000/svg";
 // browser's own scrolling: the wheel, the scroll bar and the keyboard work as anywhere on a page.
 // The layers of the sheet stand in its visible part, the stage, and each shows what lies there,
 // shifted in the frame the ink is drawn in (R18, R23; architecture 3.2 in docs/architecture.md).
-// The element is as tall as the statement and the sheet unless it is given a height: then they
-// scroll in it. On the canvas the browser neither scrolls nor zooms: the pointer writes. Only the
-// canvas takes pointer events, and only as the element does: a consumer's pointer-events: none on
-// the element stops the writing (R20). The theme is the consumer's, by custom properties that the
-// shadow tree inherits; with forced colours the system's colours stand in for them.
+// Above the column, as wide, stands the row of the element's own buttons, outside the container's
+// scrolling: it sticks to the top of whatever scrolls the element, as far down as the consumer's
+// --novatrail-canvas-top says, while the element is in sight, over the sheet as it scrolls by
+// (R28). The element is as tall as the row, the statement and the sheet unless it is given a
+// height: then the statement and the sheet scroll in it, under the row. On the canvas the browser
+// neither scrolls nor zooms: the pointer writes. The canvas and the buttons take pointer events
+// only as the element does: a consumer's pointer-events: none on the element stops the writing
+// and the buttons' pointer, though not their keys (R20, R28). The theme is the consumer's, by
+// custom properties that the shadow tree inherits; with forced colours the system's colours stand
+// in for them.
 const STYLE = `
-:host { display: flex; flex-direction: column; }
+:host { display: flex; flex-direction: column; isolation: isolate; }
 :host([hidden]) { display: none; }
+.tools {
+  position: sticky; top: var(--novatrail-canvas-top, 0px); z-index: 1; flex: none;
+  box-sizing: border-box; width: min(100%, ${K_MAX * SHEET.width}px); margin: 0 auto;
+  padding: 8px 0; display: flex; flex-wrap: wrap; gap: 8px;
+  background: var(--novatrail-canvas-paper, ${PAPER}); color: var(--novatrail-canvas-ink, ${INK});
+}
+.tools .choice { display: flex; gap: 8px; margin-inline-end: 16px; }
+.tools button {
+  box-sizing: border-box; min-width: 44px; min-height: 44px; padding: 0 16px; margin: 0;
+  font: inherit; color: inherit; background: transparent; cursor: pointer;
+  border: 1px solid currentColor; border-radius: 6px;
+}
+.tools [aria-checked="true"] {
+  background: var(--novatrail-canvas-ink, ${INK}); color: var(--novatrail-canvas-paper, ${PAPER});
+  border-color: var(--novatrail-canvas-ink, ${INK});
+}
+.tools [aria-disabled="true"] { opacity: 0.4; cursor: default; }
+.tools [hidden] { display: none; }
 .viewport {
   flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overflow-anchor: none;
 }
@@ -162,6 +188,12 @@ canvas {
   .grid { stroke: GrayText; }
   canvas { color: CanvasText; }
   .marks rect { stroke: Highlight; }
+  .tools { background: Canvas; color: CanvasText; }
+  .tools button { background: ButtonFace; color: ButtonText; border-color: ButtonBorder; }
+  .tools [aria-checked="true"] {
+    background: Highlight; color: HighlightText; border-color: Highlight;
+  }
+  .tools [aria-disabled="true"] { color: GrayText; border-color: GrayText; opacity: 1; }
 }
 `;
 
@@ -251,6 +283,12 @@ export class NovatrailCanvas extends HTMLElement {
   readonly #canvasStyle = getComputedStyle(this.#canvas);
   /** The task's statement, above the sheet (R23). */
   readonly #statement = new Statement();
+  /** The element's own buttons, above the statement and the sheet (R28). */
+  readonly #tools = new Tools({
+    choose: (tool) => this.#choose(tool),
+    undo: () => this.undo(),
+    clear: () => this.clear(),
+  });
   /** The sheet's clock, for its strokes and its actions alike (R22). */
   readonly #clock = new Clock();
   /**
@@ -347,8 +385,9 @@ export class NovatrailCanvas extends HTMLElement {
     this.#sheet.append(this.#stage);
     this.#column.append(this.#statement.element, this.#sheet);
     this.#viewport.append(this.#column);
-    root.append(style, this.#viewport);
+    root.append(style, this.#tools.element, this.#viewport);
     this.#rule(NO_TASK);
+    this.#refresh();
 
     this.#canvas.addEventListener("pointerdown", (event) => this.#down(event));
     this.#canvas.addEventListener("pointermove", (event) => this.#move(event));
@@ -389,10 +428,16 @@ export class NovatrailCanvas extends HTMLElement {
     this.#adopt("marks");
   }
 
+  /** The element follows its own `lang`: its buttons are labelled in it (R07, R28). */
+  static readonly observedAttributes = ["lang"];
+
   /**
    * What a press of the primary button does: "pen" writes, as the element starts, and "eraser"
-   * erases (R22). It is the consumer's to switch, from a button of its own, and a press under way
-   * goes on as it began. A pen's eraser erases whatever the tool.
+   * erases (R22). The learner switches it with the element's own buttons, which say a choice of
+   * theirs with a `toolchange`, and the consumer may set it too, which says nothing (R28). A press
+   * under way goes on as it began. A pen's eraser erases whatever the tool. A task without the
+   * eraser has none of it: "eraser" is a TypeError then, and a new task without it puts the pen
+   * back.
    */
   get tool(): Tool {
     return this.#tool;
@@ -402,15 +447,20 @@ export class NovatrailCanvas extends HTMLElement {
     if (!isTool(tool)) {
       throw new TypeError(`the tool of <${TAG}> is "pen" or "eraser", not ${JSON.stringify(tool)}`);
     }
+    if (!this.#shownTemplate.tools.includes(tool)) {
+      throw new TypeError(`the task of <${TAG}> allows no ${tool}`);
+    }
     this.#tool = tool;
+    this.#refresh();
   }
 
   /**
-   * The open view of the task: its canvas — the grid of the sheet — and its statement, which the
-   * element shows above the sheet (R23). The type is the element's own until spec's format v0 gives
-   * one; fields the element does not read are passed over. A task it cannot show is a TypeError.
-   * Another task of the same grid and statement changes nothing, and any other changes the
-   * template alone: the work stays, for the next task is a new element (R20).
+   * The open view of the task: its canvas — the grid of the sheet and the tools the task allows —
+   * and its statement, which the element shows above the sheet (R23, R28). The type is the
+   * element's own until spec's format v0 gives one; fields the element does not read are passed
+   * over. A task it cannot show is a TypeError. Another task of the same grid, tools and statement
+   * changes nothing, and any other changes the template alone: the work stays, for the next task
+   * is a new element (R20). A task without the eraser puts the pen back, with no event.
    */
   get task(): Task | undefined {
     return this.#task;
@@ -426,6 +476,10 @@ export class NovatrailCanvas extends HTMLElement {
     this.#shownTemplate = template;
     if (!sameGrid(template, shown)) this.#rule(template);
     if (!sameStatement(template, shown)) this.#statement.show(template);
+    if (!sameTools(template, shown)) {
+      if (!template.tools.includes(this.#tool)) this.#tool = "pen";
+      this.#refresh();
+    }
   }
 
   /**
@@ -517,6 +571,7 @@ export class NovatrailCanvas extends HTMLElement {
         this.#showMarks([]);
       }
     }
+    this.#refresh();
     this.#request();
   }
 
@@ -554,10 +609,20 @@ export class NovatrailCanvas extends HTMLElement {
   }
 
   /**
+   * The element's `lang` came, changed or went: its buttons are labelled in it, or in English for a
+   * language their labels are not in, and for none (R28). An attribute the element had before it
+   * was defined comes here just after the constructor, which reads no attribute.
+   */
+  attributeChangedCallback(): void {
+    this.#tools.label(this.getAttribute("lang"));
+  }
+
+  /**
    * Takes back the last action on the sheet — the last stroke written, the last erasing, or the
    * clearing — and says whether there was one (R19, R22), with a `historychange` if there was
-   * (R27). A stroke under way stays: it lands when it ends. So does an erasing: what it came near
-   * leaves the sheet when it lifts, if it is on the sheet then.
+   * (R27). The element's Undo button calls it, and so may the consumer (R28). A stroke under way
+   * stays: it lands when it ends. So does an erasing: what it came near leaves the sheet when it
+   * lifts, if it is on the sheet then.
    */
   undo(): boolean {
     const undone = this.#work.undo(performance.now());
@@ -567,8 +632,8 @@ export class NovatrailCanvas extends HTMLElement {
 
   /**
    * Takes every stroke off the sheet, an action that undo takes back, and says whether there were
-   * any (R19), with a `historychange` if there were (R27). A stroke under way stays: it lands when
-   * it ends.
+   * any (R19), with a `historychange` if there were (R27). The element's Clear button calls it, and
+   * so may the consumer (R28). A stroke under way stays: it lands when it ends.
    */
   clear(): boolean {
     const cleared = this.#work.clear(performance.now());
@@ -676,17 +741,20 @@ export class NovatrailCanvas extends HTMLElement {
 
   /**
    * One pointer at a time writes or erases (R18, R22): the primary button does what the tool says,
-   * and a pen's eraser erases.
+   * and a pen's eraser erases — if the task allows the eraser: without it, the pen's eraser does
+   * nothing, for the recorder takes the primary button alone (R28).
    */
   #down(event: PointerEvent): void {
     if (this.#recorder.pointer !== undefined || this.#eraser.pointer !== undefined) return;
     const screen = this.#view();
     if (screen === undefined) return;
     const sample = this.#sample(event, screen);
-    const began =
-      this.#tool === "eraser" || sample.button === ERASER_BUTTON
-        ? this.#eraser.down(sample, ERASER_RADIUS_PX / screen.k + INK_REACH)
-        : this.#recorder.down(sample);
+    const erases =
+      this.#shownTemplate.tools.includes("eraser") &&
+      (this.#tool === "eraser" || sample.button === ERASER_BUTTON);
+    const began = erases
+      ? this.#eraser.down(sample, ERASER_RADIUS_PX / screen.k + INK_REACH)
+      : this.#recorder.down(sample);
     if (!began) return;
     // The stroke or the erasing goes on beyond the canvas, clamped to the sheet's edge, until the
     // pointer comes up.
@@ -748,7 +816,8 @@ export class NovatrailCanvas extends HTMLElement {
    * the canvas is as wide as the sheet, and its top is the top of the visible part. `k` is the one
    * on the screen, after whatever transform the page puts on the element. The container's
    * rectangle gives the part of the canvas it shows: with the statement in sight, the canvas
-   * goes on below the container's bottom.
+   * goes on below the container's bottom. The row of buttons above the container hides what it
+   * covers, once it sticks over the sheet as the page scrolls the element by (R28).
    */
   #view(): Screen | undefined {
     const canvas = this.#canvas.getBoundingClientRect();
@@ -757,9 +826,11 @@ export class NovatrailCanvas extends HTMLElement {
     const sheet = this.#sheet.getBoundingClientRect();
     const vy = (canvas.top - sheet.top) / k;
     const port = this.#port();
+    // The row ends where the container begins, unless it sticks over it.
+    const row = this.#tools.element.getBoundingClientRect();
     const shown = {
       left: Math.max(canvas.left, port.left),
-      top: Math.max(canvas.top, port.top),
+      top: Math.max(canvas.top, port.top, row.bottom),
       right: Math.min(canvas.right, port.right),
       bottom: Math.min(canvas.bottom, port.bottom),
     };
@@ -870,6 +941,8 @@ export class NovatrailCanvas extends HTMLElement {
    */
   #changed(): void {
     this.#request();
+    // The row before the event, and for an action a listener takes as well.
+    this.#refresh();
     if (this.#telling) return;
     this.#telling = true;
     try {
@@ -887,6 +960,32 @@ export class NovatrailCanvas extends HTMLElement {
     } finally {
       this.#telling = false;
     }
+  }
+
+  /**
+   * The learner chose a tool with the element's own button (R28): it is the tool now, and whoever
+   * listens hears of it. A consumer that gives the tool follows it, or its next render would set
+   * back what the learner chose.
+   */
+  #choose(tool: Tool): void {
+    if (tool === this.#tool || !this.#shownTemplate.tools.includes(tool)) return;
+    this.#tool = tool;
+    this.#refresh();
+    const detail: ToolChange = Object.freeze({ tool });
+    this.dispatchEvent(new CustomEvent(TOOL_CHANGE, { bubbles: true, composed: true, detail }));
+  }
+
+  /**
+   * The row of buttons as the sheet now is: the tools the task allows, the one in use, and whether
+   * undo and clearing have anything to do (R28).
+   */
+  #refresh(): void {
+    this.#tools.show({
+      tools: this.#shownTemplate.tools,
+      tool: this.#tool,
+      undoable: this.#work.undoable,
+      clearable: this.#work.strokes.length > 0,
+    });
   }
 
   #request(): void {
@@ -1131,9 +1230,10 @@ declare global {
   interface HTMLElementTagNameMap {
     "novatrail-canvas": NovatrailCanvas;
   }
-  // The event bubbles and leaves shadow trees: its type holds on the element, on its ancestors and
+  // The events bubble and leave shadow trees: their types hold on the element, on its ancestors and
   // on the document alike.
   interface GlobalEventHandlersEventMap {
     historychange: HistoryChangeEvent;
+    toolchange: ToolChangeEvent;
   }
 }
