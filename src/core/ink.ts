@@ -15,7 +15,10 @@ export interface InkPoint {
 
 /** A stroke: one press of a pointer, from going down to coming up (R06, R18). */
 export interface Stroke {
-  /** The stroke's ID on its sheet: 1, 2, … in the order the strokes began, never reused. */
+  /**
+   * The stroke's ID on its sheet: 1, 2, … in the order the strokes began, never reused within one
+   * history. A sheet given another history numbers on from that history's highest ID (R27).
+   */
   readonly id: number;
   /**
    * The pointer's type as the browser reported it — "pen", "touch", "mouse" or whatever else it

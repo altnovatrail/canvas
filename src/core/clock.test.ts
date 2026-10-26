@@ -27,3 +27,28 @@ test("is one clock for the strokes and whatever else asks it", () => {
   });
   expect(recorder.live?.points[0]?.t).toBe(300);
 });
+
+test("resumes at a time it is told: the next moment is that time, and it counts on from there", () => {
+  const clock = new Clock();
+  clock.at(1000);
+  clock.at(1500);
+  // A history given to the sheet left off at 9000 ms of the sheet's time.
+  clock.resume(9000);
+  expect(clock.latest).toBe(9000);
+  expect(clock.at(2000)).toBe(9000);
+  expect(clock.at(2012.5)).toBe(9012.5);
+  // It never goes back after it resumed, either.
+  expect(clock.at(2010)).toBe(9012.5);
+});
+
+test("resumes earlier than it was, for the sheet's time is its history's, and at 0 as a new sheet's", () => {
+  const clock = new Clock();
+  clock.at(0);
+  clock.at(20_000);
+  clock.resume(300);
+  expect(clock.at(50_000)).toBe(300);
+  clock.resume(0);
+  expect(clock.latest).toBe(0);
+  expect(clock.at(70_000)).toBe(0);
+  expect(clock.at(70_250)).toBe(250);
+});

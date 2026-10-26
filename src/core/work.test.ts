@@ -4,7 +4,7 @@ import { type HistoryEvent, replay } from "./history.js";
 import type { Stroke } from "./ink.js";
 import { type PointerSample, Recorder } from "./recorder.js";
 import { SHEET } from "./sheet.js";
-import { Work } from "./work.js";
+import { nextIdOf, resumeOf, Work } from "./work.js";
 
 /** A stroke of one point, named by its ID, 50 units right of the one before: a query near it finds it alone. */
 function stroke(id: number): Stroke {
@@ -364,11 +364,245 @@ test("every sequence of six writes, erasings, clears and undos agrees with a sta
       );
       const times = work.history.map((event) => event.t);
       expect(times).toEqual([...times].sort((a, b) => a - b));
+      // Given back through JSON, the history is the same sheet and the same history.
+      const back = Work.restore(JSON.parse(JSON.stringify(work.history)), new Clock());
+      expect(back.strokes).toEqual(work.strokes);
+      expect(back.history).toEqual(work.history);
     }
     // The history is plain data: as JSON it replays to the same sheet.
     const parsed = JSON.parse(JSON.stringify(work.history)) as HistoryEvent[];
     expect(idsOf(replay(parsed))).toEqual(ids(work));
+    // And it rebuilds the stack: every undo after it takes back what the sheet's own would. The
+    // two clocks count from other moments, so the times of these undos are left aside.
+    const restored = Work.restore(parsed, new Clock());
+    const untimed = (history: readonly HistoryEvent[]) =>
+      history.map((event) => ({ ...event, t: 0 }));
+    for (let k = 0; ; k++) {
+      const time = 1000 + 10 * k;
+      const undone = work.undo(time);
+      expect(restored.undo(time)).toBe(undone);
+      expect(restored.strokes).toEqual(work.strokes);
+      expect(untimed(restored.history)).toEqual(untimed(work.history));
+      if (!undone) break;
+    }
   }
-  // All 15,625 sequences take a second and a half here, but up to five on a CI runner, where the
-  // browsers of the other projects run beside them: past Vitest's default of five.
+  // All 15,625 sequences, each history given back at every step, take three and a half seconds
+  // here, and more on a CI runner, where the browsers of the other projects run beside them: past
+  // Vitest's default of five.
 }, 30_000);
+
+describe("a history given to the sheet", () => {
+  /** A sheet of three strokes, one erased and back, cleared and back, the last undone. */
+  function written() {
+    const clock = new Clock();
+    const work = new Work(clock);
+    const recorder = new Recorder((finished) => work.write(finished), clock);
+    for (const [n, x] of [100, 300, 500].entries()) {
+      recorder.down(sample({ button: 0, buttons: 1, x, time: 100 * n }));
+      recorder.move(sample({ button: -1, buttons: 1, x: x + 20, time: 100 * n + 10 }));
+      recorder.up(sample({ button: 0, buttons: 0, x: x + 40, time: 100 * n + 20 }));
+    }
+    work.erase([2], 400);
+    work.undo(410);
+    work.clear(420);
+    work.undo(430);
+    work.undo(440);
+    return work;
+  }
+
+  test("gives back the strokes, the stack and the history, in objects of the sheet's own", () => {
+    const work = written();
+    const given = JSON.parse(JSON.stringify(work.history)) as HistoryEvent[];
+    const restored = Work.restore(given, new Clock());
+    expect(restored.strokes).toEqual(work.strokes);
+    expect(restored.history).toEqual(work.history);
+    // The given value is neither the sheet's, nor frozen, nor changed.
+    expect(restored.history[0]).not.toBe(given[0]);
+    expect(Object.isFrozen(given[0])).toBe(false);
+    expect(given).toEqual(JSON.parse(JSON.stringify(work.history)));
+    // Fields the sheet does not keep are passed over.
+    const more = given.map((event) => ({ ...event, note: "kept by the consumer" }));
+    expect(Work.restore(more, new Clock()).history).toEqual(work.history);
+    // The eraser finds the strokes restored: the index is the sheet's.
+    expect(idsOf(everything(restored)).sort()).toEqual([1, 2]);
+    // Undo goes on where the history left off: 3's writing was the last taken back, 2's is next.
+    expect(restored.undo(1000)).toBe(true);
+    expect(restored.history.at(-1)).toMatchObject({ kind: "undo", removed: [2], restored: [] });
+    expect(ids(restored)).toEqual([1]);
+  });
+
+  test("is frozen through, the history the sheet writes too", () => {
+    for (const work of [written(), Work.restore(written().history, new Clock())]) {
+      const { history } = work;
+      expect(Object.isFrozen(history)).toBe(true);
+      for (const event of history) {
+        expect(Object.isFrozen(event)).toBe(true);
+        if (event.kind === "write") {
+          expect(Object.isFrozen(event.stroke)).toBe(true);
+          expect(Object.isFrozen(event.stroke.points)).toBe(true);
+          expect(event.stroke.points.every((point) => Object.isFrozen(point))).toBe(true);
+        } else if (event.kind === "undo") {
+          expect([Object.isFrozen(event.removed), Object.isFrozen(event.restored)]).toEqual([
+            true,
+            true,
+          ]);
+        } else {
+          expect(Object.isFrozen(event.ids)).toBe(true);
+        }
+      }
+    }
+  });
+
+  test("an empty one is a new sheet, and the clock goes on after the last event by more than the groups' pause", () => {
+    expect(Work.restore([], new Clock()).strokes).toEqual([]);
+    expect(resumeOf([])).toBe(0);
+    const history = written().history;
+    expect(resumeOf(history)).toBe((history.at(-1)?.t ?? 0) + 2001);
+    expect(nextIdOf([])).toBe(1);
+    expect(nextIdOf(history)).toBe(4);
+  });
+
+  test("that the sheet could not have written is a TypeError that names the field", () => {
+    const one = (id: number, t = 10): HistoryEvent => ({
+      kind: "write",
+      t,
+      stroke: { id, kind: "mouse", points: [{ x: 50 * id, y: 50, t, p: 0.5 }] },
+    });
+    const point = { x: 10, y: 10, t: 0, p: 0.5 };
+    const write = (stroke: unknown, t: unknown = 10) => ({ kind: "write", t, stroke });
+    const stroke = (points: unknown, id: unknown = 1, kind: unknown = "mouse") => ({
+      id,
+      kind,
+      points,
+    });
+    // A list with a hole where its one item would be, as [ , ] writes it.
+    const hole = (): unknown[] => {
+      const list: unknown[] = [];
+      list.length = 1;
+      return list;
+    };
+    const cases: [unknown, RegExp][] = [
+      [{}, /^history: a list of events/],
+      [hole(), /^history\[0\]: an object/],
+      [[write(stroke(hole()))], /^history\[0\]\.stroke\.points\[0\]: an object/],
+      [[one(1), { kind: "erase", t: 20, ids: hole() }], /^history\[1\]\.ids\[0\]:/],
+      [
+        [write(stroke([point], Number.MAX_SAFE_INTEGER))],
+        /^history\[0\]\.stroke\.id: a stroke's ID, a whole number from 1 below 2\^53 − 1/,
+      ],
+      [null, /^history: a list of events/],
+      [[null], /^history\[0\]: an object/],
+      [[{ kind: "draw", t: 0 }], /^history\[0\]\.kind: "write", "erase", "clear" or "undo"/],
+      [[write(stroke([point]), Number.NaN)], /^history\[0\]\.t: .*not NaN$/],
+      [[write(stroke([point]), -1)], /^history\[0\]\.t: .*from 0, not -1$/],
+      [[one(1, 20), one(2, 10)], /^history\[1\]\.t: 10, earlier than the event before it, at 20$/],
+      [
+        [write(stroke([{ ...point, t: 30 }]), 20)],
+        /^history\[0\]\.t: 20, earlier than the stroke's last point, at 30$/,
+      ],
+      [[write(stroke([]))], /^history\[0\]\.stroke\.points: .*one at least/],
+      [[write(stroke("dots"))], /^history\[0\]\.stroke\.points: a list of points/],
+      [
+        [write(stroke([{ ...point, x: 1000.5 }]))],
+        /^history\[0\]\.stroke\.points\[0\]\.x: a number from 0 to 1000/,
+      ],
+      [
+        [write(stroke([{ ...point, y: -0.1 }]))],
+        /^history\[0\]\.stroke\.points\[0\]\.y: a number from 0 to 1400/,
+      ],
+      [
+        [write(stroke([{ ...point, p: 1.5 }]))],
+        /^history\[0\]\.stroke\.points\[0\]\.p: a number from 0 to 1/,
+      ],
+      [
+        [
+          write(
+            stroke([
+              { ...point, t: 5 },
+              { ...point, t: 4 },
+            ]),
+          ),
+        ],
+        /^history\[0\]\.stroke\.points\[1\]\.t: 4, earlier than the point before it, at 5$/,
+      ],
+      [
+        [write(stroke([point], 1.5))],
+        /^history\[0\]\.stroke\.id: a stroke's ID, a whole number from 1/,
+      ],
+      [[write(stroke([point], 0))], /^history\[0\]\.stroke\.id:/],
+      [[write(stroke([point], 1, 5))], /^history\[0\]\.stroke\.kind: the pointer's type/],
+      [[one(1), one(1, 20)], /^history\[1\]\.stroke\.id: 1, the ID of a stroke written before$/],
+      [[one(1), { kind: "erase", t: 20, ids: ["1"] }], /^history\[1\]\.ids\[0\]:/],
+      [
+        [one(1), { kind: "erase", t: 20, ids: [9] }],
+        /^history\[1\]: strokes \[9\] erased, but none of them is on the sheet$/,
+      ],
+      [[one(1), { kind: "erase", t: 20, ids: [] }], /^history\[1\]: strokes \[\] erased, but none/],
+      [
+        [one(1), one(2), { kind: "erase", t: 20, ids: [2, 1] }],
+        /^history\[2\]: strokes \[2,1\] erased, where the sheet takes off \[1,2\], in its order$/,
+      ],
+      [
+        [one(1), one(2), { kind: "erase", t: 20, ids: [1, 1] }],
+        /^history\[2\]: .* where the sheet takes off \[1\]/,
+      ],
+      [
+        [one(1), { kind: "erase", t: 20, ids: [1, 9] }],
+        /^history\[1\]: .* where the sheet takes off \[1\]/,
+      ],
+      [
+        [{ kind: "clear", t: 0, ids: [] }],
+        /^history\[0\]: strokes \[\] cleared, but the sheet is empty$/,
+      ],
+      [
+        [one(1), one(2), { kind: "clear", t: 20, ids: [1] }],
+        /^history\[2\]: strokes \[1\] cleared, where the sheet clears \[1,2\]$/,
+      ],
+      [
+        [{ kind: "undo", t: 0, removed: [], restored: [] }],
+        /^history\[0\]: an undo .* but there is nothing to take back$/,
+      ],
+      [
+        [one(1), { kind: "undo", t: 20, removed: [], restored: [1] }],
+        /^history\[1\]: an undo that takes off \[\] and brings back \[1\], where the last action still in force takes off \[1\] and brings back \[\]$/,
+      ],
+      [
+        [one(1), { kind: "undo", t: 20, removed: 1, restored: [] }],
+        /^history\[1\]\.removed: a list of stroke IDs/,
+      ],
+    ];
+    for (const [value, message] of cases) {
+      expect(() => Work.restore(value, new Clock()), String(message)).toThrow(TypeError);
+      expect(() => Work.restore(value, new Clock()), String(message)).toThrow(message);
+    }
+    // Times checked for their order alone: a write later than its last point, and strokes that
+    // overlap in time, as several pointers at once would write them (T35).
+    const overlapping: HistoryEvent[] = [
+      {
+        kind: "write",
+        t: 50,
+        stroke: {
+          id: 2,
+          kind: "touch",
+          points: [
+            { ...point, t: 0 },
+            { ...point, t: 40 },
+          ],
+        },
+      },
+      {
+        kind: "write",
+        t: 60,
+        stroke: {
+          id: 1,
+          kind: "touch",
+          points: [
+            { ...point, t: 10 },
+            { ...point, t: 30 },
+          ],
+        },
+      },
+    ];
+    expect(Work.restore(overlapping, new Clock()).strokes.map((each) => each.id)).toEqual([2, 1]);
+  });
+});

@@ -1,8 +1,10 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
+import { CROP } from "../core/crop.js";
 import { gridPath } from "../core/grid.js";
 import { toScreen, type View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
+import { workForCheck } from "../core/submission.js";
 import { NovatrailCanvas, type Task } from "./index.js";
 import { probe } from "./probe.js";
 
@@ -359,7 +361,7 @@ test("writing, erasing, undo() and clear() leave the template as it was", async 
   observer.disconnect();
 });
 
-test("the consumer's custom properties colour the paper, the grid and the ink, and a new ink is drawn without a scroll; the picture of the work keeps its own", async () => {
+test("the consumer's custom properties colour the paper, the grid and the ink, and a new ink is drawn without a scroll; the crop for checking keeps its own", async () => {
   const theme = document.createElement("div");
   theme.style.setProperty("--novatrail-canvas-paper", "rgb(10, 20, 30)");
   theme.style.setProperty("--novatrail-canvas-grid", "rgb(200, 0, 0)");
@@ -385,13 +387,11 @@ test("the consumer's custom properties colour the paper, the grid and the ink, a
   await settle();
   expect(near(rgbaAt(canvas, view(), 200, 300), [0, 128, 0, 255])).toBe(true);
 
-  const png = await element.exportPNG();
-  if (png === null) throw new Error("the sheet gave no picture");
-  const bitmap = await createImageBitmap(png);
-  const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext("2d");
-  context?.drawImage(bitmap, 0, 0);
-  expect([...(context?.getImageData(200, 300, 1, 1).data ?? [])]).toEqual([17, 17, 17, 255]);
-  expect([...(context?.getImageData(200, 600, 1, 1).data ?? [])]).toEqual([255, 255, 255, 255]);
+  // The crop for checking is the sheet's own raster, ink on white whatever the theme (R25).
+  const work = await element.exportWork();
+  const own = workForCheck(probe(element).strokes, CROP.digit);
+  if (work === null || own === null) throw new Error("the sheet gave no work for checking");
+  expect(new Uint8Array(await work.png.arrayBuffer())).toEqual(own.png);
 });
 
 test("a task given before the element is upgraded is taken, and one it cannot show leaves it ruled as it starts, with a warning; after the upgrade such a task is a TypeError", () => {

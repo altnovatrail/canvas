@@ -47,15 +47,6 @@ export function outline(stroke: Stroke, complete: boolean): Vec2[] {
   return polygon(stroke, followsPressure(stroke) ? PEN_THINNING : 0, complete);
 }
 
-/**
- * The outline of a finished stroke on the picture of the work: as wide all along, whatever the
- * pointer and its pressure, for the pressure goes into no picture for checking (spec 3.1 of
- * canvas-api; R20). A mouse's or a finger's is its outline on the screen.
- */
-export function evenOutline(stroke: Stroke): Vec2[] {
-  return polygon(stroke, 0, true);
-}
-
 function polygon(stroke: Stroke, thinning: number, complete: boolean): Vec2[] {
   const points = stroke.points.map(({ x, y, p }) => [x, y, p]);
   // One point alone perfect-freehand pairs with another a unit off and draws as an oval. The same

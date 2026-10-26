@@ -1,29 +1,38 @@
-// The page to try the element on by hand, as tutor's check board would have it (RUN.md, T34; R20
-// in docs/decisions.md). The board's buttons call the element's methods; Check takes the picture
-// the board would send and stops the writing for a moment, as the board does while the models
-// think; Next task puts a new element in place of the old one. The page listens for workchange
-// above the element, where the event still comes from the next task's element. Eraser, which the
-// board has not, switches the element's tool between the pen and the eraser (T10; R22): a pen's
-// eraser erases whichever it is. Each element has a task: its grid, which the page's controls
-// change by a new task, and its statement above the sheet, with a picture the page draws and one
-// that never comes. Dark theme sets the element's custom properties (T11; R23). Under the sheet
-// the page draws the groups of its strokes after every workchange, by the sheet's rule or by the
-// pause and the reaches its fields give (T12; R24), and the crop for checking at the height of
-// digits its field gives, with the frames of those groups and the crop's size at every height of
-// eval (T13; R25): it reads the strokes through the probe of the tests, for the element hands out
-// no strokes yet (T15), and it keeps nothing. Check sends the crop as well, as exportWork() is to
-// (T15): the page keeps that submission, and a box dragged over its crop, or a group picked, comes
-// back to the element as a mark of the tutor's, which holds on to the strokes it takes and follows
-// them as they are written over, erased and undone (T14; R26). The page's tasks are its own, made
-// up. just demo serves it.
+// The page to try the element on by hand, as app is to have it (RUN.md, T15; R27 in
+// docs/decisions.md). The page's buttons call the element's methods and switch its tool, for the
+// element has no buttons of its own yet (T41); a pen's eraser erases whichever the tool is (T10;
+// R22). The page keeps the history of writing as historychange tells it, listening on the element
+// itself, as app is to; Reopen puts a new element in place of the old one with that history and
+// the marks given, as a page opened again would, and Next task a new, empty one. Each element has
+// a task: its grid and the height of its digits, which the page's controls change by a new task,
+// and its statement above the sheet, with a picture the page draws and one that never comes. Dark
+// theme sets the element's custom properties (T11; R23). Under the sheet the page draws the groups
+// of the strokes the history leaves, after every historychange, by the sheet's rule or by the
+// pause and the reaches its fields give (T12; R24), and their crop for checking at the height of
+// digits the task gives, with the frames of those groups and the crop's size at every height of
+// eval (T13; R25). Check takes the work for checking from exportWork() and stops the writing for a
+// moment, as while the models think: the page keeps the submission, and a box dragged over its
+// crop, or a group picked, comes back to the element as a mark of the tutor's, which holds on to
+// the strokes it takes and follows them as they are written over, erased and undone (T14; R26).
+// The page reads what the element made of the marks through the probe of the tests. Its tasks are
+// its own, made up, and it keeps nothing once it is closed. just demo serves it.
 
 import { CROP, type Crop, cropOf, tokensOf } from "../src/core/crop.js";
 import { GROUP_RULE, type Group, type GroupRule, groupsOf, rectOf } from "../src/core/groups.js";
-import type { Stroke } from "../src/core/ink.js";
+import { type HistoryEvent, replay, SHEET, type Stroke } from "../src/core/index.js";
 import { pictureOf } from "../src/core/raster.js";
-import { SHEET } from "../src/core/sheet.js";
 import "../src/element/index.js";
-import type { GridKind, Mark, Media, Submission, Task, Tool } from "../src/element/index.js";
+import type {
+  GridKind,
+  HistoryChangeEvent,
+  Mark,
+  Marks,
+  Media,
+  NovatrailCanvas,
+  Submission,
+  Task,
+  Tool,
+} from "../src/element/index.js";
 import { probe } from "../src/element/probe.js";
 
 /** An element of the page, of the type the page has it as. */
@@ -36,13 +45,11 @@ function part<T extends Element>(id: string, type: new () => T): T {
 const place = part("place", HTMLDivElement);
 const counter = part("counter", HTMLParagraphElement);
 const status = part("status", HTMLSpanElement);
-const picture = part("picture", HTMLImageElement);
-const caption = part("caption", HTMLElement);
 const eraser = part("eraser", HTMLButtonElement);
 const grid = part("grid", HTMLSelectElement);
 const step = part("step", HTMLInputElement);
 const dark = part("dark", HTMLButtonElement);
-const buttons = ["eraser", "undo", "clear", "check", "next"].map((id) =>
+const buttons = ["eraser", "undo", "clear", "check", "reopen", "next"].map((id) =>
   part(id, HTMLButtonElement),
 );
 const preview = part("groups", SVGSVGElement);
@@ -80,13 +87,14 @@ const media: Media = async (ref) => {
   throw new Error(`the page has no ${ref}`);
 };
 
-/** The task of the page's number `n`, with the grid its controls give. */
+/** The task of the page's number `n`, with the grid and the height of digits its controls give. */
 function taskFor(n: number): Task {
   return {
     canvas: {
       kind: "handwriting-sheet",
       grid: grid.value as GridKind,
       step: Number(step.value),
+      digit: Number(digit.value),
     },
     statement: [
       {
@@ -100,34 +108,38 @@ function taskFor(n: number): Task {
   };
 }
 
-let sheet = document.createElement("novatrail-canvas");
+/**
+ * The history of writing as the page keeps it, as app is to keep it on the device: what
+ * historychange has told, added on, and given back to an element that opens the sheet again.
+ */
+let kept: HistoryEvent[] = [];
 let taskNumber = 1;
 let changes = 0;
-sheet.task = taskFor(taskNumber);
-sheet.media = media;
+
+/** A new element for the page's task, with the history and the marks given, if any. */
+function mount(history?: readonly HistoryEvent[], marks?: Marks): NovatrailCanvas {
+  const element = document.createElement("novatrail-canvas");
+  element.task = taskFor(taskNumber);
+  element.media = media;
+  // The history first, then the marks: they hold on to its strokes.
+  if (history !== undefined) element.history = history;
+  if (marks !== undefined) element.marks = marks;
+  // On the element itself: an ancestor would miss a stroke that lands as the element leaves.
+  element.addEventListener("historychange", told);
+  return element;
+}
+
+let sheet = mount();
 place.append(sheet);
 
 function count(): void {
-  counter.textContent = `Task ${taskNumber} · workchange × ${changes}`;
+  counter.textContent = `Task ${taskNumber} · historychange × ${changes} · ${kept.length} events kept`;
 }
 
 /** The sheet's tool, and the Eraser button pressed while it is the eraser. */
 function use(tool: Tool): void {
   sheet.tool = tool;
   eraser.setAttribute("aria-pressed", String(tool === "eraser"));
-}
-
-function showPicture(png: Blob | null): void {
-  if (picture.src !== "") URL.revokeObjectURL(picture.src);
-  if (png === null) {
-    picture.removeAttribute("src");
-    caption.textContent = "";
-    return;
-  }
-  picture.src = URL.createObjectURL(png);
-  picture.onload = () => {
-    caption.textContent = `${picture.naturalWidth} × ${picture.naturalHeight} px, ${Math.ceil(png.size / 1024)} KB`;
-  };
 }
 
 const SVG = "http://www.w3.org/2000/svg";
@@ -155,12 +167,12 @@ function shape(name: string, attributes: Record<string, string | number>): SVGEl
 }
 
 /**
- * The groups of the sheet's strokes, drawn under it in sheet units: each stroke a line through its
- * points, each group a box with its label, and the table of labels and stroke IDs (R24). Then the
- * crop of the strokes, with the frames of these groups (R25).
+ * The groups of the strokes the sheet's history leaves, drawn under it in sheet units: each stroke a
+ * line through its points, each group a box with its label, and the table of labels and stroke IDs
+ * (R24). Then the crop of the strokes, with the frames of these groups (R25).
  */
 function showGroups(): void {
-  const { strokes } = probe(sheet);
+  const strokes = replay(sheet.history);
   const groups = groupsOf(strokes, rule());
   const shapes = strokes.map(({ points }) => {
     // A dot is a line of no length, which round caps draw.
@@ -199,15 +211,15 @@ function showGroups(): void {
 /**
  * The PNGs drawn for the strokes on the sheet, by height of digits. A crop's pixels come from the
  * strokes and the height alone, not from the groups, so the fields of the rule redraw only its
- * frames; new strokes draw the pictures again.
+ * frames; a new history draws the pictures again.
  */
 const pictures = new Map<number, Uint8Array<ArrayBuffer>>();
-let picturesOf: readonly Stroke[] | undefined;
+let picturesOf: readonly HistoryEvent[] | undefined;
 
 function pictureFor(strokes: readonly Stroke[], shown: Crop): Uint8Array<ArrayBuffer> {
-  if (picturesOf !== strokes) {
+  if (picturesOf !== sheet.history) {
     pictures.clear();
-    picturesOf = strokes;
+    picturesOf = sheet.history;
   }
   let png = pictures.get(shown.digit);
   if (png === undefined) {
@@ -218,7 +230,7 @@ function pictureFor(strokes: readonly Stroke[], shown: Crop): Uint8Array<ArrayBu
 }
 
 /**
- * The crop for checking of the strokes, at the height of digits the field gives, with the frames of
+ * The crop for checking of the strokes, at the height of digits the task gives, with the frames of
  * the groups over it, and the crop's size at every height of eval (R25).
  */
 function showCrop(strokes: readonly Stroke[], groups: readonly Group[]): void {
@@ -279,33 +291,32 @@ function showCrop(strokes: readonly Stroke[], groups: readonly Group[]): void {
   );
 }
 
-/** The submission of the last Check, as exportWork() is to give it (T15), and the marks given so far. */
+/** The submission of the last Check, from exportWork(), and the marks given so far. */
 let submission: Submission | undefined;
 let given: readonly Mark[] = [];
 
 /**
- * What Check sends: the crop of the strokes at the height of digits the field gives, and their
- * groups by the sheet's rule. Marks given before go: they were of the last submission.
+ * What Check sends: the crop of exportWork() (R27), whose submission the page keeps. Marks given
+ * before go: they were of the last submission. The work is null on an empty sheet.
  */
-function send(): void {
-  const { strokes } = probe(sheet);
-  const groups = groupsOf(strokes);
-  const shown = cropOf(strokes, groups, Number(digit.value));
+async function send(): Promise<boolean> {
+  const work = await sheet.exportWork();
   given = [];
   sheet.marks = undefined;
-  submission = shown === null ? undefined : { crop: shown, groups };
+  submission = work?.submission;
   if (sent.src !== "") URL.revokeObjectURL(sent.src);
   sentGroups.replaceChildren();
-  if (shown === null) {
+  if (work === null) {
     sent.removeAttribute("src");
     showMarks();
-    return;
+    return false;
   }
-  sent.width = shown.width;
-  sent.height = shown.height;
-  sent.src = URL.createObjectURL(new Blob([pictureOf(strokes, shown)], { type: "image/png" }));
-  sentBoxes.setAttribute("viewBox", `0 0 ${shown.width} ${shown.height}`);
-  for (const { label } of groups) {
+  const { width, height } = work.submission.crop;
+  sent.width = width;
+  sent.height = height;
+  sent.src = URL.createObjectURL(work.png);
+  sentBoxes.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  for (const { label } of work.submission.groups) {
     const button = document.createElement("button");
     button.textContent = label;
     button.addEventListener("click", () =>
@@ -314,6 +325,7 @@ function send(): void {
     sentGroups.append(button);
   }
   showMarks();
+  return true;
 }
 
 /** One more mark of the submission, back to the element with the others. */
@@ -438,9 +450,9 @@ unmark.addEventListener("click", () => {
 let checking = false;
 
 /**
- * The board's Check: the writing and the buttons stop at once, as the board's do, then the picture
- * comes, and both stay stopped while the models would think. A stroke already under way goes on:
- * the element holds its pointer (R20).
+ * Check: the writing and the buttons stop at once, then the work for checking comes, and both stay
+ * stopped while the models would think. A stroke already under way goes on: the element holds its
+ * pointer (R20).
  */
 async function check(): Promise<void> {
   if (checking) return;
@@ -449,18 +461,15 @@ async function check(): Promise<void> {
   checked.style.pointerEvents = "none";
   for (const button of buttons) button.disabled = true;
   status.textContent = "Checking: no writing until it ends…";
-  send();
   try {
-    const png = await checked.exportPNG();
-    if (png === null) {
+    if (!(await send())) {
       status.textContent = "Write a solution first.";
       return;
     }
-    showPicture(png);
     await new Promise((resolve) => setTimeout(resolve, THINKING_MS));
     status.textContent = "";
   } catch (error) {
-    status.textContent = `The picture failed: ${error instanceof Error ? error.message : error}`;
+    status.textContent = `The work failed: ${error instanceof Error ? error.message : error}`;
   } finally {
     checked.style.pointerEvents = "";
     for (const button of buttons) button.disabled = false;
@@ -468,7 +477,10 @@ async function check(): Promise<void> {
   }
 }
 
-/** The grid the controls give, by a new task: the work stays. A step out of bounds is left. */
+/**
+ * The grid and the height of digits the controls give, by a new task: the work stays. A step out of
+ * bounds is left.
+ */
 function regrid(): void {
   try {
     sheet.task = taskFor(taskNumber);
@@ -476,15 +488,32 @@ function regrid(): void {
   } catch (error) {
     status.textContent = error instanceof Error ? error.message : String(error);
   }
+  showGroups();
 }
 
-place.addEventListener("workchange", () => {
+/** What historychange tells, added to the history the page keeps, as app is to add it. */
+function told({ detail }: HistoryChangeEvent): void {
+  // The events begin where the page's history ends, unless it missed some: then it reads them all.
+  kept = detail.from === kept.length ? [...kept, ...detail.events] : [...sheet.history];
   changes++;
   count();
-  // The picture was of the sheet as it was: once the work changes, it is out of date.
-  showPicture(null);
   showGroups();
-});
+}
+
+/** The page's state for a sheet just put in place. */
+function mounted(next: NovatrailCanvas): void {
+  // The old sheet is no longer heard: a stroke that lands as it leaves the page is of its task.
+  const old = sheet;
+  old.removeEventListener("historychange", told);
+  sheet = next;
+  old.replaceWith(next);
+  // A new sheet starts with the pen.
+  use("pen");
+  changes = 0;
+  showGroups();
+  showMarks();
+  count();
+}
 eraser.addEventListener("click", () => use(sheet.tool === "eraser" ? "pen" : "eraser"));
 part("undo", HTMLButtonElement).addEventListener("click", () => sheet.undo());
 part("clear", HTMLButtonElement).addEventListener("click", () => {
@@ -492,26 +521,29 @@ part("clear", HTMLButtonElement).addEventListener("click", () => {
   status.textContent = "";
 });
 part("check", HTMLButtonElement).addEventListener("click", () => void check());
+// Reopen: the sheet as a page opened again has it, from the history the page keeps, through JSON as
+// a store keeps it, and with the marks given, which go back on their strokes.
+part("reopen", HTMLButtonElement).addEventListener("click", () => {
+  const history = JSON.parse(JSON.stringify(kept)) as HistoryEvent[];
+  const marks =
+    submission !== undefined && given.length > 0 ? { submission, marks: given } : undefined;
+  try {
+    mounted(mount(history, marks));
+    status.textContent = `Opened again from the ${history.length} events the page keeps.`;
+  } catch (error) {
+    status.textContent = `Reopen failed: ${error instanceof Error ? error.message : error}`;
+  }
+});
 part("next", HTMLButtonElement).addEventListener("click", () => {
-  const next = document.createElement("novatrail-canvas");
   taskNumber++;
-  next.task = taskFor(taskNumber);
-  next.media = media;
-  sheet.replaceWith(next);
-  sheet = next;
-  // A new sheet starts with the pen.
-  use("pen");
-  changes = 0;
-  showPicture(null);
-  showGroups();
+  kept = [];
   submission = undefined;
   given = [];
   if (sent.src !== "") URL.revokeObjectURL(sent.src);
   sent.removeAttribute("src");
   sentGroups.replaceChildren();
-  showMarks();
+  mounted(mount());
   status.textContent = "";
-  count();
 });
 grid.addEventListener("change", regrid);
 step.addEventListener("change", regrid);
@@ -524,7 +556,7 @@ pause.value = String(GROUP_RULE.pause);
 across.value = String(GROUP_RULE.across);
 down.value = String(GROUP_RULE.down);
 for (const field of [pause, across, down]) field.addEventListener("input", showGroups);
-digit.addEventListener("change", showGroups);
+digit.addEventListener("change", regrid);
 count();
 showGroups();
 showMarks();
