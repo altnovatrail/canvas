@@ -8,6 +8,14 @@ export interface Box {
   readonly maxY: number;
 }
 
+/**
+ * A length or a place in whole tenths of a unit, as a sample file keeps them (R09), rounded half
+ * up: 100.05 units, 1000.5 tenths, are 1001. The groups and the crop count in them (R24, R25).
+ */
+export function tenths(value: number): number {
+  return Math.round(value * 10);
+}
+
 /** The box around a stroke's points, the raw points rather than the ink's outline. */
 export function boxOf(points: readonly Point[]): Box {
   let minX = Number.POSITIVE_INFINITY;
