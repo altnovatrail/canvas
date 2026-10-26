@@ -396,7 +396,7 @@ function onSent(event: PointerEvent): { readonly x: number; readonly y: number }
   };
 }
 
-/** The box between two places on the crop, in whole thousandths, min < max (Т-32). */
+/** The box between two places on the crop, in whole thousandths, min < max (R53 spec). */
 function fractions(
   a: { readonly x: number; readonly y: number },
   b: { readonly x: number; readonly y: number },

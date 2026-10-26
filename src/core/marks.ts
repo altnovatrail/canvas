@@ -60,7 +60,7 @@ export interface Submission {
 /**
  * Where a mark is: a group of strokes by its label, an answer cell by its ID, or a box on the crop
  * the model saw, [ymin, xmin, ymax, xmax] in whole thousandths of its height and width, min < max
- * (Т-32).
+ * (R53 spec).
  */
 export type Anchor =
   | { readonly group: string }
@@ -439,7 +439,7 @@ function anchorOf(value: unknown, path: string, labels: ReadonlySet<string>): An
   return { box: fractionsOf(at.box, `${path}.box`) };
 }
 
-/** A box on a crop, valid as Т-32 has it: whole thousandths from 0 to 1000, min < max. */
+/** A box on a crop, valid as R53 spec has it: whole thousandths from 0 to 1000, min < max. */
 function fractionsOf(value: unknown, path: string): [number, number, number, number] {
   if (
     Array.isArray(value) &&

@@ -9,13 +9,16 @@
 // the work (T14; R26). The history of writing comes in and goes out, an event tells of every
 // action, and the work for checking is the crop with the context of its submission (T15; R27).
 // Above it all stands the element's own row of buttons — the tools the task allows, undo and
-// clearing — labelled in the element's `lang` (T41; R28).
+// clearing — labelled in the element's `lang` (T41; R28). On a tablet a pen's touch puts the page
+// in pen mode, where a finger writes nothing and a button lets it write again, a palm writes
+// nothing, and two fingers scroll (T35; R29).
 
 import type { Vec2 } from "perfect-freehand";
 import { Clock } from "../core/clock.js";
 import { ERASER_BUTTON, Eraser } from "../core/eraser.js";
 import { type Box, boxOf } from "../core/geometry.js";
 import { gridPath } from "../core/grid.js";
+import { type Contact, Hands } from "../core/hands.js";
 import { begins, type HistoryEvent, sameHistory } from "../core/history.js";
 import type { InkPoint, Stroke } from "../core/ink.js";
 import {
@@ -44,6 +47,7 @@ import {
 } from "../core/task.js";
 import { nextIdOf, resumeOf, Work } from "../core/work.js";
 import { attachProbe } from "./probe.js";
+import { PEN_MODE } from "./session.js";
 import { type Media, Statement } from "./statement.js";
 import { Tools } from "./tools.js";
 
@@ -122,11 +126,11 @@ const SVG = "http://www.w3.org/2000/svg";
 // --novatrail-canvas-top says, while the element is in sight, over the sheet as it scrolls by
 // (R28). The element is as tall as the row, the statement and the sheet unless it is given a
 // height: then the statement and the sheet scroll in it, under the row. On the canvas the browser
-// neither scrolls nor zooms: the pointer writes. The canvas and the buttons take pointer events
-// only as the element does: a consumer's pointer-events: none on the element stops the writing
-// and the buttons' pointer, though not their keys (R20, R28). The theme is the consumer's, by
-// custom properties that the shadow tree inherits; with forced colours the system's colours stand
-// in for them.
+// neither scrolls nor zooms: the pointer writes, and two fingers scroll by the element's own code
+// (R29). The canvas and the buttons take pointer events only as the element does: a consumer's
+// pointer-events: none on the element stops the writing and the buttons' pointer, though not
+// their keys (R20, R28). The theme is the consumer's, by custom properties that the shadow tree
+// inherits; with forced colours the system's colours stand in for them.
 const STYLE = `
 :host { display: flex; flex-direction: column; isolation: isolate; }
 :host([hidden]) { display: none; }
@@ -196,6 +200,13 @@ canvas {
   .tools [aria-disabled="true"] { color: GrayText; border-color: GrayText; opacity: 1; }
 }
 `;
+
+/** What two fingers scroll in a gesture, how much the page scales it, and the part of a pixel owed. */
+interface Latch {
+  readonly target: Element | Window;
+  readonly scale: number;
+  rest: number;
+}
 
 /** The view of the sheet, with the visible part's top left corner and height on the screen. */
 interface Screen extends View {
@@ -288,6 +299,11 @@ export class NovatrailCanvas extends HTMLElement {
     choose: (tool) => this.#choose(tool),
     undo: () => this.undo(),
     clear: () => this.clear(),
+    // The finger writes again on every sheet of the page, with no event: the next pen's touch
+    // puts the page back in pen mode (R29).
+    fingers: () => {
+      PEN_MODE.on = false;
+    },
   });
   /** The sheet's clock, for its strokes and its actions alike (R22). */
   readonly #clock = new Clock();
@@ -311,6 +327,23 @@ export class NovatrailCanvas extends HTMLElement {
       if (this.#work.erase(ids, time)) this.#changed();
     },
   );
+  /**
+   * The hands on the sheet (R29): which pointer may write, which is a palm, and which two fingers
+   * scroll, in the page's pen mode. The recorder and the eraser say which pointer writes.
+   */
+  readonly #hands = new Hands(
+    {
+      writer: () => this.#writer(),
+      drop: (pointerId) => this.#drop(pointerId),
+      scroll: (dy, fresh) => this.#scroll(dy, fresh),
+    },
+    PEN_MODE,
+  );
+  /** Whether the row shows the finger's button: it comes and goes between strokes alone. */
+  #finger = false;
+  /** What two fingers scroll in the gesture under way, chosen at its first step. */
+  #latch: Latch | undefined;
+  #unwatchPen: (() => void) | undefined;
   #tool: Tool = "pen";
   #task: Task | undefined;
   #shownTemplate: Template = NO_TASK;
@@ -393,15 +426,16 @@ export class NovatrailCanvas extends HTMLElement {
     this.#canvas.addEventListener("pointermove", (event) => this.#move(event));
     this.#canvas.addEventListener("pointerup", (event) => this.#up(event));
     this.#canvas.addEventListener("pointercancel", (event) => {
-      const dropped =
-        this.#recorder.cancel(event.pointerId) || this.#eraser.cancel(event.pointerId);
-      if (dropped) this.#request();
+      this.#drop(event.pointerId);
+      this.#lifted(event.pointerId);
     });
     // A stroke or an erasing that ends here, or on its pointerup, lands through its handler, which
-    // draws the sheet anew.
+    // draws the sheet anew. A captured pointer comes here after its pointerup too, and finds the
+    // hands done with it; one that a script made, which no capture holds, has its pointerup alone.
     this.#canvas.addEventListener("lostpointercapture", (event) => {
       this.#recorder.end(event.pointerId);
       this.#eraser.end(event.pointerId);
+      this.#lifted(event.pointerId);
     });
     // A long press of a pen or a finger, or a right click, opens no menu over the sheet.
     this.#canvas.addEventListener("contextmenu", (event) => event.preventDefault());
@@ -418,6 +452,7 @@ export class NovatrailCanvas extends HTMLElement {
       outlines: this.#outlines,
       view: this.#view(),
       marks: this.#shown.map(({ name, placed, frame }) => ({ name, ids: placed.ids, frame })),
+      roles: this.#hands.roles,
     }));
 
     this.#adopt("tool");
@@ -606,6 +641,16 @@ export class NovatrailCanvas extends HTMLElement {
     this.#watchDensity();
     this.#watchColours();
     this.#statement.connect();
+    // The page's pen mode, on every sheet of it (R29). The row shows a change once the event that
+    // made it is over: by then a pen that came down writes, and every row of the page waits for its
+    // stroke. The sheet tells the page whether it is written on, and hears when a stroke ends.
+    const unwatch = PEN_MODE.watch(() => queueMicrotask(() => this.#refresh()));
+    const unenlist = PEN_MODE.enlist(() => this.#writer() !== undefined);
+    this.#unwatchPen = () => {
+      unwatch();
+      unenlist();
+    };
+    this.#refresh();
   }
 
   /**
@@ -663,6 +708,12 @@ export class NovatrailCanvas extends HTMLElement {
     // no tree now.
     this.#recorder.end();
     this.#eraser.end();
+    this.#hands.reset();
+    this.#latch = undefined;
+    this.#unwatchPen?.();
+    this.#unwatchPen = undefined;
+    // A stroke that ended here may be the one the other rows of the page waited for.
+    PEN_MODE.settle();
     this.#statement.disconnect();
     this.#resize.disconnect();
     this.#unwatchDensity?.();
@@ -740,12 +791,22 @@ export class NovatrailCanvas extends HTMLElement {
   }
 
   /**
-   * One pointer at a time writes or erases (R18, R22): the primary button does what the tool says,
-   * and a pen's eraser erases — if the task allows the eraser: without it, the pen's eraser does
-   * nothing, for the recorder takes the primary button alone (R28).
+   * One pointer at a time writes or erases (R18, R22), as the hands let it: a pen, a finger out of
+   * pen mode, or a mouse (R29). The primary button does what the tool says, and a pen's eraser
+   * erases — if the task allows the eraser: without it, the pen's eraser does nothing, for the
+   * recorder takes the primary button alone (R28).
    */
   #down(event: PointerEvent): void {
-    if (this.#recorder.pointer !== undefined || this.#eraser.pointer !== undefined) return;
+    // A pointer that comes down again lost its way up: what it was writing or erasing ends where it
+    // was, as on a lost capture.
+    this.#recorder.end(event.pointerId);
+    this.#eraser.end(event.pointerId);
+    const writes = this.#hands.down(contactOf(event));
+    // The canvas holds on to every pointer that comes down on it until it lifts, writing or not: its
+    // moves and its lift come here, so that a stroke goes on beyond the canvas, two fingers scroll,
+    // a palm stays one, and the hands forget no pointer that lifted elsewhere.
+    this.#capture(event.pointerId);
+    if (!writes) return;
     const screen = this.#view();
     if (screen === undefined) return;
     const sample = this.#sample(event, screen);
@@ -755,39 +816,77 @@ export class NovatrailCanvas extends HTMLElement {
     const began = erases
       ? this.#eraser.down(sample, ERASER_RADIUS_PX / screen.k + INK_REACH)
       : this.#recorder.down(sample);
-    if (!began) return;
-    // The stroke or the erasing goes on beyond the canvas, clamped to the sheet's edge, until the
-    // pointer comes up.
+    if (began) this.#request();
+  }
+
+  /** The canvas holds on to a pointer until it lifts. */
+  #capture(pointerId: number): void {
     try {
-      this.#canvas.setPointerCapture(event.pointerId);
+      this.#canvas.setPointerCapture(pointerId);
     } catch {
       // The pointer is no longer active, or never was: an event that a script made.
     }
-    this.#request();
   }
 
   #move(event: PointerEvent): void {
-    const input = this.#inputOf(event.pointerId);
-    if (input === undefined) return;
-    const screen = this.#view();
-    if (screen === undefined) return;
+    // A pointer the hands did not see come down, such as a mouse or a pen hovering, does nothing,
+    // and reads no layout.
+    if (!this.#hands.knows(event.pointerId)) return;
+    // The layout is read once an event, and only when a move writes or erases.
+    let screen: Screen | undefined;
+    let looked = false;
     let changed = false;
     for (const each of coalesced(event)) {
+      // The hands see every move: a finger may grow into a palm, and two of them scroll.
+      if (!this.#hands.move(contactOf(each))) continue;
+      const input = this.#inputOf(each.pointerId);
+      if (input === undefined) continue;
+      if (!looked) {
+        screen = this.#view();
+        looked = true;
+      }
+      if (screen === undefined) continue;
       const sample = this.#sample(each, screen);
       const moved =
         input === this.#eraser ? input.move(sample, inSight(each, screen)) : input.move(sample);
       changed = moved || changed;
     }
+    this.#flush();
     if (changed) this.#request();
   }
 
   #up(event: PointerEvent): void {
     const input = this.#inputOf(event.pointerId);
-    if (input === undefined) return;
-    const screen = this.#view();
-    if (screen === undefined) input.end(event.pointerId);
-    else if (input === this.#eraser) input.up(this.#sample(event, screen), inSight(event, screen));
-    else input.up(this.#sample(event, screen));
+    if (input !== undefined) {
+      const screen = this.#view();
+      if (screen === undefined) input.end(event.pointerId);
+      else if (input === this.#eraser)
+        input.up(this.#sample(event, screen), inSight(event, screen));
+      else input.up(this.#sample(event, screen));
+    }
+    this.#lifted(event.pointerId);
+  }
+
+  /**
+   * A pointer lifted, or the device or the page took it from the sheet: the hands forget it, a
+   * gesture that ended lets go of what it scrolled, and the finger's button may come or go now, on
+   * this row and on the others of the page (R29).
+   */
+  #lifted(pointerId: number): void {
+    this.#hands.lift(pointerId);
+    if (!this.#hands.scrolling) this.#latch = undefined;
+    this.#refresh();
+    PEN_MODE.settle();
+  }
+
+  /** The pointer that writes or erases now, if one does: the recorder's or the eraser's. */
+  #writer(): number | undefined {
+    return this.#recorder.pointer ?? this.#eraser.pointer;
+  }
+
+  /** A pointer's stroke or erasing goes, as on `pointercancel`, and the sheet is drawn anew. */
+  #drop(pointerId: number): void {
+    if (this.#recorder.cancel(pointerId) || this.#eraser.cancel(pointerId)) this.#request();
   }
 
   /** The input a pointer drives: the recorder while it writes, the eraser while it erases. */
@@ -851,7 +950,7 @@ export class NovatrailCanvas extends HTMLElement {
     const port = this.#viewport;
     const box = port.getBoundingClientRect();
     const across = port.offsetWidth > 0 ? box.width / port.offsetWidth : 1;
-    const down = port.offsetHeight > 0 ? box.height / port.offsetHeight : 1;
+    const down = scaleOf(port, box);
     const left = box.left + port.clientLeft * across;
     const top = box.top + port.clientTop * down;
     const right = left + port.clientWidth * across;
@@ -873,6 +972,57 @@ export class NovatrailCanvas extends HTMLElement {
   #scrolled(): void {
     if (this.#k > 0) this.#vy = Math.max(0, this.#viewport.scrollTop - this.#sheetAt) / this.#k;
     this.#request();
+  }
+
+  /**
+   * Two fingers moved down the screen by `dy` CSS pixels (R29), and what they scroll goes with
+   * them. A gesture's first step chooses it, for the whole gesture: the sheet's own container if it
+   * can go that way, or else the nearest ancestor of the element that scrolls and can, or else the
+   * page. A container at its end hands the scroll on at the next gesture, not within this one. The
+   * steps of an event add up, and its end scrolls them at once.
+   */
+  #scroll(dy: number, fresh: boolean): void {
+    if (fresh) this.#latch = this.#scrollerFor(dy < 0);
+    // The content goes with the fingers: down the screen, the scroll goes back.
+    if (this.#latch !== undefined) this.#latch.rest -= dy / this.#latch.scale;
+  }
+
+  /** The scroll the fingers' moves of an event owe, in whole pixels: the rest waits for the next. */
+  #flush(): void {
+    const latch = this.#latch;
+    if (latch === undefined) return;
+    const step = Math.round(latch.rest);
+    if (step === 0) return;
+    latch.rest -= step;
+    latch.target.scrollBy({ top: step, behavior: "instant" });
+  }
+
+  /** What scrolls on down the content, for `onward`, or back up it. */
+  #scrollerFor(onward: boolean): Latch | undefined {
+    if (scrollsOn(this.#viewport, onward)) {
+      return { target: this.#viewport, scale: scaleOf(this.#viewport), rest: 0 };
+    }
+    // The viewport takes the root's overflow, or the body's when the root's is visible (CSS
+    // Overflow 3): then the body scrolls nothing of its own, and the page scrolls only as it allows.
+    const root = getComputedStyle(document.documentElement).overflowY;
+    const body = document.body === null ? "visible" : getComputedStyle(document.body).overflowY;
+    const fromBody = root === "visible" && body !== "visible";
+    for (let node = parentOf(this); node !== null; node = parentOf(node)) {
+      if (node === document.documentElement || (fromBody && node === document.body)) break;
+      const style = getComputedStyle(node);
+      if (!SCROLLING.test(style.overflowY)) continue;
+      if (scrollsOn(node, onward)) return { target: node, scale: scaleOf(node), rest: 0 };
+      // A container that keeps its scrolling to itself hands none on.
+      if (style.overscrollBehaviorY === "contain" || style.overscrollBehaviorY === "none") {
+        return undefined;
+      }
+    }
+    // A page that hides its overflow, as one under a modal does, a finger would not scroll: nor do two.
+    const overflow = fromBody ? body : root;
+    if (overflow === "hidden" || overflow === "clip") return undefined;
+    const page = document.scrollingElement;
+    if (page === null || !scrollsOn(page, onward)) return undefined;
+    return { target: window, scale: 1, rest: 0 };
   }
 
   /**
@@ -980,11 +1130,18 @@ export class NovatrailCanvas extends HTMLElement {
    * undo and clearing have anything to do (R28).
    */
   #refresh(): void {
+    // The finger's button comes and goes between the strokes of the whole page alone: a row that
+    // wraps would move this sheet, and the sheets below it, under the pen. It is there in pen mode,
+    // on a device that has touch (R29).
+    if (this.#writer() === undefined && !PEN_MODE.writing) {
+      this.#finger = PEN_MODE.on && navigator.maxTouchPoints > 0;
+    }
     this.#tools.show({
       tools: this.#shownTemplate.tools,
       tool: this.#tool,
       undoable: this.#work.undoable,
       clearable: this.#work.strokes.length > 0,
+      finger: this.#finger,
     });
   }
 
@@ -1194,6 +1351,45 @@ function sameBox(a: Box | null, b: Box | null): boolean {
 function coalesced(event: PointerEvent): readonly PointerEvent[] {
   const events = typeof event.getCoalescedEvents === "function" ? event.getCoalescedEvents() : [];
   return events.length > 0 ? events : [event];
+}
+
+/** What the hands see of a pointer event (R29): where on the screen, how big, when. */
+function contactOf(event: PointerEvent): Contact {
+  return {
+    pointerId: event.pointerId,
+    kind: event.pointerType,
+    x: event.clientX,
+    y: event.clientY,
+    width: event.width,
+    height: event.height,
+    time: event.timeStamp,
+  };
+}
+
+/** The values of `overflow-y` that make an element scroll its content. */
+const SCROLLING = /^(auto|scroll|overlay)$/;
+
+/** Whether an element can scroll on down its content, for `onward`, or back up it. */
+function scrollsOn(element: Element, onward: boolean): boolean {
+  const end = element.scrollHeight - element.clientHeight;
+  return onward ? element.scrollTop < end - 0.5 : element.scrollTop > 0.5;
+}
+
+/** A node's parent in the flat tree: the slot it is in, its parent, or its shadow root's host. */
+function parentOf(element: Element): Element | null {
+  if (element.assignedSlot !== null) return element.assignedSlot;
+  if (element.parentElement !== null) return element.parentElement;
+  const root = element.parentNode;
+  return root instanceof ShadowRoot ? root.host : null;
+}
+
+/**
+ * How much the page scales an element down the screen: 1 unless an ancestor transforms it. `box` is
+ * its rectangle on the screen, when the caller has it already.
+ */
+function scaleOf(element: Element, box?: DOMRect): number {
+  const tall = element instanceof HTMLElement ? element.offsetHeight : 0;
+  return tall > 0 ? (box ?? element.getBoundingClientRect()).height / tall : 1;
 }
 
 /**

@@ -1,5 +1,5 @@
-// The labels of the element's own buttons, in the languages of its interface (R28): English and
-// Russian, as О-2 recommends, until app's T07 gives the shared scheme of translations of the
+// The labels of the element's own buttons, in the languages of its interface (R28, R29): English
+// and Russian, as О-2 recommends, until app's T07 gives the shared scheme of translations of the
 // packages of the interface. The language is the element's own `lang`, looked up as RFC 4647
 // does it. This module is no entry point of the package.
 
@@ -11,6 +11,8 @@ export interface Labels {
   readonly eraser: string;
   readonly undo: string;
   readonly clear: string;
+  /** The button that lets a finger write again, in pen mode (R29). */
+  readonly finger: string;
 }
 
 /** The labels in English, the code's own language: those of any language the table has not. */
@@ -21,6 +23,7 @@ const ENGLISH: Labels = Object.freeze({
   eraser: "Eraser",
   undo: "Undo",
   clear: "Clear",
+  finger: "Draw with finger",
 });
 
 /**
@@ -38,6 +41,7 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
       eraser: "Ластик",
       undo: "Отменить",
       clear: "Очистить",
+      finger: "Рисовать пальцем",
     }),
   ],
 ]);

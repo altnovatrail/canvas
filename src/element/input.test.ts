@@ -4,6 +4,7 @@ import { SHEET } from "../core/sheet.js";
 import { NovatrailCanvas, type Tool } from "./index.js";
 import { at, input, level } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
+import { PEN_MODE } from "./session.js";
 
 // The sheet's input in Chromium (R18): events that a script makes, with their coalesced points,
 // and real input through the DevTools protocol — a mouse, and a pen with its pressure.
@@ -11,6 +12,8 @@ import { probe } from "./probe.js";
 const made: HTMLElement[] = [];
 afterEach(() => {
   for (const element of made.splice(0)) element.remove();
+  // A pen puts the whole page in pen mode: the next test starts without it.
+  PEN_MODE.on = false;
 });
 
 const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));

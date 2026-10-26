@@ -1,10 +1,12 @@
 // What a test sees of an element beyond its interface: its strokes, the stroke under way, what the
-// eraser is about to take, its view of the sheet, how many outlines it has drawn and the tutor's
-// marks it shows. The history of writing is the element's own property now (R27). This module is
-// no entry point of the package, so the element's interface stays what the tasks of the sheet make
-// it (R07, R12, R19, R22, R27; RUN.md, T10, T14, T15, T33, T34).
+// eraser is about to take, its view of the sheet, how many outlines it has drawn, the tutor's
+// marks it shows and what each pointer down on it does (R29). The history of writing is the
+// element's own property now (R27). This module is no entry point of the package, so the
+// element's interface stays what the tasks of the sheet make it (R07, R12, R19, R22, R27, R29;
+// RUN.md, T10, T14, T15, T33, T34, T35).
 
 import type { Box } from "../core/geometry.js";
+import type { Role } from "../core/hands.js";
 import type { Stroke } from "../core/ink.js";
 import type { View } from "../core/screen.js";
 
@@ -30,6 +32,8 @@ export interface Probe {
     readonly ids: readonly number[];
     readonly frame: Box | null;
   }[];
+  /** What each pointer down on the sheet does, by its `pointerId` (R29). */
+  readonly roles: ReadonlyMap<number, Role>;
 }
 
 const probes = new WeakMap<object, () => Probe>();
