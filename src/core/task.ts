@@ -14,6 +14,7 @@ import {
   type Grid,
   type GridKind,
 } from "./grid.js";
+import { type Page, pageOf, samePage } from "./page.js";
 
 /** The canvas kinds of the module format: the handwriting sheet and the workbook. */
 export const SHEET_KIND = "handwriting_sheet";
@@ -137,14 +138,27 @@ export type Task = SheetTask | WorkbookTask;
  * What the sheet makes of a task: the grid on the sheet, the statement above it and the tools it
  * allows, in the order of `TOOLS`.
  */
-export interface Template {
+export interface SheetTemplate {
   readonly grid: Grid;
   readonly statement: readonly StatementPart[];
   readonly tools: readonly Tool[];
 }
 
+/**
+ * What the workbook makes of a task: the layout of its lines on the page (R35), the statement above
+ * it and the tools it allows.
+ */
+export interface WorkbookTemplate {
+  readonly page: Page;
+  readonly statement: readonly StatementPart[];
+  readonly tools: readonly Tool[];
+}
+
+/** What the canvas makes of a task, of either kind: a workbook's has its page. */
+export type Template = SheetTemplate | WorkbookTemplate;
+
 /** The template of a sheet without a task: squares of 50 units, no statement, both tools. */
-export const NO_TASK: Template = Object.freeze({
+export const NO_TASK: SheetTemplate = Object.freeze({
   grid: DEFAULT_GRID,
   statement: Object.freeze([]),
   tools: TOOLS,
@@ -174,16 +188,15 @@ export function isSheet(task: Task): task is SheetTask {
 }
 
 /**
- * The template of a task `taskOf` gave, or of no task for `undefined`. What this version of the
- * element does not show is a TypeError: the workbook, until T47, and a zone, until an epic of its
- * own. A choice the sheet passes over, and an item's text too: app shows them (R32).
+ * The template of a task `taskOf` gave, or of no task for `undefined`. A workbook's lines are laid
+ * out on its page, and a task whose lines do not fit is a TypeError at the first item that does not
+ * (R34, R35). A zone on the sheet is a TypeError until an epic of its own; a choice the sheet passes
+ * over, and an item's text too: app shows them (R32).
  */
 export function templateOf(task: Task | undefined): Template {
   if (task === undefined) return NO_TASK;
   if (!isSheet(task)) {
-    throw new TypeError(
-      `task.canvas.kind: the element shows "${SHEET_KIND}" alone so far, and "${WORKBOOK_KIND}" comes in a later version`,
-    );
+    return { page: pageOf(task.items), statement: task.statement, tools: allowedOf(task.canvas) };
   }
   for (const [i, item] of task.items.entries()) {
     for (const [j, slot] of item.answer_slots.entries()) {
@@ -194,18 +207,27 @@ export function templateOf(task: Task | undefined): Template {
       }
     }
   }
-  const { grid = DEFAULT_GRID.kind, grid_step = GRID_STEP, tools } = task.canvas;
+  const { grid = DEFAULT_GRID.kind, grid_step = GRID_STEP } = task.canvas;
   return {
     grid: { kind: grid, step: grid_step },
     statement: task.statement,
-    // The tools the task allows, of those the canvas has, in the order of TOOLS (R28).
-    tools: tools === undefined ? TOOLS : TOOLS.filter((tool) => tools.includes(tool)),
+    tools: allowedOf(task.canvas),
   };
 }
 
-/** Whether two templates show the same: the same grid, the same statement, the same tools. */
+/** Whether a template is a workbook's. */
+export function isWorkbook(template: Template): template is WorkbookTemplate {
+  return "page" in template;
+}
+
+/** The tools a task allows, of those the canvas has, in the order of TOOLS (R28). */
+function allowedOf({ tools }: SheetCanvas | WorkbookCanvas): readonly Tool[] {
+  return tools === undefined ? TOOLS : TOOLS.filter((tool) => tools.includes(tool));
+}
+
+/** Whether two templates show the same: the same layer, the same statement, the same tools. */
 export function sameTemplate(a: Template, b: Template): boolean {
-  return sameGrid(a, b) && sameStatement(a, b) && sameTools(a, b);
+  return sameLayer(a, b) && sameStatement(a, b) && sameTools(a, b);
 }
 
 /** Whether two templates allow the same tools. */
@@ -213,8 +235,14 @@ export function sameTools(a: Template, b: Template): boolean {
   return a.tools.length === b.tools.length && a.tools.every((tool, i) => tool === b.tools[i]);
 }
 
-/** Whether two templates rule the sheet alike. */
-export function sameGrid(a: Template, b: Template): boolean {
+/**
+ * Whether two templates draw the same on the layer of the template: the same grid on a sheet, the
+ * same lines on a workbook's page.
+ */
+export function sameLayer(a: Template, b: Template): boolean {
+  if (isWorkbook(a) || isWorkbook(b)) {
+    return isWorkbook(a) && isWorkbook(b) && samePage(a.page, b.page);
+  }
   return a.grid.kind === b.grid.kind && a.grid.step === b.grid.step;
 }
 

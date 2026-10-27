@@ -1,6 +1,6 @@
 // Type-checked by ci-lint and never built: what the entry point @altnovatrail/canvas/core gives
 // (R27). The types of the data and the fold of a history are there; the rules of the groups, the
-// crop and the snapping are not, until the eval protocol takes them. Were the entry to give one of
+// crop and the snapping are not, until the eval protocol takes them, nor is the workbook's layout. Were the entry to give one of
 // them, the directive over it would go unused, and that would be the error.
 
 import type * as types from "./index.js";
@@ -52,3 +52,5 @@ export const task = core.taskOf;
 export const template = core.templateOf;
 // @ts-expect-error Nor its reading of a manifest.
 export const settings = core.settingsOf;
+// @ts-expect-error Nor the layout of a workbook's page, which vectors/pages.json pins (R34, R35).
+export const page = core.pageOf;

@@ -40,15 +40,18 @@ import { SHEET } from "../core/sheet.js";
 import { workForCheck } from "../core/submission.js";
 import {
   isTool,
+  isWorkbook,
   NO_TASK,
-  sameGrid,
+  SHEET_KIND,
+  type SheetTemplate,
+  sameLayer,
   sameStatement,
   sameTools,
   type Task,
-  type Template,
   type Tool,
   taskOf,
   templateOf,
+  WORKBOOK_KIND,
 } from "../core/task.js";
 import { nextIdOf, resumeOf, Work } from "../core/work.js";
 import { attachProbe } from "./probe.js";
@@ -395,7 +398,7 @@ export class NovatrailCanvas extends HTMLElement {
   #unwatchPen: (() => void) | undefined;
   #tool: Tool = "pen";
   #task: Task | undefined;
-  #shownTemplate: Template = NO_TASK;
+  #shownTemplate: SheetTemplate = NO_TASK;
   /** The module's manifest as the consumer gave it, and what the element makes of it (R32). */
   #manifest: Manifest | undefined;
   #settings: Settings = NO_MANIFEST;
@@ -548,7 +551,8 @@ export class NovatrailCanvas extends HTMLElement {
    * and the tools the task allows (R28) — and its items. The type is the element's own until
    * spec's releases give the format's. A task the schema refuses is a TypeError that names the
    * field, a field the open view has not among it, and so is a workbook, until a later version
-   * shows it, and an answer slot in a zone; the sheet passes over a choice and an item's text,
+   * shows its lines, which the layout puts on the page already — a workbook whose lines do not fit
+   * is a TypeError at the first item that does not (R35) — and an answer slot in a zone; the sheet passes over a choice and an item's text,
    * which app shows. Another task of the same grid, tools and statement changes nothing, and any other
    * changes the template alone: the work stays, for the next task is a new element (R20). A task
    * without the eraser puts the pen back, with no event.
@@ -560,12 +564,18 @@ export class NovatrailCanvas extends HTMLElement {
   set task(task: Task | undefined) {
     if (task === this.#task) return;
     const template = templateOf(task === undefined ? undefined : taskOf(task));
+    // The workbook's template layer comes with T51.
+    if (isWorkbook(template)) {
+      throw new TypeError(
+        `task.canvas.kind: the element shows "${SHEET_KIND}" alone so far, and "${WORKBOOK_KIND}" comes in a later version`,
+      );
+    }
     this.#task = task;
     // The grid and the statement apart: a new grid leaves the statement and its pictures as they
     // are, and the other way round.
     const shown = this.#shownTemplate;
     this.#shownTemplate = template;
-    if (!sameGrid(template, shown)) this.#rule(template);
+    if (!sameLayer(template, shown)) this.#rule(template);
     if (!sameStatement(template, shown)) this.#statement.show(template.statement);
     if (!sameTools(template, shown)) {
       if (!template.tools.includes(this.#tool)) this.#tool = "pen";
@@ -830,7 +840,7 @@ export class NovatrailCanvas extends HTMLElement {
   }
 
   /** The grid of a template on the sheet. */
-  #rule(template: Template): void {
+  #rule(template: SheetTemplate): void {
     this.#grid.setAttribute("d", gridPath(template.grid));
     this.#grid.classList.toggle("dots", template.grid.kind === "dots");
   }

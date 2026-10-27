@@ -404,7 +404,7 @@ test("the consumer's custom properties colour the paper, the grid, the ink and t
   expect(new Uint8Array(await work.png.arrayBuffer())).toEqual(own.png);
 });
 
-test("a workbook's task and an answer slot in a zone are TypeErrors of this version, and the sheet stays as it was", async () => {
+test("a workbook's task and an answer slot in a zone are TypeErrors of this version, a workbook that does not fit at its item, and the sheet stays as it was", async () => {
   const { element, root, grid } = await sheet(400);
   const dots = sheetTask({ grid: "dots", statement: [{ text: "Count the dots." }] });
   element.task = dots;
@@ -417,6 +417,16 @@ test("a workbook's task and an answer slot in a zone are TypeErrors of this vers
   expect(() => {
     element.task = workbook;
   }).toThrow(/^task\.canvas\.kind: .* "workbook" comes in a later version$/);
+  // The layout comes first: a workbook whose lines do not fit is refused at its item (R35).
+  const crowded = {
+    ...workbook,
+    items: Array.from({ length: 21 }, (_, n) => ({
+      line: [{ text: `7 × ${n + 1} =` }, { binding: "box" as const }],
+    })),
+  };
+  expect(() => {
+    element.task = crowded;
+  }).toThrow(/^task\.items\[20\]: no room for item 21 on the workbook's page/);
   const zone = { left: 100, top: 1000, width: 400, height: 200 };
   const zoned = sheetTask({ items: [{ answer_slots: [{ binding: "zone", zone }] }] });
   expect(() => {

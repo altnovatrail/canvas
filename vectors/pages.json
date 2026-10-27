@@ -1,0 +1,416 @@
+{
+  "about": "Test vectors of canvas's layout of a workbook's page, R35 in docs/decisions.md: from a task's items, the lines of the module format (R51 spec), to where the template puts each item's number, the pieces of its line and its boxes, in whole units of the page, 1000 × 1400 like the handwriting sheet (R34). How the lines are laid out is the canvas's (the format's README, section 14). The numbers change only by a decision once released: histories know neither the task nor the layout (R34). For the synthetic samples and for module-kit, which may lay a page out by the same rule: nothing else needs it, for a sample carries the rectangles of its boxes.",
+  "numbers": {"size":30,"boxWidth":100,"boxHeight":100,"line":46,"lead":12,"gap":16,"apart":32,"items":32,"gutter":40,"margin":40},
+  "widths": {"unit":"whole hundredths of the type size","digits":{"characters":"0123456789","width":53},"signs":{"characters":"+−×÷=<>≤≥≠±≈","width":56},"space":26,"characters":[[19,"'"],[23,"|"],[25,"ijl"],[26,",."],[28,"/:;t\\‘’∶"],[31,"!I[]f"],[32,"²³"],[33,"()-`r·⋅"],[38,"\""],[39,"г„“”"],[40,"°"],[41,"{}"],[43,"з"],[44,"*Js"],[45,"т"],[46,"к"],[47,"^czсэ"],[49,"ь"],[50,"?aekvxyавеухяё"],[51,"ч"],[53,"#$_bdghnopquор«»–"],[54,"блнп"],[55,"Здийц"],[56,"~Г"],[57,"ъ"],[58,"FL"],[61,"PSTZРТ"],[62,"БКЬ"],[64,"EЕЁ"],[66,"Чм"],[67,"BВЛУ"],[68,"Дж"],[69,"ACKRVXYАСХЭЯ"],[70,"ы"],[72,"&DHNUwИЙНП"],[73,"Ц"],[74,"ф"],[75,"GOQОЪю"],[78,"Ф"],[79,"ш½¼¾⅓⅔⅛"],[80,"щ"],[81,"m"],[86,"%MМ"],[88,"Ы"],[91,"Ж"],[94,"W"],[96,"Ш"],[97,"@Щ"],[100,"—…"],[101,"№"],[102,"Ю"]],"spaces":[["U+00A0",26],["U+2007",53],["U+202F",20]],"zero":["U+0000–U+0008","U+000E–U+001F","U+007F–U+009F","U+00AD","U+0300–U+036F","U+0483–U+0489","U+1AB0–U+1AFF","U+1DC0–U+1DFF","U+200B–U+200F","U+202A–U+202E","U+2060–U+206F","U+20D0–U+20FF","U+FE00–U+FE0F","U+FE20–U+FE2F","U+FEFF","U+1F3FB–U+1F3FF","U+E0000–U+E007F","U+E0100–U+E01EF"],"wide":{"ranges":["U+1100–U+115F","U+2E80–U+303E","U+3041–U+33FF","U+3400–U+4DBF","U+4E00–U+9FFF","U+A000–U+A4CF","U+AC00–U+D7A3","U+F900–U+FAFF","U+FE30–U+FE4F","U+FF00–U+FF60","U+FFE0–U+FFE6","U+1F000–U+1FAFF","U+20000–U+3FFFD"],"width":100},"breaks":["U+0009","U+000A","U+000B","U+000C","U+000D","U+0020","U+0085","U+2028","U+2029"],"unknown":60},
+  "rules": {"words":"a piece of text is cut at runs of the breaking white space into words; a piece of white space alone has none","clusters":"code points by for…of; one of no width, one after U+200D and the second of two regional indicators join the cluster before them; a cluster is as wide as its first code point","joints":"words of one piece: a space, inside the piece's text; a word and a word of the next piece: the space's width, or none when the second starts with one of .,:;!?)]}»… or the first ends with one of ([{«„; a word and a box, a box and a word: gap; two boxes: apart","breaks":"a line may break at a joint, but not before a word that starts with a closing mark, not after a word that ends with an opening one, and never between a box and the word after it; it may between two boxes. A run of tokens no line may break that is wider than a line goes token by token","fragment":"the words of one piece side by side on one line are one text, ceil(size × (Σ hundredths + space × (words − 1)) / 100) wide; places are running sums of whole numbers","short":"an item is short if its line, laid on one line, is no wider than the column (440) less the indent (56); two short items in a row stand side by side, at 40 and 520, and a short item before a long one stands alone","wrap":"a long item's line fills lines of 864 greedily, run by run: a run wider than a line goes token by token, and a word wider than a line by clusters","most":"a page holds no more than 99 items, whose numbers have two digits at most","heights":"a line with a box is boxHeight tall, one without line; between two lines of an item: apart if both have a box, lead if one has, none if neither has","baseline":"the line's top + floor(its height / 2) + floor(size / 3); a box's top is its line's","number":"«n.» right in the column of the numbers, 40 wide — «00.» — on the first line's baseline; the line starts gap after it","rows":"rows from the top margin, items apart; a row that ends below 1400 − margin is a TypeError at its first item, task.items[i], 0-based"},
+  "cases": [
+    {
+      "name": "workbook-page",
+      "about": "The format's example of a workbook page (spec/format/examples/task/valid/workbook-page.yaml at v0.2.37), copied: two short lines to a row, a short line before a long one alone, and a line of two boxes.",
+      "items": [
+        {"line":[{"text":"7 ×"},{"binding":"box"},{"text":"= 56"}]},
+        {"line":[{"binding":"box"},{"text":"÷ 8 = 4"}]},
+        {"line":[{"text":"56"},{"binding":"box"},{"text":"65"}]},
+        {"line":[{"text":"Tom has 3 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]},
+        {"line":[{"text":"47 ÷ 6 ="},{"binding":"box"},{"text":"r"},{"binding":"box"}]}
+      ],
+      "bottom": 536,
+      "page": [
+        {"number":{"text":"1.","left":56,"baseline":100,"width":24},"line":[{"text":"7 ×","left":96,"baseline":100,"width":41},{"left":153,"top":40,"width":100,"height":100},{"text":"= 56","left":269,"baseline":100,"width":57}]},
+        {"number":{"text":"2.","left":536,"baseline":100,"width":24},"line":[{"left":576,"top":40,"width":100,"height":100},{"text":"÷ 8 = 4","left":692,"baseline":100,"width":89}]},
+        {"number":{"text":"3.","left":56,"baseline":232,"width":24},"line":[{"text":"56","left":96,"baseline":232,"width":32},{"left":144,"top":172,"width":100,"height":100},{"text":"65","left":260,"baseline":232,"width":32}]},
+        {"number":{"text":"4.","left":56,"baseline":364,"width":24},"line":[{"text":"Tom has 3 bags of 4 apples. He has","left":96,"baseline":364,"width":453},{"left":565,"top":304,"width":100,"height":100},{"text":"apples.","left":681,"baseline":364,"width":91}]},
+        {"number":{"text":"5.","left":56,"baseline":496,"width":24},"line":[{"text":"47 ÷ 6 =","left":96,"baseline":496,"width":105},{"left":217,"top":436,"width":100,"height":100},{"text":"r","left":333,"baseline":496,"width":10},{"left":359,"top":436,"width":100,"height":100}]}
+      ]
+    },
+    {
+      "name": "tables-page",
+      "about": "The format's example of a module's workbook task (spec/format/examples/module/valid/with-tasks/tasks/tables-page.yaml at v0.2.37), copied.",
+      "items": [
+        {"line":[{"text":"7 ×"},{"binding":"box"},{"text":"= 56"}]},
+        {"line":[{"text":"47 ÷ 6 ="},{"binding":"box"},{"text":"r"},{"binding":"box"}]}
+      ],
+      "bottom": 140,
+      "page": [
+        {"number":{"text":"1.","left":56,"baseline":100,"width":24},"line":[{"text":"7 ×","left":96,"baseline":100,"width":41},{"left":153,"top":40,"width":100,"height":100},{"text":"= 56","left":269,"baseline":100,"width":57}]},
+        {"number":{"text":"2.","left":536,"baseline":100,"width":24},"line":[{"text":"47 ÷ 6 =","left":576,"baseline":100,"width":105},{"left":697,"top":40,"width":100,"height":100},{"text":"r","left":813,"baseline":100,"width":10},{"left":839,"top":40,"width":100,"height":100}]}
+      ]
+    },
+    {
+      "name": "times-ten",
+      "about": "Ten examples of the table of 7, as the prototype's page has them: five rows of two.",
+      "items": [
+        {"line":[{"text":"7 × 2 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 3 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 4 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 5 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 6 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 7 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 8 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 9 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 10 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 1 ="},{"binding":"box"}]}
+      ],
+      "bottom": 668,
+      "page": [
+        {"number":{"text":"1.","left":56,"baseline":100,"width":24},"line":[{"text":"7 × 2 =","left":96,"baseline":100,"width":89},{"left":201,"top":40,"width":100,"height":100}]},
+        {"number":{"text":"2.","left":536,"baseline":100,"width":24},"line":[{"text":"7 × 3 =","left":576,"baseline":100,"width":89},{"left":681,"top":40,"width":100,"height":100}]},
+        {"number":{"text":"3.","left":56,"baseline":232,"width":24},"line":[{"text":"7 × 4 =","left":96,"baseline":232,"width":89},{"left":201,"top":172,"width":100,"height":100}]},
+        {"number":{"text":"4.","left":536,"baseline":232,"width":24},"line":[{"text":"7 × 5 =","left":576,"baseline":232,"width":89},{"left":681,"top":172,"width":100,"height":100}]},
+        {"number":{"text":"5.","left":56,"baseline":364,"width":24},"line":[{"text":"7 × 6 =","left":96,"baseline":364,"width":89},{"left":201,"top":304,"width":100,"height":100}]},
+        {"number":{"text":"6.","left":536,"baseline":364,"width":24},"line":[{"text":"7 × 7 =","left":576,"baseline":364,"width":89},{"left":681,"top":304,"width":100,"height":100}]},
+        {"number":{"text":"7.","left":56,"baseline":496,"width":24},"line":[{"text":"7 × 8 =","left":96,"baseline":496,"width":89},{"left":201,"top":436,"width":100,"height":100}]},
+        {"number":{"text":"8.","left":536,"baseline":496,"width":24},"line":[{"text":"7 × 9 =","left":576,"baseline":496,"width":89},{"left":681,"top":436,"width":100,"height":100}]},
+        {"number":{"text":"9.","left":56,"baseline":628,"width":24},"line":[{"text":"7 × 10 =","left":96,"baseline":628,"width":105},{"left":217,"top":568,"width":100,"height":100}]},
+        {"number":{"text":"10.","left":520,"baseline":628,"width":40},"line":[{"text":"7 × 1 =","left":576,"baseline":628,"width":89},{"left":681,"top":568,"width":100,"height":100}]}
+      ]
+    },
+    {
+      "name": "fractions-ten",
+      "about": "«Ten examples on fractions», the workbook's example in concepts 8 spec, two of them comparisons: five rows of two, and half the page left for the draft.",
+      "items": [
+        {"line":[{"text":"1/2 + 1/4 ="},{"binding":"box"}]},
+        {"line":[{"text":"3/4 − 1/4 ="},{"binding":"box"}]},
+        {"line":[{"text":"2/3 + 1/3 ="},{"binding":"box"}]},
+        {"line":[{"text":"3/5 + 1/5 ="},{"binding":"box"}]},
+        {"line":[{"text":"5/8 − 3/8 ="},{"binding":"box"}]},
+        {"line":[{"text":"1/3 + 1/6 ="},{"binding":"box"}]},
+        {"line":[{"text":"2/5"},{"binding":"box"},{"text":"3/5"}]},
+        {"line":[{"text":"1/4 + 1/4 ="},{"binding":"box"}]},
+        {"line":[{"text":"7/10 − 3/10 ="},{"binding":"box"}]},
+        {"line":[{"text":"1/2"},{"binding":"box"},{"text":"2/4"}]}
+      ],
+      "bottom": 668,
+      "page": [
+        {"number":{"text":"1.","left":56,"baseline":100,"width":24},"line":[{"text":"1/2 + 1/4 =","left":96,"baseline":100,"width":138},{"left":250,"top":40,"width":100,"height":100}]},
+        {"number":{"text":"2.","left":536,"baseline":100,"width":24},"line":[{"text":"3/4 − 1/4 =","left":576,"baseline":100,"width":138},{"left":730,"top":40,"width":100,"height":100}]},
+        {"number":{"text":"3.","left":56,"baseline":232,"width":24},"line":[{"text":"2/3 + 1/3 =","left":96,"baseline":232,"width":138},{"left":250,"top":172,"width":100,"height":100}]},
+        {"number":{"text":"4.","left":536,"baseline":232,"width":24},"line":[{"text":"3/5 + 1/5 =","left":576,"baseline":232,"width":138},{"left":730,"top":172,"width":100,"height":100}]},
+        {"number":{"text":"5.","left":56,"baseline":364,"width":24},"line":[{"text":"5/8 − 3/8 =","left":96,"baseline":364,"width":138},{"left":250,"top":304,"width":100,"height":100}]},
+        {"number":{"text":"6.","left":536,"baseline":364,"width":24},"line":[{"text":"1/3 + 1/6 =","left":576,"baseline":364,"width":138},{"left":730,"top":304,"width":100,"height":100}]},
+        {"number":{"text":"7.","left":56,"baseline":496,"width":24},"line":[{"text":"2/5","left":96,"baseline":496,"width":41},{"left":153,"top":436,"width":100,"height":100},{"text":"3/5","left":269,"baseline":496,"width":41}]},
+        {"number":{"text":"8.","left":536,"baseline":496,"width":24},"line":[{"text":"1/4 + 1/4 =","left":576,"baseline":496,"width":138},{"left":730,"top":436,"width":100,"height":100}]},
+        {"number":{"text":"9.","left":56,"baseline":628,"width":24},"line":[{"text":"7/10 − 3/10 =","left":96,"baseline":628,"width":170},{"left":282,"top":568,"width":100,"height":100}]},
+        {"number":{"text":"10.","left":520,"baseline":628,"width":40},"line":[{"text":"1/2","left":576,"baseline":628,"width":41},{"left":633,"top":568,"width":100,"height":100},{"text":"2/4","left":749,"baseline":628,"width":41}]}
+      ]
+    },
+    {
+      "name": "russian-ten",
+      "about": "Ten Russian lines: «:» and «·», units, and a remainder in brackets, which takes the page's width.",
+      "items": [
+        {"line":[{"text":"56 : 8 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 · 6 ="},{"binding":"box"}]},
+        {"line":[{"text":"2 ч 15 мин ="},{"binding":"box"},{"text":"мин"}]},
+        {"line":[{"text":"3 км 200 м ="},{"binding":"box"},{"text":"м"}]},
+        {"line":[{"text":"1000 − 365 ="},{"binding":"box"}]},
+        {"line":[{"binding":"box"},{"text":"+ 27 = 64"}]},
+        {"line":[{"text":"8 ·"},{"binding":"box"},{"text":"= 72"}]},
+        {"line":[{"text":"90 :"},{"binding":"box"},{"text":"= 9"}]},
+        {"line":[{"text":"1 м ="},{"binding":"box"},{"text":"см"}]},
+        {"line":[{"text":"47 : 6 ="},{"binding":"box"},{"text":"(ост."},{"binding":"box"},{"text":")"}]}
+      ],
+      "bottom": 800,
+      "page": [
+        {"number":{"text":"1.","left":56,"baseline":100,"width":24},"line":[{"text":"56 : 8 =","left":96,"baseline":100,"width":97},{"left":209,"top":40,"width":100,"height":100}]},
+        {"number":{"text":"2.","left":536,"baseline":100,"width":24},"line":[{"text":"7 · 6 =","left":576,"baseline":100,"width":82},{"left":674,"top":40,"width":100,"height":100}]},
+        {"number":{"text":"3.","left":56,"baseline":232,"width":24},"line":[{"text":"2 ч 15 мин =","left":96,"baseline":232,"width":164},{"left":276,"top":172,"width":100,"height":100},{"text":"мин","left":392,"baseline":232,"width":53}]},
+        {"number":{"text":"4.","left":536,"baseline":232,"width":24},"line":[{"text":"3 км 200 м =","left":576,"baseline":232,"width":165},{"left":757,"top":172,"width":100,"height":100},{"text":"м","left":873,"baseline":232,"width":20}]},
+        {"number":{"text":"5.","left":56,"baseline":364,"width":24},"line":[{"text":"1000 − 365 =","left":96,"baseline":364,"width":169},{"left":281,"top":304,"width":100,"height":100}]},
+        {"number":{"text":"6.","left":536,"baseline":364,"width":24},"line":[{"left":576,"top":304,"width":100,"height":100},{"text":"+ 27 = 64","left":692,"baseline":364,"width":121}]},
+        {"number":{"text":"7.","left":56,"baseline":496,"width":24},"line":[{"text":"8 ·","left":96,"baseline":496,"width":34},{"left":146,"top":436,"width":100,"height":100},{"text":"= 72","left":262,"baseline":496,"width":57}]},
+        {"number":{"text":"8.","left":536,"baseline":496,"width":24},"line":[{"text":"90 :","left":576,"baseline":496,"width":48},{"left":640,"top":436,"width":100,"height":100},{"text":"= 9","left":756,"baseline":496,"width":41}]},
+        {"number":{"text":"9.","left":56,"baseline":628,"width":24},"line":[{"text":"1 м =","left":96,"baseline":628,"width":69},{"left":181,"top":568,"width":100,"height":100},{"text":"см","left":297,"baseline":628,"width":34}]},
+        {"number":{"text":"10.","left":40,"baseline":760,"width":40},"line":[{"text":"47 : 6 =","left":96,"baseline":760,"width":97},{"left":209,"top":700,"width":100,"height":100},{"text":"(ост.","left":325,"baseline":760,"width":62},{"left":403,"top":700,"width":100,"height":100},{"text":")","left":519,"baseline":760,"width":10}]}
+      ]
+    },
+    {
+      "name": "english-problems",
+      "about": "Five word problems in English, of one or two lines, two of them with two boxes.",
+      "items": [
+        {"line":[{"text":"Tom has 3 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]},
+        {"line":[{"text":"A pen costs 7 dollars. Five pens cost"},{"binding":"box"},{"text":"dollars."}]},
+        {"line":[{"text":"There are 47 children and 6 benches."},{"binding":"box"},{"text":"sit on each bench, and"},{"binding":"box"},{"text":"are left over."}]},
+        {"line":[{"text":"Ann read 24 pages on Monday and twice as many on Tuesday. On Tuesday she read"},{"binding":"box"},{"text":"pages, and in the two days"},{"binding":"box"},{"text":"pages."}]},
+        {"line":[{"text":"A rope 96 m long is cut into 8 equal parts. Each part is"},{"binding":"box"},{"text":"m long."}]}
+      ],
+      "bottom": 1048,
+      "page": [
+        {"number":{"text":"1.","left":56,"baseline":100,"width":24},"line":[{"text":"Tom has 3 bags of 4 apples. He has","left":96,"baseline":100,"width":453},{"left":565,"top":40,"width":100,"height":100},{"text":"apples.","left":681,"baseline":100,"width":91}]},
+        {"number":{"text":"2.","left":56,"baseline":232,"width":24},"line":[{"text":"A pen costs 7 dollars. Five pens cost","left":96,"baseline":232,"width":462},{"left":574,"top":172,"width":100,"height":100},{"text":"dollars.","left":690,"baseline":232,"width":93}]},
+        {"number":{"text":"3.","left":56,"baseline":364,"width":24},"line":[{"text":"There are 47 children and 6 benches.","left":96,"baseline":364,"width":470},{"left":582,"top":304,"width":100,"height":100},{"text":"sit on each bench,","left":698,"baseline":364,"width":229},{"text":"and","left":96,"baseline":496,"width":47},{"left":159,"top":436,"width":100,"height":100},{"text":"are left over.","left":275,"baseline":496,"width":160}]},
+        {"number":{"text":"4.","left":56,"baseline":601,"width":24},"line":[{"text":"Ann read 24 pages on Monday and twice as many on Tuesday. On","left":96,"baseline":601,"width":843},{"text":"Tuesday she read","left":96,"baseline":686,"width":224},{"left":336,"top":626,"width":100,"height":100},{"text":"pages, and in the two days","left":452,"baseline":686,"width":337},{"left":96,"top":758,"width":100,"height":100},{"text":"pages.","left":212,"baseline":818,"width":83}]},
+        {"number":{"text":"5.","left":56,"baseline":950,"width":24},"line":[{"text":"A rope 96 m long is cut into 8 equal parts. Each part is","left":96,"baseline":950,"width":687},{"left":799,"top":890,"width":100,"height":100},{"text":"m","left":915,"baseline":950,"width":25},{"text":"long.","left":96,"baseline":1035,"width":63}]}
+      ]
+    },
+    {
+      "name": "russian-problems",
+      "about": "Five word problems in Russian, one of them three lines long, with two boxes.",
+      "items": [
+        {"line":[{"text":"У Тани 3 пакета по 4 яблока. У неё"},{"binding":"box"},{"text":"яблок."}]},
+        {"line":[{"text":"Карандаш стоит 7 рублей. Пять карандашей стоят"},{"binding":"box"},{"text":"рублей."}]},
+        {"line":[{"text":"На 6 скамеек сели 47 детей поровну: по"},{"binding":"box"},{"text":"на каждую, и"},{"binding":"box"},{"text":"осталось."}]},
+        {"line":[{"text":"В книге 96 страниц. Маша прочитала в понедельник 24 страницы, во вторник — в два раза больше, а в среду — остальные. Во вторник она прочитала"},{"binding":"box"},{"text":"страниц, а в среду —"},{"binding":"box"},{"text":"страниц."}]},
+        {"line":[{"text":"Поезд шёл 3 часа со скоростью 80 км в час. Он прошёл"},{"binding":"box"},{"text":"км."}]}
+      ],
+      "bottom": 1152,
+      "page": [
+        {"number":{"text":"1.","left":56,"baseline":100,"width":24},"line":[{"text":"У Тани 3 пакета по 4 яблока. У неё","left":96,"baseline":100,"width":468},{"left":580,"top":40,"width":100,"height":100},{"text":"яблок.","left":696,"baseline":100,"width":85}]},
+        {"number":{"text":"2.","left":56,"baseline":205,"width":24},"line":[{"text":"Карандаш стоит 7 рублей. Пять карандашей стоят","left":96,"baseline":205,"width":675},{"left":96,"top":230,"width":100,"height":100},{"text":"рублей.","left":212,"baseline":290,"width":103}]},
+        {"number":{"text":"3.","left":56,"baseline":422,"width":24},"line":[{"text":"На 6 скамеек сели 47 детей поровну: по","left":96,"baseline":422,"width":535},{"left":647,"top":362,"width":100,"height":100},{"text":"на каждую, и","left":763,"baseline":422,"width":175},{"left":96,"top":494,"width":100,"height":100},{"text":"осталось.","left":212,"baseline":554,"width":128}]},
+        {"number":{"text":"4.","left":56,"baseline":659,"width":24},"line":[{"text":"В книге 96 страниц. Маша прочитала в понедельник 24","left":96,"baseline":659,"width":741},{"text":"страницы, во вторник — в два раза больше, а в среду —","left":96,"baseline":705,"width":757},{"text":"остальные. Во вторник она прочитала","left":96,"baseline":790,"width":510},{"left":622,"top":730,"width":100,"height":100},{"text":"страниц, а в","left":738,"baseline":790,"width":162},{"text":"среду —","left":96,"baseline":922,"width":115},{"left":227,"top":862,"width":100,"height":100},{"text":"страниц.","left":343,"baseline":922,"width":116}]},
+        {"number":{"text":"5.","left":56,"baseline":1027,"width":24},"line":[{"text":"Поезд шёл 3 часа со скоростью 80 км в час. Он прошёл","left":96,"baseline":1027,"width":743},{"left":96,"top":1052,"width":100,"height":100},{"text":"км.","left":212,"baseline":1112,"width":42}]}
+      ]
+    },
+    {
+      "name": "mixed",
+      "about": "Short lines and long ones in turn: a short line before a long one stands alone in the left column, and the order is the task's.",
+      "items": [
+        {"line":[{"text":"7 ×"},{"binding":"box"},{"text":"= 56"}]},
+        {"line":[{"text":"Tom has 3 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]},
+        {"line":[{"binding":"box"},{"text":"÷ 8 = 4"}]},
+        {"line":[{"text":"56"},{"binding":"box"},{"text":"65"}]},
+        {"line":[{"text":"3/4 + 1/4 ="},{"binding":"box"}]},
+        {"line":[{"text":"У Тани 3 пакета по 4 яблока. У неё"},{"binding":"box"},{"text":"яблок."}]},
+        {"line":[{"text":"47 ÷ 6 ="},{"binding":"box"},{"text":"r"},{"binding":"box"}]},
+        {"line":[{"text":"1000 − 365 ="},{"binding":"box"}]},
+        {"line":[{"text":"47 : 6 ="},{"binding":"box"},{"text":"(ост."},{"binding":"box"},{"text":")"}]},
+        {"line":[{"text":"2 ч 15 мин ="},{"binding":"box"},{"text":"мин"}]},
+        {"line":[{"text":"90 :"},{"binding":"box"},{"text":"= 9"}]},
+        {"line":[{"binding":"box"},{"text":"apples"}]}
+      ],
+      "bottom": 1196,
+      "page": [
+        {"number":{"text":"1.","left":56,"baseline":100,"width":24},"line":[{"text":"7 ×","left":96,"baseline":100,"width":41},{"left":153,"top":40,"width":100,"height":100},{"text":"= 56","left":269,"baseline":100,"width":57}]},
+        {"number":{"text":"2.","left":56,"baseline":232,"width":24},"line":[{"text":"Tom has 3 bags of 4 apples. He has","left":96,"baseline":232,"width":453},{"left":565,"top":172,"width":100,"height":100},{"text":"apples.","left":681,"baseline":232,"width":91}]},
+        {"number":{"text":"3.","left":56,"baseline":364,"width":24},"line":[{"left":96,"top":304,"width":100,"height":100},{"text":"÷ 8 = 4","left":212,"baseline":364,"width":89}]},
+        {"number":{"text":"4.","left":536,"baseline":364,"width":24},"line":[{"text":"56","left":576,"baseline":364,"width":32},{"left":624,"top":304,"width":100,"height":100},{"text":"65","left":740,"baseline":364,"width":32}]},
+        {"number":{"text":"5.","left":56,"baseline":496,"width":24},"line":[{"text":"3/4 + 1/4 =","left":96,"baseline":496,"width":138},{"left":250,"top":436,"width":100,"height":100}]},
+        {"number":{"text":"6.","left":56,"baseline":628,"width":24},"line":[{"text":"У Тани 3 пакета по 4 яблока. У неё","left":96,"baseline":628,"width":468},{"left":580,"top":568,"width":100,"height":100},{"text":"яблок.","left":696,"baseline":628,"width":85}]},
+        {"number":{"text":"7.","left":56,"baseline":760,"width":24},"line":[{"text":"47 ÷ 6 =","left":96,"baseline":760,"width":105},{"left":217,"top":700,"width":100,"height":100},{"text":"r","left":333,"baseline":760,"width":10},{"left":359,"top":700,"width":100,"height":100}]},
+        {"number":{"text":"8.","left":536,"baseline":760,"width":24},"line":[{"text":"1000 − 365 =","left":576,"baseline":760,"width":169},{"left":761,"top":700,"width":100,"height":100}]},
+        {"number":{"text":"9.","left":56,"baseline":892,"width":24},"line":[{"text":"47 : 6 =","left":96,"baseline":892,"width":97},{"left":209,"top":832,"width":100,"height":100},{"text":"(ост.","left":325,"baseline":892,"width":62},{"left":403,"top":832,"width":100,"height":100},{"text":")","left":519,"baseline":892,"width":10}]},
+        {"number":{"text":"10.","left":40,"baseline":1024,"width":40},"line":[{"text":"2 ч 15 мин =","left":96,"baseline":1024,"width":164},{"left":276,"top":964,"width":100,"height":100},{"text":"мин","left":392,"baseline":1024,"width":53}]},
+        {"number":{"text":"11.","left":520,"baseline":1024,"width":40},"line":[{"text":"90 :","left":576,"baseline":1024,"width":48},{"left":640,"top":964,"width":100,"height":100},{"text":"= 9","left":756,"baseline":1024,"width":41}]},
+        {"number":{"text":"12.","left":40,"baseline":1156,"width":40},"line":[{"left":96,"top":1096,"width":100,"height":100},{"text":"apples","left":212,"baseline":1156,"width":83}]}
+      ]
+    },
+    {
+      "name": "twenty-short",
+      "about": "Twenty short lines: ten rows of two, the most the page holds.",
+      "items": [
+        {"line":[{"text":"7 × 1 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 2 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 3 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 4 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 5 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 6 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 7 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 8 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 9 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 10 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 11 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 12 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 13 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 14 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 15 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 16 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 17 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 18 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 19 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 20 ="},{"binding":"box"}]}
+      ],
+      "bottom": 1328,
+      "page": [
+        {"number":{"text":"1.","left":56,"baseline":100,"width":24},"line":[{"text":"7 × 1 =","left":96,"baseline":100,"width":89},{"left":201,"top":40,"width":100,"height":100}]},
+        {"number":{"text":"2.","left":536,"baseline":100,"width":24},"line":[{"text":"7 × 2 =","left":576,"baseline":100,"width":89},{"left":681,"top":40,"width":100,"height":100}]},
+        {"number":{"text":"3.","left":56,"baseline":232,"width":24},"line":[{"text":"7 × 3 =","left":96,"baseline":232,"width":89},{"left":201,"top":172,"width":100,"height":100}]},
+        {"number":{"text":"4.","left":536,"baseline":232,"width":24},"line":[{"text":"7 × 4 =","left":576,"baseline":232,"width":89},{"left":681,"top":172,"width":100,"height":100}]},
+        {"number":{"text":"5.","left":56,"baseline":364,"width":24},"line":[{"text":"7 × 5 =","left":96,"baseline":364,"width":89},{"left":201,"top":304,"width":100,"height":100}]},
+        {"number":{"text":"6.","left":536,"baseline":364,"width":24},"line":[{"text":"7 × 6 =","left":576,"baseline":364,"width":89},{"left":681,"top":304,"width":100,"height":100}]},
+        {"number":{"text":"7.","left":56,"baseline":496,"width":24},"line":[{"text":"7 × 7 =","left":96,"baseline":496,"width":89},{"left":201,"top":436,"width":100,"height":100}]},
+        {"number":{"text":"8.","left":536,"baseline":496,"width":24},"line":[{"text":"7 × 8 =","left":576,"baseline":496,"width":89},{"left":681,"top":436,"width":100,"height":100}]},
+        {"number":{"text":"9.","left":56,"baseline":628,"width":24},"line":[{"text":"7 × 9 =","left":96,"baseline":628,"width":89},{"left":201,"top":568,"width":100,"height":100}]},
+        {"number":{"text":"10.","left":520,"baseline":628,"width":40},"line":[{"text":"7 × 10 =","left":576,"baseline":628,"width":105},{"left":697,"top":568,"width":100,"height":100}]},
+        {"number":{"text":"11.","left":40,"baseline":760,"width":40},"line":[{"text":"7 × 11 =","left":96,"baseline":760,"width":105},{"left":217,"top":700,"width":100,"height":100}]},
+        {"number":{"text":"12.","left":520,"baseline":760,"width":40},"line":[{"text":"7 × 12 =","left":576,"baseline":760,"width":105},{"left":697,"top":700,"width":100,"height":100}]},
+        {"number":{"text":"13.","left":40,"baseline":892,"width":40},"line":[{"text":"7 × 13 =","left":96,"baseline":892,"width":105},{"left":217,"top":832,"width":100,"height":100}]},
+        {"number":{"text":"14.","left":520,"baseline":892,"width":40},"line":[{"text":"7 × 14 =","left":576,"baseline":892,"width":105},{"left":697,"top":832,"width":100,"height":100}]},
+        {"number":{"text":"15.","left":40,"baseline":1024,"width":40},"line":[{"text":"7 × 15 =","left":96,"baseline":1024,"width":105},{"left":217,"top":964,"width":100,"height":100}]},
+        {"number":{"text":"16.","left":520,"baseline":1024,"width":40},"line":[{"text":"7 × 16 =","left":576,"baseline":1024,"width":105},{"left":697,"top":964,"width":100,"height":100}]},
+        {"number":{"text":"17.","left":40,"baseline":1156,"width":40},"line":[{"text":"7 × 17 =","left":96,"baseline":1156,"width":105},{"left":217,"top":1096,"width":100,"height":100}]},
+        {"number":{"text":"18.","left":520,"baseline":1156,"width":40},"line":[{"text":"7 × 18 =","left":576,"baseline":1156,"width":105},{"left":697,"top":1096,"width":100,"height":100}]},
+        {"number":{"text":"19.","left":40,"baseline":1288,"width":40},"line":[{"text":"7 × 19 =","left":96,"baseline":1288,"width":105},{"left":217,"top":1228,"width":100,"height":100}]},
+        {"number":{"text":"20.","left":520,"baseline":1288,"width":40},"line":[{"text":"7 × 20 =","left":576,"baseline":1288,"width":105},{"left":697,"top":1228,"width":100,"height":100}]}
+      ]
+    },
+    {
+      "name": "twenty-one-short",
+      "about": "Twenty-one short lines: the eleventh row has no room.",
+      "items": [
+        {"line":[{"text":"7 × 1 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 2 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 3 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 4 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 5 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 6 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 7 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 8 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 9 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 10 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 11 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 12 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 13 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 14 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 15 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 16 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 17 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 18 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 19 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 20 ="},{"binding":"box"}]},
+        {"line":[{"text":"7 × 21 ="},{"binding":"box"}]}
+      ],
+      "error": "task.items[20]"
+    },
+    {
+      "name": "ten-long",
+      "about": "Ten lines across the page, one line each: ten rows.",
+      "items": [
+        {"line":[{"text":"Tom has 3 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]},
+        {"line":[{"text":"Tom has 4 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]},
+        {"line":[{"text":"Tom has 5 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]},
+        {"line":[{"text":"Tom has 6 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]},
+        {"line":[{"text":"Tom has 7 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]},
+        {"line":[{"text":"Tom has 8 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]},
+        {"line":[{"text":"Tom has 9 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]},
+        {"line":[{"text":"Tom has 10 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]},
+        {"line":[{"text":"Tom has 11 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]},
+        {"line":[{"text":"Tom has 12 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]}
+      ],
+      "bottom": 1328,
+      "page": [
+        {"number":{"text":"1.","left":56,"baseline":100,"width":24},"line":[{"text":"Tom has 3 bags of 4 apples. He has","left":96,"baseline":100,"width":453},{"left":565,"top":40,"width":100,"height":100},{"text":"apples.","left":681,"baseline":100,"width":91}]},
+        {"number":{"text":"2.","left":56,"baseline":232,"width":24},"line":[{"text":"Tom has 4 bags of 4 apples. He has","left":96,"baseline":232,"width":453},{"left":565,"top":172,"width":100,"height":100},{"text":"apples.","left":681,"baseline":232,"width":91}]},
+        {"number":{"text":"3.","left":56,"baseline":364,"width":24},"line":[{"text":"Tom has 5 bags of 4 apples. He has","left":96,"baseline":364,"width":453},{"left":565,"top":304,"width":100,"height":100},{"text":"apples.","left":681,"baseline":364,"width":91}]},
+        {"number":{"text":"4.","left":56,"baseline":496,"width":24},"line":[{"text":"Tom has 6 bags of 4 apples. He has","left":96,"baseline":496,"width":453},{"left":565,"top":436,"width":100,"height":100},{"text":"apples.","left":681,"baseline":496,"width":91}]},
+        {"number":{"text":"5.","left":56,"baseline":628,"width":24},"line":[{"text":"Tom has 7 bags of 4 apples. He has","left":96,"baseline":628,"width":453},{"left":565,"top":568,"width":100,"height":100},{"text":"apples.","left":681,"baseline":628,"width":91}]},
+        {"number":{"text":"6.","left":56,"baseline":760,"width":24},"line":[{"text":"Tom has 8 bags of 4 apples. He has","left":96,"baseline":760,"width":453},{"left":565,"top":700,"width":100,"height":100},{"text":"apples.","left":681,"baseline":760,"width":91}]},
+        {"number":{"text":"7.","left":56,"baseline":892,"width":24},"line":[{"text":"Tom has 9 bags of 4 apples. He has","left":96,"baseline":892,"width":453},{"left":565,"top":832,"width":100,"height":100},{"text":"apples.","left":681,"baseline":892,"width":91}]},
+        {"number":{"text":"8.","left":56,"baseline":1024,"width":24},"line":[{"text":"Tom has 10 bags of 4 apples. He has","left":96,"baseline":1024,"width":469},{"left":581,"top":964,"width":100,"height":100},{"text":"apples.","left":697,"baseline":1024,"width":91}]},
+        {"number":{"text":"9.","left":56,"baseline":1156,"width":24},"line":[{"text":"Tom has 11 bags of 4 apples. He has","left":96,"baseline":1156,"width":469},{"left":581,"top":1096,"width":100,"height":100},{"text":"apples.","left":697,"baseline":1156,"width":91}]},
+        {"number":{"text":"10.","left":40,"baseline":1288,"width":40},"line":[{"text":"Tom has 12 bags of 4 apples. He has","left":96,"baseline":1288,"width":469},{"left":581,"top":1228,"width":100,"height":100},{"text":"apples.","left":697,"baseline":1288,"width":91}]}
+      ]
+    },
+    {
+      "name": "eleven-long",
+      "about": "Eleven lines across the page: the eleventh has no room.",
+      "items": [
+        {"line":[{"text":"Tom has 3 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]},
+        {"line":[{"text":"Tom has 4 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]},
+        {"line":[{"text":"Tom has 5 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]},
+        {"line":[{"text":"Tom has 6 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]},
+        {"line":[{"text":"Tom has 7 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]},
+        {"line":[{"text":"Tom has 8 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]},
+        {"line":[{"text":"Tom has 9 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]},
+        {"line":[{"text":"Tom has 10 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]},
+        {"line":[{"text":"Tom has 11 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]},
+        {"line":[{"text":"Tom has 12 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]},
+        {"line":[{"text":"Tom has 13 bags of 4 apples. He has"},{"binding":"box"},{"text":"apples."}]}
+      ],
+      "error": "task.items[10]"
+    },
+    {
+      "name": "huge-piece",
+      "about": "A piece of 400 words before its box: the item has no room, and the layout stops at the page's foot.",
+      "items": [
+        {"line":[{"text":"many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words many words"},{"binding":"box"}]}
+      ],
+      "error": "task.items[0]"
+    },
+    {
+      "name": "many-boxes",
+      "about": "Seven boxes in a row after a word: a line may break between two boxes, though never between a box and the word after it.",
+      "items": [
+        {"line":[{"text":"Fill in the boxes:"},{"binding":"box"},{"binding":"box"},{"binding":"box"},{"binding":"box"},{"binding":"box"},{"binding":"box"},{"binding":"box"}]}
+      ],
+      "bottom": 272,
+      "page": [
+        {"number":{"text":"1.","left":56,"baseline":100,"width":24},"line":[{"text":"Fill in the boxes:","left":96,"baseline":100,"width":210},{"left":322,"top":40,"width":100,"height":100},{"left":454,"top":40,"width":100,"height":100},{"left":586,"top":40,"width":100,"height":100},{"left":718,"top":40,"width":100,"height":100},{"left":850,"top":40,"width":100,"height":100},{"left":96,"top":172,"width":100,"height":100},{"left":228,"top":172,"width":100,"height":100}]}
+      ]
+    },
+    {
+      "name": "glued-run",
+      "about": "Words that each start with a closing mark hold on to the word before them: a run no line may break, wider than a line, goes word by word.",
+      "items": [
+        {"line":[{"text":"Marks: .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x"},{"binding":"box"}]}
+      ],
+      "bottom": 198,
+      "page": [
+        {"number":{"text":"1.","left":56,"baseline":73,"width":24},"line":[{"text":"Marks: .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x","left":96,"baseline":73,"width":853},{"text":".x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x .x","left":96,"baseline":158,"width":696},{"left":808,"top":98,"width":100,"height":100}]}
+      ]
+    },
+    {
+      "name": "long-word",
+      "about": "A word of 100 letters, wider than a line: it breaks between its letters.",
+      "items": [
+        {"line":[{"text":"The longest word: supercalifragilisticsupercalifragilisticsupercalifragilisticsupercalifragilisticsupercalifragilistic and its box"},{"binding":"box"}]}
+      ],
+      "bottom": 244,
+      "page": [
+        {"number":{"text":"1.","left":56,"baseline":73,"width":24},"line":[{"text":"The longest word:","left":96,"baseline":73,"width":229},{"text":"supercalifragilisticsupercalifragilisticsupercalifragilisticsupercalifragi","left":96,"baseline":119,"width":861},{"text":"listicsupercalifragilistic and its box","left":96,"baseline":204,"width":435},{"left":547,"top":144,"width":100,"height":100}]}
+      ]
+    },
+    {
+      "name": "white-space",
+      "about": "White space that breaks — tabs, a new line, runs of spaces — is one space between words and none at a piece's ends; a piece of white space alone draws nothing; a no-break space is a character of its word.",
+      "items": [
+        {"line":[{"text":"\t7  ×\n"},{"binding":"box"},{"text":" = 56 "}]},
+        {"line":[{"binding":"box"},{"text":" "},{"binding":"box"}]},
+        {"line":[{"text":"2 км ="},{"binding":"box"},{"text":"м"}]}
+      ],
+      "bottom": 272,
+      "page": [
+        {"number":{"text":"1.","left":56,"baseline":100,"width":24},"line":[{"text":"7 ×","left":96,"baseline":100,"width":41},{"left":153,"top":40,"width":100,"height":100},{"text":"= 56","left":269,"baseline":100,"width":57}]},
+        {"number":{"text":"2.","left":536,"baseline":100,"width":24},"line":[{"left":576,"top":40,"width":100,"height":100},{"left":708,"top":40,"width":100,"height":100}]},
+        {"number":{"text":"3.","left":56,"baseline":232,"width":24},"line":[{"text":"2 км =","left":96,"baseline":232,"width":82},{"left":194,"top":172,"width":100,"height":100},{"text":"м","left":310,"baseline":232,"width":20}]}
+      ]
+    },
+    {
+      "name": "punctuation",
+      "about": "A line does not start with a closing mark nor end with an opening one, and a box holds on to the word after it: «.» after a box, «(» before one, and a piece of «.» after a piece of text.",
+      "items": [
+        {"line":[{"text":"He has"},{"binding":"box"},{"text":"."}]},
+        {"line":[{"text":"("},{"binding":"box"},{"text":")"}]},
+        {"line":[{"text":"apples"},{"text":"."},{"binding":"box"}]}
+      ],
+      "bottom": 272,
+      "page": [
+        {"number":{"text":"1.","left":56,"baseline":100,"width":24},"line":[{"text":"He has","left":96,"baseline":100,"width":89},{"left":201,"top":40,"width":100,"height":100},{"text":".","left":317,"baseline":100,"width":8}]},
+        {"number":{"text":"2.","left":536,"baseline":100,"width":24},"line":[{"text":"(","left":576,"baseline":100,"width":10},{"left":602,"top":40,"width":100,"height":100},{"text":")","left":718,"baseline":100,"width":10}]},
+        {"number":{"text":"3.","left":56,"baseline":232,"width":24},"line":[{"text":"apples","left":96,"baseline":232,"width":83},{"text":".","left":179,"baseline":232,"width":8},{"left":203,"top":172,"width":100,"height":100}]}
+      ]
+    },
+    {
+      "name": "scripts",
+      "about": "Characters the table knows by their ranges: е and a combining diaeresis as wide as ё, Chinese and an emoji a square each, a family of emoji joined by ZWJ and a flag one cluster each, Greek and Hebrew of the unknown width.",
+      "items": [
+        {"line":[{"text":"ё = ё"},{"binding":"box"}]},
+        {"line":[{"text":"三 + 四 ="},{"binding":"box"}]},
+        {"line":[{"text":"🍎 × 3 ="},{"binding":"box"}]},
+        {"line":[{"text":"👨‍👩‍👧 ="},{"binding":"box"}]},
+        {"line":[{"text":"🇺🇦"},{"binding":"box"}]},
+        {"line":[{"text":"π ≈"},{"binding":"box"}]},
+        {"line":[{"text":"שלום"},{"binding":"box"}]}
+      ],
+      "bottom": 536,
+      "page": [
+        {"number":{"text":"1.","left":56,"baseline":100,"width":24},"line":[{"text":"ё = ё","left":96,"baseline":100,"width":63},{"left":175,"top":40,"width":100,"height":100}]},
+        {"number":{"text":"2.","left":536,"baseline":100,"width":24},"line":[{"text":"三 + 四 =","left":576,"baseline":100,"width":117},{"left":709,"top":40,"width":100,"height":100}]},
+        {"number":{"text":"3.","left":56,"baseline":232,"width":24},"line":[{"text":"🍎 × 3 =","left":96,"baseline":232,"width":103},{"left":215,"top":172,"width":100,"height":100}]},
+        {"number":{"text":"4.","left":536,"baseline":232,"width":24},"line":[{"text":"👨‍👩‍👧 =","left":576,"baseline":232,"width":55},{"left":647,"top":172,"width":100,"height":100}]},
+        {"number":{"text":"5.","left":56,"baseline":364,"width":24},"line":[{"text":"🇺🇦","left":96,"baseline":364,"width":30},{"left":142,"top":304,"width":100,"height":100}]},
+        {"number":{"text":"6.","left":536,"baseline":364,"width":24},"line":[{"text":"π ≈","left":576,"baseline":364,"width":43},{"left":635,"top":304,"width":100,"height":100}]},
+        {"number":{"text":"7.","left":56,"baseline":496,"width":24},"line":[{"text":"שלום","left":96,"baseline":496,"width":72},{"left":184,"top":436,"width":100,"height":100}]}
+      ]
+    }
+  ]
+}

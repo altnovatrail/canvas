@@ -1,15 +1,27 @@
 import { expect, test } from "vitest";
+import { pageOf } from "./page.js";
+import { line, shortLines } from "./pages.fixture.js";
 import {
+  isSheet,
+  isWorkbook,
   NO_TASK,
-  sameGrid,
+  type SheetTemplate,
+  sameLayer,
   sameStatement,
   sameTemplate,
   sameTools,
   type Task,
+  type Template,
   taskOf,
   templateOf,
 } from "./task.js";
 import { pathOf, refusal, sheetTask, under } from "./tasks.fixture.js";
+
+/** A sheet's template, which has a grid: a workbook's here fails the test. */
+function sheetOf(template: Template): SheetTemplate {
+  if (isWorkbook(template)) throw new Error("a workbook's template, where a sheet's was due");
+  return template;
+}
 
 // Copies of the task examples and the open-view vectors of the module format at spec v0.2.37
 // (spec/format/examples/task/ and spec/format/vectors/open-view/task/): code and tests read nothing
@@ -272,7 +284,7 @@ test("the element reads each field of a task once: what it shows is what it chec
       return { kind: "handwriting_sheet", grid_step: reads === 1 ? 40 : 5 };
     },
   };
-  expect(templateOf(taskOf(task)).grid.step).toBe(40);
+  expect(sheetOf(templateOf(taskOf(task))).grid.step).toBe(40);
   expect(reads).toBe(1);
 });
 
@@ -349,7 +361,7 @@ test("what the sheet shows of a task: its grid, its statement and its tools; a c
   ]) {
     expect(() => templateOf(taskOf(VALID[name])), name).not.toThrow();
   }
-  expect(templateOf(taskOf(VALID["best-first-sentence"])).grid).toEqual({
+  expect(sheetOf(templateOf(taskOf(VALID["best-first-sentence"]))).grid).toEqual({
     kind: "lines",
     step: 50,
   });
@@ -359,13 +371,34 @@ test("what the sheet shows of a task: its grid, its statement and its tools; a c
   expect(templateOf(taskOf(asked)).statement).toEqual([{ text: "How many posts are there?" }]);
 });
 
-test("the workbook and a zone are TypeErrors of this version of the sheet, though the task is valid", () => {
+test("a workbook's template is the layout of its lines on the page, its statement and its tools (R35)", () => {
   for (const name of ["workbook-page", "workbook-lines"]) {
     const task = taskOf({ ...VALID, ...OPEN_VIEWS }[name]);
-    expect(() => templateOf(task), name).toThrow(
-      /^task\.canvas\.kind: the element shows "handwriting_sheet" alone so far, and "workbook" comes in a later version$/,
-    );
+    if (isSheet(task)) throw new Error(`${name} is a workbook's task`);
+    expect(templateOf(task), name).toEqual({
+      page: pageOf(task.items),
+      statement: task.statement,
+      tools: ["pen", "eraser"],
+    });
   }
+  const pen = taskOf({
+    ...OPEN_VIEWS["workbook-lines"],
+    canvas: { ...WORKBOOK, tools: ["ruler", "pen"] },
+  });
+  expect(templateOf(pen).tools).toEqual(["pen"]);
+});
+
+test("a workbook whose lines do not fit on the page is a TypeError at the first item that does not", () => {
+  const items = shortLines(21);
+  const task = taskOf({ ...OPEN_VIEWS["workbook-lines"], items });
+  const message = refusal(() => templateOf(task));
+  expect(under(message, "task.items[20]"), message).toBe(true);
+  expect(() =>
+    templateOf(taskOf({ ...OPEN_VIEWS["workbook-lines"], items: items.slice(0, 20) })),
+  ).not.toThrow();
+});
+
+test("a zone is a TypeError of this version of the sheet, though the task is valid", () => {
   expect(() => templateOf(taskOf(VALID["zones-and-picture"]))).toThrow(
     /^task\.items\[0\]\.answer_slots\[0\]\.binding: the handwriting sheet takes no "zone" yet/,
   );
@@ -385,7 +418,7 @@ test("without a task the sheet is ruled in squares of 50 units, without a statem
     statement: [],
     tools: ["pen", "eraser"],
   });
-  expect(templateOf(taskOf(sheetTask())).grid).toEqual(NO_TASK.grid);
+  expect(sheetOf(templateOf(taskOf(sheetTask()))).grid).toEqual(NO_TASK.grid);
 });
 
 test("a task gives the grid's kind and step, and a statement of texts and pictures", () => {
@@ -402,10 +435,10 @@ test("a task gives the grid's kind and step, and a statement of texts and pictur
   // The template keeps parts of its own, with their fields alone.
   expect(template.statement[1]).not.toBe(statement[1]);
   for (const grid of ["squares", "lines", "dots"] as const) {
-    expect(templateOf(taskOf(sheetTask({ grid }))).grid.kind).toBe(grid);
+    expect(sheetOf(templateOf(taskOf(sheetTask({ grid })))).grid.kind).toBe(grid);
   }
-  expect(templateOf(taskOf(sheetTask({ grid_step: 20 }))).grid.step).toBe(20);
-  expect(templateOf(taskOf(sheetTask({ grid_step: 500 }))).grid.step).toBe(500);
+  expect(sheetOf(templateOf(taskOf(sheetTask({ grid_step: 20 })))).grid.step).toBe(20);
+  expect(sheetOf(templateOf(taskOf(sheetTask({ grid_step: 500 })))).grid.step).toBe(500);
 });
 
 test("a task gives the tools it allows of the sheet's, in the sheet's order, and passes over the names the sheet does not know", () => {
@@ -428,7 +461,8 @@ test("a field left out by undefined is no field; null is a value, and a wrong on
     taskOf({ ...sheet, lang: undefined, canvas: { ...sheet.canvas, grid: undefined } }),
   ).not.toThrow();
   expect(
-    templateOf(taskOf({ ...sheet, canvas: { ...sheet.canvas, grid_step: undefined } })).grid.step,
+    sheetOf(templateOf(taskOf({ ...sheet, canvas: { ...sheet.canvas, grid_step: undefined } })))
+      .grid.step,
   ).toBe(50);
   const picture = { picture: "pictures/a.png", alt: "", width: 1, height: 1, text: undefined };
   expect(templateOf(taskOf(sheetTask({ statement: [picture] }))).statement).toEqual([
@@ -625,10 +659,10 @@ test("two templates are the same when they show the same, whatever objects they 
 
   // The grid and the statement apart: a new grid leaves the statement the same, and so on.
   const regridded = templateOf(sheetTask({ grid: "dots", statement: [{ text: "Count." }] }));
-  expect(sameGrid(templateOf(one), regridded)).toBe(false);
+  expect(sameLayer(templateOf(one), regridded)).toBe(false);
   expect(sameStatement(templateOf(one), regridded)).toBe(true);
   const reworded = templateOf(sheetTask({ statement: [{ text: "Count!" }] }));
-  expect(sameGrid(templateOf(one), reworded)).toBe(true);
+  expect(sameLayer(templateOf(one), reworded)).toBe(true);
   expect(sameStatement(templateOf(one), reworded)).toBe(false);
   // The tools apart too, and in the sheet's order whatever the list's.
   const penOnly = templateOf(sheetTask({ statement: [{ text: "Count." }], tools: ["pen"] }));
@@ -638,4 +672,19 @@ test("two templates are the same when they show the same, whatever objects they 
     sheetTask({ statement: [{ text: "Count." }], tools: ["eraser", "pen"] }),
   );
   expect(sameTemplate(templateOf(one), turned)).toBe(true);
+});
+
+test("two workbooks' templates draw the same when their lines are the same, and never what a sheet draws", () => {
+  const page = taskOf(OPEN_VIEWS["workbook-lines"]);
+  const renamed = taskOf({
+    ...OPEN_VIEWS["workbook-lines"],
+    id: "tables-page-2",
+    statement: [{ text: "Fill in." }],
+  });
+  expect(sameLayer(templateOf(page), templateOf(renamed))).toBe(true);
+  expect(sameStatement(templateOf(page), templateOf(renamed))).toBe(false);
+  const other = taskOf({ ...OPEN_VIEWS["workbook-lines"], items: [line("7 × [] = 63")] });
+  expect(sameLayer(templateOf(page), templateOf(other))).toBe(false);
+  expect(sameLayer(templateOf(page), NO_TASK)).toBe(false);
+  expect(sameLayer(NO_TASK, templateOf(page))).toBe(false);
 });
