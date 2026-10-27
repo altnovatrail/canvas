@@ -5,7 +5,7 @@
 // history of writing, the task, the tutor's marks with the context of their submission — and the
 // fold of a history into the strokes it leaves, so that a consumer reads a history it keeps
 // without the DOM (R27). The rules of the groups, the crop and the snapping stay inside until the
-// eval protocol takes them (В35–В37 in RUN.md).
+// eval protocol, which takes them as they are, comes out (epic E3 in spec's RUN.md; R31).
 
 export type { Crop, Frame } from "./crop.js";
 export type { Box } from "./geometry.js";
