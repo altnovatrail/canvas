@@ -1,17 +1,19 @@
 import { afterEach, expect, test } from "vitest";
 import { cdp, page } from "vitest/browser";
+import { cellsOf } from "../core/boxes.js";
 import { isBox, type Page, type PageBox, type PageText, pageOf } from "../core/page.js";
 import { PAGES, SHORT, shortLines } from "../core/pages.fixture.js";
 import type { View } from "../core/screen.js";
+import { cellsForCheck } from "../core/submission.js";
 import { moduleManifest, sheetTask, workbookTask } from "../core/tasks.fixture.js";
-import type { Filled, Task, WorkbookItem } from "./index.js";
+import type { ExportedWork, Filled, Task, WorkbookItem } from "./index.js";
 import { at, level, placed, press, screenshot, settle } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The workbook in Chromium (R34, R35, R36): its lines on the template where the layout puts them,
 // whatever the font and the styles the element inherits; its boxes over the ink they take; a list a
 // screen reader reads, in the DOM and in Chromium's own tree; the theme; the way between the kinds
-// of canvas; and the work for checking, which comes in a later version.
+// of canvas; the boxes filled (R37); and the work for checking, the crop of each filled box (R38).
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -382,17 +384,6 @@ test("the print takes the theme's ink, and the text colour of the page for a val
   ]).toEqual(["rgb(0, 128, 0)", "rgb(0, 128, 0)", "rgb(0, 128, 0)"]);
 });
 
-test("the work of a workbook for checking comes in a later version: a NotSupportedError, written on or not, and the sheet's work as before", async () => {
-  const { element, canvas, view } = await workbook(SHORT);
-  await expect(element.exportWork()).rejects.toThrow(DOMException);
-  await expect(element.exportWork()).rejects.toMatchObject({ name: "NotSupportedError" });
-  level(canvas, view(), 700, 100, 300);
-  await expect(element.exportWork()).rejects.toMatchObject({ name: "NotSupportedError" });
-  element.task = sheetTask();
-  const work = await element.exportWork();
-  expect(work?.png.type).toBe("image/png");
-});
-
 /** The lines of the format's example page: four of a box, and one of two. */
 const EXAMPLE = PAGES.find(({ name }) => name === "workbook-page")?.items ?? [];
 
@@ -510,4 +501,61 @@ test("a filled box's frame is three CSS pixels of ink on whole device pixels, an
   expect(read[0]).toEqual(["1.", "7 ×", "Окошко, заполнено", "= 56"]);
   element.lang = "en";
   expect(filled.getAttribute("aria-label")).toBe("Box, filled");
+});
+
+/** The places of a workbook's work, `[item, slot]`, in its order: none for null. */
+function placesOf(work: ExportedWork | null): number[][] {
+  return work !== null && "cells" in work ? work.cells.map(({ item, slot }) => [item, slot]) : [];
+}
+
+test("the work for checking is the crop of each filled box, in the task's order, of the boxes filled names, with the table of their strokes; draft and a stroke under way are in none, and no box filled is null", async () => {
+  const { element, canvas, page, view } = await workbook(EXAMPLE);
+  const boxes = boxesOf(page);
+  expect(await element.exportWork()).toBeNull();
+  // A stroke under way is in no box yet; draft alone goes to no check.
+  const writing = pressed(canvas, view(), boxes[5] as PageBox);
+  expect(await element.exportWork()).toBeNull();
+  writing.lift();
+  level(canvas, view(), 1200, 100, 300);
+  inBox(canvas, view(), boxes[0] as PageBox);
+  const work = await element.exportWork();
+  if (work === null || !("cells" in work)) throw new Error("the workbook gave no work of boxes");
+  expect(placesOf(work)).toEqual([
+    [1, 1],
+    [5, 2],
+  ]);
+  const filled = (element.filled ?? []).flatMap((row, i) =>
+    row.flatMap((full, j) => (full ? [[i + 1, j + 1]] : [])),
+  );
+  expect(placesOf(work)).toEqual(filled);
+  expect(work.submission.boxes).toEqual([
+    { item: 1, slot: 1, ids: [3] },
+    { item: 5, slot: 2, ids: [1] },
+  ]);
+  // The crops are the core's, at the height of a digit the manifest gives when it is called.
+  for (const digit of [32, 48]) {
+    element.manifest = moduleManifest({ digit_height: digit });
+    const sent = await element.exportWork();
+    const own = cellsForCheck(probe(element).strokes, cellsOf(page), digit);
+    if (sent === null || !("cells" in sent) || own === null) throw new Error("no work of boxes");
+    expect(sent.cells.every(({ png }) => png.type === "image/png")).toBe(true);
+    const bytes = await Promise.all(
+      sent.cells.map(async ({ png }) => new Uint8Array(await png.arrayBuffer())),
+    );
+    expect(bytes).toEqual(own.cells.map(({ png }) => png));
+    expect(sent.submission).toEqual(own.submission);
+  }
+  // An eraser pressed and not yet lifted keeps its strokes in, as filled does.
+  element.tool = "eraser";
+  const erasing = pressed(canvas, view(), boxes[0] as PageBox);
+  expect(placesOf(await element.exportWork())).toEqual([
+    [1, 1],
+    [5, 2],
+  ]);
+  erasing.lift();
+  expect(placesOf(await element.exportWork())).toEqual([[5, 2]]);
+  // The other kind of canvas gives a sheet's work, of all the strokes.
+  element.task = sheetTask();
+  const sheet = await element.exportWork();
+  expect(sheet !== null && "png" in sheet && sheet.png.type).toBe("image/png");
 });

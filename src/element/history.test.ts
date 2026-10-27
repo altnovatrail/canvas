@@ -2,7 +2,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import type { HistoryEvent } from "../core/history.js";
 import type { View } from "../core/screen.js";
 import { type HistoryChange, NovatrailCanvas } from "./index.js";
-import { at } from "./pointer.fixture.js";
+import { at, sheetWork } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The history of writing as the element takes and gives it (R27): read as the sheet has it, told
@@ -210,8 +210,8 @@ test("another history replaces the sheet: its ink, its undo, the next ID, and a 
   if (written?.kind !== "write") throw new Error("no stroke written");
   expect(written.stroke.id).toBe(4);
   expect(written.stroke.points[0]?.t).toBeGreaterThanOrEqual(last + 2001);
-  const work = await element.exportWork();
-  expect(work?.submission.groups.map(({ ids }) => ids)).toEqual([[1], [3], [4]]);
+  const work = await sheetWork(element);
+  expect(work.submission.groups.map(({ ids }) => ids)).toEqual([[1], [3], [4]]);
   // Undo takes back the new stroke, then the last action of the history given.
   expect(element.undo()).toBe(true);
   expect(element.undo()).toBe(true);
@@ -288,8 +288,7 @@ test("undefined after a history is an empty sheet: its IDs start again from 1, a
   const { element, canvas, view } = await sheet();
   level(canvas, view, 100, 100, 300);
   level(canvas, view, 200, 100, 300);
-  const work = await element.exportWork();
-  if (work === null) throw new Error("no work for checking");
+  const work = await sheetWork(element);
   element.history = undefined;
   await settle();
   expect(element.history).toEqual([]);
@@ -324,8 +323,7 @@ test("a history given before the element is upgraded is taken, with marks after 
   const first = await sheet();
   level(first.canvas, first.view, 100, 100, 300);
   const history = stored(first.element.history);
-  const work = await first.element.exportWork();
-  if (work === null) throw new Error("no work for checking");
+  const work = await sheetWork(first.element);
   const marks = {
     submission: work.submission,
     marks: [{ kind: "frame" as const, at: { group: "A" }, name: "This" }],

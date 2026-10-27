@@ -13,6 +13,7 @@ export type Given = [
   types.Box,
   types.Crop,
   types.CropNumbers,
+  types.Filling,
   types.Frame,
   types.GridKind,
   types.Group,
@@ -25,6 +26,7 @@ export type Given = [
   types.PicturePart,
   types.SheetCanvas,
   types.SheetItem,
+  types.SheetSubmission,
   types.SheetTask,
   types.StatementPart,
   types.Stroke,
@@ -33,6 +35,7 @@ export type Given = [
   types.TextPart,
   types.WorkbookCanvas,
   types.WorkbookItem,
+  types.WorkbookSubmission,
   types.WorkbookTask,
   types.Zone,
 ];

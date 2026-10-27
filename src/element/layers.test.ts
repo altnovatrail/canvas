@@ -7,7 +7,7 @@ import { SHEET } from "../core/sheet.js";
 import { workForCheck } from "../core/submission.js";
 import { sheetTask } from "../core/tasks.fixture.js";
 import { NovatrailCanvas } from "./index.js";
-import { at, level, screenshot } from "./pointer.fixture.js";
+import { at, level, screenshot, sheetWork } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The sheet's layers in Chromium (R23): the stack in the order of concepts 8 spec, one view for
@@ -383,9 +383,9 @@ test("the consumer's custom properties colour the paper, the grid, the ink and t
   expect(near(rgbaAt(canvas, view(), 200, 300), [0, 128, 0, 255])).toBe(true);
 
   // The crop for checking is the sheet's own raster, ink on white whatever the theme (R25).
-  const work = await element.exportWork();
+  const work = await sheetWork(element);
   const own = workForCheck(probe(element).strokes, CROP.digit);
-  if (work === null || own === null) throw new Error("the sheet gave no work for checking");
+  if (own === null) throw new Error("the sheet gave no work for checking");
   expect(new Uint8Array(await work.png.arrayBuffer())).toEqual(own.png);
 });
 
