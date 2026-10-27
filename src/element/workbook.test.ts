@@ -2,9 +2,10 @@ import { afterEach, expect, test } from "vitest";
 import { cdp, page } from "vitest/browser";
 import { isBox, type Page, type PageBox, type PageText, pageOf } from "../core/page.js";
 import { PAGES, SHORT, shortLines } from "../core/pages.fixture.js";
+import type { View } from "../core/screen.js";
 import { moduleManifest, sheetTask, workbookTask } from "../core/tasks.fixture.js";
-import type { Task, WorkbookItem } from "./index.js";
-import { at, level, placed, screenshot, settle } from "./pointer.fixture.js";
+import type { Filled, Task, WorkbookItem } from "./index.js";
+import { at, level, placed, press, screenshot, settle } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The workbook in Chromium (R34, R35, R36): its lines on the template where the layout puts them,
@@ -161,7 +162,7 @@ test("each box lies where the ink is, at any width and scroll: a stroke through 
   }
 });
 
-test("the template is no ink: the eraser over a line and its box takes the stroke alone, and nothing of the print changes", async () => {
+test("the template is no ink: the eraser over a line and its box takes the stroke alone, and a stroke in no box changes nothing of the print", async () => {
   const { element, canvas, print, page, view } = await workbook(SHORT);
   const box = boxesOf(page)[0] as PageBox;
   const y = box.top + box.height / 2;
@@ -390,4 +391,123 @@ test("the work of a workbook for checking comes in a later version: a NotSupport
   element.task = sheetTask();
   const work = await element.exportWork();
   expect(work?.png.type).toBe("image/png");
+});
+
+/** The lines of the format's example page: four of a box, and one of two. */
+const EXAMPLE = PAGES.find(({ name }) => name === "workbook-page")?.items ?? [];
+
+/** A stroke across the middle of a box, from a quarter of its width to three quarters. */
+function inBox(canvas: HTMLCanvasElement, view: View, box: PageBox): void {
+  const y = box.top + box.height / 2;
+  level(canvas, view, y, box.left + box.width / 4, box.left + (3 * box.width) / 4);
+}
+
+/** A press across the middle of a box, not yet lifted: lift() ends it. */
+function pressed(canvas: HTMLCanvasElement, view: View, box: PageBox) {
+  return press(canvas, view, box.top + box.height / 2, box.left + 20, box.left + 80);
+}
+
+test("filled tells per item, per box, which boxes hold a stroke: writing in one fills it, draft beside it leaves the same array, and undo, clearing and the eraser take it back once lifted", async () => {
+  const { element, canvas, page, view } = await workbook(EXAMPLE);
+  const none = [[false], [false], [false], [false], [false, false]];
+  const empty = element.filled;
+  expect(empty).toEqual(none);
+  expect(Object.isFrozen(empty) && empty?.every(Object.isFrozen)).toBe(true);
+  const last = boxesOf(page)[5] as PageBox;
+  // A stroke under way is in no box yet: it lands when it lifts.
+  const writing = pressed(canvas, view(), last);
+  expect(element.filled).toBe(empty);
+  writing.lift();
+  const written = element.filled;
+  expect(written).toEqual([[false], [false], [false], [false], [false, true]]);
+  // Draft beside the boxes fills none: the same array.
+  level(canvas, view(), 1200, 100, 300);
+  expect(element.filled).toBe(written);
+  element.undo();
+  expect(element.filled).toBe(written);
+  element.clear();
+  expect(element.filled).toEqual(none);
+  element.undo();
+  expect(element.filled).toEqual(written);
+  // The eraser's strokes stay in their box until it lifts, as they stay in the work for checking.
+  element.tool = "eraser";
+  const erasing = pressed(canvas, view(), last);
+  expect(probe(element).pending).toHaveLength(1);
+  expect(element.filled?.[4]).toEqual([false, true]);
+  erasing.lift();
+  expect(element.filled).toEqual(none);
+});
+
+test("an action's historychange finds filled already new, and a history or a task given changes it with no event", async () => {
+  const { element, canvas, page, view } = await workbook(EXAMPLE);
+  const told: (Filled | null)[] = [];
+  element.addEventListener("historychange", () => told.push(element.filled));
+  inBox(canvas, view(), boxesOf(page)[0] as PageBox);
+  expect(told).toEqual([[[true], [false], [false], [false], [false, false]]]);
+
+  const other = await workbook(EXAMPLE);
+  const heard: unknown[] = [];
+  other.element.addEventListener("historychange", (event) => heard.push(event));
+  other.element.history = element.history;
+  expect(other.element.filled).toEqual(element.filled);
+  const given = other.element.filled;
+  // Another task of the same lines is the same page: the same array.
+  other.element.task = {
+    ...workbookTask(EXAMPLE),
+    id: "tables-2",
+    statement: [{ text: "Again." }],
+  };
+  expect(other.element.filled).toBe(given);
+  // Other lines put the same stroke in no box, or in one of theirs.
+  other.element.task = workbookTask(SHORT);
+  expect(other.element.filled).toHaveLength(SHORT.length);
+  other.element.task = sheetTask();
+  expect(other.element.filled).toBeNull();
+  other.element.task = workbookTask(EXAMPLE);
+  expect(other.element.filled).toEqual(given);
+  expect(heard).toEqual([]);
+});
+
+test("a filled box's frame is three CSS pixels of ink on whole device pixels, an empty one's stays one, and its name says it is filled, in the DOM and in Chromium's own tree", async () => {
+  const { element, canvas, print, page, view } = await workbook(EXAMPLE, 700);
+  element.lang = "ru";
+  inBox(canvas, view(), boxesOf(page)[0] as PageBox);
+  await settle();
+  const [filled, empty] = [...print.querySelectorAll("rect")];
+  if (!filled || !empty) throw new Error("no boxes");
+  expect([filled.classList.contains("filled"), empty.classList.contains("filled")]).toEqual([
+    true,
+    false,
+  ]);
+  expect([getComputedStyle(filled).strokeWidth, getComputedStyle(empty).strokeWidth]).toEqual([
+    "3px",
+    "1px",
+  ]);
+  const pixel = await screenshot(element);
+  const host = element.getBoundingClientRect();
+  /** The dark device pixels across a box's left edge, at the middle of its height. */
+  const across = (rect: SVGRectElement, { left, top, height }: PageBox) => {
+    const ctm = rect.getScreenCTM();
+    if (ctm === null) throw new Error("the box has no matrix to the screen");
+    const edge = new DOMPoint(left, top + height / 2).matrixTransform(ctm);
+    const step = 1 / devicePixelRatio;
+    let dark = 0;
+    for (let d = -4; d <= 4; d += step) {
+      const [red = 255] = pixel(edge.x - host.left + d, edge.y - host.top);
+      if (red <= 60) dark += 1;
+    }
+    return dark;
+  };
+  const [first, second] = boxesOf(page) as [PageBox, PageBox];
+  expect(across(filled, first)).toBeGreaterThanOrEqual(3 * devicePixelRatio - 1);
+  expect(across(filled, first)).toBeLessThanOrEqual(3 * devicePixelRatio + 1);
+  expect(across(empty, second)).toBeLessThanOrEqual(devicePixelRatio + 1);
+  expect([filled.getAttribute("aria-label"), empty.getAttribute("aria-label")]).toEqual([
+    "Окошко, заполнено",
+    "Окошко",
+  ]);
+  const read = await listOf();
+  expect(read[0]).toEqual(["1.", "7 ×", "Окошко, заполнено", "= 56"]);
+  element.lang = "en";
+  expect(filled.getAttribute("aria-label")).toBe("Box, filled");
 });

@@ -16,9 +16,11 @@
 // the statement's language (T44; R32). Up and Down in the row scroll what two fingers would, with
 // a single pointer (T45; R33). The workbook's lines, laid out on its page, stand on the template in
 // place of the grid — numbers, text and boxes, which a screen reader reads in the task's order (T51;
-// R35, R36).
+// R35, R36). Each stroke is in one box or in none, by a rule of whole numbers, and `filled` tells
+// which boxes hold one: a filled box's frame is thicker, and its name says so (T48; R37).
 
 import type { Vec2 } from "perfect-freehand";
+import { type Cell, cellOf, cellsOf, type Filled, filledOf } from "../core/boxes.js";
 import { Clock } from "../core/clock.js";
 import { ERASER_BUTTON, Eraser } from "../core/eraser.js";
 import { type Box, boxOf } from "../core/geometry.js";
@@ -36,7 +38,14 @@ import {
   shownOf,
 } from "../core/marks.js";
 import { INK_REACH, outline } from "../core/outline.js";
-import { isBox, LAYOUT, type PageBox, type PageItem, type PageText } from "../core/page.js";
+import {
+  isBox,
+  LAYOUT,
+  type Page,
+  type PageBox,
+  type PageItem,
+  type PageText,
+} from "../core/page.js";
 import { type PointerSample, Recorder } from "../core/recorder.js";
 import { fitScale, K_MAX, scaleFor, toSheet, type View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
@@ -63,6 +72,7 @@ import { PEN_MODE } from "./session.js";
 import { type Media, Statement } from "./statement.js";
 import { Tools } from "./tools.js";
 
+export type { Filled } from "../core/boxes.js";
 export type { Crop, Frame } from "../core/crop.js";
 export type { Box } from "../core/geometry.js";
 export type { GridKind } from "../core/grid.js";
@@ -171,7 +181,8 @@ const SVG = "http://www.w3.org/2000/svg";
 // A workbook's lines are printed in the ink's colour and the consumer's font, and nothing else the
 // element inherits — spacing, weight, transforms, the direction — moves them: `all: initial` takes
 // it off, and what the print needs comes back (R36). A box's frame is one CSS pixel at any scale,
-// on whole device pixels: an antialiased line of one pixel would lose its contrast.
+// on whole device pixels: an antialiased line of one pixel would lose its contrast. A filled box's
+// is three, in the same ink, and the system's highlight with forced colours (R37).
 const STYLE = `
 :host { display: flex; flex-direction: column; isolation: isolate; writing-mode: horizontal-tb; }
 :host([hidden]) { display: none; }
@@ -229,6 +240,7 @@ const STYLE = `
   fill: none; stroke: currentColor; stroke-width: 1px; vector-effect: non-scaling-stroke;
   shape-rendering: crispEdges;
 }
+.print rect.filled { stroke-width: 3px; }
 canvas {
   display: block; color: var(--novatrail-canvas-ink, ${INK}); transition: color 1ms step-end;
   touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
@@ -243,6 +255,7 @@ canvas {
   .grid { stroke: GrayText; }
   .print text { fill: CanvasText; }
   .print rect { stroke: CanvasText; }
+  .print rect.filled { stroke: Highlight; }
   canvas { color: CanvasText; }
   .marks rect { stroke: Highlight; }
   .tools { background: Canvas; color: CanvasText; }
@@ -423,8 +436,16 @@ export class NovatrailCanvas extends HTMLElement {
   #tool: Tool = "pen";
   #task: Task | undefined;
   #shownTemplate: Template = NO_TASK;
-  /** The language the boxes are named in: the labels', by the element's `lang` (R28). */
-  #named = "";
+  /**
+   * A workbook's page, its boxes in the task's order and their frames, and the box each stroke is
+   * in, worked out once: a stroke never changes (R22), and a new page starts the map anew.
+   */
+  #laid: Page | undefined;
+  #cells: readonly Cell[] = [];
+  #rects: readonly SVGRectElement[] = [];
+  #taken = new WeakMap<Stroke, number>();
+  /** Which boxes are filled, the same array until one changes; null on a sheet (R37). */
+  #filled: Filled | null = null;
   /** The module's manifest as the consumer gave it, and what the element makes of it (R32). */
   #manifest: Manifest | undefined;
   #settings: Settings = NO_MANIFEST;
@@ -710,6 +731,7 @@ export class NovatrailCanvas extends HTMLElement {
     if (erasing !== undefined) this.#eraser.cancel(erasing);
     this.#clock.resume(resumeOf(after));
     this.#work = work;
+    this.#fill();
     this.#told = after.length;
     this.#writing = undefined;
     this.#equal = undefined;
@@ -726,6 +748,18 @@ export class NovatrailCanvas extends HTMLElement {
     }
     this.#refresh();
     this.#request();
+  }
+
+  /**
+   * Which boxes of a workbook are filled (R34, R37): per item, per box, in the task's order, whether
+   * the box holds one of the strokes `exportWork()` would take — not the stroke under way, but
+   * those under an eraser not yet lifted. A stroke is in one box or in none, by the rule of R37:
+   * what is in none is the draft. Frozen, and the same array until a box changes; `null` on a
+   * sheet. An action on the sheet changes it before its `historychange`, and a task or a history
+   * given changes it with no event.
+   */
+  get filled(): Filled | null {
+    return this.#filled;
   }
 
   /**
@@ -784,7 +818,7 @@ export class NovatrailCanvas extends HTMLElement {
    */
   attributeChangedCallback(): void {
     this.#tools.label(this.getAttribute("lang"));
-    this.#nameBoxes(false);
+    this.#markBoxes();
   }
 
   /**
@@ -890,24 +924,57 @@ export class NovatrailCanvas extends HTMLElement {
     write(this.#template, "aria-hidden", workbook ? null : "true");
     write(this.#template, "role", workbook ? "none" : null);
     this.#lines.replaceChildren(...(workbook ? template.page.items.map(itemOf) : []));
-    if (workbook) this.#nameBoxes(true);
+    this.#laid = workbook ? template.page : undefined;
+    this.#cells = workbook ? cellsOf(template.page) : [];
+    // The frames in the order of the lines, the task's: item by item, slot by slot.
+    this.#rects = [...this.#lines.querySelectorAll("rect")];
+    this.#taken = new WeakMap();
+    // New frames: marked by the filling if it changed, or else here.
+    if (!this.#fill()) this.#markBoxes();
   }
 
   /**
-   * Each box of the lines its name, in the labels' language, by the element's `lang`: "Box" alone in
-   * its line, and numbered by its slot among several (R36). Boxes named in that language already
-   * are named again only when they are new.
+   * Which boxes the strokes on the sheet fill, by the rule of R37, each stroke's box worked out
+   * once: a new array, and the frames marked anew, only if a box changed — and then it says so.
    */
-  #nameBoxes(fresh: boolean): void {
-    const { lang, labels } = labelsFor(this.getAttribute("lang"));
-    if (!fresh && lang === this.#named) return;
-    this.#named = lang;
-    for (const item of this.#lines.children) {
-      const boxes = item.querySelectorAll("rect");
-      for (const [n, box] of boxes.entries()) {
-        box.setAttribute("aria-label", boxes.length > 1 ? `${labels.box} ${n + 1}` : labels.box);
-        box.setAttribute("lang", lang);
+  #fill(): boolean {
+    const page = this.#laid;
+    if (page === undefined) {
+      this.#filled = null;
+      return false;
+    }
+    const taken = this.#work.strokes.map((stroke) => {
+      let found = this.#taken.get(stroke);
+      if (found === undefined) {
+        found = cellOf(stroke, this.#cells);
+        this.#taken.set(stroke, found);
       }
+      return found;
+    });
+    const filled = filledOf(page, this.#cells, taken);
+    const shown = this.#filled;
+    if (shown !== null && sameItems(filled, shown, (a, b) => sameItems(a, b))) return false;
+    this.#filled = filled;
+    this.#markBoxes();
+    return true;
+  }
+
+  /**
+   * Each box of the lines as it now is (R36, R37): its frame, thicker when it is filled, and its
+   * name in the labels' language, by the element's `lang` — "Box" alone in its line, numbered by
+   * its slot among several, and "filled" when it is. Only what has changed is written.
+   */
+  #markBoxes(): void {
+    const { lang, labels } = labelsFor(this.getAttribute("lang"));
+    for (const [c, rect] of this.#rects.entries()) {
+      const cell = this.#cells[c];
+      if (cell === undefined) continue;
+      const several = (this.#laid?.items[cell.item - 1]?.boxes.length ?? 0) > 1;
+      const filled = this.#filled?.[cell.item - 1]?.[cell.slot - 1] === true;
+      const name = several ? `${labels.box} ${cell.slot}` : labels.box;
+      rect.classList.toggle("filled", filled);
+      write(rect, "aria-label", filled ? `${name}, ${labels.filled}` : name);
+      write(rect, "lang", lang);
     }
   }
 
@@ -937,7 +1004,9 @@ export class NovatrailCanvas extends HTMLElement {
       marks.length === this.#shown.length &&
       marks.every(({ name, placed }, n) => {
         const shown = this.#shown[n];
-        return shown !== undefined && shown.name === name && sameIds(shown.placed.ids, placed.ids);
+        return (
+          shown !== undefined && shown.name === name && sameItems(shown.placed.ids, placed.ids)
+        );
       });
     if (same) return;
     for (const { rect } of this.#shown) rect.remove();
@@ -1294,7 +1363,8 @@ export class NovatrailCanvas extends HTMLElement {
    */
   #changed(): void {
     this.#request();
-    // The row before the event, and for an action a listener takes as well.
+    // The boxes and the row before the event, and for an action a listener takes as well.
+    this.#fill();
     this.#refresh();
     if (this.#telling) return;
     this.#telling = true;
@@ -1575,8 +1645,13 @@ function rectOf({ left, top, width, height }: PageBox): SVGRectElement {
   return rect;
 }
 
-function sameIds(a: readonly number[], b: readonly number[]): boolean {
-  return a.length === b.length && a.every((id, n) => id === b[n]);
+/** Whether two lists are the same, item by item, by `same`: by identity unless given. */
+function sameItems<T>(
+  a: readonly T[],
+  b: readonly T[],
+  same: (x: T, y: T) => boolean = Object.is,
+): boolean {
+  return a.length === b.length && a.every((item, n) => n in b && same(item, b[n] as T));
 }
 
 function sameBox(a: Box | null, b: Box | null): boolean {

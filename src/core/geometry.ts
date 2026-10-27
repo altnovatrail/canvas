@@ -1,4 +1,6 @@
+import type { Stroke } from "./ink.js";
 import type { Point } from "./screen.js";
+import { SHEET } from "./sheet.js";
 
 /** A rectangle on the sheet, in its units, as rbush takes one (R05). */
 export interface Box {
@@ -14,6 +16,38 @@ export interface Box {
  */
 export function tenths(value: number): number {
   return Math.round(value * 10);
+}
+
+/** A stroke's box in whole tenths, with its ID: what the crop and the boxes' rule count by. */
+export interface Extent extends Box {
+  readonly id: number;
+}
+
+/**
+ * The box of a stroke's points in whole tenths (R25, R37): rounding keeps order, so its edges are
+ * the rounded least and most of the points. A stroke with no points is a TypeError, and one with a
+ * point off the sheet, or no number, a RangeError: the rules' whole numbers hold on the sheet alone.
+ */
+export function extentOf({ id, points }: Stroke): Extent {
+  if (points.length === 0) throw new TypeError(`the stroke ${id} has no points`);
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const { x, y } of points) {
+    if (!onSheet(x, SHEET.width) || !onSheet(y, SHEET.height)) {
+      throw new RangeError(`the stroke ${id} has a point (${x}, ${y}) off the sheet`);
+    }
+    minX = Math.min(minX, tenths(x));
+    minY = Math.min(minY, tenths(y));
+    maxX = Math.max(maxX, tenths(x));
+    maxY = Math.max(maxY, tenths(y));
+  }
+  return { id, minX, minY, maxX, maxY };
+}
+
+function onSheet(value: number, size: number): boolean {
+  return Number.isFinite(value) && value >= 0 && value <= size;
 }
 
 /** The box around a stroke's points, the raw points rather than the ink's outline. */

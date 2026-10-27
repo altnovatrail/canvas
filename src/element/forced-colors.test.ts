@@ -1,5 +1,6 @@
 import { afterEach, expect, test } from "vitest";
 import { CROP } from "../core/crop.js";
+import { pageOf } from "../core/page.js";
 import { SHORT } from "../core/pages.fixture.js";
 import { toScreen, type View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
@@ -146,7 +147,7 @@ test("with forced colours the row of buttons takes the system's colours of butto
   }
 });
 
-test("with forced colours a workbook's text and the frames of its boxes are the system's text colour, whatever the consumer's ink", async () => {
+test("with forced colours a workbook's text and the frames of its boxes are the system's text colour, whatever the consumer's ink, and a filled box's frame the highlight", async () => {
   const theme = document.createElement("div");
   theme.style.setProperty("--novatrail-canvas-ink", "rgb(0, 0, 255)");
   document.body.append(theme);
@@ -162,4 +163,24 @@ test("with forced colours a workbook's text and the frames of its boxes are the 
   // Explicit: SVG keeps its parent's colour in the mode, and the theme's ink would stay (R36).
   expect(getComputedStyle(text).fill).toBe(system("CanvasText"));
   expect(getComputedStyle(box).stroke).toBe(system("CanvasText"));
+  // A stroke across the first box fills it (R37).
+  const first = pageOf(SHORT).items[0]?.boxes[0];
+  if (first === undefined) throw new Error("the page has no box");
+  const y = first.top + first.height / 2;
+  element.history = [
+    {
+      kind: "write",
+      t: 100,
+      stroke: {
+        id: 1,
+        kind: "pen",
+        points: [
+          { x: first.left + 30, y, t: 0, p: 0.5 },
+          { x: first.left + 70, y, t: 60, p: 0.5 },
+        ],
+      },
+    },
+  ];
+  expect(box.classList.contains("filled")).toBe(true);
+  expect(getComputedStyle(box).stroke).toBe(system("Highlight"));
 });

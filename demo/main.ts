@@ -11,7 +11,8 @@
 // digits the page's control changes (T44; R32). Dark theme sets the element's custom properties
 // (T11; R23). A workbook's task takes the lines of a page of the layout's corpus, those that do not
 // fit among them, in the font and the explanation language the page's controls give; its work for
-// checking comes in a later version, and Check says so (T51; R35, R36).
+// checking comes in a later version, and Check says so (T51; R35, R36). The counter tells how many
+// of its boxes are filled (T48; R37).
 // Under the sheet the page draws the groups of the strokes the history leaves, after every
 // historychange, by the sheet's rule or by the pause and the reaches its fields give (T12; R24),
 // and their crop for checking at the height of digits the manifest gives, with the frames of those
@@ -205,7 +206,11 @@ place.append(sheet);
 
 function count(): void {
   const told = `historychange × ${changes} · ${kept.length} events kept`;
-  counter.textContent = `Task ${taskNumber} · ${told} · toolchange × ${choices}, ${sheet.tool}`;
+  // A workbook's boxes: how many are filled, as the element tells (R37).
+  const boxes = sheet.filled?.flat() ?? [];
+  const filled =
+    sheet.filled === null ? "" : ` · filled ${boxes.filter(Boolean).length} of ${boxes.length}`;
+  counter.textContent = `Task ${taskNumber} · ${told} · toolchange × ${choices}, ${sheet.tool}${filled}`;
 }
 
 const SVG = "http://www.w3.org/2000/svg";
@@ -556,6 +561,7 @@ function regrid(): void {
     status.textContent = error instanceof Error ? error.message : String(error);
   }
   showGroups();
+  count();
 }
 
 /** What historychange tells, added to the history the page keeps, as app is to add it. */

@@ -1,5 +1,5 @@
 // The labels of the element's own buttons and of a workbook's boxes, in the languages of its
-// interface (R28, R29, R33, R36): English and Russian, as О-2 recommends, until app's T07 gives the
+// interface (R28, R29, R33, R36, R37): English and Russian, as О-2 recommends, until app's T07 gives the
 // shared scheme of translations of the packages of the interface. The language is the element's
 // own `lang`, looked up as RFC 4647 does it. This module is no entry point of the package.
 
@@ -22,6 +22,8 @@ export interface Labels {
   readonly finger: string;
   /** A box of a workbook's line, numbered when the line has more than one (R36). */
   readonly box: string;
+  /** What a filled box's name adds (R37). */
+  readonly filled: string;
 }
 
 /** The labels in English, the code's own language: those of any language the table has not. */
@@ -37,6 +39,7 @@ const ENGLISH: Labels = Object.freeze({
   down: "Down",
   finger: "Draw with finger",
   box: "Box",
+  filled: "filled",
 });
 
 /**
@@ -59,6 +62,7 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
       down: "Ниже",
       finger: "Рисовать пальцем",
       box: "Окошко",
+      filled: "заполнено",
     }),
   ],
 ]);
