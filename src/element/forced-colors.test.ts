@@ -7,6 +7,7 @@ import { SHEET } from "../core/sheet.js";
 import { workForCheck } from "../core/submission.js";
 import { workbookTask } from "../core/tasks.fixture.js";
 import "./index.js";
+import { sheetWork } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The sheet with forced colours, in a browser context that is in the mode from the start (R23):
@@ -99,8 +100,7 @@ test("with forced colours the sheet takes the system's colours, whatever the con
   }
 
   // A frame of the tutor's round the strokes: the system's highlight, not the theme's colour.
-  const sent = await element.exportWork();
-  if (sent === null) throw new Error("the sheet gave no work for checking");
+  const sent = await sheetWork(element);
   element.marks = {
     submission: sent.submission,
     marks: [{ kind: "frame", at: { group: "A" }, name: "This line" }],
@@ -111,9 +111,9 @@ test("with forced colours the sheet takes the system's colours, whatever the con
   expect(getComputedStyle(frame).stroke).toBe(system("Highlight"));
 
   // The crop for checking is the sheet's own raster, whatever colours the system forces (R25).
-  const work = await element.exportWork();
+  const work = await sheetWork(element);
   const own = workForCheck(probe(element).strokes, CROP.digit);
-  if (work === null || own === null) throw new Error("the sheet gave no work for checking");
+  if (own === null) throw new Error("the sheet gave no work for checking");
   expect(new Uint8Array(await work.png.arrayBuffer())).toEqual(own.png);
 });
 

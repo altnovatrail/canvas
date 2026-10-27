@@ -10,9 +10,9 @@ import {
   type Marks,
   marksOf,
   placesOf,
+  type SheetSubmission,
   SNAP_RULE,
   type SnapRule,
-  type Submission,
   shownOf,
   snapOf,
 } from "./marks.js";
@@ -49,7 +49,7 @@ type Fractions = readonly [number, number, number, number];
 function submissionOf(
   strokes: readonly Stroke[],
   digit: number = CROP.digit,
-): Submission & { crop: Crop } {
+): SheetSubmission & { crop: Crop } {
   const groups = groupsOf(strokes);
   const crop = cropOf(strokes, groups, digit);
   if (crop === null) throw new Error("the sheet has no crop");
@@ -409,7 +409,7 @@ describe("a mark", () => {
     expect(() => placesOf(marks, known)).not.toThrow();
     const [first, second] = submission.crop.frames;
     if (first === undefined || second === undefined) throw new Error("two groups");
-    const changes: Submission[] = [
+    const changes: SheetSubmission[] = [
       // A frame of another group's place: the frames are the context's, and the digest holds them.
       {
         ...submission,

@@ -1,3 +1,4 @@
+import type { Cell, Filling } from "./boxes.js";
 import { CROP, type Crop, sheetBoxOf } from "./crop.js";
 import { record, shown, whole } from "./fields.js";
 import { around, type Box, boxOf, tenths } from "./geometry.js";
@@ -42,20 +43,35 @@ export type CropNumbers = Pick<
 >;
 
 /**
- * The context of one submission, which the element gives with its crop and takes back with the
- * tutor's marks (R07; R36 spec): the crop's numbers — its `sheet_box`, the frames of the groups and
- * the whole numbers they come from — the groups of the strokes, the table «label → stroke IDs», and
- * the digest of it all (R27). It goes back to a sheet whose history holds its strokes: the same
- * sheet, or one given the same history later. Each sheet numbers its strokes from 1, so a sheet of
- * other strokes with the same IDs tells it by the digest. The type is the element's own until
- * spec's contract gives one (epic E3 in spec's RUN.md).
+ * The context of one submission of a sheet, which the element gives with its crop and takes back
+ * with the tutor's marks (R07; R36 spec): the crop's numbers — its `sheet_box`, the frames of the
+ * groups and the whole numbers they come from — the groups of the strokes, the table «label →
+ * stroke IDs», and the digest of it all (R27). It goes back to a sheet whose history holds its
+ * strokes: the same sheet, or one given the same history later. Each sheet numbers its strokes from
+ * 1, so a sheet of other strokes with the same IDs tells it by the digest. The type is the
+ * element's own until spec's contract gives one (epic E3 in spec's RUN.md).
  */
-export interface Submission {
+export interface SheetSubmission {
   readonly crop: CropNumbers;
   readonly groups: readonly Group[];
   /** What the submission was made of, `digestOf` it: 16 hex digits. */
   readonly digest: string;
 }
+
+/**
+ * The context of one submission of a workbook (R34, R38): the table «box → stroke IDs», each filled
+ * box by its item and its slot, from 1, in the task's order, and the digest of its strokes and of
+ * every box of the page. It holds no numbers of the crops: no mark on a workbook is snapped. The
+ * type is the element's own until spec's contract gives one (epic E3 in spec's RUN.md).
+ */
+export interface WorkbookSubmission {
+  readonly boxes: readonly Filling[];
+  /** What the submission was made of, `workbookDigestOf` it: 16 hex digits. */
+  readonly digest: string;
+}
+
+/** The context of one submission, of a sheet or of a workbook: its keys tell which (R38). */
+export type Submission = SheetSubmission | WorkbookSubmission;
 
 /**
  * Where a mark is: a group of strokes by its label, an answer cell by its ID, or a box on the crop
@@ -75,9 +91,9 @@ export interface Mark {
   readonly name: string;
 }
 
-/** The tutor's marks of one submission, with the submission's context (R07). */
+/** The tutor's marks of one submission, with the submission's context (R07): a sheet's, until T53. */
 export interface Marks {
-  readonly submission: Submission;
+  readonly submission: SheetSubmission;
   readonly marks: readonly Mark[];
 }
 
@@ -230,12 +246,7 @@ export function digestOf(
   crop: Pick<CropNumbers, "drawn" | "width" | "height" | "margins" | "frames" | "exact">,
   groups: readonly Group[],
 ): string {
-  const lines = [...strokes]
-    .sort((a, b) => a.id - b.id)
-    .map(
-      ({ id, points }) =>
-        `${id}${points.map(({ x, y, t }) => `;${tenths(x)},${tenths(y)},${Math.round(t)}`).join("")}`,
-    );
+  const lines = strokeLines(strokes);
   const {
     drawn,
     width,
@@ -248,6 +259,41 @@ export function digestOf(
   );
   for (const { label, ids } of groups) lines.push(`group ${label} ${ids.join(",")}`);
   for (const { label, box: frame } of crop.frames) lines.push(`frame ${label} ${frame.join(",")}`);
+  return sumOf(lines);
+}
+
+/**
+ * The digest of a workbook's submission (R38), as `digestOf` makes a sheet's: of a text that holds
+ * the strokes of its table, by ID ascending, as a sheet's digest has them, then every box of the
+ * page, `cells` in the task's order, with its item, its slot and its rectangle in whole page units,
+ * and then the table's rows. A context of another layout gives another digest even where its
+ * filled boxes stand where they stood (R34).
+ */
+export function workbookDigestOf(
+  strokes: readonly Stroke[],
+  boxes: readonly Filling[],
+  cells: readonly Cell[],
+): string {
+  const lines = strokeLines(strokes);
+  for (const { item, slot, box } of cells) {
+    lines.push(`cell ${item} ${slot} ${box.left} ${box.top} ${box.width} ${box.height}`);
+  }
+  for (const { item, slot, ids } of boxes) lines.push(`box ${item} ${slot} ${ids.join(",")}`);
+  return sumOf(lines);
+}
+
+/** The lines of a digest's text that hold strokes, by ID ascending, their points as rules see them. */
+function strokeLines(strokes: readonly Stroke[]): string[] {
+  return [...strokes]
+    .sort((a, b) => a.id - b.id)
+    .map(
+      ({ id, points }) =>
+        `${id}${points.map(({ x, y, t }) => `;${tenths(x)},${tenths(y)},${Math.round(t)}`).join("")}`,
+    );
+}
+
+/** A digest of a text's lines: the CRC-32 and then the Adler-32 of its bytes, 16 hex digits. */
+function sumOf(lines: readonly string[]): string {
   const bytes = utf8(lines.join("\n"));
   return hex(crc32(bytes)) + hex(adler32(bytes));
 }
@@ -302,7 +348,7 @@ function checkRule({ margin, share }: SnapRule): void {
   }
 }
 
-function submissionOf(value: unknown, path: string): Submission {
+function submissionOf(value: unknown, path: string): SheetSubmission {
   const fields = record(value, path);
   const groups = tableOf(fields.groups, `${path}.groups`);
   const crop = numbersOf(fields.crop, `${path}.crop`, groups);

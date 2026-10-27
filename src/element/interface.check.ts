@@ -1,6 +1,7 @@
 // Type-checked by ci-lint and never built: the element's interface as a consumer's types see it
-// (R07, R27, R28, R32, R37). What a consumer may do type-checks; each line under a directive must
-// be an error, and were it not, the directive would go unused, and that would be the error instead.
+// (R07, R27, R28, R32, R37, R38). What a consumer may do type-checks; each line under a directive
+// must be an error, and were it not, the directive would go unused, and that would be the error
+// instead.
 
 import type {
   ExportedWork,
@@ -9,13 +10,16 @@ import type {
   HistoryEvent,
   Manifest,
   NovatrailCanvas,
-  Submission,
+  SheetSubmission,
   Tool,
   ToolChangeEvent,
+  WorkbookSubmission,
 } from "./index.js";
 
 declare const sheet: NovatrailCanvas;
-declare const crop: Submission["crop"];
+declare const crop: SheetSubmission["crop"];
+declare const done: ExportedWork;
+declare const boxes: WorkbookSubmission;
 declare const manifest: Manifest;
 
 /** A task's open view on a handwriting sheet, in the names of the module format's draft (R32). */
@@ -56,6 +60,11 @@ sheet.manifest = manifest;
 sheet.manifest = undefined;
 
 export const work: Promise<ExportedWork | null> = sheet.exportWork();
+/** The work's key tells its kind: the crop of a sheet, or the crops of a workbook's boxes (R38). */
+export const sent: Blob | readonly Blob[] =
+  "png" in done ? done.png : done.cells.map(({ png }) => png);
+export const place: readonly [number, number] | undefined =
+  "cells" in done ? [done.cells[0]?.item ?? 1, done.cells[0]?.slot ?? 1] : undefined;
 export const history: readonly HistoryEvent[] = sheet.history;
 /** Which boxes of a workbook are filled, per item, per box; null on a sheet (R37). */
 export const filled: Filled | null = sheet.filled;
@@ -79,6 +88,14 @@ document.addEventListener("toolchange", (event) => {
 sheet.filled = null;
 // @ts-expect-error Nor to change in place.
 sheet.filled?.[0]?.push(true);
+// @ts-expect-error A workbook's work has no PNG of a sheet: its key tells which it is.
+export const png: Blob = done.png;
+if ("cells" in done) {
+  // @ts-expect-error The crops are the element's to give, not the consumer's to change.
+  done.cells.push({ item: 1, slot: 1, png: new Blob() });
+}
+// @ts-expect-error The marks of a workbook's submission are T53's: a sheet's alone come in so far.
+sheet.marks = { submission: boxes, marks: [] };
 // @ts-expect-error null is no manifest: undefined, and undefined alone, is none.
 sheet.manifest = null;
 // @ts-expect-error The grid's step is grid_step in the format, not step.

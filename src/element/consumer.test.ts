@@ -1,18 +1,26 @@
 import { afterEach, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
-import { type HistoryEvent, SHEET, type Submission } from "../core/index.js";
-import { type ExportedWork, type Marks, NovatrailCanvas, type Task, type Tool } from "./index.js";
+import { type HistoryEvent, SHEET, type SheetSubmission } from "../core/index.js";
+import {
+  type ExportedSheet,
+  type ExportedWorkbook,
+  type Marks,
+  NovatrailCanvas,
+  type Task,
+  type Tool,
+} from "./index.js";
 
-// The trial consumer (R27, R28, R32; RUN.md, T15, T41, T44): a page that takes the element as app
-// is to take it. It gives the task, the module's manifest, the media and the language, keeps the
-// history of writing as
-// historychange tells it and gives it back, hears the learner's choice of tool, takes the work for
-// checking at Check, and gives the tutor's marks back with their submission's context, then opens
-// the sheet again in a new element. It goes through the package's entry points alone, never the
-// probe the other tests read. It writes as a script does: pointer events on the canvas in the
-// element's open shadow root, at the points the canvas's rectangle gives. The learner's erasing,
-// undo and clearing go through the sheet's own buttons, found by their roles and their Russian
-// names.
+// The trial consumer (R27, R28, R32, R38; RUN.md, T15, T41, T44, T49): a page that takes the
+// element as app is to take it. It gives the task, the module's manifest, the media and the
+// language, keeps the history of writing as historychange tells it and gives it back, hears the
+// learner's choice of tool, takes the work for checking at Check, and gives the tutor's marks back
+// with their submission's context, then opens the sheet again in a new element. On a workbook it
+// writes in the boxes and beside them, reads which are filled, and takes the crop of each filled
+// box. It goes through the package's entry points alone, never the probe the other tests read. It
+// writes as a script does: pointer events on the canvas in the element's open shadow root, at the
+// points the canvas's rectangle gives. The learner's erasing, undo and clearing go through the
+// sheet's own buttons, and the workbook's boxes are found the same way, by their roles and their
+// Russian names.
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -59,14 +67,29 @@ const MODULE = {
 
 const PATH = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="60"><rect width="200" height="60" fill="#eee"/></svg>`;
 
+/**
+ * The open view of a workbook's task: two lines of one box, and one of two, «47 ÷ 6 = [ ] r [ ]»
+ * (R51 spec).
+ */
+const BOOK: Task = {
+  id: "tables-of-seven",
+  statement: [{ text: "Fill in the boxes." }],
+  canvas: { kind: "workbook" },
+  items: [
+    { line: [{ text: "7 ×" }, { binding: "box" }, { text: "= 56" }] },
+    { line: [{ binding: "box" }, { text: "÷ 8 = 4" }] },
+    { line: [{ text: "47 ÷ 6 =" }, { binding: "box" }, { text: "r" }, { binding: "box" }] },
+  ],
+};
+
 /** app's sheet: the element with the task and the media, and the history it keeps for it. */
-async function app(history?: readonly HistoryEvent[]) {
+async function app(history?: readonly HistoryEvent[], task: Task = TASK) {
   const sheet = document.createElement("novatrail-canvas");
   sheet.style.width = "500px";
   sheet.style.height = "400px";
   // The language of app's interface: the sheet's buttons are labelled in it.
   sheet.lang = "ru";
-  sheet.task = TASK;
+  sheet.task = task;
   sheet.manifest = MODULE;
   sheet.media = async () => new Blob([PATH], { type: "image/svg+xml" });
   // The history first, then the marks: they hold on to its strokes.
@@ -97,14 +120,20 @@ function buttons(sheet: HTMLElement) {
   };
 }
 
-/** A pointer on a sheet, at points of the sheet: a mouse's, pointerId 1, unless told otherwise. */
-function pointer(sheet: HTMLElement, init: PointerEventInit = {}) {
+/** The canvas of a sheet, and its rectangle on the page with the CSS pixels of a unit. */
+function canvasOf(sheet: HTMLElement) {
   const canvas = sheet.shadowRoot?.querySelector("canvas");
   if (!canvas) throw new Error("the element has no canvas");
+  // The sheet is not scrolled: a unit is the canvas's width over the sheet's, from its top left.
+  const rect = canvas.getBoundingClientRect();
+  return { canvas, rect, k: rect.width / SHEET.width };
+}
+
+/** A pointer on a sheet, at points of the sheet: a mouse's, pointerId 1, unless told otherwise. */
+function pointer(sheet: HTMLElement, init: PointerEventInit = {}) {
+  const { canvas } = canvasOf(sheet);
   const send = (type: string, x: number, y: number, state: PointerEventInit) => {
-    // The sheet is not scrolled: a unit is the canvas's width over the sheet's, from its top left.
-    const rect = canvas.getBoundingClientRect();
-    const k = rect.width / SHEET.width;
+    const { rect, k } = canvasOf(sheet);
     const at = { clientX: rect.left + x * k, clientY: rect.top + y * k };
     const mouse = { pointerId: 1, pointerType: "mouse", isPrimary: true, bubbles: true };
     canvas.dispatchEvent(new PointerEvent(type, { ...mouse, ...init, ...at, ...state }));
@@ -130,9 +159,8 @@ function write(sheet: HTMLElement, y: number, from: number, to: number) {
 /** The PNG signature, the first eight bytes of every PNG file. */
 const SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
 
-/** The crop of the work for checking, read as app would: its bytes, and its pixels decoded. */
-async function read(work: ExportedWork) {
-  const { png, submission } = work;
+/** A PNG of the work for checking, read as app would: its bytes, its header, its pixels decoded. */
+async function decoded(png: Blob) {
   const bytes = new Uint8Array(await png.arrayBuffer());
   const header = new DataView(bytes.buffer);
   const bitmap = await createImageBitmap(png);
@@ -140,33 +168,68 @@ async function read(work: ExportedWork) {
   if (context === null) throw new Error("no context to read the crop with");
   context.drawImage(bitmap, 0, 0);
   const pixels = context.getImageData(0, 0, bitmap.width, bitmap.height).data;
-  const { width, height, sheetBox } = submission.crop;
-  const [ymin, xmin, ymax, xmax] = sheetBox;
-  /** The grey of the crop's pixel over a point of the sheet: sheet_box says where the crop lies. */
-  const grey = (x: number, y: number) => {
-    const px = Math.floor(((x - xmin) / (xmax - xmin)) * width);
-    const py = Math.floor(((y - ymin) / (ymax - ymin)) * height);
-    return pixels[(py * width + px) * 4] ?? 255;
-  };
   return {
     bytes,
     type: png.type,
     signature: [...bytes.subarray(0, 8)],
     size: [header.getUint32(16), header.getUint32(20)],
     decoded: [bitmap.width, bitmap.height],
-    grey,
+    /** The grey of the pixel at (px, py) of the picture: ink is dark, paper 255. */
+    grey: (px: number, py: number) => pixels[(py * bitmap.width + px) * 4] ?? 255,
   };
 }
 
-/** The work for checking, which a sheet with strokes has. */
-async function check(sheet: NovatrailCanvas): Promise<ExportedWork> {
+/** The crop of a sheet's work, read as app would, with the grey of its pixel over a sheet's point. */
+async function read(work: ExportedSheet) {
+  const picture = await decoded(work.png);
+  const { width, height, sheetBox } = work.submission.crop;
+  const [ymin, xmin, ymax, xmax] = sheetBox;
+  /** The grey of the crop's pixel over a point of the sheet: sheet_box says where the crop lies. */
+  const grey = (x: number, y: number) =>
+    picture.grey(
+      Math.floor(((x - xmin) / (xmax - xmin)) * width),
+      Math.floor(((y - ymin) / (ymax - ymin)) * height),
+    );
+  return { ...picture, grey };
+}
+
+/** The work for checking, which a sheet with strokes has: the crop of a sheet. */
+async function check(sheet: NovatrailCanvas): Promise<ExportedSheet> {
   const work = await sheet.exportWork();
-  if (work === null) throw new Error("the sheet gave no work for checking");
+  if (work === null || !("png" in work)) throw new Error("the sheet gave no work for checking");
   return work;
 }
 
+/** The work for checking, which a workbook with a box filled has: the crops of its boxes. */
+async function checkBoxes(book: NovatrailCanvas): Promise<ExportedWorkbook> {
+  const work = await book.exportWork();
+  if (work === null || !("cells" in work)) throw new Error("the workbook gave no work of boxes");
+  return work;
+}
+
+/** The bytes of the crops of a workbook's work, in its order. */
+function bytesOf(work: ExportedWorkbook): Promise<Uint8Array[]> {
+  return Promise.all(work.cells.map(async ({ png }) => new Uint8Array(await png.arrayBuffer())));
+}
+
+/** A workbook's boxes, as the learner finds them: by their role and their names, in Russian. */
+function boxesOf(book: HTMLElement): Element[] {
+  return page
+    .elementLocator(book)
+    .getByRole("img", { name: /^Окошко/ })
+    .elements();
+}
+
+/** A level stroke across the middle of a box the learner sees, a quarter of its width in. */
+function writeIn(book: HTMLElement, box: Element) {
+  const { rect, k } = canvasOf(book);
+  const { left, top, width, height } = box.getBoundingClientRect();
+  const y = (top + height / 2 - rect.top) / k;
+  write(book, y, (left + width / 4 - rect.left) / k, (left + (3 * width) / 4 - rect.left) / k);
+}
+
 /** The tutor's marks of a submission as app has them back from api, through JSON. */
-function marksOf(submission: Submission, name: string): Marks {
+function marksOf(submission: SheetSubmission, name: string): Marks {
   return JSON.parse(
     JSON.stringify({ submission, marks: [{ kind: "frame", at: { group: "A" }, name }] }),
   );
@@ -370,6 +433,50 @@ test("a sheet taken off the page in the middle of a stroke tells its own listene
   } finally {
     document.removeEventListener("historychange", onPage);
   }
+});
+
+test("app's path on a workbook: write in its boxes and beside them, read which are filled, check, and open it again from the store", async () => {
+  const first = await app(undefined, BOOK);
+  const { sheet } = first;
+  expect(await sheet.exportWork()).toBeNull();
+  const boxes = boxesOf(sheet);
+  expect(boxes).toHaveLength(4);
+  // The remainder before the quotient, and a sum beside the lines: the draft, which goes nowhere.
+  writeIn(sheet, boxes[3] as Element);
+  writeIn(sheet, boxes[1] as Element);
+  write(sheet, 700, 100, 300);
+  expect(sheet.filled).toEqual([[false], [true], [false, true]]);
+
+  // Check: the crop of each filled box, in the task's order, and the context app keeps.
+  const work = await checkBoxes(sheet);
+  expect(work.cells.map(({ item, slot }) => [item, slot])).toEqual([
+    [2, 1],
+    [3, 2],
+  ]);
+  for (const { png } of work.cells) {
+    const crop = await decoded(png);
+    expect(crop.type).toBe("image/png");
+    expect(crop.signature).toEqual(SIGNATURE);
+    expect(crop.decoded).toEqual(crop.size);
+    // The box's stroke alone, in the middle of a crop of R25's least side, and paper round it.
+    expect(crop.size).toEqual([200, 200]);
+    expect(Math.min(crop.grey(100, 99), crop.grey(100, 100))).toBeLessThan(128);
+    expect(crop.grey(100, 60)).toBe(255);
+  }
+  expect(work.submission.boxes).toEqual([
+    { item: 2, slot: 1, ids: [2] },
+    { item: 3, slot: 2, ids: [1] },
+  ]);
+  expect(JSON.parse(JSON.stringify(work.submission))).toEqual(work.submission);
+
+  // Opened again from the store, through JSON: the same boxes filled, the same crops and context.
+  const kept = JSON.parse(JSON.stringify(first.store));
+  sheet.remove();
+  const again = await app(kept, BOOK);
+  expect(again.sheet.filled).toEqual(sheet.filled);
+  const reopened = await checkBoxes(again.sheet);
+  expect(await bytesOf(reopened)).toEqual(await bytesOf(work));
+  expect(reopened.submission).toEqual(work.submission);
 });
 
 test("the element is the package's, by its tag", () => {

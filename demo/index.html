@@ -10,7 +10,8 @@
      task's grid, statement and height of digits, in a light or a dark theme (T11), the groups of
      the strokes under the sheet, by a rule the page can change (T12), the crop for checking
      (T13), the tutor's marks, given back over the crop Check sent (T14), and the workbook, its
-     lines in the font and the explanation language the page gives (T51). -->
+     lines in the font and the explanation language the page gives (T51), and the crops of its
+     filled boxes Check sent (T49). -->
 <style>
   body { margin: 0; padding: 16px; background: #f4f4f1; color: #1d1d1b;
          font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
@@ -57,6 +58,9 @@
   #sent-boxes .given, #sent-boxes .dragged { fill: rgb(37 99 235 / 0.08); stroke: #2563eb;
                                              stroke-width: 1.5; stroke-dasharray: 4 3; }
   #sent-groups button { padding: 2px 10px; margin: 0 6px 6px 0; }
+  /* The crops of a workbook's filled boxes Check sent, each with its place and its size. */
+  #sent-cells figure { display: inline-block; margin: 0 8px 8px 0; font-size: 13px; }
+  #sent-cells img { display: block; border: 1px solid #d4d4cf; }
   table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
   th, td { text-align: left; padding: 2px 12px 2px 0; vertical-align: top; }
 </style>
@@ -156,6 +160,7 @@
       <figcaption id="sent-caption"></figcaption>
     </figure>
     <div id="sent-groups"></div>
+    <div id="sent-cells"></div>
   </div>
 </main>
 <script type="module" src="./main.ts"></script>

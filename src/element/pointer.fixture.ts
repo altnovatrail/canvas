@@ -7,8 +7,15 @@
 import { cdp, page } from "vitest/browser";
 import { toScreen, type View } from "../core/screen.js";
 import "./index.js";
-import type { Task } from "./index.js";
+import type { ExportedSheet, NovatrailCanvas, Task } from "./index.js";
 import { probe } from "./probe.js";
+
+/** The work of a sheet for checking, as its exportWork() gives it (R27): a sheet's, and not null. */
+export async function sheetWork(element: NovatrailCanvas): Promise<ExportedSheet> {
+  const work = await element.exportWork();
+  if (work === null || !("png" in work)) throw new Error("the sheet gave no work for checking");
+  return work;
+}
 
 /** Two frames: one for the element's layout, one for its drawing. */
 export async function settle(): Promise<void> {

@@ -10,9 +10,9 @@
 // picture the page draws and one that never comes — and the module's manifest, whose height of
 // digits the page's control changes (T44; R32). Dark theme sets the element's custom properties
 // (T11; R23). A workbook's task takes the lines of a page of the layout's corpus, those that do not
-// fit among them, in the font and the explanation language the page's controls give; its work for
-// checking comes in a later version, and Check says so (T51; R35, R36). The counter tells how many
-// of its boxes are filled (T48; R37).
+// fit among them, in the font and the explanation language the page's controls give (T51; R35,
+// R36). The counter tells how many of its boxes are filled (T48; R37), and Check sends the crop of
+// each filled box, which the page shows with its place and its size (T49; R38).
 // Under the sheet the page draws the groups of the strokes the history leaves, after every
 // historychange, by the sheet's rule or by the pause and the reaches its fields give (T12; R24),
 // and their crop for checking at the height of digits the manifest gives, with the frames of those
@@ -32,6 +32,7 @@ import { pictureOf } from "../src/core/raster.js";
 import { moduleManifest, sheetTask, workbookTask } from "../src/core/tasks.fixture.js";
 import "../src/element/index.js";
 import type {
+  ExportedCell,
   GridKind,
   HistoryChangeEvent,
   Manifest,
@@ -39,7 +40,7 @@ import type {
   Marks,
   Media,
   NovatrailCanvas,
-  Submission,
+  SheetSubmission,
   Task,
 } from "../src/element/index.js";
 import { probe } from "../src/element/probe.js";
@@ -78,6 +79,7 @@ const sent = part("sent", HTMLImageElement);
 const sentBoxes = part("sent-boxes", SVGSVGElement);
 const sentGroups = part("sent-groups", HTMLDivElement);
 const sentCaption = part("sent-caption", HTMLElement);
+const sentCells = part("sent-cells", HTMLDivElement);
 const unmark = part("unmark", HTMLButtonElement);
 
 /** How long Check holds the writing, standing in for the minutes the models take. */
@@ -362,25 +364,29 @@ function showCrop(strokes: readonly Stroke[], groups: readonly Group[]): void {
   );
 }
 
-/** The submission of the last Check, from exportWork(), and the marks given so far. */
-let submission: Submission | undefined;
+/** The submission of the last Check of a sheet, from exportWork(), and the marks given so far. */
+let submission: SheetSubmission | undefined;
 let given: readonly Mark[] = [];
+/** What the page says of the crops of a workbook's boxes the last Check sent, or nothing. */
+let cellsSent = "";
 
 /**
- * What Check sends: the crop of exportWork() (R27), whose submission the page keeps. Marks given
- * before go: they were of the last submission. The work is null on an empty sheet.
+ * What Check sends: the crop of exportWork() (R27), whose submission the page keeps, or on a
+ * workbook the crop of each filled box (R38). Marks given before go: they were of the last
+ * submission. The work is null on an empty sheet, and on a workbook with no box filled.
  */
 async function send(): Promise<boolean> {
   const work = await sheet.exportWork();
   given = [];
   sheet.marks = undefined;
-  submission = work?.submission;
+  submission = work !== null && "png" in work ? work.submission : undefined;
   if (sent.src !== "") URL.revokeObjectURL(sent.src);
   sentGroups.replaceChildren();
-  if (work === null) {
+  await showCells(work !== null && "cells" in work ? work.cells : []);
+  if (work === null || "cells" in work) {
     sent.removeAttribute("src");
     showMarks();
-    return false;
+    return work !== null;
   }
   const { width, height } = work.submission.crop;
   sent.width = width;
@@ -399,6 +405,36 @@ async function send(): Promise<boolean> {
   return true;
 }
 
+/** The crops of a workbook's filled boxes Check sent, each with its place and its size (R38). */
+async function showCells(cells: readonly ExportedCell[]): Promise<void> {
+  for (const image of sentCells.querySelectorAll("img")) URL.revokeObjectURL(image.src);
+  sentCells.replaceChildren();
+  cellsSent = "";
+  const shown = await Promise.all(
+    cells.map(async ({ item, slot, png }) => {
+      // The size is the PNG's own, in its header: the width and the height after the signature.
+      const header = new DataView(await png.slice(16, 24).arrayBuffer());
+      const size = { width: header.getUint32(0), height: header.getUint32(4) };
+      const tokens = tokensOf(size);
+      const image = document.createElement("img");
+      image.src = URL.createObjectURL(png);
+      image.alt = `The crop of box ${slot} of item ${item}`;
+      const caption = document.createElement("figcaption");
+      caption.textContent = `${item}.${slot} · ${size.width} × ${size.height} · ${tokens} tokens · ${(png.size / 1024).toFixed(1)} KB`;
+      const figure = document.createElement("figure");
+      figure.append(image, caption);
+      return { figure, tokens, bytes: png.size };
+    }),
+  );
+  sentCells.replaceChildren(...shown.map(({ figure }) => figure));
+  const sum = (of: (each: (typeof shown)[number]) => number) =>
+    shown.reduce((total, each) => total + of(each), 0);
+  cellsSent =
+    shown.length === 0
+      ? ""
+      : `${shown.length} ${shown.length === 1 ? "box" : "boxes"} sent: ${sum(({ tokens }) => tokens)} tokens, ${(sum(({ bytes }) => bytes) / 1024).toFixed(1)} KB in all. Marks on a workbook's boxes come in a later version.`;
+}
+
 /** One more mark of the submission, back to the element with the others. */
 function mark(each: Mark): void {
   if (submission === undefined) return;
@@ -415,7 +451,7 @@ function mark(each: Mark): void {
 function showMarks(): void {
   if (submission === undefined) {
     sentBoxes.replaceChildren();
-    sentCaption.textContent = "Check sends the crop of the work; it comes here.";
+    sentCaption.textContent = cellsSent || "Check sends the crop of the work; it comes here.";
     return;
   }
   const { width, height } = submission.crop;
@@ -612,6 +648,7 @@ part("next", HTMLButtonElement).addEventListener("click", () => {
   if (sent.src !== "") URL.revokeObjectURL(sent.src);
   sent.removeAttribute("src");
   sentGroups.replaceChildren();
+  void showCells([]);
   status.textContent = "";
   mounted(mount());
 });

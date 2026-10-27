@@ -1,11 +1,11 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import { type Box, boxOf } from "../core/geometry.js";
-import type { Mark, Marks, Submission } from "../core/marks.js";
+import type { Mark, Marks, SheetSubmission } from "../core/marks.js";
 import type { View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
 import { NovatrailCanvas } from "./index.js";
-import { at, screenshot } from "./pointer.fixture.js";
+import { at, screenshot, sheetWork } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The tutor's marks on the sheet in Chromium (R26): a frame round the strokes a mark holds on to,
@@ -85,10 +85,8 @@ function twoGroups(canvas: HTMLCanvasElement, view: () => View): void {
 }
 
 /** The element's submission, as its exportWork() gives it (R27): its crop at 32 px, its groups. */
-async function sentOf(element: NovatrailCanvas): Promise<Submission> {
-  const work = await element.exportWork();
-  if (work === null) throw new Error("the sheet gave no work for checking");
-  return work.submission;
+async function sentOf(element: NovatrailCanvas): Promise<SheetSubmission> {
+  return (await sheetWork(element)).submission;
 }
 
 function frameOf(name: string, at: Mark["at"]): Mark {

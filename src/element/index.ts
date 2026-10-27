@@ -17,7 +17,9 @@
 // a single pointer (T45; R33). The workbook's lines, laid out on its page, stand on the template in
 // place of the grid — numbers, text and boxes, which a screen reader reads in the task's order (T51;
 // R35, R36). Each stroke is in one box or in none, by a rule of whole numbers, and `filled` tells
-// which boxes hold one: a filled box's frame is thicker, and its name says so (T48; R37).
+// which boxes hold one: a filled box's frame is thicker, and its name says so (T48; R37). A
+// workbook's work for checking is the crop of each filled box, with the table of the boxes' strokes
+// for its context (T49; R38).
 
 import type { Vec2 } from "perfect-freehand";
 import { type Cell, cellOf, cellsOf, type Filled, filledOf } from "../core/boxes.js";
@@ -34,8 +36,9 @@ import {
   marksOf,
   type Placed,
   placesOf,
-  type Submission,
+  type SheetSubmission,
   shownOf,
+  type WorkbookSubmission,
 } from "../core/marks.js";
 import { INK_REACH, outline } from "../core/outline.js";
 import {
@@ -49,7 +52,7 @@ import {
 import { type PointerSample, Recorder } from "../core/recorder.js";
 import { fitScale, K_MAX, scaleFor, toSheet, type View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
-import { workForCheck } from "../core/submission.js";
+import { cellsForCheck, workForCheck } from "../core/submission.js";
 import {
   isTool,
   isWorkbook,
@@ -62,7 +65,6 @@ import {
   type Tool,
   taskOf,
   templateOf,
-  WORKBOOK_KIND,
 } from "../core/task.js";
 import { nextIdOf, resumeOf, Work } from "../core/work.js";
 import { write } from "./attributes.js";
@@ -72,7 +74,7 @@ import { PEN_MODE } from "./session.js";
 import { type Media, Statement } from "./statement.js";
 import { Tools } from "./tools.js";
 
-export type { Filled } from "../core/boxes.js";
+export type { Filled, Filling } from "../core/boxes.js";
 export type { Crop, Frame } from "../core/crop.js";
 export type { Box } from "../core/geometry.js";
 export type { GridKind } from "../core/grid.js";
@@ -80,7 +82,15 @@ export type { Group } from "../core/groups.js";
 export type { HistoryEvent } from "../core/history.js";
 export type { InkPoint, Stroke } from "../core/ink.js";
 export type { Manifest } from "../core/manifest.js";
-export type { Anchor, CropNumbers, Mark, Marks, Submission } from "../core/marks.js";
+export type {
+  Anchor,
+  CropNumbers,
+  Mark,
+  Marks,
+  SheetSubmission,
+  Submission,
+  WorkbookSubmission,
+} from "../core/marks.js";
 export type {
   AnswerSlot,
   LinePart,
@@ -114,11 +124,30 @@ export interface HistoryChange {
 /** The event the element sends after every action on the sheet (R27). */
 export type HistoryChangeEvent = CustomEvent<HistoryChange>;
 
-/** The work for checking (R27): the PNG of the crop, and the context of the submission. */
-export interface ExportedWork {
+/** The work of a sheet for checking (R27): the PNG of the crop, and the context of the submission. */
+export interface ExportedSheet {
   readonly png: Blob;
-  readonly submission: Submission;
+  readonly submission: SheetSubmission;
 }
+
+/** The crop of one filled box of a workbook (R38): its item and its slot, from 1, and its PNG. */
+export interface ExportedCell {
+  readonly item: number;
+  readonly slot: number;
+  readonly png: Blob;
+}
+
+/**
+ * The work of a workbook for checking (R34, R38): the crop of each filled box, in the task's order,
+ * and the context of the submission.
+ */
+export interface ExportedWorkbook {
+  readonly cells: readonly ExportedCell[];
+  readonly submission: WorkbookSubmission;
+}
+
+/** The work for checking, of a sheet or of a workbook: its key, `png` or `cells`, tells which (R38). */
+export type ExportedWork = ExportedSheet | ExportedWorkbook;
 
 /** What a `toolchange` tells (R28): the tool the learner chose with the element's own buttons. */
 export interface ToolChange {
@@ -846,27 +875,30 @@ export class NovatrailCanvas extends HTMLElement {
   }
 
   /**
-   * The work for checking (R07, R27), when the consumer asks for it, at Check: the crop of the
-   * strokes the sheet shows, at the height of a digit the manifest asks for (R25, R32), its PNG,
-   * and the context of the submission — the crop's numbers, the groups and their digest (R26, R27)
-   * — which the consumer keeps, sends only the PNG to be checked (R09 spec), and gives back with
-   * the tutor's marks. It is the sheet as it is when this is called: a stroke under way is not on it yet, while
-   * the strokes under an eraser not yet lifted still are. A sheet without strokes has no work to
-   * check, and the promise gives null (H3). A workbook's work comes in a later version, with its
-   * boxes' crops (R34): until then the promise fails with a NotSupportedError, written on or not,
-   * for null would say that nothing is written (R36).
+   * The work for checking (R07, R27), when the consumer asks for it, at Check, at the height of a
+   * digit the manifest asks for (R25, R32). On a sheet it is the crop of the strokes the sheet
+   * shows, its PNG, and the context of the submission — the crop's numbers, the groups and their
+   * digest (R26, R27). On a workbook it is the crop of each filled box, by its strokes alone, with
+   * its item and its slot, and the context — the table «box → stroke IDs» and its digest (R34,
+   * R38); the draft goes nowhere. The consumer keeps the context, sends only the PNGs and their
+   * places to be checked (R09 spec), and gives the context back with the tutor's marks. It is the
+   * sheet as it is when this is called: a stroke under way is not on it yet, while the strokes
+   * under an eraser not yet lifted still are, as `filled` has them. A sheet without strokes, and a
+   * workbook with no box filled, have no work to check, and the promise gives null (H3).
    */
   async exportWork(): Promise<ExportedWork | null> {
+    const { digit } = this.#settings;
     if (isWorkbook(this.#shownTemplate)) {
-      throw new DOMException(
-        `the work of a "${WORKBOOK_KIND}" for checking comes in a later version of <${TAG}>`,
-        "NotSupportedError",
+      const work = cellsForCheck(this.#work.strokes, this.#cells, digit);
+      if (work === null) return null;
+      const cells = work.cells.map(({ item, slot, png }) =>
+        Object.freeze({ item, slot, png: blobOf(png) }),
       );
+      return Object.freeze({ cells: Object.freeze(cells), submission: work.submission });
     }
-    const work = workForCheck(this.#work.strokes, this.#settings.digit);
+    const work = workForCheck(this.#work.strokes, digit);
     if (work === null) return null;
-    const png = new Blob([work.png], { type: "image/png" });
-    return Object.freeze({ png, submission: work.submission });
+    return Object.freeze({ png: blobOf(work.png), submission: work.submission });
   }
 
   disconnectedCallback(): void {
@@ -1643,6 +1675,11 @@ function rectOf({ left, top, width, height }: PageBox): SVGRectElement {
   rect.setAttribute("height", String(height));
   rect.setAttribute("role", "img");
   return rect;
+}
+
+/** The bytes of a PNG as a Blob, for the consumer to send or show. */
+function blobOf(png: Uint8Array<ArrayBuffer>): Blob {
+  return new Blob([png], { type: "image/png" });
 }
 
 /** Whether two lists are the same, item by item, by `same`: by identity unless given. */

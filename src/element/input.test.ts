@@ -380,7 +380,8 @@ function eraserHand(
 /** The IDs of the strokes the work for checking is made of, ascending: those on the sheet. */
 async function sent(element: NovatrailCanvas): Promise<number[]> {
   const work = await element.exportWork();
-  return (work?.submission.groups ?? []).flatMap(({ ids }) => ids).sort((a, b) => a - b);
+  const groups = work !== null && "png" in work ? work.submission.groups : [];
+  return groups.flatMap(({ ids }) => ids).sort((a, b) => a - b);
 }
 
 const idsOn = (element: HTMLElement) => probe(element).strokes.map((stroke) => stroke.id);
