@@ -4,13 +4,15 @@
 
 import type { LinePart, WorkbookItem } from "./task.js";
 
-/** A line written as on paper, "[]" a box: "7 × [] = 56" is "7 ×", a box and "= 56". */
+/**
+ * A line written as on paper, "[]" a box with a space on either side of it, if any: "7 × [] = 56"
+ * is "7 ×", a box and "= 56".
+ */
 export function line(written: string): WorkbookItem {
   const parts: LinePart[] = [];
-  written.split("[]").forEach((text, n) => {
+  written.split(/ ?\[\] ?/).forEach((text, n) => {
     if (n > 0) parts.push({ binding: "box" });
-    const trimmed = text.replace(/^ +| +$/g, "");
-    if (trimmed !== "") parts.push({ text: trimmed });
+    if (text !== "") parts.push({ text });
   });
   return { line: parts };
 }
