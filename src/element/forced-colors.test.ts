@@ -1,15 +1,17 @@
 import { afterEach, expect, test } from "vitest";
 import { CROP } from "../core/crop.js";
+import { SHORT } from "../core/pages.fixture.js";
 import { toScreen, type View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
 import { workForCheck } from "../core/submission.js";
+import { workbookTask } from "../core/tasks.fixture.js";
 import "./index.js";
 import { probe } from "./probe.js";
 
 // The sheet with forced colours, in a browser context that is in the mode from the start (R23):
-// the system's colours stand in for the consumer's theme on the screen, the tutor's frames too, and
-// the crop for checking is as it always is. vitest.config.ts runs this file alone, in a project of
-// its own.
+// the system's colours stand in for the consumer's theme on the screen, the tutor's frames and a
+// workbook's print too, and the crop for checking is as it always is. vitest.config.ts runs this
+// file alone, in a project of its own.
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -142,4 +144,22 @@ test("with forced colours the row of buttons takes the system's colours of butto
     expect(getComputedStyle(unavailable).color).toBe(system("GrayText"));
     expect(getComputedStyle(unavailable).borderTopColor).toBe(system("GrayText"));
   }
+});
+
+test("with forced colours a workbook's text and the frames of its boxes are the system's text colour, whatever the consumer's ink", async () => {
+  const theme = document.createElement("div");
+  theme.style.setProperty("--novatrail-canvas-ink", "rgb(0, 0, 255)");
+  document.body.append(theme);
+  made.push(theme);
+  const element = document.createElement("novatrail-canvas");
+  element.style.width = "400px";
+  element.task = workbookTask(SHORT);
+  theme.append(element);
+  await settle();
+  const text = element.shadowRoot?.querySelector(".print text");
+  const box = element.shadowRoot?.querySelector(".print rect");
+  if (!text || !box) throw new Error("the workbook has no print");
+  // Explicit: SVG keeps its parent's colour in the mode, and the theme's ink would stay (R36).
+  expect(getComputedStyle(text).fill).toBe(system("CanvasText"));
+  expect(getComputedStyle(box).stroke).toBe(system("CanvasText"));
 });

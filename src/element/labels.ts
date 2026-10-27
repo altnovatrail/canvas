@@ -1,11 +1,15 @@
-// The labels of the element's own buttons, in the languages of its interface (R28, R29, R33): English
-// and Russian, as О-2 recommends, until app's T07 gives the shared scheme of translations of the
-// packages of the interface. The language is the element's own `lang`, looked up as RFC 4647
-// does it. This module is no entry point of the package.
+// The labels of the element's own buttons and of a workbook's boxes, in the languages of its
+// interface (R28, R29, R33, R36): English and Russian, as О-2 recommends, until app's T07 gives the
+// shared scheme of translations of the packages of the interface. The language is the element's
+// own `lang`, looked up as RFC 4647 does it. This module is no entry point of the package.
 
-/** What the row of buttons says: its own name, the name of the group of tools, each button. */
+/**
+ * What the element says: the row of buttons its own name — the canvas kind's — the name of the group
+ * of tools and each button, and a workbook's box its name.
+ */
 export interface Labels {
   readonly sheet: string;
+  readonly workbook: string;
   readonly tool: string;
   readonly pen: string;
   readonly eraser: string;
@@ -16,11 +20,14 @@ export interface Labels {
   readonly down: string;
   /** The button that lets a finger write again, in pen mode (R29). */
   readonly finger: string;
+  /** A box of a workbook's line, numbered when the line has more than one (R36). */
+  readonly box: string;
 }
 
 /** The labels in English, the code's own language: those of any language the table has not. */
 const ENGLISH: Labels = Object.freeze({
   sheet: "Sheet",
+  workbook: "Workbook",
   tool: "Tool",
   pen: "Pen",
   eraser: "Eraser",
@@ -29,6 +36,7 @@ const ENGLISH: Labels = Object.freeze({
   up: "Up",
   down: "Down",
   finger: "Draw with finger",
+  box: "Box",
 });
 
 /**
@@ -41,6 +49,7 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
     "ru",
     Object.freeze({
       sheet: "Лист",
+      workbook: "Тетрадь",
       tool: "Инструмент",
       pen: "Перо",
       eraser: "Ластик",
@@ -49,6 +58,7 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
       up: "Выше",
       down: "Ниже",
       finger: "Рисовать пальцем",
+      box: "Окошко",
     }),
   ],
 ]);
