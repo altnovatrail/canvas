@@ -5,7 +5,7 @@ import type { Mark, Marks, Submission } from "../core/marks.js";
 import type { View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
 import { NovatrailCanvas } from "./index.js";
-import { at } from "./pointer.fixture.js";
+import { at, screenshot } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The tutor's marks on the sheet in Chromium (R26): a frame round the strokes a mark holds on to,
@@ -375,26 +375,11 @@ test("the frame takes the theme's colour, and leaves its own strokes' ink as it 
   const [rect] = shown(layer);
   if (rect === undefined) throw new Error("no frame drawn");
   expect(getComputedStyle(rect).stroke).toBe("rgb(0, 160, 0)");
-  const base64 = await page.screenshot({ element, save: false });
-  const file = await (await fetch(`data:image/png;base64,${base64}`)).blob();
-  const bitmap = await createImageBitmap(file);
-  const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext("2d");
-  if (context === null) throw new Error("no context to read the screenshot with");
-  context.drawImage(bitmap, 0, 0);
-  const scale = bitmap.width / element.getBoundingClientRect().width;
+  const shot = await screenshot(element);
   const box = element.getBoundingClientRect();
   const pixel = (x: number, y: number) => {
     const point = at(canvas, view(), x, y);
-    return [
-      ...context
-        .getImageData(
-          Math.floor((point.clientX - box.left) * scale),
-          Math.floor((point.clientY - box.top) * scale),
-          1,
-          1,
-        )
-        .data.subarray(0, 3),
-    ];
+    return shot(point.clientX - box.left, point.clientY - box.top);
   };
   // The ink: dark, untinted by the frame. The frame's line: green.
   for (const x of [120, 200, 280]) {

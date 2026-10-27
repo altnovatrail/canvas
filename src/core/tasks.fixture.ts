@@ -5,7 +5,14 @@
 // package check holds to that (scripts/package.ts).
 
 import type { Manifest } from "./manifest.js";
-import type { SheetCanvas, SheetItem, SheetTask, StatementPart } from "./task.js";
+import type {
+  SheetCanvas,
+  SheetItem,
+  SheetTask,
+  StatementPart,
+  WorkbookItem,
+  WorkbookTask,
+} from "./task.js";
 
 /** What a test gives a task on a handwriting sheet: the settings of its canvas, and the rest. */
 export interface SheetChange {
@@ -29,6 +36,15 @@ export function sheetTask(change: SheetChange = {}): SheetTask {
     ...canvas
   } = change;
   return { id, statement, canvas: { kind: "handwriting_sheet", ...canvas }, items };
+}
+
+/** A task on a workbook of these lines, with a statement of one line and the tools given, if any. */
+export function workbookTask(
+  items: readonly WorkbookItem[],
+  tools?: readonly string[],
+): WorkbookTask {
+  const canvas = { kind: "workbook" as const, ...(tools === undefined ? {} : { tools }) };
+  return { id: "tables-1", statement: [{ text: "Fill in the boxes." }], canvas, items };
 }
 
 /** A module's manifest in the format the element reads, in English unless the test says another. */

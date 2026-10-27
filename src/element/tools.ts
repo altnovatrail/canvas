@@ -5,9 +5,11 @@
 // focus can reach them, marked unavailable: a last undo from the keyboard leaves the focus where it
 // was. Up and Down scroll the sheet with a single pointer, and stand unavailable at the end they
 // scroll to (R33). In pen mode a last button lets a finger write again (R29). The labels are in
-// the element's language (labels.ts). This module is no entry point of the package.
+// the element's language (labels.ts), and the row is named by the canvas kind: the sheet or the
+// workbook (R36). This module is no entry point of the package.
 
 import type { Tool } from "../core/task.js";
+import { write } from "./attributes.js";
 import { labelsFor } from "./labels.js";
 
 /**
@@ -24,10 +26,11 @@ export interface ToolActions {
 }
 
 /**
- * What the row shows: the tools the task allows, the one in use, whether undo and clearing have
- * anything to do, and whether the finger may be asked to write again.
+ * What the row shows: the canvas kind it is named by, the tools the task allows, the one in use,
+ * whether undo and clearing have anything to do, and whether the finger may be asked to write again.
  */
 export interface ToolState {
+  readonly workbook: boolean;
   readonly tools: readonly Tool[];
   readonly tool: Tool;
   readonly undoable: boolean;
@@ -61,6 +64,8 @@ export class Tools {
   ];
   /** The language of the labels shown. */
   #lang: string | undefined;
+  /** Whether the row is a workbook's, named so. */
+  #workbook = false;
 
   constructor(actions: ToolActions) {
     this.element.className = "tools";
@@ -101,7 +106,11 @@ export class Tools {
   }
 
   /** The row as the sheet now is. Only what has changed is written. */
-  show({ tools, tool, undoable, clearable, finger }: ToolState): void {
+  show({ workbook, tools, tool, undoable, clearable, finger }: ToolState): void {
+    if (workbook !== this.#workbook) {
+      this.#workbook = workbook;
+      this.#name();
+    }
     this.#reveal(this.#eraser, tools.includes("eraser"));
     this.#reveal(this.#finger, finger);
     write(this.#pen, "aria-checked", String(tool === "pen"));
@@ -128,7 +137,7 @@ export class Tools {
     if (lang === this.#lang) return;
     this.#lang = lang;
     this.element.lang = lang;
-    this.element.setAttribute("aria-label", labels.sheet);
+    this.#name();
     this.#group.setAttribute("aria-label", labels.tool);
     this.#pen.textContent = labels.pen;
     this.#eraser.textContent = labels.eraser;
@@ -137,6 +146,12 @@ export class Tools {
     this.#up.textContent = labels.up;
     this.#down.textContent = labels.down;
     this.#finger.textContent = labels.finger;
+  }
+
+  /** The row's name: the canvas kind's, in the labels' language. */
+  #name(): void {
+    const { labels } = labelsFor(this.#lang ?? null);
+    write(this.element, "aria-label", this.#workbook ? labels.workbook : labels.sheet);
   }
 
   /**
@@ -186,11 +201,4 @@ function plainButton(): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
   return button;
-}
-
-/** An attribute set to a value, or taken off for null, and written only if it changes. */
-function write(element: Element, name: string, value: string | null): void {
-  if (element.getAttribute(name) === value) return;
-  if (value === null) element.removeAttribute(name);
-  else element.setAttribute(name, value);
 }

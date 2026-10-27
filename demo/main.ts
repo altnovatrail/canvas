@@ -9,7 +9,9 @@
 // tools, which the page's controls change by a new task, and its statement above the sheet, with a
 // picture the page draws and one that never comes — and the module's manifest, whose height of
 // digits the page's control changes (T44; R32). Dark theme sets the element's custom properties
-// (T11; R23).
+// (T11; R23). A workbook's task takes the lines of a page of the layout's corpus, those that do not
+// fit among them, in the font and the explanation language the page's controls give; its work for
+// checking comes in a later version, and Check says so (T51; R35, R36).
 // Under the sheet the page draws the groups of the strokes the history leaves, after every
 // historychange, by the sheet's rule or by the pause and the reaches its fields give (T12; R24),
 // and their crop for checking at the height of digits the manifest gives, with the frames of those
@@ -24,8 +26,9 @@
 import { CROP, type Crop, cropOf, tokensOf } from "../src/core/crop.js";
 import { GROUP_RULE, type Group, type GroupRule, groupsOf, rectOf } from "../src/core/groups.js";
 import { type HistoryEvent, replay, SHEET, type Stroke } from "../src/core/index.js";
+import { PAGES } from "../src/core/pages.fixture.js";
 import { pictureOf } from "../src/core/raster.js";
-import { moduleManifest, sheetTask } from "../src/core/tasks.fixture.js";
+import { moduleManifest, sheetTask, workbookTask } from "../src/core/tasks.fixture.js";
 import "../src/element/index.js";
 import type {
   GridKind,
@@ -50,6 +53,10 @@ function part<T extends Element>(id: string, type: new () => T): T {
 const place = part("place", HTMLDivElement);
 const counter = part("counter", HTMLParagraphElement);
 const status = part("status", HTMLSpanElement);
+const kind = part("kind", HTMLSelectElement);
+const pageOfCorpus = part("page", HTMLSelectElement);
+const font = part("font", HTMLSelectElement);
+const explanation = part("explanation", HTMLSelectElement);
 const grid = part("grid", HTMLSelectElement);
 const step = part("step", HTMLInputElement);
 const dark = part("dark", HTMLButtonElement);
@@ -95,8 +102,29 @@ const media: Media = async (ref) => {
   throw new Error(`the page has no ${ref}`);
 };
 
-/** The task of the page's number `n`, with the grid and the tools its controls give. */
+/** The pages of the layout's corpus, by name, for a workbook's task. */
+for (const { name, about } of PAGES) {
+  const option = document.createElement("option");
+  option.value = name;
+  option.textContent = name;
+  option.title = about;
+  pageOfCorpus.append(option);
+}
+
+/**
+ * The task of the page's number `n`, of the kind its controls give: a workbook of the lines of the
+ * page chosen, or a sheet of the grid chosen, with the tools chosen.
+ */
 function taskFor(n: number): Task {
+  if (kind.value === "workbook") {
+    const lines = PAGES.find(({ name }) => name === pageOfCorpus.value);
+    if (lines === undefined) throw new Error(`the corpus has no page "${pageOfCorpus.value}"`);
+    return {
+      ...workbookTask(lines.items, tools.value.split(" ")),
+      id: `${lines.name}-${n}`,
+      statement: [{ text: `Task ${n}. ${lines.about}` }],
+    };
+  }
   return sheetTask({
     id: `posts-${n}`,
     grid: grid.value as GridKind,
@@ -123,9 +151,9 @@ function taskFor(n: number): Task {
   });
 }
 
-/** The module's manifest: English, and the height of digits the page's control gives. */
+/** The module's manifest: the explanation language and the height of digits the controls give. */
 function manifestFor(): Manifest {
-  return moduleManifest({ digit_height: Number(digit.value) });
+  return moduleManifest({ digit_height: Number(digit.value), explanation: explanation.value });
 }
 
 /**
@@ -141,11 +169,12 @@ let choices = 0;
 function mount(history?: readonly HistoryEvent[], marks?: Marks): NovatrailCanvas {
   const element = document.createElement("novatrail-canvas");
   speak(element);
+  element.style.fontFamily = font.value;
   try {
     element.task = taskFor(taskNumber);
   } catch (error) {
-    // A step the page's field gives that is no task's — out of bounds, or not whole — leaves the
-    // new element without the page's task, and the page says why.
+    // A step the page's field gives that is no task's — out of bounds, or not whole — and a page
+    // whose lines do not fit leave the new element without the page's task, and the page says why.
     status.textContent = error instanceof Error ? error.message : String(error);
   }
   element.manifest = manifestFor();
@@ -516,8 +545,8 @@ async function check(): Promise<void> {
 }
 
 /**
- * The grid and the tools the controls give, by a new task: the work stays. A step out of bounds is
- * left.
+ * The canvas kind, the page, the grid and the tools the controls give, by a new task: the work
+ * stays. A step out of bounds, and a page whose lines do not fit, are left.
  */
 function regrid(): void {
   try {
@@ -580,7 +609,10 @@ part("next", HTMLButtonElement).addEventListener("click", () => {
   status.textContent = "";
   mounted(mount());
 });
-grid.addEventListener("change", regrid);
+for (const control of [kind, pageOfCorpus, grid]) control.addEventListener("change", regrid);
+font.addEventListener("change", () => {
+  sheet.style.fontFamily = font.value;
+});
 // The tools allowed are the task's, and a task without the eraser puts the pen back.
 tools.addEventListener("change", () => {
   regrid();
@@ -597,11 +629,14 @@ pause.value = String(GROUP_RULE.pause);
 across.value = String(GROUP_RULE.across);
 down.value = String(GROUP_RULE.down);
 for (const field of [pause, across, down]) field.addEventListener("input", showGroups);
-// The height of digits is the module's: a new manifest, and the task stays.
-digit.addEventListener("change", () => {
-  sheet.manifest = manifestFor();
-  showGroups();
-});
+// The height of digits and the explanation language are the module's: a new manifest, and the
+// task stays.
+for (const control of [digit, explanation]) {
+  control.addEventListener("change", () => {
+    sheet.manifest = manifestFor();
+    showGroups();
+  });
+}
 count();
 showGroups();
 showMarks();

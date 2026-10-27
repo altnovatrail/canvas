@@ -1,13 +1,13 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { page } from "vitest/browser";
 import { CROP } from "../core/crop.js";
 import { gridPath } from "../core/grid.js";
+import { shortLines } from "../core/pages.fixture.js";
 import type { View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
 import { workForCheck } from "../core/submission.js";
 import { sheetTask } from "../core/tasks.fixture.js";
 import { NovatrailCanvas } from "./index.js";
-import { at, level } from "./pointer.fixture.js";
+import { at, level, screenshot } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The sheet's layers in Chromium (R23): the stack in the order of concepts 8 spec, one view for
@@ -265,21 +265,6 @@ test("the task rules the sheet by its grid, and a task of the same template writ
   observer.disconnect();
 });
 
-/** The pixels of a screenshot of an element, at the density of the screen, without a file. */
-async function screenshot(element: HTMLElement) {
-  const base64 = await page.screenshot({ element, save: false });
-  const file = await (await fetch(`data:image/png;base64,${base64}`)).blob();
-  const bitmap = await createImageBitmap(file);
-  const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext("2d");
-  if (context === null) throw new Error("no context to read the screenshot with");
-  context.drawImage(bitmap, 0, 0);
-  const scale = bitmap.width / element.getBoundingClientRect().width;
-  /** The red, green and blue of the screenshot's pixel at a CSS point of the element. */
-  return (x: number, y: number) => [
-    ...context.getImageData(Math.floor(x * scale), Math.floor(y * scale), 1, 1).data.subarray(0, 3),
-  ];
-}
-
 /**
  * The same level stroke, six times over: a line 3 units wide is about a CSS pixel at these
  * widths, and the pixel in its middle is only partly covered by one.
@@ -404,26 +389,17 @@ test("the consumer's custom properties colour the paper, the grid, the ink and t
   expect(new Uint8Array(await work.png.arrayBuffer())).toEqual(own.png);
 });
 
-test("a workbook's task and an answer slot in a zone are TypeErrors of this version, a workbook that does not fit at its item, and the sheet stays as it was", async () => {
+test("a workbook that does not fit is a TypeError at its item, and so is an answer slot in a zone in this version, and the sheet stays as it was", async () => {
   const { element, root, grid } = await sheet(400);
   const dots = sheetTask({ grid: "dots", statement: [{ text: "Count the dots." }] });
   element.task = dots;
-  const workbook = {
+  // A workbook whose lines do not fit is refused at its item (R35).
+  const crowded = {
     id: "tables-1",
     statement: [{ text: "Write the missing numbers." }],
     canvas: { kind: "workbook" },
-    items: [{ line: [{ text: "7 ×" }, { binding: "box" }, { text: "= 56" }] }],
+    items: shortLines(21),
   } as const;
-  expect(() => {
-    element.task = workbook;
-  }).toThrow(/^task\.canvas\.kind: .* "workbook" comes in a later version$/);
-  // The layout comes first: a workbook whose lines do not fit is refused at its item (R35).
-  const crowded = {
-    ...workbook,
-    items: Array.from({ length: 21 }, (_, n) => ({
-      line: [{ text: `7 × ${n + 1} =` }, { binding: "box" as const }],
-    })),
-  };
   expect(() => {
     element.task = crowded;
   }).toThrow(/^task\.items\[20\]: no room for item 21 on the workbook's page/);

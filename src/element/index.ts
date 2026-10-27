@@ -14,7 +14,9 @@
 // nothing, and two fingers scroll (T35; R29). The task comes in the names of the module format's
 // draft, checked as its schema checks it, and the module's manifest gives the height of a digit and
 // the statement's language (T44; R32). Up and Down in the row scroll what two fingers would, with
-// a single pointer (T45; R33).
+// a single pointer (T45; R33). The workbook's lines, laid out on its page, stand on the template in
+// place of the grid — numbers, text and boxes, which a screen reader reads in the task's order (T51;
+// R35, R36).
 
 import type { Vec2 } from "perfect-freehand";
 import { Clock } from "../core/clock.js";
@@ -34,6 +36,7 @@ import {
   shownOf,
 } from "../core/marks.js";
 import { INK_REACH, outline } from "../core/outline.js";
+import { isBox, LAYOUT, type PageBox, type PageItem, type PageText } from "../core/page.js";
 import { type PointerSample, Recorder } from "../core/recorder.js";
 import { fitScale, K_MAX, scaleFor, toSheet, type View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
@@ -42,18 +45,19 @@ import {
   isTool,
   isWorkbook,
   NO_TASK,
-  SHEET_KIND,
-  type SheetTemplate,
   sameLayer,
   sameStatement,
   sameTools,
   type Task,
+  type Template,
   type Tool,
   taskOf,
   templateOf,
   WORKBOOK_KIND,
 } from "../core/task.js";
 import { nextIdOf, resumeOf, Work } from "../core/work.js";
+import { write } from "./attributes.js";
+import { labelsFor } from "./labels.js";
 import { attachProbe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
 import { type Media, Statement } from "./statement.js";
@@ -161,9 +165,15 @@ const SVG = "http://www.w3.org/2000/svg";
 // The canvas and the buttons take pointer events only as the element does: a consumer's
 // pointer-events: none on the element stops the writing and the buttons' pointer, though not
 // their keys (R20, R28). The theme is the consumer's, by custom properties that the shadow tree
-// inherits; with forced colours the system's colours stand in for them.
+// inherits; with forced colours the system's colours stand in for them. The element is horizontal
+// whatever writing mode the page is in: a sheet has no other (R36).
+//
+// A workbook's lines are printed in the ink's colour and the consumer's font, and nothing else the
+// element inherits — spacing, weight, transforms, the direction — moves them: `all: initial` takes
+// it off, and what the print needs comes back (R36). A box's frame is one CSS pixel at any scale,
+// on whole device pixels: an antialiased line of one pixel would lose its contrast.
 const STYLE = `
-:host { display: flex; flex-direction: column; isolation: isolate; }
+:host { display: flex; flex-direction: column; isolation: isolate; writing-mode: horizontal-tb; }
 :host([hidden]) { display: none; }
 .tools {
   position: sticky; top: var(--novatrail-canvas-top, 0px); z-index: 1; flex: none;
@@ -209,6 +219,16 @@ const STYLE = `
   vector-effect: non-scaling-stroke;
 }
 .grid.dots { stroke-width: 3px; stroke-linecap: round; }
+.print {
+  all: initial; font-family: inherit; visibility: inherit; pointer-events: none; direction: ltr;
+  font-variant-numeric: tabular-nums; font-size: ${LAYOUT.size}px;
+  color: var(--novatrail-canvas-ink, ${INK});
+}
+.print text { fill: currentColor; }
+.print rect {
+  fill: none; stroke: currentColor; stroke-width: 1px; vector-effect: non-scaling-stroke;
+  shape-rendering: crispEdges;
+}
 canvas {
   display: block; color: var(--novatrail-canvas-ink, ${INK}); transition: color 1ms step-end;
   touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
@@ -221,6 +241,8 @@ canvas {
 @media (forced-colors: active) {
   .sheet { outline: 1px solid CanvasText; }
   .grid { stroke: GrayText; }
+  .print text { fill: CanvasText; }
+  .print rect { stroke: CanvasText; }
   canvas { color: CanvasText; }
   .marks rect { stroke: Highlight; }
   .tools { background: Canvas; color: CanvasText; }
@@ -318,9 +340,11 @@ export class NovatrailCanvas extends HTMLElement {
   readonly #sheet = document.createElement("div");
   /** The sheet's visible part, where its layers stand, bottom to top (concepts 8 spec; R23). */
   readonly #stage = document.createElement("div");
-  /** The author's template: the task's grid. */
+  /** The author's template: a sheet's grid, or a workbook's lines, a list of its items (R36). */
   readonly #template = svgLayer("template");
   readonly #grid = document.createElementNS(SVG, "path");
+  readonly #print = document.createElementNS(SVG, "g");
+  readonly #lines = document.createElementNS(SVG, "g");
   /** The module's widget, from stage 4 (R16 spec), and the author's show: empty for now. */
   readonly #widget = htmlLayer("widget");
   readonly #show = htmlLayer("show");
@@ -398,7 +422,9 @@ export class NovatrailCanvas extends HTMLElement {
   #unwatchPen: (() => void) | undefined;
   #tool: Tool = "pen";
   #task: Task | undefined;
-  #shownTemplate: SheetTemplate = NO_TASK;
+  #shownTemplate: Template = NO_TASK;
+  /** The language the boxes are named in: the labels', by the element's `lang` (R28). */
+  #named = "";
   /** The module's manifest as the consumer gave it, and what the element makes of it (R32). */
   #manifest: Manifest | undefined;
   #settings: Settings = NO_MANIFEST;
@@ -461,7 +487,10 @@ export class NovatrailCanvas extends HTMLElement {
     this.#sheet.className = "sheet";
     this.#stage.className = "stage";
     this.#grid.setAttribute("class", "grid");
-    this.#template.append(this.#grid);
+    this.#print.setAttribute("class", "print");
+    this.#lines.setAttribute("role", "list");
+    this.#print.append(this.#lines);
+    this.#template.append(this.#grid, this.#print);
     this.#stage.append(
       this.#template,
       this.#widget,
@@ -474,7 +503,7 @@ export class NovatrailCanvas extends HTMLElement {
     this.#column.append(this.#statement.element, this.#sheet);
     this.#viewport.append(this.#column);
     root.append(style, this.#tools.element, this.#viewport);
-    this.#rule(NO_TASK);
+    this.#lay(NO_TASK);
     this.#refresh();
 
     this.#canvas.addEventListener("pointerdown", (event) => this.#down(event));
@@ -547,15 +576,16 @@ export class NovatrailCanvas extends HTMLElement {
 
   /**
    * The open view of the task, in the names of the module format's draft 0.1 (R32): its ID, its
-   * statement, which the element shows above the sheet (R23), its canvas — the grid of the sheet
-   * and the tools the task allows (R28) — and its items. The type is the element's own until
+   * statement, which the element shows above the page (R23), its canvas — the kind, the sheet's
+   * grid and the tools the task allows (R28) — and its items. A workbook's items are its lines,
+   * which the template shows, laid out on the page (R35, R36). The type is the element's own until
    * spec's releases give the format's. A task the schema refuses is a TypeError that names the
-   * field, a field the open view has not among it, and so is a workbook, until a later version
-   * shows its lines, which the layout puts on the page already — a workbook whose lines do not fit
-   * is a TypeError at the first item that does not (R35) — and an answer slot in a zone; the sheet passes over a choice and an item's text,
-   * which app shows. Another task of the same grid, tools and statement changes nothing, and any other
-   * changes the template alone: the work stays, for the next task is a new element (R20). A task
-   * without the eraser puts the pen back, with no event.
+   * field, a field the open view has not among it, and so are a workbook whose lines do not fit,
+   * at the first item that does not (R35), and an answer slot in a zone; the sheet passes over a
+   * choice and an item's text, which app shows. Another task of the same layer, tools and statement
+   * changes nothing, and any other changes the template alone, of either kind: the work stays, for
+   * the next task is a new element (R20). A task without the eraser puts the pen back, with no
+   * event.
    */
   get task(): Task | undefined {
     return this.#task;
@@ -564,20 +594,15 @@ export class NovatrailCanvas extends HTMLElement {
   set task(task: Task | undefined) {
     if (task === this.#task) return;
     const template = templateOf(task === undefined ? undefined : taskOf(task));
-    // The workbook's template layer comes with T51.
-    if (isWorkbook(template)) {
-      throw new TypeError(
-        `task.canvas.kind: the element shows "${SHEET_KIND}" alone so far, and "${WORKBOOK_KIND}" comes in a later version`,
-      );
-    }
     this.#task = task;
-    // The grid and the statement apart: a new grid leaves the statement and its pictures as they
-    // are, and the other way round.
+    // The layer and the statement apart: a new grid or new lines leave the statement and its
+    // pictures as they are, and the other way round.
     const shown = this.#shownTemplate;
     this.#shownTemplate = template;
-    if (!sameLayer(template, shown)) this.#rule(template);
+    if (!sameLayer(template, shown)) this.#lay(template);
     if (!sameStatement(template, shown)) this.#statement.show(template.statement);
-    if (!sameTools(template, shown)) {
+    // The row is named by the canvas kind.
+    if (isWorkbook(template) !== isWorkbook(shown) || !sameTools(template, shown)) {
       if (!template.tools.includes(this.#tool)) this.#tool = "pen";
       this.#refresh();
     }
@@ -587,12 +612,13 @@ export class NovatrailCanvas extends HTMLElement {
    * The open view of the module's manifest (R32), of which the element reads the version of the
    * module format — "0.1", or the manifest is a TypeError (R44 spec) — the height of a digit on the
    * crop for checking, `canvas.digit_height`, 32 px unless given, and the explanation language, the
-   * statement's. Without a manifest the digits are 32 px and the statement is in the element's own
-   * `lang`. The rest of it the element passes over, but for the canvas settings, which are its own:
-   * one it does not know is a TypeError. A manifest it cannot read is a TypeError that names the
-   * field, and the element stays as it was; the same object given again is read again, for the
-   * consumer may have changed it. The task and the manifest are each the consumer's to give, in
-   * either order: `exportWork()` takes the height when it is called (R27).
+   * statement's and a workbook's lines'. Without a manifest the digits are 32 px, and the statement
+   * and the lines are in the element's own `lang`. The rest of it the element passes over, but for
+   * the canvas settings, which are its own: one it does not know is a TypeError. A manifest it
+   * cannot read is a TypeError that names the field, and the element stays as it was; the same
+   * object given again is read again, for the consumer may have changed it. The task and the
+   * manifest are each the consumer's to give, in either order: `exportWork()` takes the height
+   * when it is called (R27).
    */
   get manifest(): Manifest | undefined {
     return this.#manifest;
@@ -602,7 +628,10 @@ export class NovatrailCanvas extends HTMLElement {
     // The same object is read again: a consumer may have changed it in place.
     const settings = settingsOf(manifest);
     this.#manifest = manifest;
-    if (settings.lang !== this.#settings.lang) this.#statement.lang = settings.lang;
+    if (settings.lang !== this.#settings.lang) {
+      this.#statement.lang = settings.lang;
+      write(this.#lines, "lang", settings.lang ?? null);
+    }
     this.#settings = settings;
   }
 
@@ -748,12 +777,14 @@ export class NovatrailCanvas extends HTMLElement {
   }
 
   /**
-   * The element's `lang` came, changed or went: its buttons are labelled in it, or in English for a
-   * language their labels are not in, and for none (R28). An attribute the element had before it
-   * was defined comes here just after the constructor, which reads no attribute.
+   * The element's `lang` came, changed or went: its buttons and a workbook's boxes are labelled in
+   * it, or in English for a language their labels are not in, and for none (R28, R36). An attribute
+   * the element had before it was defined comes here just after the constructor, which reads no
+   * attribute.
    */
   attributeChangedCallback(): void {
     this.#tools.label(this.getAttribute("lang"));
+    this.#nameBoxes(false);
   }
 
   /**
@@ -787,9 +818,17 @@ export class NovatrailCanvas extends HTMLElement {
    * — which the consumer keeps, sends only the PNG to be checked (R09 spec), and gives back with
    * the tutor's marks. It is the sheet as it is when this is called: a stroke under way is not on it yet, while
    * the strokes under an eraser not yet lifted still are. A sheet without strokes has no work to
-   * check, and the promise gives null (H3).
+   * check, and the promise gives null (H3). A workbook's work comes in a later version, with its
+   * boxes' crops (R34): until then the promise fails with a NotSupportedError, written on or not,
+   * for null would say that nothing is written (R36).
    */
   async exportWork(): Promise<ExportedWork | null> {
+    if (isWorkbook(this.#shownTemplate)) {
+      throw new DOMException(
+        `the work of a "${WORKBOOK_KIND}" for checking comes in a later version of <${TAG}>`,
+        "NotSupportedError",
+      );
+    }
     const work = workForCheck(this.#work.strokes, this.#settings.digit);
     if (work === null) return null;
     const png = new Blob([work.png], { type: "image/png" });
@@ -839,10 +878,37 @@ export class NovatrailCanvas extends HTMLElement {
     }
   }
 
-  /** The grid of a template on the sheet. */
-  #rule(template: SheetTemplate): void {
-    this.#grid.setAttribute("d", gridPath(template.grid));
-    this.#grid.classList.toggle("dots", template.grid.kind === "dots");
+  /**
+   * The template's layer (R23, R36): a sheet's grid, which says nothing to a screen reader, or a
+   * workbook's lines, which it reads — a list of the items in the task's order, each its number,
+   * its text and its boxes, where the layout puts them.
+   */
+  #lay(template: Template): void {
+    const workbook = isWorkbook(template);
+    this.#grid.setAttribute("d", workbook ? "" : gridPath(template.grid));
+    this.#grid.classList.toggle("dots", !workbook && template.grid.kind === "dots");
+    write(this.#template, "aria-hidden", workbook ? null : "true");
+    write(this.#template, "role", workbook ? "none" : null);
+    this.#lines.replaceChildren(...(workbook ? template.page.items.map(itemOf) : []));
+    if (workbook) this.#nameBoxes(true);
+  }
+
+  /**
+   * Each box of the lines its name, in the labels' language, by the element's `lang`: "Box" alone in
+   * its line, and numbered by its slot among several (R36). Boxes named in that language already
+   * are named again only when they are new.
+   */
+  #nameBoxes(fresh: boolean): void {
+    const { lang, labels } = labelsFor(this.getAttribute("lang"));
+    if (!fresh && lang === this.#named) return;
+    this.#named = lang;
+    for (const item of this.#lines.children) {
+      const boxes = item.querySelectorAll("rect");
+      for (const [n, box] of boxes.entries()) {
+        box.setAttribute("aria-label", boxes.length > 1 ? `${labels.box} ${n + 1}` : labels.box);
+        box.setAttribute("lang", lang);
+      }
+    }
   }
 
   /** Every stroke the sheet has known, erased or not, as its history wrote them. */
@@ -1274,6 +1340,7 @@ export class NovatrailCanvas extends HTMLElement {
       this.#finger = PEN_MODE.on && navigator.maxTouchPoints > 0;
     }
     this.#tools.show({
+      workbook: isWorkbook(this.#shownTemplate),
       tools: this.#shownTemplate.tools,
       tool: this.#tool,
       undoable: this.#work.undoable,
@@ -1470,6 +1537,42 @@ function near({ x, y }: InkPoint, box: Box, reach: number): boolean {
   return (
     x >= box.minX - reach && x <= box.maxX + reach && y >= box.minY - reach && y <= box.maxY + reach
   );
+}
+
+/**
+ * An item of a workbook's lines (R36): its number, then its text and its boxes in the order they
+ * are read, each where the layout put it. A piece of text is fitted to its width by SVG, whatever
+ * the font, and its size is never read.
+ */
+function itemOf(item: PageItem): SVGGElement {
+  const g = document.createElementNS(SVG, "g");
+  g.setAttribute("role", "listitem");
+  g.append(
+    textOf(item.number),
+    ...item.line.map((part) => (isBox(part) ? rectOf(part) : textOf(part))),
+  );
+  return g;
+}
+
+function textOf({ text, left, baseline, width }: PageText): SVGTextElement {
+  const element = document.createElementNS(SVG, "text");
+  element.setAttribute("x", String(left));
+  element.setAttribute("y", String(baseline));
+  element.setAttribute("textLength", String(width));
+  element.setAttribute("lengthAdjust", "spacingAndGlyphs");
+  element.textContent = text;
+  return element;
+}
+
+/** A box, a picture to a screen reader, which its name tells of (R34). */
+function rectOf({ left, top, width, height }: PageBox): SVGRectElement {
+  const rect = document.createElementNS(SVG, "rect");
+  rect.setAttribute("x", String(left));
+  rect.setAttribute("y", String(top));
+  rect.setAttribute("width", String(width));
+  rect.setAttribute("height", String(height));
+  rect.setAttribute("role", "img");
+  return rect;
 }
 
 function sameIds(a: readonly number[], b: readonly number[]): boolean {

@@ -1,10 +1,10 @@
 // The pointer of the element's tests in Chromium: a sheet put on the page, the client point over a
-// point of it, a level stroke that a script makes, and real input through the DevTools protocol —
-// a mouse, a pen and touches (R29). The tests take them from here rather than each keeping a copy.
-// Like the tests, the build leaves this module out (tsconfig.build.json), and the package never has
-// it.
+// point of it, a level stroke that a script makes, real input through the DevTools protocol — a
+// mouse, a pen and touches (R29) — and the pixels of a screenshot. The tests take them from here
+// rather than each keeping a copy. Like the tests, the build leaves this module out
+// (tsconfig.build.json), and the package never has it.
 
-import { cdp } from "vitest/browser";
+import { cdp, page } from "vitest/browser";
 import { toScreen, type View } from "../core/screen.js";
 import "./index.js";
 import type { Task } from "./index.js";
@@ -146,4 +146,19 @@ export async function touches(
     ...(at === undefined ? {} : { timestamp: at }),
   });
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+}
+
+/** The pixels of a screenshot of an element, at the density of the screen, without a file. */
+export async function screenshot(element: HTMLElement) {
+  const base64 = await page.screenshot({ element, save: false });
+  const file = await (await fetch(`data:image/png;base64,${base64}`)).blob();
+  const bitmap = await createImageBitmap(file);
+  const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext("2d");
+  if (context === null) throw new Error("no context to read the screenshot with");
+  context.drawImage(bitmap, 0, 0);
+  const scale = bitmap.width / element.getBoundingClientRect().width;
+  /** The red, green and blue of the screenshot's pixel at a CSS point of the element. */
+  return (x: number, y: number) => [
+    ...context.getImageData(Math.floor(x * scale), Math.floor(y * scale), 1, 1).data.subarray(0, 3),
+  ];
 }

@@ -9,7 +9,8 @@
      own buttons in the language the page gives it, with the tools the task allows (T41), a
      task's grid, statement and height of digits, in a light or a dark theme (T11), the groups of
      the strokes under the sheet, by a rule the page can change (T12), the crop for checking
-     (T13), and the tutor's marks, given back over the crop Check sent (T14). -->
+     (T13), the tutor's marks, given back over the crop Check sent (T14), and the workbook, its
+     lines in the font and the explanation language the page gives (T51). -->
 <style>
   body { margin: 0; padding: 16px; background: #f4f4f1; color: #1d1d1b;
          font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
@@ -69,6 +70,23 @@
     <button id="reopen">Reopen</button>
     <button id="next">Next task</button>
     <span id="status" role="status"></span>
+  </div>
+  <div class="tools">
+    <label>Canvas <select id="kind">
+      <option value="sheet">handwriting sheet</option>
+      <option value="workbook">workbook</option>
+    </select></label>
+    <label>Page <select id="page"></select></label>
+    <label>Font <select id="font">
+      <option value="">the page's</option>
+      <option value="sans-serif">sans-serif</option>
+      <option value="serif">serif</option>
+      <option value="monospace">monospace</option>
+    </select></label>
+    <label>Explanation <select id="explanation">
+      <option value="en">en</option>
+      <option value="ru">ru</option>
+    </select></label>
   </div>
   <div class="tools">
     <label>Grid <select id="grid">
