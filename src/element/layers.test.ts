@@ -5,7 +5,8 @@ import { gridPath } from "../core/grid.js";
 import type { View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
 import { workForCheck } from "../core/submission.js";
-import { NovatrailCanvas, type Task } from "./index.js";
+import { sheetTask } from "../core/tasks.fixture.js";
+import { NovatrailCanvas } from "./index.js";
 import { at, level } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
@@ -56,8 +57,6 @@ function rgbaAt(canvas: HTMLCanvasElement, view: View, x: number, y: number): nu
     ?.getImageData(Math.floor(x * scale), Math.floor((y - view.vy) * scale), 1, 1);
   return [...(pixel?.data ?? [])];
 }
-
-const sheetKind = { kind: "handwriting-sheet" } as const;
 
 test("the sheet is a stack of layers in the order of concepts 8 spec, and of them the canvas alone takes pointer events, as the element does, and so do the buttons of the row", async () => {
   const { element, root, canvas, stage, viewport } = await sheet(400);
@@ -236,7 +235,7 @@ test("the task rules the sheet by its grid, and a task of the same template writ
   expect(grid.getAttribute("d")).toBe(gridPath({ kind: "squares", step: 50 }));
   expect(grid.classList.contains("dots")).toBe(false);
 
-  const dots: Task = { canvas: { ...sheetKind, grid: "dots", step: 40 } };
+  const dots = sheetTask({ grid: "dots", grid_step: 40 });
   element.task = dots;
   expect(element.task).toBe(dots);
   expect(grid.getAttribute("d")).toBe(gridPath({ kind: "dots", step: 40 }));
@@ -248,16 +247,18 @@ test("the task rules the sheet by its grid, and a task of the same template writ
   const records: MutationRecord[] = [];
   const observer = new MutationObserver((list) => records.push(...list));
   observer.observe(root, { subtree: true, childList: true, attributes: true, characterData: true });
-  // The same object, and then another of the same template, with a field the sheet passes over.
+  // The same object, and then another of the same template: another ID, and a choice, which app
+  // shows.
   element.task = dots;
-  const same = { canvas: { ...sheetKind, grid: "dots", step: 40 }, id: "posts" } as Task;
+  const choice = [{ answer_slots: [{ binding: "choice", options: ["5", "6"] }] }] as const;
+  const same = sheetTask({ id: "posts-2", grid: "dots", grid_step: 40, items: choice });
   element.task = same;
   expect(element.task).toBe(same);
   await settle();
   observer.takeRecords();
   expect(records).toEqual([]);
 
-  element.task = { canvas: { ...sheetKind, grid: "lines" } };
+  element.task = sheetTask({ grid: "lines" });
   expect(grid.getAttribute("d")).toBe(gridPath({ kind: "lines", step: 50 }));
   element.task = undefined;
   expect(grid.getAttribute("d")).toBe(gridPath({ kind: "squares", step: 50 }));
@@ -295,10 +296,16 @@ function near(rgb: readonly number[], expected: readonly number[]): boolean {
 test("on the screen the ink lies over the grid, and the grid's lines and dots over the paper", async () => {
   // k is 0.41, so that the ruling at 50 falls in the middle of a CSS pixel, at 20.5.
   const { element, root, canvas, view } = await sheet(410);
+  // The task first, with its statement of a line 20 px high: the sheet stands under it, and a new
+  // grid with the same statement leaves it there.
+  element.style.lineHeight = "20px";
+  element.task = sheetTask();
+  await settle();
   dense(canvas, view(), 300, 20, 330);
   await settle();
   const k = 0.41;
-  // The sheet stands under the row of buttons (R28), a whole number of CSS pixels down.
+  // The sheet stands under the row of buttons (R28) and the statement, a whole number of CSS pixels
+  // down.
   const sheetTop = root.querySelector(".sheet")?.getBoundingClientRect().top ?? Number.NaN;
   const down = sheetTop - element.getBoundingClientRect().top;
   expect(Number.isInteger(down)).toBe(true);
@@ -317,7 +324,7 @@ test("on the screen the ink lies over the grid, and the grid's lines and dots ov
   // The paper in the middle of a square.
   expect(paper(pixel(75 * k, 175 * k))).toBe(true);
 
-  element.task = { canvas: { ...sheetKind, grid: "dots" } };
+  element.task = sheetTask({ grid: "dots" });
   await settle();
   const dotted = await shot();
   const dot = dotted(50 * k, 50 * k);
@@ -328,10 +335,7 @@ test("on the screen the ink lies over the grid, and the grid's lines and dots ov
 
 test("writing, erasing, undo() and clear() leave the template as it was", async () => {
   const { element, root, canvas, grid, view } = await sheet(400);
-  element.task = {
-    canvas: { ...sheetKind, grid: "lines" },
-    statement: [{ text: "Write the answer below." }],
-  };
+  element.task = sheetTask({ grid: "lines", statement: [{ text: "Write the answer below." }] });
   await settle();
   const statement = root.querySelector(".statement");
   if (!statement) throw new Error("the element has no statement");
@@ -400,6 +404,29 @@ test("the consumer's custom properties colour the paper, the grid, the ink and t
   expect(new Uint8Array(await work.png.arrayBuffer())).toEqual(own.png);
 });
 
+test("a workbook's task and an answer slot in a zone are TypeErrors of this version, and the sheet stays as it was", async () => {
+  const { element, root, grid } = await sheet(400);
+  const dots = sheetTask({ grid: "dots", statement: [{ text: "Count the dots." }] });
+  element.task = dots;
+  const workbook = {
+    id: "tables-1",
+    statement: [{ text: "Write the missing numbers." }],
+    canvas: { kind: "workbook" },
+    items: [{ line: [{ text: "7 ×" }, { binding: "box" }, { text: "= 56" }] }],
+  } as const;
+  expect(() => {
+    element.task = workbook;
+  }).toThrow(/^task\.canvas\.kind: .* "workbook" comes in a later version$/);
+  const zone = { left: 100, top: 1000, width: 400, height: 200 };
+  const zoned = sheetTask({ items: [{ answer_slots: [{ binding: "zone", zone }] }] });
+  expect(() => {
+    element.task = zoned;
+  }).toThrow(/^task\.items\[0\]\.answer_slots\[0\]\.binding: .* no "zone" yet/);
+  expect(element.task).toBe(dots);
+  expect(grid.getAttribute("d")).toBe(gridPath({ kind: "dots", step: 50 }));
+  expect(root.querySelector(".statement")?.textContent).toBe("Count the dots.");
+});
+
 test("a task given before the element is upgraded is taken, and one it cannot show leaves it ruled as it starts, with a warning; after the upgrade such a task is a TypeError", () => {
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   try {
@@ -415,7 +442,7 @@ test("a task given before the element is upgraded is taken, and one it cannot sh
       expect(Object.hasOwn(early, "task")).toBe(false);
       return early;
     };
-    const lines: Task = { canvas: { ...sheetKind, grid: "lines" } };
+    const lines = sheetTask({ grid: "lines" });
     const taken = upgrade(lines);
     expect(taken.task).toBe(lines);
     expect(taken.shadowRoot?.querySelector(".grid")?.getAttribute("d")).toBe(
@@ -431,7 +458,7 @@ test("a task given before the element is upgraded is taken, and one it cannot sh
     expect(warn).toHaveBeenCalledOnce();
 
     expect(() => {
-      taken.task = { canvas: { ...sheetKind, step: 5 } };
+      taken.task = sheetTask({ grid_step: 5 });
     }).toThrow(TypeError);
     expect(taken.task).toBe(lines);
     expect(() => {

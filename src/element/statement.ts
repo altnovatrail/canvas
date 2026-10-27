@@ -3,7 +3,7 @@
 // so that nothing moves under the pen when it comes, and the frame shows what the picture shows in
 // words until it comes, or if it never does. This module is no entry point of the package.
 
-import type { PicturePart, Template } from "../core/task.js";
+import type { PicturePart, StatementPart } from "../core/task.js";
 
 /**
  * What gives the file of a picture of a task: the consumer's, for the canvas goes to no network
@@ -22,7 +22,10 @@ interface Picture {
 
 /** The statement of a task above the sheet, as the element shows it. */
 export class Statement {
-  /** The statement's element: the paragraphs and the pictures, in the task's language. */
+  /**
+   * The statement's element: the paragraphs and the pictures, in the module's explanation language,
+   * or in the element's own without a manifest (R32).
+   */
   readonly element = document.createElement("div");
   #pictures: readonly Picture[] = [];
   /**
@@ -55,13 +58,23 @@ export class Statement {
   }
 
   /**
-   * The statement of a template, in place of the last. The last one's pictures leave: their
+   * The language the statement is in, a BCP 47 tag, or `undefined` for the element's own, which
+   * the statement inherits. A new language changes the attribute alone: the paragraphs and the
+   * pictures stay as they are.
+   */
+  set lang(lang: string | undefined) {
+    if (lang === undefined) this.element.removeAttribute("lang");
+    else this.element.lang = lang;
+  }
+
+  /**
+   * The statement of a task, in place of the last. The last one's pictures leave: their
    * addresses go, and their files too, unless the new statement shows the same picture.
    */
-  show(template: Template): void {
+  show(statement: readonly StatementPart[]): void {
     for (const picture of this.#pictures) revoke(picture);
     const pictures: Picture[] = [];
-    const parts = template.statement.map((part) => {
+    const parts = statement.map((part) => {
       if ("text" in part) {
         const paragraph = document.createElement("p");
         // Text, never markup: a module is data (R02 spec).
@@ -73,8 +86,6 @@ export class Statement {
       return picture.frame;
     });
     this.element.replaceChildren(...parts);
-    if (template.lang === undefined) this.element.removeAttribute("lang");
-    else this.element.lang = template.lang;
     this.#pictures = pictures;
     for (const ref of this.#files.keys()) {
       if (!this.#shows(ref)) this.#files.delete(ref);

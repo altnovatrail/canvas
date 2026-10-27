@@ -1,11 +1,12 @@
 // Type-checked by ci-lint and never built: the element's interface as a consumer's types see it
-// (R07, R27, R28). What a consumer may do type-checks; each line under a directive must be an
+// (R07, R27, R28, R32). What a consumer may do type-checks; each line under a directive must be an
 // error, and were it not, the directive would go unused, and that would be the error instead.
 
 import type {
   ExportedWork,
   HistoryChangeEvent,
   HistoryEvent,
+  Manifest,
   NovatrailCanvas,
   Submission,
   Tool,
@@ -14,6 +15,15 @@ import type {
 
 declare const sheet: NovatrailCanvas;
 declare const crop: Submission["crop"];
+declare const manifest: Manifest;
+
+/** A task's open view on a handwriting sheet, in the names of the module format's draft (R32). */
+const posts = {
+  id: "posts-1",
+  statement: [{ text: "How many posts are there?" }],
+  canvas: { kind: "handwriting_sheet" },
+  items: [{ answer_slots: [{ binding: "anywhere" }] }],
+} as const;
 
 /** The tag gives the element's type, made or found. */
 export const made: NovatrailCanvas = document.createElement("novatrail-canvas");
@@ -33,6 +43,16 @@ document.addEventListener("toolchange", (event) => {
   return tool;
 });
 sheet.tool = "eraser";
+sheet.task = posts;
+sheet.task = { ...posts, canvas: { kind: "handwriting_sheet", grid: "dots", grid_step: 40 } };
+sheet.task = {
+  id: "tables-1",
+  statement: posts.statement,
+  canvas: { kind: "workbook" },
+  items: [{ line: [{ text: "7 ×" }, { binding: "box" }, { text: "= 56" }] }],
+};
+sheet.manifest = manifest;
+sheet.manifest = undefined;
 
 export const work: Promise<ExportedWork | null> = sheet.exportWork();
 export const history: readonly HistoryEvent[] = sheet.history;
@@ -51,6 +71,14 @@ document.addEventListener("toolchange", (event) => {
   // @ts-expect-error The tool told is the learner's choice, to read.
   event.detail.tool = "pen";
 });
+// @ts-expect-error null is no manifest: undefined, and undefined alone, is none.
+sheet.manifest = null;
+// @ts-expect-error The grid's step is grid_step in the format, not step.
+sheet.task = { ...posts, canvas: { kind: "handwriting_sheet", step: 40 } };
+// @ts-expect-error The height of a digit is the manifest's, not the task's.
+sheet.task = { ...posts, canvas: { kind: "handwriting_sheet", digit: 48 } };
+// @ts-expect-error A line of text and boxes is an item of a workbook, not of a handwriting sheet.
+sheet.task = { ...posts, items: [{ line: [{ binding: "box" }] }] };
 // @ts-expect-error A tool the sheet has not is no tool of it.
 sheet.tool = "ruler";
 // @ts-expect-error Marks whose submission has no digest are no marks of a submission (R27).

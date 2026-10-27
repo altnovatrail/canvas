@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, expect, type MockInstance, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import type { View } from "../core/screen.js";
-import "./index.js";
-import type { Media, Task } from "./index.js";
+import { moduleManifest, sheetTask } from "../core/tasks.fixture.js";
+import { type Media, NovatrailCanvas, type Task } from "./index.js";
 import { at, level } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
-// The task's statement above the sheet in Chromium (R23): its text, its language and its pictures,
-// which come from the consumer's media, the frames that stand in for them, and the addresses of
-// their files, which go when the pictures leave.
+// The task's statement above the sheet in Chromium (R23): its text, its language, which the
+// module's manifest gives (R32), and its pictures, which come from the consumer's media, the frames
+// that stand in for them, and the addresses of their files, which go when the pictures leave.
 
 const made: HTMLElement[] = [];
 /** The decodes the element asks for: a picture shows only once its file is decoded. */
@@ -62,8 +62,6 @@ function viewOf(element: HTMLElement): View {
   return view;
 }
 
-const sheetKind = { kind: "handwriting-sheet" } as const;
-
 /** A picture's file: a small SVG, which a browser shows. */
 function file(colour = "#c33"): Blob {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><rect width="40" height="20" fill="${colour}"/></svg>`;
@@ -72,12 +70,26 @@ function file(colour = "#c33"): Blob {
 
 /** A task with these pictures, each 120 × 60 CSS pixels, after a line of text. */
 function withPictures(...pictures: [ref: string, alt: string][]): Task {
-  return {
-    canvas: sheetKind,
+  return sheetTask({
     statement: [
       { text: "Look at the pictures." },
       ...pictures.map(([picture, alt]) => ({ picture, alt, width: 120, height: 60 })),
     ],
+  });
+}
+
+/**
+ * What changes in a node and under it from now on: the function it gives back stops watching and
+ * gives every change, those not yet told too.
+ */
+function watch(node: Node): () => MutationRecord[] {
+  const records: MutationRecord[] = [];
+  const observer = new MutationObserver((list) => records.push(...list));
+  observer.observe(node, { subtree: true, childList: true, attributes: true, characterData: true });
+  return () => {
+    records.push(...observer.takeRecords());
+    observer.disconnect();
+    return records;
   };
 }
 
@@ -92,12 +104,14 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-test("the statement stands above the sheet as text, in the task's language, and the element is as tall as both and the row of buttons", async () => {
-  const { element, root, statement, canvas, view } = await sheet(400, {
-    canvas: sheetKind,
-    statement: [{ text: "<b>Count</b> the posts." }, { text: "Then write the answer." }],
-    lang: "ru",
-  });
+test("the statement stands above the sheet as text, in the module's language, and the element is as tall as both and the row of buttons", async () => {
+  const { element, root, statement, canvas, view } = await sheet(
+    400,
+    sheetTask({
+      statement: [{ text: "<b>Count</b> the posts." }, { text: "Then write the answer." }],
+    }),
+  );
+  element.manifest = moduleManifest({ explanation: "ru" });
   const paragraphs = [...statement.querySelectorAll("p")];
   expect(paragraphs.map((paragraph) => paragraph.textContent)).toEqual([
     "<b>Count</b> the posts.",
@@ -121,21 +135,88 @@ test("the statement stands above the sheet as text, in the task's language, and 
   level(canvas, view(), 100, 100, 300);
   expect(probe(element).strokes[0]?.points[0]?.y).toBeCloseTo(100, 6);
 
-  element.task = { canvas: sheetKind, statement: [{ text: "No language of its own." }] };
+  // The language is the module's, not the task's: a new task keeps it, and without a manifest the
+  // statement is in the element's own.
+  element.task = sheetTask({ statement: [{ text: "Another task of the module." }] });
+  expect(statement.getAttribute("lang")).toBe("ru");
+  element.manifest = undefined;
   expect(statement.hasAttribute("lang")).toBe(false);
+});
+
+test("a manifest in another language changes the statement's language alone, and its pictures stay", async () => {
+  const { element, statement } = await sheet(
+    400,
+    withPictures(["pictures/posts.png", "Posts"]),
+    async () => file(),
+  );
+  element.manifest = moduleManifest();
+  await arrive();
+  const image = statement.querySelector("img");
+  expect(image).not.toBeNull();
+  const changes = watch(statement);
+  element.manifest = moduleManifest({ explanation: "ru" });
+  // Another manifest of the same language writes nothing.
+  element.manifest = moduleManifest({ explanation: "ru", digit_height: 48 });
+  await arrive();
+  expect(changes().map(({ type, attributeName }) => [type, attributeName])).toEqual([
+    ["attributes", "lang"],
+  ]);
+  expect(statement.getAttribute("lang")).toBe("ru");
+  expect(statement.querySelector("img")).toBe(image);
+});
+
+test("a manifest given before the element is upgraded is taken, and one it cannot read leaves it without, with a warning; after the upgrade such a manifest is a TypeError that changes nothing", () => {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const upgrade = (manifest: unknown) => {
+    const template = document.createElement("template");
+    template.innerHTML = "<novatrail-canvas></novatrail-canvas>";
+    const early = template.content.firstElementChild;
+    if (!(early instanceof HTMLElement)) throw new Error("the template has no element");
+    Reflect.set(early, "task", sheetTask());
+    Reflect.set(early, "manifest", manifest);
+    document.body.append(early);
+    made.push(early);
+    if (!(early instanceof NovatrailCanvas)) throw new Error("the element was not upgraded");
+    expect(Object.hasOwn(early, "manifest")).toBe(false);
+    return early;
+  };
+  const language = (element: HTMLElement) =>
+    element.shadowRoot?.querySelector(".statement")?.getAttribute("lang");
+  const russian = moduleManifest({ explanation: "ru" });
+  const taken = upgrade(russian);
+  expect(taken.manifest).toBe(russian);
+  expect(language(taken)).toBe("ru");
+  expect(warn).not.toHaveBeenCalled();
+
+  const left = upgrade({ ...russian, module_format_version: "0.2" });
+  expect(left.manifest).toBeUndefined();
+  expect(language(left)).toBeNull();
+  expect(warn).toHaveBeenCalledOnce();
+
+  expect(() => {
+    taken.manifest = { ...russian, canvas: { digit_height: 0 } };
+  }).toThrow(TypeError);
+  expect(taken.manifest).toBe(russian);
+  expect(language(taken)).toBe("ru");
 });
 
 test("each picture comes from the consumer's media, in a frame of its size until it does, and a screen reader reads each by what it shows", async () => {
   const media = vi.fn(async (_ref: string) => file());
   const { root } = await sheet(
     400,
-    withPictures(["posts.svg", "A path with posts along it"], ["clock.svg", "A clock at three"]),
+    withPictures(
+      ["pictures/posts.png", "A path with posts along it"],
+      ["pictures/clock.png", "A clock at three"],
+    ),
     media,
   );
   const frames = [...root.querySelectorAll<HTMLElement>(".picture")];
   expect(frames.map((frame) => frame.style.width)).toEqual(["120px", "120px"]);
   await arrive();
-  expect(media.mock.calls.map(([ref]) => ref)).toEqual(["posts.svg", "clock.svg"]);
+  expect(media.mock.calls.map(([ref]) => ref)).toEqual([
+    "pictures/posts.png",
+    "pictures/clock.png",
+  ]);
   const images = [...root.querySelectorAll("img")];
   expect(images.map((image) => image.alt)).toEqual([
     "A path with posts along it",
@@ -155,20 +236,20 @@ test("each picture comes from the consumer's media, in a frame of its size until
 test("a picture that does not come keeps its frame, which shows and names what it shows; one that only decorates shows nothing", async () => {
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   const media = (ref: string): Promise<Blob> => {
-    if (ref === "throws") throw new Error("no such file");
-    if (ref === "rejects") return Promise.reject(new Error("offline"));
-    if (ref === "no-blob") return Promise.resolve("posts" as unknown as Blob);
-    if (ref === "broken") {
+    if (ref === "pictures/throws.png") throw new Error("no such file");
+    if (ref === "pictures/rejects.png") return Promise.reject(new Error("offline"));
+    if (ref === "pictures/no-blob.png") return Promise.resolve("posts" as unknown as Blob);
+    if (ref === "pictures/broken.png") {
       return Promise.resolve(new Blob(["not a picture"], { type: "image/png" }));
     }
     return Promise.reject(new Error("offline"));
   };
   const task = withPictures(
-    ["throws", "Posts 1"],
-    ["rejects", "Posts 2"],
-    ["no-blob", "Posts 3"],
-    ["broken", "Posts 4"],
-    ["decoration", ""],
+    ["pictures/throws.png", "Posts 1"],
+    ["pictures/rejects.png", "Posts 2"],
+    ["pictures/no-blob.png", "Posts 3"],
+    ["pictures/broken.png", "Posts 4"],
+    ["pictures/decoration.png", ""],
   );
   const { root } = await sheet(400, task, media);
   await arrive();
@@ -194,29 +275,36 @@ test("a picture of a task that has gone never comes into the next, a picture ask
     loads.set(ref, load);
     return load.promise;
   });
-  const { element, root } = await sheet(400, withPictures(["old.svg", "The old one"]), first);
+  const { element, root } = await sheet(
+    400,
+    withPictures(["pictures/old.png", "The old one"]),
+    first,
+  );
   await settle();
-  element.task = withPictures(["new.svg", "The new one"]);
+  element.task = withPictures(["pictures/new.png", "The new one"]);
   await settle();
-  loads.get("old.svg")?.resolve(file());
+  loads.get("pictures/old.png")?.resolve(file());
   await arrive();
   expect(root.querySelectorAll("img")).toHaveLength(0);
   expect(root.querySelector(".picture")?.getAttribute("aria-label")).toBe("The new one");
 
   // The same picture again, while it is still on its way: no second call, and none for a new
   // function either.
-  element.task = withPictures(["new.svg", "The new one, again"]);
+  element.task = withPictures(["pictures/new.png", "The new one, again"]);
   const second = vi.fn(async (_ref: string) => file("#3c3"));
   element.media = second;
   await settle();
-  expect(first.mock.calls.map(([ref]) => ref)).toEqual(["old.svg", "new.svg"]);
+  expect(first.mock.calls.map(([ref]) => ref)).toEqual(["pictures/old.png", "pictures/new.png"]);
   expect(second).not.toHaveBeenCalled();
-  loads.get("new.svg")?.resolve(file());
+  loads.get("pictures/new.png")?.resolve(file());
   await arrive();
   expect(root.querySelector("img")?.alt).toBe("The new one, again");
 
   // A picture still in the statement keeps its file: a new task with it shows it at once.
-  element.task = withPictures(["new.svg", "The new one, once more"], ["old.svg", "The old one"]);
+  element.task = withPictures(
+    ["pictures/new.png", "The new one, once more"],
+    ["pictures/old.png", "The old one"],
+  );
   await arrive();
   expect([...root.querySelectorAll("img")].map((image) => image.alt)).toEqual([
     "The new one, once more",
@@ -224,43 +312,36 @@ test("a picture of a task that has gone never comes into the next, a picture ask
   ]);
   // The old picture's file came when it had left the statement, and was not kept: the newest
   // function gives it, and nothing gives the one still shown again.
-  expect(second.mock.calls.map(([ref]) => ref)).toEqual(["old.svg"]);
+  expect(second.mock.calls.map(([ref]) => ref)).toEqual(["pictures/old.png"]);
   expect(first).toHaveBeenCalledTimes(2);
 });
 
 test("a new grid leaves the statement and its pictures as they are", async () => {
-  const task = withPictures(["posts.svg", "Posts"]);
+  const task = withPictures(["pictures/posts.png", "Posts"]);
   const { element, statement } = await sheet(400, task, async () => file());
   await arrive();
   const image = statement.querySelector("img");
   expect(image).not.toBeNull();
-  const records: MutationRecord[] = [];
-  const observer = new MutationObserver((list) => records.push(...list));
-  observer.observe(statement, {
-    subtree: true,
-    childList: true,
-    attributes: true,
-    characterData: true,
-  });
-  element.task = { ...task, canvas: { ...sheetKind, grid: "dots", step: 25 } };
+  const changes = watch(statement);
+  element.task = sheetTask({ statement: task.statement, grid: "dots", grid_step: 25 });
   await arrive();
-  observer.takeRecords();
-  observer.disconnect();
-  expect(records).toEqual([]);
+  expect(changes()).toEqual([]);
   expect(statement.querySelector("img")).toBe(image);
 });
 
 test("the addresses of the pictures' files go when the pictures leave the task or the element the page, and come back with the element", async () => {
   const create = vi.spyOn(URL, "createObjectURL");
   const revoke = vi.spyOn(URL, "revokeObjectURL");
-  const { element, root } = await sheet(400, withPictures(["posts.svg", "Posts"]), async () =>
-    file(),
+  const { element, root } = await sheet(
+    400,
+    withPictures(["pictures/posts.png", "Posts"]),
+    async () => file(),
   );
   await arrive();
   const first = create.mock.results[0]?.value as string;
   expect(root.querySelector("img")?.src).toBe(first);
 
-  element.task = withPictures(["clock.svg", "A clock"]);
+  element.task = withPictures(["pictures/clock.png", "A clock"]);
   expect(revoke).toHaveBeenCalledWith(first);
   await expect(fetch(first)).rejects.toThrow();
   await arrive();
@@ -297,7 +378,7 @@ test("with the statement in sight, the eraser takes nothing below the container'
   const lines = Array.from({ length: 4 }, (_, i) => ({ text: `Line ${i + 1} of the statement.` }));
   const { element, canvas, viewport, view } = await sheet(
     400,
-    { canvas: sheetKind, statement: lines },
+    sheetTask({ statement: lines }),
     undefined,
     300,
   );
@@ -327,7 +408,7 @@ test("with the statement in sight, the eraser takes nothing below the container'
 test("a statement that grows while the sheet is scrolled keeps the top of the visible part where it was", async () => {
   const { element, viewport, view } = await sheet(
     400,
-    { canvas: sheetKind, statement: [{ text: "One line." }] },
+    sheetTask({ statement: [{ text: "One line." }] }),
     undefined,
     300,
   );
@@ -335,12 +416,11 @@ test("a statement that grows while the sheet is scrolled keeps the top of the vi
   await settle();
   const vy = view().vy;
   expect(vy).toBeGreaterThan(0);
-  element.task = {
-    canvas: sheetKind,
+  element.task = sheetTask({
     statement: Array.from({ length: 6 }, (_, i) => ({
       text: `Line ${i + 1} of a longer statement.`,
     })),
-  };
+  });
   await settle();
   expect(view().vy).toBeCloseTo(vy, 1);
 });

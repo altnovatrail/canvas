@@ -13,6 +13,21 @@ export type { GridKind } from "./grid.js";
 export type { Group } from "./groups.js";
 export { type HistoryEvent, replay } from "./history.js";
 export type { InkPoint, Stroke } from "./ink.js";
+export type { Manifest } from "./manifest.js";
 export type { Anchor, CropNumbers, Mark, Marks, Submission } from "./marks.js";
 export { SHEET } from "./sheet.js";
-export type { PicturePart, StatementPart, Task, TextPart } from "./task.js";
+export type {
+  AnswerSlot,
+  LinePart,
+  PicturePart,
+  SheetCanvas,
+  SheetItem,
+  SheetTask,
+  StatementPart,
+  Task,
+  TextPart,
+  WorkbookCanvas,
+  WorkbookItem,
+  WorkbookTask,
+  Zone,
+} from "./task.js";
