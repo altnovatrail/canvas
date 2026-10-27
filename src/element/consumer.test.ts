@@ -3,8 +3,9 @@ import { page, userEvent } from "vitest/browser";
 import { type HistoryEvent, SHEET, type Submission } from "../core/index.js";
 import { type ExportedWork, type Marks, NovatrailCanvas, type Task, type Tool } from "./index.js";
 
-// The trial consumer (R27, R28; RUN.md, T15, T41): a page that takes the element as app is to take
-// it. It gives the task, the media and the language, keeps the history of writing as
+// The trial consumer (R27, R28, R32; RUN.md, T15, T41, T44): a page that takes the element as app
+// is to take it. It gives the task, the module's manifest, the media and the language, keeps the
+// history of writing as
 // historychange tells it and gives it back, hears the learner's choice of tool, takes the work for
 // checking at Check, and gives the tutor's marks back with their submission's context, then opens
 // the sheet again in a new element. It goes through the package's entry points alone, never the
@@ -24,15 +25,37 @@ async function settle(): Promise<void> {
   await frame();
 }
 
-/** The open view of a task, as app is to have it from api: a statement with a picture. */
+/**
+ * The open view of a task, as app is to have it from api, in the names of the module format's
+ * draft: a statement with a picture, and the answer anywhere on the sheet.
+ */
 const TASK: Task = {
-  canvas: { kind: "handwriting-sheet", grid: "squares", step: 50, digit: 24 },
+  id: "posts-along-a-path",
   statement: [
     { text: "How many posts stand along a path 20 m long, one every 4 m?" },
-    { picture: "path.svg", alt: "A path with posts along it", width: 200, height: 60 },
+    { picture: "pictures/path.png", alt: "A path with posts along it", width: 200, height: 60 },
   ],
-  lang: "en",
+  canvas: { kind: "handwriting_sheet", grid: "squares", grid_step: 50 },
+  items: [{ answer_slots: [{ binding: "anywhere" }] }],
 };
+
+/**
+ * The open view of the task's module's manifest, whole, as app has it: the element reads its format
+ * version, its height of digits, 24 px, and its explanation language, English, and passes over the
+ * rest.
+ */
+const MODULE = {
+  module_format_version: "0.1",
+  id: "novatrail/olympiad-math",
+  version: "0.1.0",
+  title: "Olympiad mathematics, grades 1–6",
+  subject: "mathematics",
+  audience: { age_categories: ["under_13"] },
+  languages: { explanation: "en" },
+  canvas: { digit_height: 24 },
+  authors: [{ name: "The NovaTrail authors" }],
+  license: "Apache-2.0",
+} as const;
 
 const PATH = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="60"><rect width="200" height="60" fill="#eee"/></svg>`;
 
@@ -44,6 +67,7 @@ async function app(history?: readonly HistoryEvent[]) {
   // The language of app's interface: the sheet's buttons are labelled in it.
   sheet.lang = "ru";
   sheet.task = TASK;
+  sheet.manifest = MODULE;
   sheet.media = async () => new Blob([PATH], { type: "image/svg+xml" });
   // The history first, then the marks: they hold on to its strokes.
   if (history !== undefined) sheet.history = history;
@@ -203,6 +227,10 @@ test("app's path: write, erase, undo and clear with the sheet's buttons, keep th
     expect(crop.grey(650, 600)).toBeLessThan(128);
     expect(crop.grey(450, 400)).toBe(255);
     expect(work.submission.groups.map(({ label }) => label)).toEqual(["A", "B", "C"]);
+    // At the height of digits the module's manifest gives, and the statement in its language,
+    // while the buttons are in app's.
+    expect(work.submission.crop.drawn).toBe(24);
+    expect(sheet.shadowRoot?.querySelector(".statement")?.getAttribute("lang")).toBe("en");
 
     // The tutor's marks come back with the context, through JSON: a frame read by its name.
     sheet.marks = marksOf(work.submission, "Look at this line");
@@ -271,6 +299,7 @@ test("a history without the marked strokes takes the marks off, and the next tas
   next.style.height = "400px";
   next.lang = "ru";
   next.task = TASK;
+  next.manifest = MODULE;
   made.push(next);
   sheet.replaceWith(next);
   await settle();
@@ -282,6 +311,23 @@ test("a history without the marked strokes takes the marks off, and the next tas
     .element(page.elementLocator(next).getByRole("button", { name: "Отменить", disabled: true }))
     .toBeVisible();
   await expect.element(buttons(next).pen).toBeChecked();
+});
+
+test("the height of digits is the manifest's at the moment of Check: another manifest between two checks gives another, and none gives 32", async () => {
+  const { sheet } = await app();
+  write(sheet, 100, 100, 300);
+  write(sheet, 140, 100, 300);
+  expect((await check(sheet)).submission.crop.drawn).toBe(24);
+  sheet.manifest = { ...MODULE, canvas: { digit_height: 48 } };
+  expect((await check(sheet)).submission.crop.drawn).toBe(48);
+  sheet.manifest = undefined;
+  expect((await check(sheet)).submission.crop.drawn).toBe(32);
+  // A manifest app changes in place and gives again is read again.
+  const kept = { ...MODULE, canvas: { digit_height: 24 } };
+  sheet.manifest = kept;
+  kept.canvas.digit_height = 16;
+  sheet.manifest = kept;
+  expect((await check(sheet)).submission.crop.drawn).toBe(16);
 });
 
 test("historychange goes out of a consumer's own shadow tree too, from the host it is in", async () => {

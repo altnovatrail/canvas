@@ -1,5 +1,5 @@
 import { CROP, type Crop, sheetBoxOf } from "./crop.js";
-import { record, shown } from "./fields.js";
+import { record, shown, whole } from "./fields.js";
 import { around, type Box, boxOf, tenths } from "./geometry.js";
 import type { Group } from "./groups.js";
 import type { Stroke } from "./ink.js";
@@ -453,13 +453,6 @@ function fractionsOf(value: unknown, path: string): [number, number, number, num
   throw new TypeError(
     `${path}: [ymin, xmin, ymax, xmax] in whole thousandths, 0 to 1000, min < max, not ${shown(value)}`,
   );
-}
-
-function whole(value: unknown, path: string, least: number, most: number): number {
-  if (typeof value !== "number" || !Number.isInteger(value) || value < least || value > most) {
-    throw new TypeError(`${path}: a whole number from ${least} to ${most}, not ${shown(value)}`);
-  }
-  return value;
 }
 
 function byNumber(a: number, b: number): number {

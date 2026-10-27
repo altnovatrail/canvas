@@ -1,6 +1,7 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import type { HistoryEvent } from "../core/history.js";
+import { sheetTask } from "../core/tasks.fixture.js";
 import { NovatrailCanvas, type ToolChange } from "./index.js";
 import { labelsFor } from "./labels.js";
 import { at, input, level, placed, settle } from "./pointer.fixture.js";
@@ -19,8 +20,6 @@ afterEach(() => {
   PEN_MODE.on = false;
   window.scrollTo(0, 0);
 });
-
-const sheetKind = { kind: "handwriting-sheet" } as const;
 
 /** A sheet `width` CSS pixels wide, as tall as its row and the sheet unless given a height. */
 const sheet = (width = 400, height?: number, parent: HTMLElement = document.body) =>
@@ -311,7 +310,7 @@ test("a history given to the sheet sets Undo and Clear as its stack and its stro
 test("a task without the eraser has none: no button, no eraser of the pen, no tool of it", async () => {
   const { element, root, canvas, view } = await sheet();
   level(canvas, view(), 100, 100, 300);
-  element.task = { canvas: { ...sheetKind, tools: ["pen"] } };
+  element.task = sheetTask({ tools: ["pen"] });
   await expect.element(buttons(element).pen).toBeChecked();
   expect(page.elementLocator(element).getByRole("radio").elements()).toHaveLength(1);
   // The pen's other end over the stroke neither erases nor writes.
@@ -328,10 +327,10 @@ test("a task without the eraser has none: no button, no eraser of the pen, no to
   }).toThrow(/allows no eraser/);
   expect(element.tool).toBe("pen");
   // The names the sheet does not know are passed over; a list without the pen is no task.
-  element.task = { canvas: { ...sheetKind, tools: ["pen", "ruler", "calculator"] } };
+  element.task = sheetTask({ tools: ["pen", "ruler", "calculator"] });
   expect(page.elementLocator(element).getByRole("radio").elements()).toHaveLength(1);
   expect(() => {
-    element.task = { canvas: { ...sheetKind, tools: ["eraser"] } };
+    element.task = sheetTask({ tools: ["eraser"] });
   }).toThrow(TypeError);
   expect(root.querySelectorAll("button:not([hidden])")).toHaveLength(3);
 });
@@ -351,7 +350,7 @@ test("a new task without the eraser puts the pen back, with no event, and the fo
     new PointerEvent(type, { ...mouse, ...at(canvas, view(), x, 100), ...init });
   canvas.dispatchEvent(event("pointerdown", 150, { button: 0, buttons: 1 }));
   expect(probe(element).pending).toEqual([1]);
-  element.task = { canvas: { ...sheetKind, tools: ["pen"] } };
+  element.task = sheetTask({ tools: ["pen"] });
   expect(element.tool).toBe("pen");
   expect(told).toHaveLength(1);
   expect(eraser.hidden).toBe(true);
@@ -360,7 +359,7 @@ test("a new task without the eraser puts the pen back, with no event, and the fo
   canvas.dispatchEvent(event("pointerup", 150, { button: 0, buttons: 0 }));
   expect(probe(element).strokes).toEqual([]);
   // The eraser comes back with a task that allows it, and the pen stays the tool.
-  element.task = { canvas: sheetKind };
+  element.task = sheetTask();
   expect(eraser.hidden).toBe(false);
   expect(element.tool).toBe("pen");
 });
@@ -373,7 +372,7 @@ test("an eraser given before the element is upgraded, with a task without it, le
     const early = template.content.firstElementChild;
     if (!(early instanceof HTMLElement)) throw new Error("the template has no element");
     Reflect.set(early, "tool", "eraser");
-    Reflect.set(early, "task", { canvas: { ...sheetKind, tools: ["pen"] } });
+    Reflect.set(early, "task", sheetTask({ tools: ["pen"] }));
     document.body.append(early);
     made.push(early);
     expect(early instanceof NovatrailCanvas && early.tool).toBe("pen");

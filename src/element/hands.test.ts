@@ -3,6 +3,7 @@ import { page, userEvent } from "vitest/browser";
 import { SLOP_PX } from "../core/hands.js";
 import type { HistoryEvent } from "../core/history.js";
 import type { View } from "../core/screen.js";
+import { sheetTask } from "../core/tasks.fixture.js";
 import "./index.js";
 import type { HistoryChange, Task } from "./index.js";
 import { labelsFor } from "./labels.js";
@@ -27,8 +28,6 @@ afterEach(async () => {
   Reflect.deleteProperty(navigator, "maxTouchPoints");
   window.scrollTo(0, 0);
 });
-
-const sheetKind = { kind: "handwriting-sheet" } as const;
 
 /** A sheet `width` CSS pixels wide, as tall as its row, statement and sheet unless given a height. */
 async function sheet(
@@ -392,10 +391,9 @@ test("the row, wrapped once the finger's button comes, moves the sheet only afte
 });
 
 test("with the consumer's pointer-events: none two fingers start no scroll, and one finger on the statement scrolls it as the browser does", async () => {
-  const task: Task = {
-    canvas: sheetKind,
+  const task = sheetTask({
     statement: [{ text: "Write the numbers from one to twenty, one under another. ".repeat(4) }],
-  };
+  });
   const { element, root, viewport } = await sheet(400, 300, { task });
   element.style.pointerEvents = "none";
   await twoFingers(viewport, -60);

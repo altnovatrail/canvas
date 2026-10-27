@@ -5,12 +5,14 @@
 // allows the eraser (T10; R22). The page keeps the history of writing as historychange tells it,
 // listening on the element itself, as app is to; Reopen puts a new element in place of the old
 // one with that history and the marks given, as a page opened again would, and Next task a new,
-// empty one. Each element has a task: its grid, its tools and the height of its digits, which the
-// page's controls change by a new task, and its statement above the sheet, with a picture the page
-// draws and one that never comes. Dark theme sets the element's custom properties (T11; R23).
+// empty one. Each element has a task in the names of the module format's draft — its grid and its
+// tools, which the page's controls change by a new task, and its statement above the sheet, with a
+// picture the page draws and one that never comes — and the module's manifest, whose height of
+// digits the page's control changes (T44; R32). Dark theme sets the element's custom properties
+// (T11; R23).
 // Under the sheet the page draws the groups of the strokes the history leaves, after every
 // historychange, by the sheet's rule or by the pause and the reaches its fields give (T12; R24),
-// and their crop for checking at the height of digits the task gives, with the frames of those
+// and their crop for checking at the height of digits the manifest gives, with the frames of those
 // groups and the crop's size at every height of eval (T13; R25). Check takes the work for checking
 // from exportWork() and stops the writing for a moment, as while the models think: the page keeps
 // the submission, and a box dragged over its crop, or a group picked, comes back to the element as
@@ -23,10 +25,12 @@ import { CROP, type Crop, cropOf, tokensOf } from "../src/core/crop.js";
 import { GROUP_RULE, type Group, type GroupRule, groupsOf, rectOf } from "../src/core/groups.js";
 import { type HistoryEvent, replay, SHEET, type Stroke } from "../src/core/index.js";
 import { pictureOf } from "../src/core/raster.js";
+import { moduleManifest, sheetTask } from "../src/core/tasks.fixture.js";
 import "../src/element/index.js";
 import type {
   GridKind,
   HistoryChangeEvent,
+  Manifest,
   Mark,
   Marks,
   Media,
@@ -71,7 +75,11 @@ const unmark = part("unmark", HTMLButtonElement);
 /** How long Check holds the writing, standing in for the minutes the models take. */
 const THINKING_MS = 1000;
 
-/** A path with posts along it, drawn by the page: the picture its tasks show. */
+/**
+ * A path with posts along it, drawn by the page: the picture its tasks show. The page draws it in
+ * SVG under the PNG path the format names, and the element shows it as it would a PNG: a picture
+ * is whatever image the consumer's media gives.
+ */
 function posts(): Blob {
   const marks = Array.from({ length: 6 }, (_, i) => {
     const x = 20 + i * 56;
@@ -83,30 +91,41 @@ function posts(): Blob {
 
 /** The page's media: its own picture, and nothing for any other, as a file that never came. */
 const media: Media = async (ref) => {
-  if (ref === "posts.svg") return posts();
+  if (ref === "pictures/posts.png") return posts();
   throw new Error(`the page has no ${ref}`);
 };
 
-/** The task of the page's number `n`, with the grid and the height of digits its controls give. */
+/** The task of the page's number `n`, with the grid and the tools its controls give. */
 function taskFor(n: number): Task {
-  return {
-    canvas: {
-      kind: "handwriting-sheet",
-      grid: grid.value as GridKind,
-      step: Number(step.value),
-      digit: Number(digit.value),
-      tools: tools.value.split(" "),
-    },
+  return sheetTask({
+    id: `posts-${n}`,
+    grid: grid.value as GridKind,
+    grid_step: Number(step.value),
+    tools: tools.value.split(" "),
     statement: [
       {
         text: `Task ${n}. Along a path 20 m long, a post stands every 4 m, from one end to the other.`,
       },
-      { picture: "posts.svg", alt: "A path with six posts along it", width: 340, height: 80 },
+      {
+        picture: "pictures/posts.png",
+        alt: "A path with six posts along it",
+        width: 340,
+        height: 80,
+      },
       { text: "How many posts are there? Write your solution on the sheet." },
-      { picture: "missing.svg", alt: "A picture that does not come", width: 200, height: 60 },
+      {
+        picture: "pictures/missing.png",
+        alt: "A picture that does not come",
+        width: 200,
+        height: 60,
+      },
     ],
-    lang: "en",
-  };
+  });
+}
+
+/** The module's manifest: English, and the height of digits the page's control gives. */
+function manifestFor(): Manifest {
+  return moduleManifest({ digit_height: Number(digit.value) });
 }
 
 /**
@@ -122,7 +141,14 @@ let choices = 0;
 function mount(history?: readonly HistoryEvent[], marks?: Marks): NovatrailCanvas {
   const element = document.createElement("novatrail-canvas");
   speak(element);
-  element.task = taskFor(taskNumber);
+  try {
+    element.task = taskFor(taskNumber);
+  } catch (error) {
+    // A step the page's field gives that is no task's — out of bounds, or not whole — leaves the
+    // new element without the page's task, and the page says why.
+    status.textContent = error instanceof Error ? error.message : String(error);
+  }
+  element.manifest = manifestFor();
   element.media = media;
   // The history first, then the marks: they hold on to its strokes.
   if (history !== undefined) element.history = history;
@@ -241,8 +267,8 @@ function pictureFor(strokes: readonly Stroke[], shown: Crop): Uint8Array<ArrayBu
 }
 
 /**
- * The crop for checking of the strokes, at the height of digits the task gives, with the frames of
- * the groups over it, and the crop's size at every height of eval (R25).
+ * The crop for checking of the strokes, at the height of digits the manifest gives, with the
+ * frames of the groups over it, and the crop's size at every height of eval (R25).
  */
 function showCrop(strokes: readonly Stroke[], groups: readonly Group[]): void {
   if (crop.src !== "") URL.revokeObjectURL(crop.src);
@@ -490,8 +516,8 @@ async function check(): Promise<void> {
 }
 
 /**
- * The grid and the height of digits the controls give, by a new task: the work stays. A step out of
- * bounds is left.
+ * The grid and the tools the controls give, by a new task: the work stays. A step out of bounds is
+ * left.
  */
 function regrid(): void {
   try {
@@ -551,8 +577,8 @@ part("next", HTMLButtonElement).addEventListener("click", () => {
   if (sent.src !== "") URL.revokeObjectURL(sent.src);
   sent.removeAttribute("src");
   sentGroups.replaceChildren();
-  mounted(mount());
   status.textContent = "";
+  mounted(mount());
 });
 grid.addEventListener("change", regrid);
 // The tools allowed are the task's, and a task without the eraser puts the pen back.
@@ -571,7 +597,11 @@ pause.value = String(GROUP_RULE.pause);
 across.value = String(GROUP_RULE.across);
 down.value = String(GROUP_RULE.down);
 for (const field of [pause, across, down]) field.addEventListener("input", showGroups);
-digit.addEventListener("change", regrid);
+// The height of digits is the module's: a new manifest, and the task stays.
+digit.addEventListener("change", () => {
+  sheet.manifest = manifestFor();
+  showGroups();
+});
 count();
 showGroups();
 showMarks();

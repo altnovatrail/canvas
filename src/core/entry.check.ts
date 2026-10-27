@@ -8,6 +8,7 @@ import * as core from "./index.js";
 
 export type Given = [
   types.Anchor,
+  types.AnswerSlot,
   types.Box,
   types.Crop,
   types.CropNumbers,
@@ -16,14 +17,23 @@ export type Given = [
   types.Group,
   types.HistoryEvent,
   types.InkPoint,
+  types.LinePart,
+  types.Manifest,
   types.Mark,
   types.Marks,
   types.PicturePart,
+  types.SheetCanvas,
+  types.SheetItem,
+  types.SheetTask,
   types.StatementPart,
   types.Stroke,
   types.Submission,
   types.Task,
   types.TextPart,
+  types.WorkbookCanvas,
+  types.WorkbookItem,
+  types.WorkbookTask,
+  types.Zone,
 ];
 
 /** The fold reads a history as the sheet hands it out, into the strokes it leaves. */
@@ -36,3 +46,9 @@ export const groups = core.groupsOf;
 export const crop = core.cropOf;
 // @ts-expect-error Nor the snapping.
 export const snap = core.snapOf;
+// @ts-expect-error The element's own check of a task is no part of the entry (R32).
+export const task = core.taskOf;
+// @ts-expect-error Nor what the sheet makes of one.
+export const template = core.templateOf;
+// @ts-expect-error Nor its reading of a manifest.
+export const settings = core.settingsOf;

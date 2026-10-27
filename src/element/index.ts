@@ -11,7 +11,9 @@
 // Above it all stands the element's own row of buttons — the tools the task allows, undo and
 // clearing — labelled in the element's `lang` (T41; R28). On a tablet a pen's touch puts the page
 // in pen mode, where a finger writes nothing and a button lets it write again, a palm writes
-// nothing, and two fingers scroll (T35; R29).
+// nothing, and two fingers scroll (T35; R29). The task comes in the names of the module format's
+// draft, checked as its schema checks it, and the module's manifest gives the height of a digit and
+// the statement's language (T44; R32).
 
 import type { Vec2 } from "perfect-freehand";
 import { Clock } from "../core/clock.js";
@@ -21,6 +23,7 @@ import { gridPath } from "../core/grid.js";
 import { type Contact, Hands } from "../core/hands.js";
 import { begins, type HistoryEvent, sameHistory } from "../core/history.js";
 import type { InkPoint, Stroke } from "../core/ink.js";
+import { type Manifest, NO_MANIFEST, type Settings, settingsOf } from "../core/manifest.js";
 import {
   type Marks,
   marksOf,
@@ -43,6 +46,7 @@ import {
   type Task,
   type Template,
   type Tool,
+  taskOf,
   templateOf,
 } from "../core/task.js";
 import { nextIdOf, resumeOf, Work } from "../core/work.js";
@@ -57,8 +61,24 @@ export type { GridKind } from "../core/grid.js";
 export type { Group } from "../core/groups.js";
 export type { HistoryEvent } from "../core/history.js";
 export type { InkPoint, Stroke } from "../core/ink.js";
+export type { Manifest } from "../core/manifest.js";
 export type { Anchor, CropNumbers, Mark, Marks, Submission } from "../core/marks.js";
-export type { PicturePart, StatementPart, Task, TextPart, Tool } from "../core/task.js";
+export type {
+  AnswerSlot,
+  LinePart,
+  PicturePart,
+  SheetCanvas,
+  SheetItem,
+  SheetTask,
+  StatementPart,
+  Task,
+  TextPart,
+  Tool,
+  WorkbookCanvas,
+  WorkbookItem,
+  WorkbookTask,
+  Zone,
+} from "../core/task.js";
 export type { Media } from "./statement.js";
 
 /** The name the element is registered under. */
@@ -347,6 +367,9 @@ export class NovatrailCanvas extends HTMLElement {
   #tool: Tool = "pen";
   #task: Task | undefined;
   #shownTemplate: Template = NO_TASK;
+  /** The module's manifest as the consumer gave it, and what the element makes of it (R32). */
+  #manifest: Manifest | undefined;
+  #settings: Settings = NO_MANIFEST;
   /** The tutor's marks as the consumer gave them, and those of them that have a place (R26). */
   #marks: Marks | undefined;
   /** The marks as they were checked when given: a new history places these, whatever became of those. */
@@ -457,6 +480,7 @@ export class NovatrailCanvas extends HTMLElement {
 
     this.#adopt("tool");
     this.#adopt("task");
+    this.#adopt("manifest");
     this.#adopt("media");
     // The history before the marks: they hold on to its strokes.
     this.#adopt("history");
@@ -490,12 +514,15 @@ export class NovatrailCanvas extends HTMLElement {
   }
 
   /**
-   * The open view of the task: its canvas — the grid of the sheet and the tools the task allows —
-   * and its statement, which the element shows above the sheet (R23, R28). The type is the
-   * element's own until spec's format v0 gives one; fields the element does not read are passed
-   * over. A task it cannot show is a TypeError. Another task of the same grid, tools and statement
-   * changes nothing, and any other changes the template alone: the work stays, for the next task
-   * is a new element (R20). A task without the eraser puts the pen back, with no event.
+   * The open view of the task, in the names of the module format's draft 0.1 (R32): its ID, its
+   * statement, which the element shows above the sheet (R23), its canvas — the grid of the sheet
+   * and the tools the task allows (R28) — and its items. The type is the element's own until
+   * spec's releases give the format's. A task the schema refuses is a TypeError that names the
+   * field, a field the open view has not among it, and so is a workbook, until a later version
+   * shows it, and an answer slot in a zone; the sheet passes over a choice and an item's text,
+   * which app shows. Another task of the same grid, tools and statement changes nothing, and any other
+   * changes the template alone: the work stays, for the next task is a new element (R20). A task
+   * without the eraser puts the pen back, with no event.
    */
   get task(): Task | undefined {
     return this.#task;
@@ -503,18 +530,41 @@ export class NovatrailCanvas extends HTMLElement {
 
   set task(task: Task | undefined) {
     if (task === this.#task) return;
-    const template = templateOf(task);
+    const template = templateOf(task === undefined ? undefined : taskOf(task));
     this.#task = task;
     // The grid and the statement apart: a new grid leaves the statement and its pictures as they
     // are, and the other way round.
     const shown = this.#shownTemplate;
     this.#shownTemplate = template;
     if (!sameGrid(template, shown)) this.#rule(template);
-    if (!sameStatement(template, shown)) this.#statement.show(template);
+    if (!sameStatement(template, shown)) this.#statement.show(template.statement);
     if (!sameTools(template, shown)) {
       if (!template.tools.includes(this.#tool)) this.#tool = "pen";
       this.#refresh();
     }
+  }
+
+  /**
+   * The open view of the module's manifest (R32), of which the element reads the version of the
+   * module format — "0.1", or the manifest is a TypeError (R44 spec) — the height of a digit on the
+   * crop for checking, `canvas.digit_height`, 32 px unless given, and the explanation language, the
+   * statement's. Without a manifest the digits are 32 px and the statement is in the element's own
+   * `lang`. The rest of it the element passes over, but for the canvas settings, which are its own:
+   * one it does not know is a TypeError. A manifest it cannot read is a TypeError that names the
+   * field, and the element stays as it was; the same object given again is read again, for the
+   * consumer may have changed it. The task and the manifest are each the consumer's to give, in
+   * either order: `exportWork()` takes the height when it is called (R27).
+   */
+  get manifest(): Manifest | undefined {
+    return this.#manifest;
+  }
+
+  set manifest(manifest: Manifest | undefined) {
+    // The same object is read again: a consumer may have changed it in place.
+    const settings = settingsOf(manifest);
+    this.#manifest = manifest;
+    if (settings.lang !== this.#settings.lang) this.#statement.lang = settings.lang;
+    this.#settings = settings;
   }
 
   /**
@@ -688,15 +738,15 @@ export class NovatrailCanvas extends HTMLElement {
 
   /**
    * The work for checking (R07, R27), when the consumer asks for it, at Check: the crop of the
-   * strokes the sheet shows, at the height of a digit the task asks for (R25), its PNG, and the
-   * context of the submission — the crop's numbers, the groups and their digest (R26, R27) — which
-   * the consumer keeps, sends only the PNG to be checked (R09 spec), and gives back with the tutor's
-   * marks. It is the sheet as it is when this is called: a stroke under way is not on it yet, while
+   * strokes the sheet shows, at the height of a digit the manifest asks for (R25, R32), its PNG,
+   * and the context of the submission — the crop's numbers, the groups and their digest (R26, R27)
+   * — which the consumer keeps, sends only the PNG to be checked (R09 spec), and gives back with
+   * the tutor's marks. It is the sheet as it is when this is called: a stroke under way is not on it yet, while
    * the strokes under an eraser not yet lifted still are. A sheet without strokes has no work to
    * check, and the promise gives null (H3).
    */
   async exportWork(): Promise<ExportedWork | null> {
-    const work = workForCheck(this.#work.strokes, this.#shownTemplate.digit);
+    const work = workForCheck(this.#work.strokes, this.#settings.digit);
     if (work === null) return null;
     const png = new Blob([work.png], { type: "image/png" });
     return Object.freeze({ png, submission: work.submission });
@@ -730,7 +780,7 @@ export class NovatrailCanvas extends HTMLElement {
    * take leaves the property as the element starts it, with a warning, rather than fail the
    * element's upgrade, which would leave it dead.
    */
-  #adopt(name: "tool" | "task" | "media" | "history" | "marks"): void {
+  #adopt(name: "tool" | "task" | "manifest" | "media" | "history" | "marks"): void {
     if (!Object.hasOwn(this, name)) return;
     const value: unknown = Reflect.get(this, name);
     Reflect.deleteProperty(this, name);
