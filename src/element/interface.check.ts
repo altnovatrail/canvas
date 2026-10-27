@@ -1,7 +1,7 @@
 // Type-checked by ci-lint and never built: the element's interface as a consumer's types see it
-// (R07, R27, R28, R32, R37, R38). What a consumer may do type-checks; each line under a directive
-// must be an error, and were it not, the directive would go unused, and that would be the error
-// instead.
+// (R07, R27, R28, R32, R37, R38, R39). What a consumer may do type-checks; each line under a
+// directive must be an error, and were it not, the directive would go unused, and that would be the
+// error instead.
 
 import type {
   ExportedWork,
@@ -66,6 +66,11 @@ export const sent: Blob | readonly Blob[] =
 export const place: readonly [number, number] | undefined =
   "cells" in done ? [done.cells[0]?.item ?? 1, done.cells[0]?.slot ?? 1] : undefined;
 export const history: readonly HistoryEvent[] = sheet.history;
+/** A workbook's marks stand on answer cells, by their item and slot (R39). */
+sheet.marks = {
+  submission: boxes,
+  marks: [{ kind: "frame", at: { cell: { item: 1, slot: 2 } }, name: "This box" }],
+};
 /** Which boxes of a workbook are filled, per item, per box; null on a sheet (R37). */
 export const filled: Filled | null = sheet.filled;
 export const first: boolean | undefined = sheet.filled?.[0]?.[0];
@@ -94,8 +99,8 @@ if ("cells" in done) {
   // @ts-expect-error The crops are the element's to give, not the consumer's to change.
   done.cells.push({ item: 1, slot: 1, png: new Blob() });
 }
-// @ts-expect-error The marks of a workbook's submission are T53's: a sheet's alone come in so far.
-sheet.marks = { submission: boxes, marks: [] };
+// @ts-expect-error An answer cell has no ID: its place names it (R51 spec).
+sheet.marks = { submission: boxes, marks: [{ kind: "frame", at: { cell: "a" }, name: "This" }] };
 // @ts-expect-error null is no manifest: undefined, and undefined alone, is none.
 sheet.manifest = null;
 // @ts-expect-error The grid's step is grid_step in the format, not step.

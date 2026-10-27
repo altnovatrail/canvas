@@ -11,6 +11,7 @@ export type Given = [
   types.Anchor,
   types.AnswerSlot,
   types.Box,
+  types.CellPlace,
   types.Crop,
   types.CropNumbers,
   types.Filling,

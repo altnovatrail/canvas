@@ -84,6 +84,7 @@ export type { InkPoint, Stroke } from "../core/ink.js";
 export type { Manifest } from "../core/manifest.js";
 export type {
   Anchor,
+  CellPlace,
   CropNumbers,
   Mark,
   Marks,
@@ -649,7 +650,11 @@ export class NovatrailCanvas extends HTMLElement {
     // pictures as they are, and the other way round.
     const shown = this.#shownTemplate;
     this.#shownTemplate = template;
-    if (!sameLayer(template, shown)) this.#lay(template);
+    if (!sameLayer(template, shown)) {
+      this.#lay(template);
+      // A page of other boxes, or of the other kind, puts the marks back or takes them off (R39).
+      this.#replace();
+    }
     if (!sameStatement(template, shown)) this.#statement.show(template.statement);
     // The row is named by the canvas kind.
     if (isWorkbook(template) !== isWorkbook(shown) || !sameTools(template, shown)) {
@@ -764,17 +769,7 @@ export class NovatrailCanvas extends HTMLElement {
     this.#told = after.length;
     this.#writing = undefined;
     this.#equal = undefined;
-    // The marks as they were checked when given go back on their strokes, if this history has them.
-    if (this.#given !== undefined) {
-      try {
-        this.#showMarks(this.#places(this.#given));
-      } catch (error) {
-        if (!(error instanceof TypeError)) throw error;
-        this.#marks = undefined;
-        this.#given = undefined;
-        this.#showMarks([]);
-      }
-    }
+    this.#replace();
     this.#refresh();
     this.#request();
   }
@@ -792,17 +787,20 @@ export class NovatrailCanvas extends HTMLElement {
   }
 
   /**
-   * The tutor's marks of one submission, with the context the element gave with its crop (R07,
-   * R26): each a frame where a group of strokes is, or a box on the crop the model saw. A mark
-   * holds on to the strokes the model saw there and is drawn around those of them the sheet shows,
-   * as they are now: new strokes do not move it, and when all of them are erased it is gone, till
-   * undo brings them back. A box that comes near no stroke, and an answer cell while the task has
-   * none, have no frame: the question is asked without one. The type is the element's own until
-   * spec's contract gives one. A submission goes back to a sheet whose history holds its strokes,
-   * as its digest tells (R27): one of other strokes is a TypeError, and so are marks given before
-   * the history they hold on to, and marks that are not marks. A new history puts the marks back
-   * on their strokes, or takes them off. `undefined` takes the marks off. Every value is checked as
-   * it comes, and marks equal to those shown write nothing.
+   * The tutor's marks of one submission, with the context the element gave with its work (R07,
+   * R26): each a frame where a group of strokes is, or a box on the crop the model saw, and on a
+   * workbook where an answer cell is, by its item and its slot (R39). A mark holds on to the
+   * strokes the model saw there and is drawn around those of them the sheet shows, as they are now
+   * — a cell's around its box too: new strokes do not move it, and when all of them are erased it
+   * is gone, till undo brings them back. A box that comes near no stroke, a cell on a sheet, which
+   * takes no zones, and a box of a workbook that was empty, have no frame: the question is asked
+   * without one. The type is the element's own until spec's contract gives one. A submission goes
+   * back to a sheet whose history holds its strokes, as its digest tells (R27), and a workbook's
+   * to a page of its boxes: one of other strokes or other boxes is a TypeError, and so are marks
+   * given before the task and the history they hold on to, and marks that are not marks. A new
+   * history, and a new page, put the marks back on their strokes, or take them off. `undefined`
+   * takes the marks off. Every value is checked as it comes, and marks equal to those shown write
+   * nothing.
    */
   get marks(): Marks | undefined {
     return this.#marks;
@@ -1010,6 +1008,22 @@ export class NovatrailCanvas extends HTMLElement {
     }
   }
 
+  /**
+   * The marks as they were checked when given, back on their strokes after a new history or a new
+   * page, if those have their strokes and boxes, or else off, with no event (R27, R39).
+   */
+  #replace(): void {
+    if (this.#given === undefined) return;
+    try {
+      this.#showMarks(this.#places(this.#given));
+    } catch (error) {
+      if (!(error instanceof TypeError)) throw error;
+      this.#marks = undefined;
+      this.#given = undefined;
+      this.#showMarks([]);
+    }
+  }
+
   /** Every stroke the sheet has known, erased or not, as its history wrote them. */
   #known(): Stroke[] {
     return this.#work.history.flatMap((event) => (event.kind === "write" ? [event.stroke] : []));
@@ -1020,7 +1034,8 @@ export class NovatrailCanvas extends HTMLElement {
    * with its name: a TypeError for a submission that is not this sheet's (R26, R27).
    */
   #places(given: Marks): { readonly name: string; readonly placed: Placed }[] {
-    const places = placesOf(given, this.#known());
+    const cells = isWorkbook(this.#shownTemplate) ? this.#cells : null;
+    const places = placesOf(given, this.#known(), cells);
     return given.marks.flatMap(({ name }, n) => {
       const placed = places[n];
       return placed ? [{ name, placed }] : [];
@@ -1037,7 +1052,10 @@ export class NovatrailCanvas extends HTMLElement {
       marks.every(({ name, placed }, n) => {
         const shown = this.#shown[n];
         return (
-          shown !== undefined && shown.name === name && sameItems(shown.placed.ids, placed.ids)
+          shown !== undefined &&
+          shown.name === name &&
+          sameItems(shown.placed.ids, placed.ids) &&
+          sameBox(shown.placed.cell ?? null, placed.cell ?? null)
         );
       });
     if (same) return;

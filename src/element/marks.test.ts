@@ -247,7 +247,7 @@ test("new strokes inside a frame do not move it, and marks given after clear() s
   expectNear(probe(element).marks[0]?.frame, before);
 });
 
-test("a box over empty paper, and an answer cell while the task has none, have no frame", async () => {
+test("a box over empty paper, and an answer cell on a sheet, which takes no zones, have no frame", async () => {
   const { element, canvas, layer, view } = await sheet(500);
   twoGroups(canvas, view);
   await settle();
@@ -255,7 +255,7 @@ test("a box over empty paper, and an answer cell while the task has none, have n
     submission: await sentOf(element),
     marks: [
       frameOf("Nothing here", { box: [0, 0, 1, 1] }),
-      frameOf("The answer", { cell: "answer" }),
+      frameOf("The answer", { cell: { item: 1, slot: 1 } }),
     ],
   };
   await settle();

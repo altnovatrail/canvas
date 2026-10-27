@@ -74,13 +74,22 @@ export interface WorkbookSubmission {
 export type Submission = SheetSubmission | WorkbookSubmission;
 
 /**
- * Where a mark is: a group of strokes by its label, an answer cell by its ID, or a box on the crop
- * the model saw, [ymin, xmin, ymax, xmax] in whole thousandths of its height and width, min < max
- * (R53 spec).
+ * An answer cell by its place (R51 spec), which has no ID: its item, and its place among the item's
+ * cells, each from 1. On a workbook a cell is a box.
+ */
+export interface CellPlace {
+  readonly item: number;
+  readonly slot: number;
+}
+
+/**
+ * Where a mark is: a group of strokes by its label, an answer cell by its place, or a box on the
+ * crop the model saw, [ymin, xmin, ymax, xmax] in whole thousandths of its height and width, min <
+ * max (R53 spec). On a workbook a mark stands on a cell alone (R34).
  */
 export type Anchor =
   | { readonly group: string }
-  | { readonly cell: string }
+  | { readonly cell: CellPlace }
   | { readonly box: readonly [number, number, number, number] };
 
 /** A mark of the tutor's layer: a frame, so far, with where it is and its name. */
@@ -91,19 +100,24 @@ export interface Mark {
   readonly name: string;
 }
 
-/** The tutor's marks of one submission, with the submission's context (R07): a sheet's, until T53. */
+/**
+ * The tutor's marks of one submission, with the submission's context (R07): a sheet's or a
+ * workbook's.
+ */
 export interface Marks {
-  readonly submission: SheetSubmission;
+  readonly submission: Submission;
   readonly marks: readonly Mark[];
 }
 
 /**
  * A mark on the sheet, `{stroke_ids, snapped_box}` (C2): the strokes it holds on to, by ID in
- * ascending order, and the rectangle of their points, in units, as the model saw them.
+ * ascending order, and the rectangle of their points, in units, as the model saw them. A mark of a
+ * workbook's cell has the box of its cell too, which its frame stands round with the ink (R39).
  */
 export interface Placed {
   readonly ids: readonly number[];
   readonly box: Box;
+  readonly cell?: Box;
 }
 
 /**
@@ -118,10 +132,12 @@ const DIGEST = /^[0-9a-f]{16}$/;
 
 /**
  * The tutor's marks a value gives, checked (R26). A value that is not the marks of a submission is
- * a TypeError that names the field; fields the sheet does not read are passed over. The crop's
+ * a TypeError that names the field; fields the sheet does not read are passed over. The context's
+ * keys tell its kind (R38): a sheet's crop and groups, or a workbook's boxes. The crop's
  * `sheet_box` must be the one its whole numbers give, to a millionth of a unit, its frames the
  * groups', in their order, a group's label must be one of the submission's, and the digest 16 hex
- * digits. Whether the submission is this sheet's, its strokes tell (`placesOf`).
+ * digits. A workbook's rows name each box once and each stroke in one box, and its marks stand on
+ * cells alone (R39). Whether the submission is this sheet's, its strokes tell (`placesOf`).
  */
 export function marksOf(value: unknown): Marks {
   const fields = record(value, "marks");
@@ -129,7 +145,9 @@ export function marksOf(value: unknown): Marks {
   if (!Array.isArray(fields.marks)) {
     throw new TypeError(`marks.marks: a list of marks, not ${shown(fields.marks)}`);
   }
-  const labels = new Set(submission.groups.map(({ label }) => label));
+  // What a mark may stand on: a group of a sheet's, or on a workbook a cell alone.
+  const labels =
+    "groups" in submission ? new Set(submission.groups.map(({ label }) => label)) : null;
   return {
     submission,
     marks: fields.marks.map((mark: unknown, n) => markOf(mark, `marks.marks[${n}]`, labels)),
@@ -169,39 +187,43 @@ export function snapOf(
  * the sheet has known, erased or not, as its history wrote them: a mark holds on to the strokes the
  * model saw, and shows those of them the sheet shows at the time (C2). A stroke written after the
  * submission is in none of its groups, and no mark takes it. A group's mark holds its strokes, a
- * box's the strokes it snaps to; an answer cell's holds none while the task has no cells.
+ * box's the strokes it snaps to; an answer cell's holds none on a sheet, which takes no zones.
+ * `cells` are the boxes of a workbook's page, in the task's order, and null on a sheet: there a
+ * cell's mark holds the strokes of its row of the table, with its box, and a cell not in the table
+ * holds none (R39).
  *
  * A submission of other strokes is a TypeError: a stroke of its groups the sheet does not know, or
  * a digest the sheet's strokes of those IDs do not give with the submission's numbers (R27). A
  * sheet of other strokes would have those IDs too — each numbers its strokes from 1 — and a
  * context changed since the sheet gave it would place the marks by other numbers. The sheet's own
  * submission always passes, the strokes erased since too, and so does the same history given to
- * another sheet.
+ * another sheet. A workbook's digest holds every box of its page too, so a page of another layout
+ * is not its submission's (R38), and a context of the other kind of canvas is a TypeError.
  */
 export function placesOf(
   marks: Marks,
   known: readonly Stroke[],
+  cells: readonly Cell[] | null = null,
   rule: SnapRule = SNAP_RULE,
 ): (Placed | null)[] {
   checkRule(rule);
-  const { crop, groups, digest } = marks.submission;
+  const { submission } = marks;
   const byId = new Map(known.map((stroke) => [stroke.id, stroke]));
+  if ("boxes" in submission) {
+    if (cells === null)
+      throw new TypeError(`marks.submission: ${otherKind("a workbook's", "a sheet")}`);
+    return cellsPlacesOf(marks.marks, submission, byId, cells);
+  }
+  if (cells !== null)
+    throw new TypeError(`marks.submission: ${otherKind("a sheet's", "a workbook")}`);
+  const { crop, groups, digest } = submission;
   const sent: Stroke[] = [];
   for (const [n, { label, ids }] of groups.entries()) {
     const frame = crop.frames[n];
     if (frame === undefined || frame.label !== label) {
       throw new TypeError(`marks.submission.crop.frames[${n}]: the frame of the group ${label}`);
     }
-    for (const id of ids) {
-      const stroke = byId.get(id);
-      if (stroke === undefined) {
-        throw new TypeError(
-          `marks.submission: the sheet has no stroke ${id}, of the group ${label}: the ` +
-            "submission is not this sheet's",
-        );
-      }
-      sent.push(stroke);
-    }
+    sent.push(...knownOf(ids, byId, `the group ${label}`, "sheet"));
   }
   if (digestOf(sent, crop, groups) !== digest) {
     throw new TypeError(
@@ -227,7 +249,75 @@ export function placesOf(
  */
 export function shownOf(placed: Placed, shown: (id: number) => Box | undefined): Box | null {
   const boxes = placed.ids.flatMap((id) => shown(id) ?? []);
-  return boxes.length > 0 ? around(boxes) : null;
+  if (boxes.length === 0) return null;
+  // A cell's frame stands round its box and its ink together, by the author's answer (R39).
+  return around(placed.cell === undefined ? boxes : [...boxes, placed.cell]);
+}
+
+/** What a context of the other kind of canvas is, and what this one is (R39). */
+function otherKind(context: string, here: string): string {
+  return `${context} context, and this is ${here}: the task comes before the marks`;
+}
+
+/**
+ * The strokes of a context's IDs, all of which the sheet or the page, `here`, must know: else it
+ * is not its submission.
+ */
+function knownOf(
+  ids: readonly number[],
+  byId: ReadonlyMap<number, Stroke>,
+  of: string,
+  here: "sheet" | "page",
+): Stroke[] {
+  return ids.map((id) => {
+    const stroke = byId.get(id);
+    if (stroke === undefined) {
+      throw new TypeError(
+        `marks.submission: the ${here} has no stroke ${id}, of ${of}: the submission is not ` +
+          `this ${here}'s`,
+      );
+    }
+    return stroke;
+  });
+}
+
+/** Whether a field of a context is not there: left out, or null as some stores write it. */
+function absent(value: unknown): boolean {
+  return value === undefined || value === null;
+}
+
+/**
+ * Where each mark of a workbook's submission is (R39): a cell's, on the strokes of its row of the
+ * table and its box of the page; one of a cell not in the table, on none.
+ */
+function cellsPlacesOf(
+  marks: readonly Mark[],
+  { boxes, digest }: WorkbookSubmission,
+  byId: ReadonlyMap<number, Stroke>,
+  cells: readonly Cell[],
+): (Placed | null)[] {
+  const sent = boxes.flatMap(({ item, slot, ids }) =>
+    knownOf(ids, byId, `the box ${item}.${slot}`, "page"),
+  );
+  if (workbookDigestOf(sent, boxes, cells) !== digest) {
+    throw new TypeError(
+      "marks.submission.digest: the page's strokes of its IDs and its boxes give another: the " +
+        "submission is not this page's, or it was changed",
+    );
+  }
+  return marks.map(({ at }) => {
+    const place = "cell" in at ? at.cell : undefined;
+    const same = ({ item, slot }: CellPlace) => item === place?.item && slot === place.slot;
+    const row = boxes.find(same);
+    const cell = cells.find(same);
+    if (row === undefined || cell === undefined) return null;
+    const { left, top, width, height } = cell.box;
+    return {
+      ids: [...row.ids].sort(byNumber),
+      box: boxOf(row.ids.flatMap((id) => byId.get(id)?.points ?? [])),
+      cell: { minX: left, minY: top, maxX: left + width, maxY: top + height },
+    };
+  });
 }
 
 /**
@@ -348,21 +438,31 @@ function checkRule({ margin, share }: SnapRule): void {
   }
 }
 
-function submissionOf(value: unknown, path: string): SheetSubmission {
+/** A submission's context, a sheet's or a workbook's by its keys (R38). */
+function submissionOf(value: unknown, path: string): Submission {
   const fields = record(value, path);
-  const groups = tableOf(fields.groups, `${path}.groups`);
-  const crop = numbersOf(fields.crop, `${path}.crop`, groups);
+  let parts: Omit<SheetSubmission, "digest"> | Omit<WorkbookSubmission, "digest">;
+  if (absent(fields.boxes)) {
+    const groups = groupTableOf(fields.groups, `${path}.groups`);
+    parts = { crop: numbersOf(fields.crop, `${path}.crop`, groups), groups };
+  } else if (absent(fields.crop) && absent(fields.groups)) {
+    parts = { boxes: rowsOf(fields.boxes, `${path}.boxes`) };
+  } else {
+    throw new TypeError(
+      `${path}: a sheet's context, its crop and groups, or a workbook's, its boxes, not both`,
+    );
+  }
   const { digest } = fields;
   if (typeof digest !== "string" || !DIGEST.test(digest)) {
     throw new TypeError(
       `${path}.digest: what the submission was made of, 16 hex digits, not ${shown(digest)}`,
     );
   }
-  return { crop, groups, digest };
+  return { ...parts, digest };
 }
 
 /** The groups of a submission: each label once, each stroke in one group. */
-function tableOf(value: unknown, path: string): Group[] {
+function groupTableOf(value: unknown, path: string): Group[] {
   if (!Array.isArray(value) || value.length === 0) {
     throw new TypeError(`${path}: the groups of the strokes sent, not ${shown(value)}`);
   }
@@ -370,24 +470,53 @@ function tableOf(value: unknown, path: string): Group[] {
   const strokes = new Set<number>();
   return value.map((group: unknown, n) => {
     const fields = record(group, `${path}[${n}]`);
-    const { label, ids } = fields;
+    const { label } = fields;
     if (typeof label !== "string" || label === "" || labels.has(label)) {
       throw new TypeError(`${path}[${n}].label: a label of its own, not ${shown(label)}`);
     }
     labels.add(label);
-    if (!Array.isArray(ids) || ids.length === 0) {
-      throw new TypeError(`${path}[${n}].ids: the IDs of its strokes, not ${shown(ids)}`);
-    }
-    for (const id of ids) {
-      if (!Number.isInteger(id) || id < 1 || strokes.has(id)) {
-        throw new TypeError(
-          `${path}[${n}].ids: a stroke's ID in one group alone, not ${shown(id)}`,
-        );
-      }
-      strokes.add(id);
-    }
-    return { label, ids: [...(ids as number[])] };
+    return { label, ids: idsOf(fields.ids, `${path}[${n}].ids`, strokes, "group") };
   });
+}
+
+/** The rows of a workbook's table (R38): each box once, by its place, each stroke in one box. */
+function rowsOf(value: unknown, path: string): Filling[] {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new TypeError(`${path}: the filled boxes and their strokes, not ${shown(value)}`);
+  }
+  const places = new Set<string>();
+  const strokes = new Set<number>();
+  return value.map((row: unknown, n) => {
+    const fields = record(row, `${path}[${n}]`);
+    const { item, slot } = placeOf(fields, `${path}[${n}]`);
+    if (places.has(`${item}.${slot}`)) {
+      throw new TypeError(`${path}[${n}]: a box of its own, not ${item}.${slot} again`);
+    }
+    places.add(`${item}.${slot}`);
+    return { item, slot, ids: idsOf(fields.ids, `${path}[${n}].ids`, strokes, "box") };
+  });
+}
+
+/** The IDs of a group's or a box's strokes: whole, from 1, each in one of them alone. */
+function idsOf(value: unknown, path: string, taken: Set<number>, of: string): number[] {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new TypeError(`${path}: the IDs of its strokes, not ${shown(value)}`);
+  }
+  for (const id of value) {
+    if (!Number.isInteger(id) || id < 1 || taken.has(id)) {
+      throw new TypeError(`${path}: a stroke's ID in one ${of} alone, not ${shown(id)}`);
+    }
+    taken.add(id);
+  }
+  return [...(value as number[])];
+}
+
+/** An answer cell's place (R51 spec): its item, and its place among the item's cells, from 1. */
+function placeOf(fields: Record<string, unknown>, path: string): CellPlace {
+  return {
+    item: whole(fields.item, `${path}.item`, 1),
+    slot: whole(fields.slot, `${path}.slot`, 1),
+  };
 }
 
 /** The crop's numbers that place the marks, checked against each other and against the groups. */
@@ -449,7 +578,7 @@ function numbersOf(value: unknown, path: string, groups: readonly Group[]): Crop
   };
 }
 
-function markOf(value: unknown, path: string, labels: ReadonlySet<string>): Mark {
+function markOf(value: unknown, path: string, labels: ReadonlySet<string> | null): Mark {
   const mark = record(value, path);
   if (mark.kind !== "frame") {
     throw new TypeError(`${path}.kind: the sheet draws "frame" marks, not ${shown(mark.kind)}`);
@@ -462,26 +591,28 @@ function markOf(value: unknown, path: string, labels: ReadonlySet<string>): Mark
   return { kind: "frame", at: anchorOf(mark.at, `${path}.at`, labels), name: mark.name };
 }
 
-function anchorOf(value: unknown, path: string, labels: ReadonlySet<string>): Anchor {
+/** Where a mark is: on a sheet, `labels` its groups'; on a workbook, null, a cell alone (R39). */
+function anchorOf(value: unknown, path: string, labels: ReadonlySet<string> | null): Anchor {
   const at = record(value, path);
   const given = (["group", "cell", "box"] as const).filter((key) => at[key] !== undefined);
   if (given.length !== 1) {
     throw new TypeError(`${path}: one of a group, a cell and a box, not ${shown(value)}`);
   }
+  if (labels === null && at.cell === undefined) {
+    throw new TypeError(
+      `${path}: a mark of a workbook stands on a cell alone, not ${shown(value)}`,
+    );
+  }
   if (at.group !== undefined) {
-    if (typeof at.group !== "string" || !labels.has(at.group)) {
+    if (typeof at.group !== "string" || !labels?.has(at.group)) {
       throw new TypeError(
         `${path}.group: a label of the submission's groups, not ${shown(at.group)}`,
       );
     }
     return { group: at.group };
   }
-  if (at.cell !== undefined) {
-    if (typeof at.cell !== "string" || at.cell === "") {
-      throw new TypeError(`${path}.cell: the ID of an answer cell, not ${shown(at.cell)}`);
-    }
-    return { cell: at.cell };
-  }
+  if (at.cell !== undefined)
+    return { cell: placeOf(record(at.cell, `${path}.cell`), `${path}.cell`) };
   return { box: fractionsOf(at.box, `${path}.box`) };
 }
 

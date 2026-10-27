@@ -1,19 +1,21 @@
 import { afterEach, expect, test } from "vitest";
 import { cdp, page } from "vitest/browser";
 import { cellsOf } from "../core/boxes.js";
+import type { Box } from "../core/geometry.js";
 import { isBox, type Page, type PageBox, type PageText, pageOf } from "../core/page.js";
 import { PAGES, SHORT, shortLines } from "../core/pages.fixture.js";
 import type { View } from "../core/screen.js";
 import { cellsForCheck } from "../core/submission.js";
 import { moduleManifest, sheetTask, workbookTask } from "../core/tasks.fixture.js";
-import type { ExportedWork, Filled, Task, WorkbookItem } from "./index.js";
+import type { ExportedWork, Filled, Mark, Task, WorkbookItem } from "./index.js";
 import { at, level, placed, press, screenshot, settle } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The workbook in Chromium (R34, R35, R36): its lines on the template where the layout puts them,
 // whatever the font and the styles the element inherits; its boxes over the ink they take; a list a
 // screen reader reads, in the DOM and in Chromium's own tree; the theme; the way between the kinds
-// of canvas; the boxes filled (R37); and the work for checking, the crop of each filled box (R38).
+// of canvas; the boxes filled (R37); the work for checking, the crop of each filled box (R38); and
+// the tutor's marks on the boxes (R39).
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -558,4 +560,81 @@ test("the work for checking is the crop of each filled box, in the task's order,
   element.task = sheetTask();
   const sheet = await element.exportWork();
   expect(sheet !== null && "png" in sheet && sheet.png.type).toBe("image/png");
+});
+
+/** A mark of the tutor's on a box, by its item and its slot. */
+function onBox(item: number, slot: number, name: string): Mark {
+  return { kind: "frame", at: { cell: { item, slot } }, name };
+}
+
+/** Where the frame of a mark of a box stands when its ink is inside it: 10 units off the box. */
+function padded({ left, top, width, height }: PageBox): Box {
+  return { minX: left - 10, minY: top - 10, maxX: left + width + 10, maxY: top + height + 10 };
+}
+
+/** The format's example page with strokes in its first box and its last, sent for checking. */
+async function marked() {
+  const opened = await workbook(EXAMPLE);
+  const boxes = boxesOf(opened.page);
+  inBox(opened.canvas, opened.view(), boxes[0] as PageBox);
+  inBox(opened.canvas, opened.view(), boxes[5] as PageBox);
+  const work = await opened.element.exportWork();
+  if (work === null || !("cells" in work)) throw new Error("the workbook gave no work of boxes");
+  return { ...opened, boxes, submission: work.submission };
+}
+
+test("a mark of a box stands round the box and its ink, 10 units off, read by its name: it fades under a stroke, goes while all its strokes are erased and comes back with undo, and one of an empty box has none", async () => {
+  const { element, root, canvas, view, boxes, submission } = await marked();
+  const first = boxes[0] as PageBox;
+  element.marks = {
+    submission,
+    marks: [onBox(1, 1, "Look at this box"), onBox(2, 1, "Nothing here")],
+  };
+  await settle();
+  expect(probe(element).marks).toEqual([
+    { name: "Look at this box", ids: [1], frame: padded(first) },
+  ]);
+  await expect.element(page.getByRole("img", { name: "Look at this box" })).toBeVisible();
+  const frame = root.querySelector(".marks rect");
+  // A stroke under way in the box fades the frame, and it comes back when the stroke lands.
+  const writing = pressed(canvas, view(), first);
+  await settle();
+  expect(frame?.classList.contains("under")).toBe(true);
+  writing.lift();
+  await settle();
+  expect(frame?.classList.contains("under")).toBe(false);
+  // The eraser across the box takes its strokes, the mark's with them; undo brings them back.
+  element.tool = "eraser";
+  inBox(canvas, view(), first);
+  await settle();
+  expect(probe(element).marks[0]?.frame).toBeNull();
+  element.undo();
+  await settle();
+  expect(probe(element).marks[0]?.frame).toEqual(padded(first));
+});
+
+test("the marks of a page stay on the same page and go with another, or with a history without their strokes, and a workbook's context is a TypeError on a sheet", async () => {
+  const { element, submission } = await marked();
+  const marks = { submission, marks: [onBox(5, 2, "The remainder")] };
+  element.marks = marks;
+  // Another task of the same lines is the same page: the marks stay, and nothing is told.
+  element.task = { ...workbookTask(EXAMPLE), id: "tables-2" };
+  expect(element.marks).toBe(marks);
+  expect(probe(element).marks.map(({ ids }) => ids)).toEqual([[2]]);
+  // Another page, and the other kind, are not the submission's: the marks go, with no error.
+  element.task = workbookTask(SHORT);
+  expect(element.marks).toBeUndefined();
+  element.task = workbookTask(EXAMPLE);
+  element.marks = marks;
+  element.task = sheetTask();
+  expect(element.marks).toBeUndefined();
+  expect(() => {
+    element.marks = marks;
+  }).toThrow(/a workbook's context, and this is a sheet: the task comes before the marks/);
+  // Back on the page, a history without the marked strokes takes them off.
+  element.task = workbookTask(EXAMPLE);
+  element.marks = marks;
+  element.history = [];
+  expect(element.marks).toBeUndefined();
+  expect(probe(element).marks).toEqual([]);
 });
