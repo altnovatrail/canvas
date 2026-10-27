@@ -13,7 +13,8 @@
 // in pen mode, where a finger writes nothing and a button lets it write again, a palm writes
 // nothing, and two fingers scroll (T35; R29). The task comes in the names of the module format's
 // draft, checked as its schema checks it, and the module's manifest gives the height of a digit and
-// the statement's language (T44; R32).
+// the statement's language (T44; R32). Up and Down in the row scroll what two fingers would, with
+// a single pointer (T45; R33).
 
 import type { Vec2 } from "perfect-freehand";
 import { Clock } from "../core/clock.js";
@@ -134,6 +135,12 @@ const MARK_CORNER = 6;
  */
 const ERASER_RADIUS_PX = 10;
 
+/**
+ * How much of what it shows a press of Up or Down scrolls (R33): four fifths, as WebKit pages on
+ * an iPad, so that the last lines stay in sight. T22 tries it on devices.
+ */
+const UP_DOWN = 4 / 5;
+
 const SVG = "http://www.w3.org/2000/svg";
 
 // The statement and the sheet stand in a column of their own, as wide as the element up to
@@ -147,7 +154,8 @@ const SVG = "http://www.w3.org/2000/svg";
 // (R28). The element is as tall as the row, the statement and the sheet unless it is given a
 // height: then the statement and the sheet scroll in it, under the row. On the canvas the browser
 // neither scrolls nor zooms: the pointer writes, and two fingers scroll by the element's own code
-// (R29). The canvas and the buttons take pointer events only as the element does: a consumer's
+// (R29), as Up and Down of the row do with a single pointer, a pair the row wraps together (R33).
+// The canvas and the buttons take pointer events only as the element does: a consumer's
 // pointer-events: none on the element stops the writing and the buttons' pointer, though not
 // their keys (R20, R28). The theme is the consumer's, by custom properties that the shadow tree
 // inherits; with forced colours the system's colours stand in for them.
@@ -160,7 +168,7 @@ const STYLE = `
   padding: 8px 0; display: flex; flex-wrap: wrap; gap: 8px;
   background: var(--novatrail-canvas-paper, ${PAPER}); color: var(--novatrail-canvas-ink, ${INK});
 }
-.tools .choice { display: flex; gap: 8px; margin-inline-end: 16px; }
+.tools .choice, .tools .updown { display: flex; gap: 8px; margin-inline-end: 16px; }
 .tools button {
   box-sizing: border-box; min-width: 44px; min-height: 44px; padding: 0 16px; margin: 0;
   font: inherit; color: inherit; background: transparent; cursor: pointer;
@@ -226,6 +234,15 @@ interface Latch {
   readonly target: Element | Window;
   readonly scale: number;
   rest: number;
+}
+
+/** An element's client box on the screen, and how much the page scales it down the screen. */
+interface ClientBox {
+  readonly left: number;
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+  readonly down: number;
 }
 
 /** The view of the sheet, with the visible part's top left corner and height on the screen. */
@@ -319,6 +336,7 @@ export class NovatrailCanvas extends HTMLElement {
     choose: (tool) => this.#choose(tool),
     undo: () => this.undo(),
     clear: () => this.clear(),
+    upOrDown: (onward) => this.#upOrDown(onward),
     // The finger writes again on every sheet of the page, with no event: the next pen's touch
     // puts the page back in pen mode (R29).
     fingers: () => {
@@ -363,6 +381,17 @@ export class NovatrailCanvas extends HTMLElement {
   #finger = false;
   /** What two fingers scroll in the gesture under way, chosen at its first step. */
   #latch: Latch | undefined;
+  /**
+   * A scroll of the page, or of an ancestor of the element in the page's own tree, heard on its way
+   * down: Up or Down may have come to an end, or left one (R33). Other scrollers are none of theirs.
+   */
+  readonly #heard = (event: Event): void => {
+    const target = event.target;
+    if (target === document || (target instanceof Element && holds(target, this))) this.#edges();
+  };
+  /** The page grown or shrunk, or the window: what scrolls the element may have room now, or none. */
+  readonly #page = new ResizeObserver(() => this.#edges());
+  readonly #resized = (): void => this.#edges();
   #unwatchPen: (() => void) | undefined;
   #tool: Tool = "pen";
   #task: Task | undefined;
@@ -700,6 +729,11 @@ export class NovatrailCanvas extends HTMLElement {
       unwatch();
       unenlist();
     };
+    // A scroll does not bubble, but the document hears every one of its tree on the way down. A
+    // page that grows or shrinks scrolls nothing, and neither does a window of another size.
+    document.addEventListener("scroll", this.#heard, { capture: true, passive: true });
+    this.#page.observe(document.documentElement);
+    window.addEventListener("resize", this.#resized);
     this.#refresh();
   }
 
@@ -762,6 +796,9 @@ export class NovatrailCanvas extends HTMLElement {
     this.#latch = undefined;
     this.#unwatchPen?.();
     this.#unwatchPen = undefined;
+    document.removeEventListener("scroll", this.#heard, { capture: true });
+    this.#page.disconnect();
+    window.removeEventListener("resize", this.#resized);
     // A stroke that ended here may be the one the other rows of the page waited for.
     PEN_MODE.settle();
     this.#statement.disconnect();
@@ -974,7 +1011,7 @@ export class NovatrailCanvas extends HTMLElement {
     const k = scaleFor(canvas.width);
     const sheet = this.#sheet.getBoundingClientRect();
     const vy = (canvas.top - sheet.top) / k;
-    const port = this.#port();
+    const port = clientBoxOf(this.#viewport);
     // The row ends where the container begins, unless it sticks over it.
     const row = this.#tools.element.getBoundingClientRect();
     const shown = {
@@ -986,42 +1023,80 @@ export class NovatrailCanvas extends HTMLElement {
     return { k, vy, left: canvas.left, top: canvas.top, height: canvas.height, shown };
   }
 
-  /**
-   * The container's client box on the screen — what it shows of its content — and how much the
-   * page scales it down the screen: 1 unless the element is in a transformed ancestor.
-   */
-  #port(): {
-    readonly left: number;
-    readonly top: number;
-    readonly right: number;
-    readonly bottom: number;
-    readonly down: number;
-  } {
-    const port = this.#viewport;
-    const box = port.getBoundingClientRect();
-    const across = port.offsetWidth > 0 ? box.width / port.offsetWidth : 1;
-    const down = scaleOf(port, box);
-    const left = box.left + port.clientLeft * across;
-    const top = box.top + port.clientTop * down;
-    const right = left + port.clientWidth * across;
-    const bottom = top + port.clientHeight * down;
-    return { left, top, right, bottom, down };
-  }
-
   /** The sheet's top in the container's content, in CSS pixels as laid out: under the statement. */
   #sheetTop(): number {
-    const port = this.#port();
+    const port = clientBoxOf(this.#viewport);
     const sheet = this.#sheet.getBoundingClientRect();
     return (sheet.top - port.top) / port.down + this.#viewport.scrollTop;
   }
 
   /**
    * The top of the visible part from the scroll and the last layout, without reading the layout
-   * again: the stage sticks to the container's top once the sheet's top has gone past it.
+   * again: the stage sticks to the container's top once the sheet's top has gone past it. Up or
+   * Down may have come to an end of the container, or left one.
    */
   #scrolled(): void {
     if (this.#k > 0) this.#vy = Math.max(0, this.#viewport.scrollTop - this.#sheetAt) / this.#k;
     this.#request();
+    this.#edges();
+  }
+
+  /**
+   * Up or Down was pressed (R33): what two fingers would scroll that way goes by four fifths of what
+   * it shows in sight. It is chosen anew at every press, so that a container at its end hands the
+   * scroll on at the next. While a pointer writes or erases on a sheet of the page, nothing moves
+   * under it.
+   */
+  #upOrDown(onward: boolean): void {
+    const latch = PEN_MODE.writing ? undefined : this.#scrollerFor(onward);
+    if (latch !== undefined) {
+      const step = Math.max(1, Math.round((UP_DOWN * this.#seen(latch.target)) / latch.scale));
+      latch.target.scrollBy({ top: onward ? step : -step, behavior: "instant" });
+    }
+    this.#edges();
+  }
+
+  /**
+   * How much of what a scroller shows is in sight, down the screen: within the ancestors that clip
+   * it and the visual viewport, and below the row of buttons while the row sticks over its top. A
+   * scroller out of sight counts whole.
+   */
+  #seen(target: Element | Window): number {
+    const sight = window.visualViewport;
+    let top = sight?.offsetTop ?? 0;
+    let bottom = top + (sight?.height ?? window.innerHeight);
+    let whole = bottom - top;
+    if (target instanceof Element) {
+      const own = clientBoxOf(target);
+      whole = own.bottom - own.top;
+      // The scroller, and every ancestor that clips it, up to the page, whose part is the sight.
+      for (let node: Element | null = target; node !== null; node = parentOf(node)) {
+        if (node === document.documentElement) break;
+        if (node !== target && getComputedStyle(node).overflowY === "visible") continue;
+        const clip = node === target ? own : clientBoxOf(node);
+        top = Math.max(top, clip.top);
+        bottom = Math.min(bottom, clip.bottom);
+      }
+    }
+    // The row hides the top while it sticks there, as far down as the consumer's offset puts it.
+    const row = this.#tools.element;
+    const box = row.getBoundingClientRect();
+    if (box.top <= top + (Number.parseFloat(getComputedStyle(row).top) || 0) + 0.5) {
+      top = Math.max(top, box.bottom);
+    }
+    return bottom > top ? bottom - top : whole;
+  }
+
+  /**
+   * Up and Down as the scrolling now is (R33): each stands unavailable while what two fingers would
+   * scroll its way can go no further. The element hears its container, the page and the ancestors
+   * in the page's own tree scroll, and the page and the window change size, but not the scrolling
+   * in another shadow tree: a press asks anew.
+   */
+  #edges(): void {
+    if (!this.isConnected) return;
+    const above = this.#scrollerFor(false) !== undefined;
+    this.#tools.edges(above, this.#scrollerFor(true) !== undefined);
   }
 
   /**
@@ -1107,6 +1182,8 @@ export class NovatrailCanvas extends HTMLElement {
       this.#canvas.height = height;
     }
     this.#draw();
+    // A container of another height, or a statement, may give Up or Down somewhere to go, or none.
+    this.#edges();
   }
 
   /** A new density — the window on another screen, the page zoomed — lays the canvas out anew. */
@@ -1425,12 +1502,37 @@ function scrollsOn(element: Element, onward: boolean): boolean {
   return onward ? element.scrollTop < end - 0.5 : element.scrollTop > 0.5;
 }
 
+/** Whether an element holds another in the flat tree, across the borders of shadow trees. */
+function holds(ancestor: Element, element: Element): boolean {
+  for (let node = parentOf(element); node !== null; node = parentOf(node)) {
+    if (node === ancestor) return true;
+  }
+  return false;
+}
+
 /** A node's parent in the flat tree: the slot it is in, its parent, or its shadow root's host. */
 function parentOf(element: Element): Element | null {
   if (element.assignedSlot !== null) return element.assignedSlot;
   if (element.parentElement !== null) return element.parentElement;
   const root = element.parentNode;
   return root instanceof ShadowRoot ? root.host : null;
+}
+
+/**
+ * An element's client box on the screen — what it shows of its content, within its borders and
+ * without its scroll bar — and how much the page scales it down the screen: 1 unless an ancestor
+ * transforms it. The sheet's container has one, and so has any ancestor Up and Down scroll (R33).
+ */
+function clientBoxOf(element: Element): ClientBox {
+  const box = element.getBoundingClientRect();
+  const wide = element instanceof HTMLElement ? element.offsetWidth : 0;
+  const across = wide > 0 ? box.width / wide : 1;
+  const down = scaleOf(element, box);
+  const left = box.left + element.clientLeft * across;
+  const top = box.top + element.clientTop * down;
+  const right = left + element.clientWidth * across;
+  const bottom = top + element.clientHeight * down;
+  return { left, top, right, bottom, down };
 }
 
 /**

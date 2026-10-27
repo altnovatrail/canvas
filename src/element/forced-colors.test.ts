@@ -126,8 +126,8 @@ test("with forced colours the row of buttons takes the system's colours of butto
   await settle();
   const root = element.shadowRoot;
   const row = root?.querySelector(".tools");
-  const [pen, eraser, undo] = [...(root?.querySelectorAll(".tools button") ?? [])];
-  if (!row || !pen || !eraser || !undo) throw new Error("the element has no row of buttons");
+  const [pen, eraser, undo, , up] = [...(root?.querySelectorAll(".tools button") ?? [])];
+  if (!row || !pen || !eraser || !undo || !up) throw new Error("the element has no row of buttons");
   expect(getComputedStyle(row).backgroundColor).toBe(system("Canvas"));
   expect(getComputedStyle(eraser).backgroundColor).toBe(system("ButtonFace"));
   expect(getComputedStyle(eraser).color).toBe(system("ButtonText"));
@@ -136,8 +136,10 @@ test("with forced colours the row of buttons takes the system's colours of butto
   expect(pen.getAttribute("aria-checked")).toBe("true");
   expect(getComputedStyle(pen).backgroundColor).toBe(system("Highlight"));
   expect(getComputedStyle(pen).color).toBe(system("HighlightText"));
-  // Nothing to undo yet.
-  expect(undo.getAttribute("aria-disabled")).toBe("true");
-  expect(getComputedStyle(undo).color).toBe(system("GrayText"));
-  expect(getComputedStyle(undo).borderTopColor).toBe(system("GrayText"));
+  // Nothing to undo yet, and nothing above to scroll back up to (R33).
+  for (const unavailable of [undo, up]) {
+    expect(unavailable.getAttribute("aria-disabled")).toBe("true");
+    expect(getComputedStyle(unavailable).color).toBe(system("GrayText"));
+    expect(getComputedStyle(unavailable).borderTopColor).toBe(system("GrayText"));
+  }
 });

@@ -48,6 +48,14 @@ export async function placed(
   return { element, root, canvas, viewport, row, view };
 }
 
+/** A page taller than the screen, which scrolls the element: it goes into `made`, to be taken off. */
+export function spacer(made: HTMLElement[]): void {
+  const rest = document.createElement("div");
+  rest.style.height = "2000px";
+  document.body.append(rest);
+  made.push(rest);
+}
+
 /** The client point over a point of the sheet. */
 export function at(canvas: HTMLCanvasElement, view: View, x: number, y: number) {
   const rect = canvas.getBoundingClientRect();

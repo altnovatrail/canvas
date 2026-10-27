@@ -3,20 +3,23 @@
 // the arrow keys from button to button, and the tools a group of radio buttons that the arrows go
 // through without choosing one. Undo and Clear with nothing to take back or to clear stay where the
 // focus can reach them, marked unavailable: a last undo from the keyboard leaves the focus where it
-// was. In pen mode a last button lets a finger write again (R29). The labels are in the element's
-// language (labels.ts). This module is no entry point of the package.
+// was. Up and Down scroll the sheet with a single pointer, and stand unavailable at the end they
+// scroll to (R33). In pen mode a last button lets a finger write again (R29). The labels are in
+// the element's language (labels.ts). This module is no entry point of the package.
 
 import type { Tool } from "../core/task.js";
 import { labelsFor } from "./labels.js";
 
 /**
  * What the row asks of the element: a tool the learner chose — perhaps the one in use — an undo, a
- * clearing, and the finger to write again, out of pen mode.
+ * clearing, a scroll on down the sheet, for `onward`, or back up it, and the finger to write again,
+ * out of pen mode.
  */
 export interface ToolActions {
   readonly choose: (tool: Tool) => void;
   readonly undo: () => void;
   readonly clear: () => void;
+  readonly upOrDown: (onward: boolean) => void;
   readonly fingers: () => void;
 }
 
@@ -41,13 +44,19 @@ export class Tools {
   readonly #eraser = radioButton();
   readonly #undo = plainButton();
   readonly #clear = plainButton();
+  /** Up and Down, a pair that a row wrapping on a narrow screen keeps together. */
+  readonly #pair = document.createElement("div");
+  readonly #up = plainButton();
+  readonly #down = plainButton();
   readonly #finger = plainButton();
-  /** The buttons in the order the arrow keys go through them. */
+  /** The buttons in the order the arrow keys go through them: the row's own. */
   readonly #buttons: readonly HTMLButtonElement[] = [
     this.#pen,
     this.#eraser,
     this.#undo,
     this.#clear,
+    this.#up,
+    this.#down,
     this.#finger,
   ];
   /** The language of the labels shown. */
@@ -59,7 +68,10 @@ export class Tools {
     this.#group.className = "choice";
     this.#group.setAttribute("role", "radiogroup");
     this.#group.append(this.#pen, this.#eraser);
-    this.element.append(this.#group, this.#undo, this.#clear, this.#finger);
+    this.#pair.className = "updown";
+    this.#pair.append(this.#up, this.#down);
+    // The finger's button comes last: coming and going, it moves no other button of the row.
+    this.element.append(this.#group, this.#undo, this.#clear, this.#pair, this.#finger);
     this.#finger.hidden = true;
     // Tab comes to the first button, until another has had the focus.
     this.#stopAt(this.#pen);
@@ -74,6 +86,10 @@ export class Tools {
     };
     doing(this.#undo, actions.undo);
     doing(this.#clear, actions.clear);
+    // Up and Down ask the element anew at every press, unavailable or not: a scroll the element did
+    // not hear may have left either standing as it no longer is.
+    this.#up.addEventListener("click", () => actions.upOrDown(false));
+    this.#down.addEventListener("click", () => actions.upOrDown(true));
     this.#finger.addEventListener("click", () => actions.fingers());
     this.element.addEventListener("keydown", (event) => this.#key(event));
     // The button that had the focus last is the one Tab comes back to.
@@ -95,6 +111,15 @@ export class Tools {
   }
 
   /**
+   * Whether anything scrolls back up the sheet, for Up, and on down it, for Down: a button with
+   * nowhere to go stands unavailable. Only what has changed is written.
+   */
+  edges(above: boolean, below: boolean): void {
+    write(this.#up, "aria-disabled", above ? null : "true");
+    write(this.#down, "aria-disabled", below ? null : "true");
+  }
+
+  /**
    * The labels in the language of a tag — the element's `lang` — and the row's own `lang` theirs,
    * so that a screen reader reads them in the language they are in.
    */
@@ -109,6 +134,8 @@ export class Tools {
     this.#eraser.textContent = labels.eraser;
     this.#undo.textContent = labels.undo;
     this.#clear.textContent = labels.clear;
+    this.#up.textContent = labels.up;
+    this.#down.textContent = labels.down;
     this.#finger.textContent = labels.finger;
   }
 
