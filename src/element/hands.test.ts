@@ -7,7 +7,7 @@ import { sheetTask } from "../core/tasks.fixture.js";
 import "./index.js";
 import type { HistoryChange, Task } from "./index.js";
 import { labelsFor } from "./labels.js";
-import { at, type Finger, input, placed, settle, touches } from "./pointer.fixture.js";
+import { at, type Finger, input, placed, settle, spacer, touches } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
 
@@ -36,17 +36,10 @@ async function sheet(
   options: { parent?: HTMLElement; task?: Task } = {},
 ) {
   const parts = await placed(made, width, height, options);
-  const finger = parts.row.querySelectorAll("button")[4];
+  // The finger's button is the row's last (R33).
+  const finger = [...parts.row.querySelectorAll("button")].at(-1);
   if (finger === undefined) throw new Error("the row has no finger's button");
   return { ...parts, finger };
-}
-
-/** A page taller than the screen, which scrolls the element. */
-function spacer(): void {
-  const rest = document.createElement("div");
-  rest.style.height = "2000px";
-  document.body.append(rest);
-  made.push(rest);
 }
 
 /** A stroke of a pen, through the DevTools protocol, from one point of the sheet to another. */
@@ -177,8 +170,9 @@ test("pen mode is the page's: a second sheet is in it as well, and the button of
 });
 
 test("every row of the page waits for the end of a pen's stroke: the sheet above wraps its row only then, and the sheet below moves only then", async () => {
-  const above = await sheet(400);
-  const below = await sheet(400);
+  // A row so narrow that the finger's button takes a line of its own.
+  const above = await sheet(200);
+  const below = await sheet(200);
   const top = below.canvas.getBoundingClientRect().top;
   const options = { pointerType: "pen", force: 0.5 } as const;
   await input("mousePressed", at(below.canvas, below.view(), 100, 300), options);
@@ -240,14 +234,14 @@ test("two fingers scroll the sheet of an element with a height by their travel p
 
 test("without a height two fingers scroll the page, and a gesture keeps what it began to scroll: the container at its end hands on at the next gesture", async () => {
   const free = await sheet(400);
-  spacer();
+  spacer(made);
   await twoFingers(free.viewport, -100);
   expect(window.scrollY).toBeCloseTo(100 - SLOP_PX, 0);
   for (const each of made.splice(0)) each.remove();
   window.scrollTo(0, 0);
 
   const held = await sheet(400, 300);
-  spacer();
+  spacer(made);
   const end = held.viewport.scrollHeight - held.viewport.clientHeight;
   held.viewport.scrollTop = end - 20;
   await settle();
@@ -374,7 +368,7 @@ test("a history given while two fingers scroll lets them go on, and a sheet take
 });
 
 test("the row, wrapped once the finger's button comes, moves the sheet only after the pen's stroke", async () => {
-  const { canvas, finger, row, view } = await sheet(400);
+  const { canvas, finger, row, view } = await sheet(200);
   const tall = row.getBoundingClientRect().height;
   const top = canvas.getBoundingClientRect().top;
   await input("mousePressed", at(canvas, view(), 100, 300), { pointerType: "pen", force: 0.5 });
@@ -385,7 +379,7 @@ test("the row, wrapped once the finger's button comes, moves the sheet only afte
   await input("mouseReleased", at(canvas, view(), 300, 300), { pointerType: "pen", force: 0 });
   await expect.poll(() => finger.hidden).toBe(false);
   await settle();
-  // Five buttons do not fit 400 px in one line: the row wraps, and the sheet goes down.
+  // The finger's button fits no line of the row 200 px wide: the row wraps, and the sheet goes down.
   expect(row.getBoundingClientRect().height).toBeGreaterThan(tall);
   expect(canvas.getBoundingClientRect().top).toBeGreaterThan(top);
 });
@@ -447,7 +441,7 @@ test("a pen that came down writing nothing and lifted beyond the element leaves 
 
 test("two fingers scroll no page that hides its overflow, and the page whose body's overflow is the viewport's", async () => {
   const { viewport } = await sheet(400);
-  spacer();
+  spacer(made);
   const root = document.documentElement;
   try {
     root.style.overflow = "hidden";

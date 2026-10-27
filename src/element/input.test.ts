@@ -562,8 +562,11 @@ test("a tool the element does not take, given before it is upgraded, leaves it t
 
 test("the eraser takes nothing beyond the part of the sheet on the screen, where a captured pointer goes on", async () => {
   const { element, canvas, view } = await sheet(400, 200);
-  // One stroke in sight, at 300, and one below the part on the screen, at 1000: under the row of
-  // buttons the screen shows the sheet down to 350 at k 0.4.
+  // One stroke in sight, at 300, and one below the part on the screen, at 1000: the container, 140
+  // CSS pixels tall under the row of buttons, shows the sheet down to 350 at k 0.4.
+  const row = element.shadowRoot?.querySelector(".tools")?.getBoundingClientRect().height ?? 0;
+  element.style.height = `${row + 140}px`;
+  await settle();
   level(canvas, view(), 300, 100, 300);
   level(canvas, view(), 1000, 100, 300);
   element.tool = "eraser";

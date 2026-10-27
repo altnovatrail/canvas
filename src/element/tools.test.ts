@@ -4,14 +4,15 @@ import type { HistoryEvent } from "../core/history.js";
 import { sheetTask } from "../core/tasks.fixture.js";
 import { NovatrailCanvas, type ToolChange } from "./index.js";
 import { labelsFor } from "./labels.js";
-import { at, input, level, placed, settle } from "./pointer.fixture.js";
+import { at, input, level, placed, settle, spacer } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
 
-// The element's own row of buttons in Chromium (R28): a toolbar of the tools the task allows and of
-// undo and clearing, found by its roles and names in the element's language, worked with the
-// pointer and with the keyboard, telling of the learner's choice of tool, and standing above the
-// statement and the sheet, outside their scrolling.
+// The element's own row of buttons in Chromium (R28): a toolbar of the tools the task allows, of
+// undo and clearing, and of Up and Down (R33), found by its roles and names in the element's
+// language, worked with the pointer and with the keyboard, telling of the learner's choice of tool,
+// scrolling what two fingers would, and standing above the statement and the sheet, outside their
+// scrolling.
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -35,6 +36,8 @@ function buttons(element: HTMLElement, names = labelsFor(null).labels) {
     eraser: within.getByRole("radio", { name: names.eraser }),
     undo: within.getByRole("button", { name: names.undo }),
     clear: within.getByRole("button", { name: names.clear }),
+    up: within.getByRole("button", { name: names.up }),
+    down: within.getByRole("button", { name: names.down }),
   };
 }
 
@@ -77,13 +80,17 @@ test("the row is a toolbar of the pen and the eraser, undo and clear, named in E
   await expect.element(found.eraser).not.toBeChecked();
   await expect.element(found.undo).toBeVisible();
   await expect.element(found.clear).toBeVisible();
-  // The order the arrow keys go through, and the language the names are in. The last button is
-  // pen mode's, and out of it the row hides it (R29).
+  await expect.element(found.up).toBeVisible();
+  await expect.element(found.down).toBeVisible();
+  // The order the arrow keys go through, and the language the names are in. Up and Down are on
+  // every device (R33), and the last button is pen mode's, which out of it the row hides (R29).
   expect([...row.querySelectorAll("button")].map((each) => each.textContent)).toEqual([
     "Pen",
     "Eraser",
     "Undo",
     "Clear",
+    "Up",
+    "Down",
     "Draw with finger",
   ]);
   expect(row.querySelectorAll("button[hidden]")).toHaveLength(1);
@@ -104,6 +111,8 @@ test("the labels follow the element's own lang: Russian for ru and its regions, 
     "Ластик",
     "Отменить",
     "Очистить",
+    "Выше",
+    "Ниже",
     "Рисовать пальцем",
   ]);
   // A language the labels are not in reads as English, in English: the row says its own.
@@ -221,16 +230,18 @@ test("the row is one stop of Tab, the arrow keys move between its buttons choosi
   await userEvent.keyboard("{ArrowRight}");
   expect(focused()).toBe("Eraser");
   expect(element.tool).toBe("pen");
-  // Undo and Clear are reached while unavailable, the arrows go round the row, Home and End go to
-  // its ends, and a key with Control is not the row's: the keys, and the button they leave focused.
+  // Undo, Clear and Up are reached while unavailable, the arrows go round the row, Home and End go
+  // to its ends, and a key with Control is not the row's: the keys, and the button they leave
+  // focused.
   const moves: [keys: string, to: string][] = [
     ["{ArrowRight}{ArrowRight}", "Clear"],
-    ["{ArrowRight}", "Pen"],
-    ["{ArrowLeft}", "Clear"],
+    ["{ArrowRight}", "Up"],
+    ["{ArrowRight}{ArrowRight}", "Pen"],
+    ["{ArrowLeft}", "Down"],
     ["{Home}", "Pen"],
-    ["{End}", "Clear"],
-    ["{Control>}{ArrowLeft}{/Control}", "Clear"],
-    ["{ArrowLeft}{ArrowLeft}", "Eraser"],
+    ["{End}", "Down"],
+    ["{Control>}{ArrowLeft}{/Control}", "Down"],
+    ["{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}", "Eraser"],
   ];
   for (const [keys, to] of moves) {
     await userEvent.keyboard(keys);
@@ -332,7 +343,7 @@ test("a task without the eraser has none: no button, no eraser of the pen, no to
   expect(() => {
     element.task = sheetTask({ tools: ["eraser"] });
   }).toThrow(TypeError);
-  expect(root.querySelectorAll("button:not([hidden])")).toHaveLength(3);
+  expect(root.querySelectorAll("button:not([hidden])")).toHaveLength(5);
 });
 
 test("a new task without the eraser puts the pen back, with no event, and the focus with it; an erasing under way ends as it began", async () => {
@@ -383,7 +394,7 @@ test("an eraser given before the element is upgraded, with a task without it, le
 });
 
 test("every button is at least 44 CSS pixels square, in English and in Russian, on a narrow sheet, pen mode's too", async () => {
-  // A device with touch, in pen mode: the row shows every button it has (R29).
+  // A device with touch, in pen mode: the row shows every button it has (R29, R33).
   Object.defineProperty(navigator, "maxTouchPoints", { value: 5, configurable: true });
   try {
     const { element, row } = await sheet(400);
@@ -392,7 +403,7 @@ test("every button is at least 44 CSS pixels square, in English and in Russian, 
       element.setAttribute("lang", tag);
       await settle();
       const shown = row.querySelectorAll("button:not([hidden])");
-      expect(shown).toHaveLength(5);
+      expect(shown).toHaveLength(7);
       for (const each of shown) {
         const rect = each.getBoundingClientRect();
         expect(rect.width).toBeGreaterThanOrEqual(44);
@@ -402,6 +413,140 @@ test("every button is at least 44 CSS pixels square, in English and in Russian, 
   } finally {
     Reflect.deleteProperty(navigator, "maxTouchPoints");
   }
+});
+
+/** Up and Down of the element's row (R33). */
+const upAndDown = (element: HTMLElement) => ({
+  up: button(element, "Up"),
+  down: button(element, "Down"),
+});
+
+/** What `aria-disabled` says of each button: "true" while it stands unavailable. */
+const unavailableOf = (...each: HTMLButtonElement[]) =>
+  each.map((one) => one.getAttribute("aria-disabled"));
+
+test.each([1, 1.5])(
+  "Up and Down scroll the container of an element with a height by four fifths of what it shows, under an ancestor scaled %s times as well",
+  async (scale) => {
+    const wrapper = document.createElement("div");
+    wrapper.style.cssText = `transform: scale(${scale}); transform-origin: 0 0;`;
+    document.body.append(wrapper);
+    const { element, viewport } = await sheet(400, 300, wrapper);
+    const { up, down } = upAndDown(element);
+    // In pixels of the container's layout, whatever the scale on the screen.
+    const step = Math.round(0.8 * viewport.clientHeight);
+    await userEvent.click(down);
+    expect(viewport.scrollTop).toBeCloseTo(step, 0);
+    await userEvent.click(down);
+    expect(viewport.scrollTop).toBeCloseTo(2 * step, 0);
+    await userEvent.click(up);
+    expect(viewport.scrollTop).toBeCloseTo(step, 0);
+    expect(window.scrollY).toBe(0);
+  },
+);
+
+test("Down at the container's end hands the scroll on to the page, by four fifths of what it shows below the row stuck over it, and Up scrolls the container back first", async () => {
+  const { element, row, viewport } = await sheet(400, 300);
+  spacer(made);
+  const { up, down } = upAndDown(element);
+  const end = viewport.scrollHeight - viewport.clientHeight;
+  viewport.scrollTop = end;
+  // The page scrolled a little, and the row sticks over its top.
+  window.scrollTo(0, 100);
+  await settle();
+  expect(row.getBoundingClientRect().top).toBeCloseTo(0, 3);
+  const sight = window.visualViewport?.height ?? window.innerHeight;
+  const step = Math.round(0.8 * (sight - row.getBoundingClientRect().bottom));
+  down.click();
+  expect(viewport.scrollTop).toBeCloseTo(end, 0);
+  expect(window.scrollY).toBeCloseTo(100 + step, 0);
+  window.scrollTo(0, 0);
+  await settle();
+  await userEvent.click(up);
+  expect(viewport.scrollTop).toBeCloseTo(end - Math.round(0.8 * viewport.clientHeight), 0);
+  expect(window.scrollY).toBe(0);
+});
+
+test("Up and Down stand unavailable where what they scroll can go no further, keep the focus there, and do nothing", async () => {
+  const { element, root, viewport } = await sheet(400, 300);
+  const { up, down } = upAndDown(element);
+  // The container at its top, and a page that does not scroll: nothing above.
+  expect(unavailableOf(up, down)).toEqual(["true", null]);
+  const within = page.elementLocator(element);
+  await expect.element(within.getByRole("button", { name: "Up", disabled: true })).toBeVisible();
+  down.focus();
+  const end = viewport.scrollHeight - viewport.clientHeight;
+  for (let press = 0; press < 10 && viewport.scrollTop < end - 0.5; press++) {
+    await userEvent.keyboard("{Enter}");
+  }
+  expect(unavailableOf(up, down)).toEqual([null, "true"]);
+  expect(root.activeElement).toBe(down);
+  await userEvent.keyboard("{Enter} ");
+  expect(viewport.scrollTop).toBeCloseTo(end, 0);
+  expect(root.activeElement).toBe(down);
+  // A scroll that is not theirs sets them as the container now is.
+  viewport.scrollTop = 0;
+  await settle();
+  expect(unavailableOf(up, down)).toEqual(["true", null]);
+});
+
+test("without a height Up and Down scroll the ancestor that scrolls the element, and hear it scroll", async () => {
+  const scroller = document.createElement("div");
+  scroller.style.cssText = "height: 300px; overflow: auto;";
+  document.body.append(scroller);
+  const { element } = await sheet(400, undefined, scroller);
+  const { up, down } = upAndDown(element);
+  expect(unavailableOf(up, down)).toEqual(["true", null]);
+  scroller.scrollTop = 100;
+  await settle();
+  expect(unavailableOf(up, down)).toEqual([null, null]);
+  // Back by four fifths of what the ancestor shows below the row, which sticks to its top: to 0.
+  await userEvent.click(up);
+  expect(scroller.scrollTop).toBe(0);
+  expect(unavailableOf(up, down)).toEqual(["true", null]);
+});
+
+test("Up and Down count only what an ancestor that clips the container lets show", async () => {
+  // A container that scrolls well past a step, in a panel that shows a part of it.
+  const panel = document.createElement("div");
+  panel.style.cssText = "height: 250px; overflow: auto;";
+  document.body.append(panel);
+  const { element, viewport } = await sheet(400, 400, panel);
+  const seen = panel.getBoundingClientRect().bottom - viewport.getBoundingClientRect().top;
+  upAndDown(element).down.click();
+  expect(viewport.scrollTop).toBeCloseTo(Math.round(0.8 * seen), 0);
+});
+
+test("without a height, Down stands unavailable on a page no taller than the window until the page grows, and then scrolls it by four fifths of the window, the row lower down", async () => {
+  const above = document.createElement("div");
+  above.style.height = "100px";
+  document.body.append(above);
+  made.push(above);
+  const { element, row } = await sheet(400);
+  const { down } = upAndDown(element);
+  expect(unavailableOf(down)).toEqual(["true"]);
+  // The page grows, and nothing scrolls: Down has somewhere to go.
+  spacer(made);
+  await settle();
+  expect(unavailableOf(down)).toEqual([null]);
+  // The row stands in its place, below the page's top, over nothing: the whole window counts.
+  expect(row.getBoundingClientRect().top).toBeCloseTo(100, 3);
+  const sight = window.visualViewport?.height ?? window.innerHeight;
+  down.click();
+  expect(window.scrollY).toBeCloseTo(Math.round(0.8 * sight), 0);
+});
+
+test("a press of Up or Down while a pointer writes moves nothing under it, and one after the stroke scrolls", async () => {
+  const { element, canvas, viewport, view } = await sheet(400, 300);
+  const { down } = upAndDown(element);
+  await input("mousePressed", at(canvas, view(), 100, 100));
+  await input("mouseMoved", at(canvas, view(), 300, 100));
+  down.click();
+  expect(viewport.scrollTop).toBe(0);
+  await input("mouseReleased", at(canvas, view(), 300, 100));
+  expect(probe(element).strokes).toHaveLength(1);
+  down.click();
+  expect(viewport.scrollTop).toBeGreaterThan(0);
 });
 
 test("with a height, the row stays where it is while the statement and the sheet scroll under it", async () => {
@@ -417,11 +562,7 @@ test("with a height, the row stays where it is while the statement and the sheet
 
 test("without a height, the row sticks to the top of the page's scrolling, as far down as --novatrail-canvas-top says, over the sheet it hides from the eraser", async () => {
   const { element, root, row, canvas, view } = await sheet(400);
-  // A page taller than the screen, which scrolls the element.
-  const rest = document.createElement("div");
-  rest.style.height = "2000px";
-  document.body.append(rest);
-  made.push(rest);
+  spacer(made);
   // A stroke well down the sheet, and the page scrolled so that it is under the row.
   level(canvas, view(), 700, 100, 300);
   window.scrollTo(0, at(canvas, view(), 200, 700).clientY - 20);
@@ -468,11 +609,17 @@ test("a press on the row starts no stroke, and a stroke let go over a button cli
 });
 
 test("with the consumer's pointer-events: none the buttons take no pointer, and their keys still work", async () => {
-  const { element } = await sheet(400);
+  const { element, viewport } = await sheet(400, 300);
   element.style.pointerEvents = "none";
   await press(button(element, "Eraser"));
   expect(element.tool).toBe("pen");
   button(element, "Eraser").focus();
   await userEvent.keyboard(" ");
   expect(element.tool).toBe("eraser");
+  // Down's key scrolls the sheet, though two fingers would start no gesture then (R29, R33).
+  await press(button(element, "Down"));
+  expect(viewport.scrollTop).toBe(0);
+  button(element, "Down").focus();
+  await userEvent.keyboard("{Enter}");
+  expect(viewport.scrollTop).toBeGreaterThan(0);
 });
