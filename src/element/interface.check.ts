@@ -1,9 +1,10 @@
 // Type-checked by ci-lint and never built: the element's interface as a consumer's types see it
-// (R07, R27, R28, R32). What a consumer may do type-checks; each line under a directive must be an
-// error, and were it not, the directive would go unused, and that would be the error instead.
+// (R07, R27, R28, R32, R37). What a consumer may do type-checks; each line under a directive must
+// be an error, and were it not, the directive would go unused, and that would be the error instead.
 
 import type {
   ExportedWork,
+  Filled,
   HistoryChangeEvent,
   HistoryEvent,
   Manifest,
@@ -56,6 +57,9 @@ sheet.manifest = undefined;
 
 export const work: Promise<ExportedWork | null> = sheet.exportWork();
 export const history: readonly HistoryEvent[] = sheet.history;
+/** Which boxes of a workbook are filled, per item, per box; null on a sheet (R37). */
+export const filled: Filled | null = sheet.filled;
+export const first: boolean | undefined = sheet.filled?.[0]?.[0];
 sheet.history = undefined;
 sheet.history = [];
 
@@ -71,6 +75,10 @@ document.addEventListener("toolchange", (event) => {
   // @ts-expect-error The tool told is the learner's choice, to read.
   event.detail.tool = "pen";
 });
+// @ts-expect-error The filled boxes are the element's to tell, not the consumer's to set.
+sheet.filled = null;
+// @ts-expect-error Nor to change in place.
+sheet.filled?.[0]?.push(true);
 // @ts-expect-error null is no manifest: undefined, and undefined alone, is none.
 sheet.manifest = null;
 // @ts-expect-error The grid's step is grid_step in the format, not step.

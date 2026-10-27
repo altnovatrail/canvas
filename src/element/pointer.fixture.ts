@@ -63,14 +63,25 @@ export function at(canvas: HTMLCanvasElement, view: View, x: number, y: number) 
   return { clientX: rect.left + onScreen.x, clientY: rect.top + onScreen.y };
 }
 
-/** A level stroke at `y`, from `from` to `to`, made by a script: a mouse's, pointerId 1. */
-export function level(canvas: HTMLCanvasElement, view: View, y: number, from: number, to: number) {
+/**
+ * A level press at `y`, from `from` to `to`, made by a script — a mouse's, pointerId 1 — not yet
+ * lifted: `lift()` ends it there.
+ */
+export function press(canvas: HTMLCanvasElement, view: View, y: number, from: number, to: number) {
   const mouse = { pointerId: 1, pointerType: "mouse", isPrimary: true, bubbles: true };
   const event = (type: string, x: number, init: PointerEventInit) =>
     new PointerEvent(type, { ...mouse, ...at(canvas, view, x, y), ...init });
   canvas.dispatchEvent(event("pointerdown", from, { button: 0, buttons: 1, pressure: 0.5 }));
   canvas.dispatchEvent(event("pointermove", to, { button: -1, buttons: 1, pressure: 0.5 }));
-  canvas.dispatchEvent(event("pointerup", to, { button: 0, buttons: 0, pressure: 0 }));
+  return {
+    lift: () =>
+      canvas.dispatchEvent(event("pointerup", to, { button: 0, buttons: 0, pressure: 0 })),
+  };
+}
+
+/** A level stroke at `y`, from `from` to `to`, made by a script: a mouse's, pointerId 1. */
+export function level(canvas: HTMLCanvasElement, view: View, y: number, from: number, to: number) {
+  press(canvas, view, y, from, to).lift();
 }
 
 /**

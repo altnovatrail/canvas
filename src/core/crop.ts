@@ -1,9 +1,8 @@
 import RBush from "rbush";
-import { around, type Box, tenths } from "./geometry.js";
+import { around, type Box, type Extent, extentOf } from "./geometry.js";
 import type { Group } from "./groups.js";
 import type { Stroke } from "./ink.js";
 import { Sets } from "./sets.js";
-import { SHEET } from "./sheet.js";
 
 /**
  * The crop's rule in its numbers (R25): sizes on the crop in pixels, heights on the sheet in units.
@@ -79,10 +78,6 @@ export interface Crop {
 }
 
 /** A stroke as the crop sees it: the box of its points in tenths. */
-interface Extent extends Box {
-  readonly id: number;
-}
-
 /**
  * The bundles of the strokes on a sheet (R25): strokes no lower than `CROP.flat`, joined by a chain
  * of boxes that touch or overlap, whenever each was written. Each bundle by its IDs ascending, the
@@ -189,29 +184,11 @@ export function sheetBoxOf(
  */
 function extentsOf(strokes: readonly Stroke[]): Extent[] {
   const seen = new Set<number>();
-  return strokes.map(({ id, points }) => {
-    if (seen.has(id)) throw new TypeError(`the stroke ${id} is on the sheet twice`);
-    seen.add(id);
-    if (points.length === 0) throw new TypeError(`the stroke ${id} has no points`);
-    let minX = Number.POSITIVE_INFINITY;
-    let minY = Number.POSITIVE_INFINITY;
-    let maxX = Number.NEGATIVE_INFINITY;
-    let maxY = Number.NEGATIVE_INFINITY;
-    for (const { x, y } of points) {
-      if (!onSheet(x, SHEET.width) || !onSheet(y, SHEET.height)) {
-        throw new RangeError(`the stroke ${id} has a point (${x}, ${y}) off the sheet`);
-      }
-      minX = Math.min(minX, tenths(x));
-      minY = Math.min(minY, tenths(y));
-      maxX = Math.max(maxX, tenths(x));
-      maxY = Math.max(maxY, tenths(y));
-    }
-    return { id, minX, minY, maxX, maxY };
+  return strokes.map((stroke) => {
+    if (seen.has(stroke.id)) throw new TypeError(`the stroke ${stroke.id} is on the sheet twice`);
+    seen.add(stroke.id);
+    return extentOf(stroke);
   });
-}
-
-function onSheet(value: number, size: number): boolean {
-  return Number.isFinite(value) && value >= 0 && value <= size;
 }
 
 /**

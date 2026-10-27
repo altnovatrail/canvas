@@ -206,6 +206,36 @@ export const GLYPHS: Readonly<Record<string, readonly (readonly Spot[])[]>> = {
     ],
   ],
   ":": [[[5, 3]], [[5, 7]]],
+  "×": [
+    [
+      [1, 1],
+      [9, 9],
+    ],
+    [
+      [9, 1],
+      [1, 9],
+    ],
+  ],
+  "<": [
+    [
+      [10, 0],
+      [0, 5],
+      [10, 10],
+    ],
+  ],
+  ">": [
+    [
+      [0, 0],
+      [10, 5],
+      [0, 10],
+    ],
+  ],
+  "/": [
+    [
+      [8, 0],
+      [2, 10],
+    ],
+  ],
 };
 
 /** How a hand writes characters: their size in units, and its pauses in milliseconds. */
@@ -241,6 +271,46 @@ function stepMs(a: Spot, b: Spot): number {
   return 8 * Math.max(1, Math.ceil(Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1])) / 30));
 }
 
+/**
+ * How densely a hand's points stand: as given, a point at each corner of a stroke, or a point every
+ * `step` units between the corners, as the input gives one every 1 to 3 units. Those between move
+ * by up to `wobble` units each way, by the seed, as a hand's do; the corners stay.
+ */
+export interface Density {
+  readonly step: number;
+  readonly wobble: number;
+  readonly seed: number;
+}
+
+/**
+ * The spots between the corners, every `step` tenths along the longer of the two axes — the
+ * stroke's own direction, with no square root — each moved by up to `wobble` tenths.
+ */
+function densify(spots: readonly Spot[], { step, wobble, seed }: Density): Spot[] {
+  const next = random(seed);
+  const tenths = Math.round(step * 10);
+  if (!(tenths >= 1))
+    throw new RangeError(`a step of points is a tenth of a unit at least, not ${step}`);
+  const shake = Math.round(wobble * 10);
+  const out: Spot[] = [];
+  for (const [n, [x, y]] of spots.entries()) {
+    const last = spots[n - 1];
+    if (last !== undefined) {
+      const [lx, ly] = last;
+      const parts = Math.ceil(Math.max(Math.abs(x - lx), Math.abs(y - ly)) / tenths);
+      for (let k = 1; k < parts; k++) {
+        const jitter = () => Math.round((2 * next() - 1) * shake);
+        out.push([
+          lx + Math.round(((x - lx) * k) / parts) + jitter(),
+          ly + Math.round(((y - ly) * k) / parts) + jitter(),
+        ]);
+      }
+    }
+    out.push([x, y]);
+  }
+  return out;
+}
+
 /** A pen on a sheet: its events through the recorder onto the work, on the sheet's one clock. */
 export class Hand {
   readonly #clock = new Clock();
@@ -248,6 +318,14 @@ export class Hand {
   readonly #recorder = new Recorder((done) => this.work.write(done), this.#clock);
   /** The page's time. The sheet's 0 is the hand's first event. */
   #now = 1000;
+  /** How densely the points of its strokes stand: at their corners alone, unless given. */
+  readonly #density: Density | undefined;
+  /** How many strokes it has written: each wobbles by a seed of its own. */
+  #written = 0;
+
+  constructor(density?: Density) {
+    this.#density = density;
+  }
 
   /** The hand rests. */
   wait(ms: number): void {
@@ -255,7 +333,13 @@ export class Hand {
   }
 
   /** One stroke through the spots; its ID. A single spot is a dot, 30 ms long. */
-  stroke(spots: readonly Spot[]): number {
+  stroke(given: readonly Spot[]): number {
+    const density = this.#density;
+    const spots =
+      density === undefined
+        ? given
+        : densify(given, { ...density, seed: density.seed + this.#written });
+    this.#written += 1;
     const [first, ...rest] = spots;
     if (first === undefined) throw new Error("a stroke needs a point");
     this.#recorder.down(this.#sample(first, 0, 1));
