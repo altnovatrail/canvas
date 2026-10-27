@@ -147,7 +147,7 @@ test("with forced colours the row of buttons takes the system's colours of butto
   }
 });
 
-test("with forced colours a workbook's text and the frames of its boxes are the system's text colour, whatever the consumer's ink, and a filled box's frame the highlight", async () => {
+test("with forced colours a workbook's text and the frames of its boxes are the system's text colour, whatever the consumer's ink, and a filled box's frame and a mark's on it the highlight", async () => {
   const theme = document.createElement("div");
   theme.style.setProperty("--novatrail-canvas-ink", "rgb(0, 0, 255)");
   document.body.append(theme);
@@ -183,4 +183,15 @@ test("with forced colours a workbook's text and the frames of its boxes are the 
   ];
   expect(box.classList.contains("filled")).toBe(true);
   expect(getComputedStyle(box).stroke).toBe(system("Highlight"));
+  // The tutor's mark on that box, as on a sheet (R39).
+  const work = await element.exportWork();
+  if (work === null || !("cells" in work)) throw new Error("the workbook gave no work of boxes");
+  element.marks = {
+    submission: work.submission,
+    marks: [{ kind: "frame", at: { cell: { item: 1, slot: 1 } }, name: "This box" }],
+  };
+  await settle();
+  const mark = element.shadowRoot?.querySelector(".marks rect");
+  if (!mark) throw new Error("no frame drawn");
+  expect(getComputedStyle(mark).stroke).toBe(system("Highlight"));
 });

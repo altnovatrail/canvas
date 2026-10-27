@@ -18,6 +18,7 @@ export type { InkPoint, Stroke } from "./ink.js";
 export type { Manifest } from "./manifest.js";
 export type {
   Anchor,
+  CellPlace,
   CropNumbers,
   Mark,
   Marks,

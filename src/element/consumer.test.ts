@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
-import { type HistoryEvent, SHEET, type SheetSubmission } from "../core/index.js";
+import { type Anchor, type HistoryEvent, SHEET, type Submission } from "../core/index.js";
 import {
   type ExportedSheet,
   type ExportedWorkbook,
@@ -10,17 +10,17 @@ import {
   type Tool,
 } from "./index.js";
 
-// The trial consumer (R27, R28, R32, R38; RUN.md, T15, T41, T44, T49): a page that takes the
-// element as app is to take it. It gives the task, the module's manifest, the media and the
+// The trial consumer (R27, R28, R32, R38, R39; RUN.md, T15, T41, T44, T49, T53): a page that takes
+// the element as app is to take it. It gives the task, the module's manifest, the media and the
 // language, keeps the history of writing as historychange tells it and gives it back, hears the
 // learner's choice of tool, takes the work for checking at Check, and gives the tutor's marks back
 // with their submission's context, then opens the sheet again in a new element. On a workbook it
-// writes in the boxes and beside them, reads which are filled, and takes the crop of each filled
-// box. It goes through the package's entry points alone, never the probe the other tests read. It
-// writes as a script does: pointer events on the canvas in the element's open shadow root, at the
-// points the canvas's rectangle gives. The learner's erasing, undo and clearing go through the
-// sheet's own buttons, and the workbook's boxes are found the same way, by their roles and their
-// Russian names.
+// writes in the boxes and beside them, reads which are filled, takes the crop of each filled box,
+// and gives a mark on a box back. It goes through the package's entry points alone, never the
+// probe the other tests read. It writes as a script does: pointer events on the canvas in the
+// element's open shadow root, at the points the canvas's rectangle gives. The learner's erasing,
+// undo and clearing go through the sheet's own buttons, and the workbook's boxes are found the
+// same way, by their roles and their Russian names.
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -179,7 +179,7 @@ async function decoded(png: Blob) {
   };
 }
 
-/** The crop of a sheet's work, read as app would, with the grey of its pixel over a sheet's point. */
+/** A sheet's crop, read as app would, and the grey of its pixel over a point of the sheet. */
 async function read(work: ExportedSheet) {
   const picture = await decoded(work.png);
   const { width, height, sheetBox } = work.submission.crop;
@@ -228,11 +228,9 @@ function writeIn(book: HTMLElement, box: Element) {
   write(book, y, (left + width / 4 - rect.left) / k, (left + (3 * width) / 4 - rect.left) / k);
 }
 
-/** The tutor's marks of a submission as app has them back from api, through JSON. */
-function marksOf(submission: SheetSubmission, name: string): Marks {
-  return JSON.parse(
-    JSON.stringify({ submission, marks: [{ kind: "frame", at: { group: "A" }, name }] }),
-  );
+/** A tutor's mark of a submission as app has it back from api, through JSON: on A unless told. */
+function marksOf(submission: Submission, name: string, at: Anchor = { group: "A" }): Marks {
+  return JSON.parse(JSON.stringify({ submission, marks: [{ kind: "frame", at, name }] }));
 }
 
 test("app's path: write, erase, undo and clear with the sheet's buttons, keep the history as it is told, give it back, check, and take the tutor's marks", async () => {
@@ -435,7 +433,7 @@ test("a sheet taken off the page in the middle of a stroke tells its own listene
   }
 });
 
-test("app's path on a workbook: write in its boxes and beside them, read which are filled, check, and open it again from the store", async () => {
+test("app's path on a workbook: write in its boxes and beside them, read which are filled, check, take a mark on a box, and open it again from the store", async () => {
   const first = await app(undefined, BOOK);
   const { sheet } = first;
   expect(await sheet.exportWork()).toBeNull();
@@ -468,8 +466,14 @@ test("app's path on a workbook: write in its boxes and beside them, read which a
     { item: 3, slot: 2, ids: [1] },
   ]);
   expect(JSON.parse(JSON.stringify(work.submission))).toEqual(work.submission);
+  // The tutor's mark on the remainder's box comes back with the context: a frame read by its name.
+  const marks = marksOf(work.submission, "Посмотри на остаток", { cell: { item: 3, slot: 2 } });
+  sheet.marks = marks;
+  await settle();
+  await expect.element(page.getByRole("img", { name: "Посмотри на остаток" })).toBeVisible();
 
-  // Opened again from the store, through JSON: the same boxes filled, the same crops and context.
+  // Opened again from the store, through JSON: the same boxes filled, the same crops and context,
+  // and the mark back on its box.
   const kept = JSON.parse(JSON.stringify(first.store));
   sheet.remove();
   const again = await app(kept, BOOK);
@@ -477,6 +481,9 @@ test("app's path on a workbook: write in its boxes and beside them, read which a
   const reopened = await checkBoxes(again.sheet);
   expect(await bytesOf(reopened)).toEqual(await bytesOf(work));
   expect(reopened.submission).toEqual(work.submission);
+  again.sheet.marks = marks;
+  await settle();
+  await expect.element(page.getByRole("img", { name: "Посмотри на остаток" })).toBeVisible();
 });
 
 test("the element is the package's, by its tag", () => {

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
+import type { Cell } from "./boxes.js";
 import { CROP, type Crop, cropOf } from "./crop.js";
-import { type Box, boxOf, tenths } from "./geometry.js";
+import { around, type Box, boxOf, tenths } from "./geometry.js";
 import { groupsOf } from "./groups.js";
 import type { HistoryEvent } from "./history.js";
 import type { Stroke } from "./ink.js";
@@ -13,6 +14,7 @@ import {
   type SheetSubmission,
   SNAP_RULE,
   type SnapRule,
+  type Submission,
   shownOf,
   snapOf,
 } from "./marks.js";
@@ -28,6 +30,8 @@ import {
   stroke,
   whole,
 } from "./sheets.fixture.js";
+import { cellsForCheck } from "./submission.js";
+import { erased } from "./workbooks.fixture.js";
 
 // The tutor's marks on the sheet (R26), on strokes code draws, as every test's strokes are
 // (CLAUDE.md): the synthetic sheets, crowded sheets of a seeded generator, and a few strokes of a
@@ -304,14 +308,14 @@ describe("a mark", () => {
     );
   });
 
-  test("of a group holds its strokes by the table, and one of an answer cell holds none yet", () => {
+  test("of a group holds its strokes by the table, and one of an answer cell holds none on a sheet, which takes no zones", () => {
     const { hand, twelve, submission } = sent();
     const places = placesOf(
       {
         submission,
         marks: [
           { kind: "frame", at: { group: "A" }, name: "this" },
-          { kind: "frame", at: { cell: "answer" }, name: "the answer" },
+          { kind: "frame", at: { cell: { item: 1, slot: 1 } }, name: "the answer" },
         ],
       },
       knownOf(hand.work.history),
@@ -508,6 +512,14 @@ describe("the digest of a submission", () => {
   });
 });
 
+/** Values the check of marks refuses: a TypeError each, whose message the pattern matches. */
+function refused(cases: readonly (readonly [unknown, RegExp])[]): void {
+  for (const [value, message] of cases) {
+    expect(() => marksOf(value), String(message)).toThrow(TypeError);
+    expect(() => marksOf(value), String(message)).toThrow(message);
+  }
+}
+
 describe("the marks given", () => {
   const hand = new Hand();
   hand.write("12", 100, 100);
@@ -519,7 +531,7 @@ describe("the marks given", () => {
     marks: [
       { kind: "frame", at: { group: "A" }, name: "this" },
       { kind: "frame", at: { box: [100, 100, 900, 900] }, name: "that" },
-      { kind: "frame", at: { cell: "answer" }, name: "the answer" },
+      { kind: "frame", at: { cell: { item: 1, slot: 1 } }, name: "the answer" },
     ],
   };
 
@@ -545,9 +557,11 @@ describe("the marks given", () => {
       ),
     );
     expect(given.marks).toEqual(good.marks);
-    expect(given.submission.groups).toEqual(submission.groups);
-    expect(given.submission.crop.sheetBox).toEqual(submission.crop.sheetBox);
-    expect(given.submission.crop.frames).toEqual(submission.crop.frames);
+    const back = given.submission;
+    if (!("crop" in back)) throw new Error("not a sheet's context");
+    expect(back.groups).toEqual(submission.groups);
+    expect(back.crop.sheetBox).toEqual(submission.crop.sheetBox);
+    expect(back.crop.frames).toEqual(submission.crop.frames);
     // A sheet_box a store kept to fewer digits than JSON: the crop's whole numbers stand.
     const rounded = marksOf(
       changed([
@@ -555,7 +569,7 @@ describe("the marks given", () => {
         submission.crop.sheetBox.map((v) => Number(v.toFixed(7))),
       ]),
     );
-    expect(rounded.submission.crop.sheetBox).toEqual(submission.crop.sheetBox);
+    expect(rounded.submission).toMatchObject({ crop: { sheetBox: submission.crop.sheetBox } });
   });
 
   test("are a TypeError, which names the field, when they are not the marks of a submission", () => {
@@ -571,7 +585,10 @@ describe("the marks given", () => {
       [changed([["marks", 0, "at", "cell"], "x"]), /^marks\.marks\[0\]\.at: one of/],
       [changed([["marks", 0, "at"], {}]), /^marks\.marks\[0\]\.at: one of/],
       [changed([["marks", 0, "at", "group"], "Z"]), /^marks\.marks\[0\]\.at\.group/],
-      [changed([["marks", 2, "at", "cell"], ""]), /^marks\.marks\[2\]\.at\.cell/],
+      [changed([["marks", 2, "at", "cell"], "answer"]), /^marks\.marks\[2\]\.at\.cell: an object/],
+      [changed([["marks", 2, "at", "cell", "item"], 0]), /^marks\.marks\[2\]\.at\.cell\.item/],
+      [changed([["marks", 2, "at", "cell", "slot"], 1.5]), /^marks\.marks\[2\]\.at\.cell\.slot/],
+      [changed([["submission", "boxes"], []]), /^marks\.submission: a sheet's context/],
       [
         changed([
           ["marks", 1, "at", "box"],
@@ -648,9 +665,123 @@ describe("the marks given", () => {
       [changed([["submission", "digest"], "0123456789abcde"]), /^marks\.submission\.digest/],
       [changed([["submission", "digest"], "0123456789ABCDEF"]), /^marks\.submission\.digest/],
     ];
-    for (const [value, message] of cases) {
-      expect(() => marksOf(value), String(message)).toThrow(TypeError);
-      expect(() => marksOf(value), String(message)).toThrow(message);
+    refused(cases);
+  });
+});
+
+describe("a workbook's marks (R39)", () => {
+  // «erased»: writing, an erasing and writing again, three boxes of ten filled.
+  const { cells, work } = erased();
+  const known = knownOf(work.history);
+  const sent = cellsForCheck(work.strokes, cells, CROP.digit);
+  if (sent === null) throw new Error("the workbook has no box filled");
+  const { submission } = sent;
+  const [first, second] = submission.boxes;
+  if (first === undefined || second === undefined) throw new Error("two boxes filled");
+  const filled = (cell: { item: number; slot: number }) =>
+    submission.boxes.some(({ item, slot }) => item === cell.item && slot === cell.slot);
+  const empty = cells.find((cell) => !filled(cell));
+  if (empty === undefined) throw new Error("an empty box");
+  const at = ({ item, slot }: { item: number; slot: number }): Mark => ({
+    kind: "frame",
+    at: { cell: { item, slot } },
+    name: `box ${item}.${slot}`,
+  });
+  const of = (marks: readonly Mark[], given: Submission = submission): Marks => ({
+    submission: given,
+    marks,
+  });
+  /** Marks of the context with some of its fields changed, as a consumer might give them. */
+  const broken = (change: object): unknown => ({
+    submission: { ...submission, ...change },
+    marks: [],
+  });
+  /** The box of a cell of the page, in units. */
+  const boxAt = ({ item, slot }: { item: number; slot: number }): Box => {
+    const { left, top, width, height } = cells.find(
+      (cell) => cell.item === item && cell.slot === slot,
+    )?.box ?? { left: 0, top: 0, width: 0, height: 0 };
+    return { minX: left, minY: top, maxX: left + width, maxY: top + height };
+  };
+  const ink = boxOf(
+    work.strokes.filter(({ id }) => first.ids.includes(id)).flatMap(({ points }) => points),
+  );
+
+  test("are taken through JSON as they are and stand on cells alone, by a table that names each box and each stroke once", () => {
+    const good = of([at(first), at(empty)]);
+    expect(marksOf(JSON.parse(JSON.stringify(good)))).toEqual(good);
+    // A store that writes the fields of the other kind as null gives the same context.
+    expect(marksOf(broken({ crop: null, groups: null })).submission).toEqual(submission);
+    const cases: [unknown, RegExp][] = [
+      [
+        of([{ kind: "frame", at: { group: "A" }, name: "this" }]),
+        /^marks\.marks\[0\]\.at: a mark of a workbook/,
+      ],
+      [of([frameAt([0, 0, 1000, 1000])]), /^marks\.marks\[0\]\.at: a mark of a workbook/],
+      [broken({ boxes: [first, first] }), /^marks\.submission\.boxes\[1\]: a box of its own/],
+      [
+        broken({
+          boxes: [first, { ...second, ids: [...second.ids, ...first.ids] }],
+        }),
+        /^marks\.submission\.boxes\[1\]\.ids: a stroke's ID in one box alone/,
+      ],
+      [broken({ boxes: [{ ...first, item: 0 }] }), /^marks\.submission\.boxes\[0\]\.item/],
+      [broken({ boxes: [{ ...first, slot: "1" }] }), /^marks\.submission\.boxes\[0\]\.slot/],
+      [broken({ boxes: [{ ...first, ids: [] }] }), /^marks\.submission\.boxes\[0\]\.ids/],
+      [broken({ groups: [] }), /^marks\.submission: a sheet's context/],
+      [broken({ digest: "x" }), /^marks\.submission\.digest/],
+    ];
+    refused(cases);
+  });
+
+  test("of a cell holds the strokes of its row and the box of its cell, the strokes erased since known too; one of an empty box, or of none on the page, has no place", () => {
+    expect(known.length).toBeGreaterThan(work.strokes.length);
+    const places = placesOf(of([at(first), at(empty), at({ item: 99, slot: 1 })]), known, cells);
+    expect(places).toEqual([{ ids: first.ids, box: ink, cell: boxAt(first) }, null, null]);
+  });
+
+  test("shows round its box and its ink together, and nothing while all its strokes are erased", () => {
+    const [placed] = placesOf(of([at(first)]), known, cells);
+    if (!placed) throw new Error("no place");
+    expect(shownOf(placed, onScreen(work.strokes))).toEqual(around([ink, boxAt(first)]));
+    expect(shownOf(placed, onScreen(work.strokes, new Set(first.ids)))).toBeNull();
+  });
+
+  test("of a context of the other kind, of another page, or of strokes the page has not, is a TypeError", () => {
+    const marks = of([at(first)]);
+    const elsewhere: Cell = {
+      item: 11,
+      slot: 1,
+      box: { left: 40, top: 1260, width: 100, height: 100 },
+    };
+    const moved = cells.map((cell) =>
+      filled(cell) ? cell : { ...cell, box: { ...cell.box, top: cell.box.top + 1 } },
+    );
+    const cases: [() => unknown, RegExp][] = [
+      [() => placesOf(marks, known), /a workbook's context, and this is a sheet/],
+      [
+        () => placesOf(of([], submissionOf(work.strokes)), known, cells),
+        /a sheet's context, and this is a workbook/,
+      ],
+      [() => placesOf(marks, known, [...cells, elsewhere]), /^marks\.submission\.digest/],
+      [() => placesOf(marks, known, moved), /^marks\.submission\.digest/],
+      [
+        () =>
+          placesOf(
+            marks,
+            known.filter(({ id }) => id !== first.ids[0]),
+            cells,
+          ),
+        /^marks\.submission: the page has no stroke/,
+      ],
+      [
+        () => placesOf(of([], { ...submission, boxes: [second, first] }), known, cells),
+        /^marks\.submission\.digest/,
+      ],
+    ];
+    for (const [place, message] of cases) {
+      expect(place, String(message)).toThrow(TypeError);
+      expect(place, String(message)).toThrow(message);
     }
   });
 });

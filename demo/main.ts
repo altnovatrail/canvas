@@ -12,7 +12,8 @@
 // (T11; R23). A workbook's task takes the lines of a page of the layout's corpus, those that do not
 // fit among them, in the font and the explanation language the page's controls give (T51; R35,
 // R36). The counter tells how many of its boxes are filled (T48; R37), and Check sends the crop of
-// each filled box, which the page shows with its place and its size (T49; R38).
+// each filled box, which the page shows with its place and its size (T49; R38); a box picked comes
+// back to the element as a mark of the tutor's on it (T53; R39).
 // Under the sheet the page draws the groups of the strokes the history leaves, after every
 // historychange, by the sheet's rule or by the pause and the reaches its fields give (T12; R24),
 // and their crop for checking at the height of digits the manifest gives, with the frames of those
@@ -40,7 +41,7 @@ import type {
   Marks,
   Media,
   NovatrailCanvas,
-  SheetSubmission,
+  Submission,
   Task,
 } from "../src/element/index.js";
 import { probe } from "../src/element/probe.js";
@@ -364,11 +365,34 @@ function showCrop(strokes: readonly Stroke[], groups: readonly Group[]): void {
   );
 }
 
-/** The submission of the last Check of a sheet, from exportWork(), and the marks given so far. */
-let submission: SheetSubmission | undefined;
+/** The submission of the last Check, from exportWork(), and the marks given so far. */
+let submission: Submission | undefined;
 let given: readonly Mark[] = [];
 /** What the page says of the crops of a workbook's boxes the last Check sent, or nothing. */
 let cellsSent = "";
+/** The page the last Check was of: a sheet, or a workbook's page of the corpus. */
+let sentFor = "";
+
+/** The page the element shows, as `sentFor` names one. */
+function pageKey(): string {
+  return kind.value === "workbook" ? `workbook ${pageOfCorpus.value}` : "sheet";
+}
+
+/** The crop of the last Check's submission, if it was a sheet's: a workbook's has none. */
+function sheetCrop(): { readonly width: number; readonly height: number } | undefined {
+  return submission !== undefined && "crop" in submission ? submission.crop : undefined;
+}
+
+/** The page forgets the last Check: what it sent, and the marks given, which were of it. */
+function forget(): void {
+  submission = undefined;
+  given = [];
+  if (sent.src !== "") URL.revokeObjectURL(sent.src);
+  sent.removeAttribute("src");
+  sentGroups.replaceChildren();
+  void showCells([]);
+  showMarks();
+}
 
 /**
  * What Check sends: the crop of exportWork() (R27), whose submission the page keeps, or on a
@@ -379,12 +403,17 @@ async function send(): Promise<boolean> {
   const work = await sheet.exportWork();
   given = [];
   sheet.marks = undefined;
-  submission = work !== null && "png" in work ? work.submission : undefined;
+  submission = work?.submission;
+  sentFor = pageKey();
   if (sent.src !== "") URL.revokeObjectURL(sent.src);
   sentGroups.replaceChildren();
   await showCells(work !== null && "cells" in work ? work.cells : []);
   if (work === null || "cells" in work) {
     sent.removeAttribute("src");
+    // On a workbook a mark stands on a filled box, by its item and its slot (R39).
+    for (const { item, slot } of work?.submission.boxes ?? []) {
+      pick(`${item}.${slot}`, { cell: { item, slot } }, `Box ${item}.${slot}`);
+    }
     showMarks();
     return work !== null;
   }
@@ -393,16 +422,17 @@ async function send(): Promise<boolean> {
   sent.height = height;
   sent.src = URL.createObjectURL(work.png);
   sentBoxes.setAttribute("viewBox", `0 0 ${width} ${height}`);
-  for (const { label } of work.submission.groups) {
-    const button = document.createElement("button");
-    button.textContent = label;
-    button.addEventListener("click", () =>
-      mark({ kind: "frame", at: { group: label }, name: `Group ${label}` }),
-    );
-    sentGroups.append(button);
-  }
+  for (const { label } of work.submission.groups) pick(label, { group: label }, `Group ${label}`);
   showMarks();
   return true;
+}
+
+/** A button that gives a mark of the tutor's where `at` says, with a name to read it by. */
+function pick(text: string, at: Mark["at"], name: string): void {
+  const button = document.createElement("button");
+  button.textContent = text;
+  button.addEventListener("click", () => mark({ kind: "frame", at, name }));
+  sentGroups.append(button);
 }
 
 /** The crops of a workbook's filled boxes Check sent, each with its place and its size (R38). */
@@ -432,7 +462,7 @@ async function showCells(cells: readonly ExportedCell[]): Promise<void> {
   cellsSent =
     shown.length === 0
       ? ""
-      : `${shown.length} ${shown.length === 1 ? "box" : "boxes"} sent: ${sum(({ tokens }) => tokens)} tokens, ${(sum(({ bytes }) => bytes) / 1024).toFixed(1)} KB in all. Marks on a workbook's boxes come in a later version.`;
+      : `${shown.length} ${shown.length === 1 ? "box" : "boxes"} sent: ${sum(({ tokens }) => tokens)} tokens, ${(sum(({ bytes }) => bytes) / 1024).toFixed(1)} KB in all.`;
 }
 
 /** One more mark of the submission, back to the element with the others. */
@@ -454,7 +484,8 @@ function showMarks(): void {
     sentCaption.textContent = cellsSent || "Check sends the crop of the work; it comes here.";
     return;
   }
-  const { width, height } = submission.crop;
+  const crop = sheetCrop();
+  const { width, height } = crop ?? { width: 0, height: 0 };
   sentBoxes.replaceChildren(
     ...given.flatMap(({ at }) =>
       "box" in at
@@ -473,8 +504,11 @@ function showMarks(): void {
   const placed = probe(sheet).marks;
   sentCaption.textContent =
     given.length === 0
-      ? "Drag a box over the crop, or pick a group, to mark the place on the sheet."
+      ? crop === undefined
+        ? `${cellsSent} Pick a box to mark it on the page.`
+        : "Drag a box over the crop, or pick a group, to mark the place on the sheet."
       : [
+          ...(crop === undefined ? [cellsSent] : []),
           `${given.length} given, ${placed.length} with a place`,
           ...placed.map(({ name, ids }) => `${name}: strokes ${ids.join(", ")}`),
         ].join(" · ");
@@ -483,7 +517,7 @@ function showMarks(): void {
 /** A place on the crop sent, in its px, from a pointer over it. */
 function onSent(event: PointerEvent): { readonly x: number; readonly y: number } {
   const rect = sentBoxes.getBoundingClientRect();
-  const { width, height } = submission?.crop ?? { width: 0, height: 0 };
+  const { width, height } = sheetCrop() ?? { width: 0, height: 0 };
   const along = (at: number, from: number, size: number) =>
     Math.min(Math.max((at - from) / size, 0), 1);
   return {
@@ -497,8 +531,9 @@ function fractions(
   a: { readonly x: number; readonly y: number },
   b: { readonly x: number; readonly y: number },
 ): [number, number, number, number] | null {
-  if (submission === undefined) return null;
-  const { width, height } = submission.crop;
+  const crop = sheetCrop();
+  if (crop === undefined) return null;
+  const { width, height } = crop;
   const span = (p: number, q: number, size: number): [number, number] => {
     const low = Math.floor((1000 * Math.min(p, q)) / size);
     const high = Math.ceil((1000 * Math.max(p, q)) / size);
@@ -513,7 +548,7 @@ let dragFrom: { readonly x: number; readonly y: number } | undefined;
 const dragged = shape("rect", { class: "dragged" });
 
 sentBoxes.addEventListener("pointerdown", (event) => {
-  if (submission === undefined || event.button !== 0) return;
+  if (sheetCrop() === undefined || event.button !== 0) return;
   dragFrom = onSent(event);
   sentBoxes.setPointerCapture(event.pointerId);
   for (const [key, value] of Object.entries({
@@ -596,6 +631,8 @@ function regrid(): void {
   } catch (error) {
     status.textContent = error instanceof Error ? error.message : String(error);
   }
+  // A new page is not the last Check's: the element took its marks off, and the page forgets it.
+  if (submission !== undefined && sentFor !== pageKey()) forget();
   showGroups();
   count();
 }
@@ -643,12 +680,7 @@ part("reopen", HTMLButtonElement).addEventListener("click", () => {
 part("next", HTMLButtonElement).addEventListener("click", () => {
   taskNumber++;
   kept = [];
-  submission = undefined;
-  given = [];
-  if (sent.src !== "") URL.revokeObjectURL(sent.src);
-  sent.removeAttribute("src");
-  sentGroups.replaceChildren();
-  void showCells([]);
+  forget();
   status.textContent = "";
   mounted(mount());
 });
