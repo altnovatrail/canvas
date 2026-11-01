@@ -47,14 +47,26 @@ export function workbookTask(
   return { id: "tables-1", statement: [{ text: "Fill in the boxes." }], canvas, items };
 }
 
-/** A module's manifest in the format the element reads, in English unless the test says another. */
+/**
+ * A module's manifest, whole, as app has its open view: the module of olympiad mathematics, in
+ * English unless the test says another, with the height of a digit only if the test gives one.
+ */
 export function moduleManifest(
   change: { readonly digit_height?: number; readonly explanation?: string } = {},
 ): Manifest {
   const { digit_height, explanation = "en" } = change;
-  const languages = { explanation };
-  if (digit_height === undefined) return { module_format_version: "0.1", languages };
-  return { module_format_version: "0.1", languages, canvas: { digit_height } };
+  return {
+    module_format_version: "0.1",
+    id: "novatrail/olympiad-math",
+    version: "0.1.0",
+    title: "Olympiad mathematics, grades 1–6",
+    subject: "mathematics",
+    audience: { age_categories: ["under_13"] },
+    languages: { explanation },
+    ...(digit_height === undefined ? {} : { canvas: { digit_height } }),
+    authors: [{ name: "The NovaTrail authors" }],
+    license: "Apache-2.0",
+  };
 }
 
 /**

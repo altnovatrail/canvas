@@ -92,22 +92,7 @@ export type {
   Submission,
   WorkbookSubmission,
 } from "../core/marks.js";
-export type {
-  AnswerSlot,
-  LinePart,
-  PicturePart,
-  SheetCanvas,
-  SheetItem,
-  SheetTask,
-  StatementPart,
-  Task,
-  TextPart,
-  Tool,
-  WorkbookCanvas,
-  WorkbookItem,
-  WorkbookTask,
-  Zone,
-} from "../core/task.js";
+export type { Canvas, Task, Tool } from "../core/task.js";
 export type { Media } from "./statement.js";
 
 /** The name the element is registered under. */
@@ -626,17 +611,17 @@ export class NovatrailCanvas extends HTMLElement {
   }
 
   /**
-   * The open view of the task, in the names of the module format's draft 0.1 (R32): its ID, its
-   * statement, which the element shows above the page (R23), its canvas — the kind, the sheet's
-   * grid and the tools the task allows (R28) — and its items. A workbook's items are its lines,
-   * which the template shows, laid out on the page (R35, R36). The type is the element's own until
-   * spec's releases give the format's. A task the schema refuses is a TypeError that names the
-   * field, a field the open view has not among it, and so are a workbook whose lines do not fit,
-   * at the first item that does not (R35), and an answer slot in a zone; the sheet passes over a
-   * choice and an item's text, which app shows. Another task of the same layer, tools and statement
-   * changes nothing, and any other changes the template alone, of either kind: the work stays, for
-   * the next task is a new element (R20). A task without the eraser puts the pen back, with no
-   * event.
+   * The open view of the task, of the module format 0.1 (R32): its ID, its statement, which the
+   * element shows above the page (R23), what the statement gives and asks, which app shows (R57
+   * spec), its canvas — the kind, the sheet's grid and the tools the task allows (R28) — and its
+   * items. A workbook's items are its lines, which the template shows, laid out on the page (R35,
+   * R36). The type is spec's, with the element's own tools (R73 spec; R41). A task the schema
+   * refuses is a TypeError that names the field, a field the open view has not among it, and so are
+   * a workbook whose lines do not fit, at the first item that does not (R35), and an answer slot in
+   * a zone; the sheet passes over a choice and an item's text, which app shows. Another task of the
+   * same layer, tools and statement changes nothing, and any other changes the template alone, of
+   * either kind: the work stays, for the next task is a new element (R20). A task without the
+   * eraser puts the pen back, with no event.
    */
   get task(): Task | undefined {
     return this.#task;

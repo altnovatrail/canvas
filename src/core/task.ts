@@ -1,9 +1,11 @@
-// The open view of a task, in the names of the module format's draft 0.1 (R51 spec): the types are
-// the element's own, of the composition the format gives, until spec's releases give its schemas
-// and types (T35 in spec's RUN.md; R44 spec). The element checks a task as the schema does, every
-// object closed: a field the open view has not — an old name, a closed field — is a TypeError
-// (R32). One field is the element's own, `canvas.tools`, until the format has one (R28).
+// The open view of a task of the module format 0.1 (R51 spec). What a consumer gives is of spec's
+// type, from its npm package at the version of the spec/ submodule (R73 spec; R41), with one field
+// of the element's own, `canvas.tools`, until the format has one (R28). The element checks a task as
+// the schema does, every object closed: a field the open view has not — an old name, a closed field
+// — is a TypeError (R32). What the check gives is the element's own shape of the same task, its
+// canvas kinds apart, which the rest of the element reads.
 
+import type * as open from "@altnovatrail/spec/formatv0/open";
 import { closed, listOf, shown, text, whole } from "./fields.js";
 import {
   DEFAULT_GRID,
@@ -109,30 +111,56 @@ export interface WorkbookCanvas {
   readonly tools?: readonly string[];
 }
 
-/** The open view of a task on a handwriting sheet. */
-export interface SheetTask {
+/**
+ * The canvas of a task as a consumer gives it: spec's, and the tools the task allows (concepts 8
+ * spec; R28), the element's own field until the format has one.
+ */
+export interface Canvas extends open.Canvas {
+  readonly tools?: readonly string[];
+}
+
+/**
+ * The open view of a task as a consumer gives it, what the learner's app receives: spec's type
+ * (R73 spec), its canvas with the element's own tools. A type gives the shape and nothing more: the
+ * element checks the value itself.
+ */
+export interface Task extends open.Task {
+  readonly canvas: Canvas;
+}
+
+/** What a task of either canvas kind has, as the element checked it. */
+interface CheckedFields {
   /** The task's local ID. */
   readonly id: string;
   /** What the learner reads, in the module's explanation language, which the manifest names. */
   readonly statement: readonly StatementPart[];
+  /**
+   * What the statement gives, short texts all different, and what the task asks to find: the chips
+   * the learner ticks at a solving step, which app shows, not the element (R57 spec).
+   */
+  readonly givens?: readonly string[];
+  readonly unknown?: string;
+}
+
+/** A task on a handwriting sheet, as the element checked it. */
+export interface SheetTask extends CheckedFields {
   readonly canvas: SheetCanvas;
   readonly items: readonly SheetItem[];
 }
 
-/** The open view of a task on a workbook: a line for each item. */
-export interface WorkbookTask {
-  readonly id: string;
-  readonly statement: readonly StatementPart[];
+/** A task on a workbook, as the element checked it: a line for each item. */
+export interface WorkbookTask extends CheckedFields {
   readonly canvas: WorkbookCanvas;
   readonly items: readonly WorkbookItem[];
 }
 
 /**
- * The open view of a task, what the learner's app receives: its ID, its statement, its canvas and
- * its items — no key, solution or trap, nor its skills, band, difficulty and age categories
- * (R05 spec; R51 spec).
+ * A task as the element checked it, of either canvas kind: its ID, its statement, what the
+ * statement gives and asks, its canvas and its items — no key, solution or trap, nor its skills,
+ * band, difficulty and age categories, nor the task template it may be an instance of (R05 spec;
+ * R51 spec; R60 spec). It is a Task too, which task.check.ts holds to.
  */
-export type Task = SheetTask | WorkbookTask;
+export type CheckedTask = SheetTask | WorkbookTask;
 
 /**
  * What the sheet makes of a task: the grid on the sheet, the statement above it and the tools it
@@ -164,26 +192,48 @@ export const NO_TASK: SheetTemplate = Object.freeze({
   tools: TOOLS,
 });
 
+/** The fields of a task's open view (R57 spec): the rest of a task is closed. */
+const OPEN = ["id", "statement", "givens", "unknown", "canvas", "items"];
+
 /**
  * A task's open view, checked as the format's schema checks it, and a copy of it with the fields
  * the schema names: the element reads each field once, and what it shows is what it checked. What
  * the schema refuses is a TypeError that names the field by its path, a field the open view has not
  * among it. A field is left out by `undefined` alone: `null` is a value, and a wrong one.
  */
-export function taskOf(value: unknown): Task {
-  const task = closed(value, "task", ["id", "statement", "canvas", "items"], "a task's open view");
+export function taskOf(value: unknown): CheckedTask {
+  const task = closed(value, "task", OPEN, "a task's open view");
   const id = idOf(task.id, "task.id");
   const statement = listOf(task.statement, "task.statement", 1, "parts", partOf);
   const canvas = canvasOf(task.canvas, "task.canvas");
   if (canvas.kind === WORKBOOK_KIND) {
     const items = listOf(task.items, "task.items", 1, "items", workbookItemOf);
-    return { id, statement, canvas, items };
+    return { id, statement, ...askedOf(task), canvas, items };
   }
-  return { id, statement, canvas, items: sheetItemsOf(task.items) };
+  const items = sheetItemsOf(task.items);
+  return { id, statement, ...askedOf(task), canvas, items };
+}
+
+/**
+ * What the statement gives and what the task asks to find, as the task has them: the element checks
+ * them and shows neither, for the chips are app's to show (architecture 3.1 spec).
+ */
+function askedOf({
+  givens,
+  unknown,
+}: Record<string, unknown>): Pick<CheckedFields, "givens" | "unknown"> {
+  return {
+    ...(givens === undefined
+      ? {}
+      : { givens: textsOf(givens, "task.givens", 1, "givens", "a given") }),
+    ...(unknown === undefined
+      ? {}
+      : { unknown: text(unknown, "task.unknown", "what the task asks to find") }),
+  };
 }
 
 /** Whether a task is on a handwriting sheet. */
-export function isSheet(task: Task): task is SheetTask {
+export function isSheet(task: CheckedTask): task is SheetTask {
   return task.canvas.kind === SHEET_KIND;
 }
 
@@ -193,7 +243,7 @@ export function isSheet(task: Task): task is SheetTask {
  * (R34, R35). A zone on the sheet is a TypeError until an epic of its own; a choice the sheet passes
  * over, and an item's text too: app shows them (R32).
  */
-export function templateOf(task: Task | undefined): Template {
+export function templateOf(task: CheckedTask | undefined): Template {
   if (task === undefined) return NO_TASK;
   if (!isSheet(task)) {
     return { page: pageOf(task.items), statement: task.statement, tools: allowedOf(task.canvas) };
@@ -425,11 +475,16 @@ function zoneOf(value: unknown, path: string): Zone {
 }
 
 function optionsOf(value: unknown, path: string): string[] {
-  const options = listOf(value, path, 2, "options", (option, at) => text(option, at, "an option"));
-  if (new Set(options).size < options.length) {
-    throw new TypeError(`${path}: options all different, not ${shown(value)}`);
+  return textsOf(value, path, 2, "options", "an option");
+}
+
+/** A list of at least `least` texts, all different, as a choice's options and a task's givens are. */
+function textsOf(value: unknown, path: string, least: number, what: string, one: string): string[] {
+  const texts = listOf(value, path, least, what, (item, at) => text(item, at, one));
+  if (new Set(texts).size < texts.length) {
+    throw new TypeError(`${path}: ${what} all different, not ${shown(value)}`);
   }
-  return options;
+  return texts;
 }
 
 /** An item of a workbook: a line with at least one box. */

@@ -1,11 +1,11 @@
 import { expect, test } from "vitest";
-import { NO_MANIFEST, settingsOf } from "./manifest.js";
+import { type Manifest, NO_MANIFEST, settingsOf } from "./manifest.js";
 import { moduleManifest, pathOf, refusal, under } from "./tasks.fixture.js";
 
-// Copies of the manifest examples of the module format at spec v0.2.37
+// Copies of the manifest examples of the module format at spec v0.4.1
 // (spec/format/examples/manifest/): code and tests read nothing of spec/, so a move to a new tag
 // compares them with `git -C spec diff <old> <new> -- format/` (R32). Each is written as a change
-// to what the examples share.
+// to what the examples share, and a valid one is of spec's type (R73 spec; R41).
 
 /** The places of a manifest the element reads (R32). */
 const READ = ["#/module_format_version", "#/languages", "#/canvas"];
@@ -21,7 +21,13 @@ const OLYMPIAD = {
   languages: { explanation: "en" },
   authors: [{ name: "The NovaTrail authors" }],
   license: "Apache-2.0",
-};
+} satisfies Manifest;
+
+/** The templates of the first two rungs of the hint ladder, which a module with verdicts has. */
+const RUNG_TEMPLATES = [
+  "Which step of your work gave you this answer?",
+  "Read the task again slowly. Is there anything it says that your work does not use yet?",
+];
 
 /** The module of school mathematics for grade 3, and its one band. */
 const GRADE_3 = {
@@ -29,7 +35,7 @@ const GRADE_3 = {
   id: "novatrail/school-math-grade-3",
   title: "School mathematics, grade 3",
   audience: { age_categories: ["under_13"], grades: [3] },
-};
+} satisfies Manifest;
 const BAND_3 = { id: "grade-3", title: "Grade 3", grades: [3] };
 
 /** A third party's module of physics for grade 8, in Russian. */
@@ -43,10 +49,10 @@ const OPTICS = {
   languages: { explanation: "ru" },
   authors: [{ name: "Acme Learning" }],
   license: "CC-BY-SA-4.0",
-};
+} satisfies Manifest;
 
 /** The valid examples, and the settings the element makes of each. */
-const VALID: readonly (readonly [string, object, { digit: number; lang: string }])[] = [
+const VALID: readonly (readonly [string, Manifest, { digit: number; lang: string }])[] = [
   [
     "olympiad-math",
     {
@@ -58,10 +64,15 @@ const VALID: readonly (readonly [string, object, { digit: number; lang: string }
         { id: "grades-5-6", title: "Grades 5–6", grades: [5, 6] },
       ],
       dependencies: ["core.division-with-remainder", "core.fractions-of-a-whole"],
+      rung_templates: RUNG_TEMPLATES,
     },
     { digit: 32, lang: "en" },
   ],
-  ["school-math-grade-3", { ...GRADE_3, bands: [BAND_3] }, { digit: 32, lang: "en" }],
+  [
+    "school-math-grade-3",
+    { ...GRADE_3, bands: [BAND_3], rung_templates: RUNG_TEMPLATES },
+    { digit: 32, lang: "en" },
+  ],
   [
     "short-essays",
     {
@@ -76,6 +87,7 @@ const VALID: readonly (readonly [string, object, { digit: number; lang: string }
         { id: "first-steps", title: "First steps" },
         { id: "whole-essays", title: "Whole essays" },
       ],
+      rung_templates: RUNG_TEMPLATES,
     },
     { digit: 32, lang: "en" },
   ],
@@ -152,8 +164,28 @@ const INVALID: readonly (readonly [string, string, object])[] = [
     "#/audience/age_categories",
     { ...OLYMPIAD, audience: { age_categories: [] } },
   ],
+  [
+    "one-rung-template",
+    "#/rung_templates",
+    {
+      ...OLYMPIAD,
+      id: "example/one-rung-template",
+      title: "One rung template",
+      rung_templates: RUNG_TEMPLATES.slice(0, 1),
+    },
+  ],
   ["pre-release-version", "#/version", { ...OLYMPIAD, version: "1.0.0-beta.1" }],
   ["presentation-style", "#", { ...OLYMPIAD, presentation_style: "playful" }],
+  [
+    "rung-templates-alike",
+    "#/rung_templates",
+    {
+      ...OLYMPIAD,
+      id: "example/rung-templates-alike",
+      title: "Rung templates alike",
+      rung_templates: [RUNG_TEMPLATES[0], RUNG_TEMPLATES[0]],
+    },
+  ],
   ["unknown-dependency", "#/dependencies/0", { ...OLYMPIAD, dependencies: ["core.long-division"] }],
   ["unknown-subject", "#/subject", { ...OLYMPIAD, subject: "chemistry" }],
 ];

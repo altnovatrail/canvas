@@ -1,10 +1,13 @@
 import { expect, test } from "vitest";
+import type { GridKind } from "./grid.js";
 import { pageOf } from "./page.js";
 import { line, shortLines } from "./pages.fixture.js";
 import {
+  type AnswerSlot,
   isSheet,
   isWorkbook,
   NO_TASK,
+  type SheetTask,
   type SheetTemplate,
   sameLayer,
   sameStatement,
@@ -23,22 +26,44 @@ function sheetOf(template: Template): SheetTemplate {
   return template;
 }
 
-// Copies of the task examples and the open-view vectors of the module format at spec v0.2.37
+// Copies of the task examples and the open-view vectors of the module format at spec v0.4.1
 // (spec/format/examples/task/ and spec/format/vectors/open-view/task/): code and tests read nothing
 // of spec/, so a move to a new tag compares them with `git -C spec diff <old> <new> -- format/`
-// (R32). Each is written as a change to what the examples share, with its keys in their order.
+// (R32). The format is version 0.1 since spec v0.3.0, no draft any more (R64 spec). Each is written
+// as a change to what the examples share, with its keys in their order: a valid example as its
+// open view, as app gets it, and an invalid one with its open fields and the closed field at fault,
+// its other closed fields left as those the examples share.
 
-/** The closed fields of a task (R51 spec): the open view, which the element gets, has none. */
-const CLOSED = ["skills", "band", "difficulty", "age_categories"];
+/**
+ * The closed fields of a task, of its items and of their answer slots and boxes (R51 spec, R56 spec,
+ * R57 spec, R60 spec): the open view, which the element gets, has none of them.
+ */
+const CLOSED = [
+  "skills",
+  "band",
+  "difficulty",
+  "age_categories",
+  "techniques",
+  "traps",
+  "solution",
+  "leak_phrases",
+  "template",
+];
+const CLOSED_IN_ITEMS = ["skills", "simpler_case"];
+const CLOSED_IN_SLOTS = ["check"];
 
 /** The closed fields most examples have. */
 const RUNG_SKILLS = { skills: { primary: ["counting-gaps"] }, band: "grades-3-4", difficulty: 2 };
 
-/** What most invalid examples share: a ladder's rungs to count, and the answer anywhere. */
+/** The check of most invalid examples' answer: the number of rungs, 7. */
+const SEVEN = { kind: "number", key: "7" };
+
+/** What most invalid examples share: a ladder's rungs to count, the answer anywhere, the solution. */
 const RUNGS = {
   statement: [{ text: "How many rungs are there?" }],
   canvas: { kind: "handwriting_sheet" },
-  items: [{ answer_slots: [{ binding: "anywhere" }] }],
+  items: [{ answer_slots: [{ binding: "anywhere", check: SEVEN }] }],
+  solution: [{ text: "The ladder has one more rung than the gaps between its rungs: 7 rungs." }],
 };
 
 const ZONE = { left: 100, top: 1000, width: 400, height: 200 };
@@ -49,29 +74,49 @@ const CLOCK = {
   height: 240,
 };
 const LEAVES = { text: "The clock shows when Anna leaves home." };
-const WORKBOOK = { kind: "workbook" };
-const TIMES = { line: [{ text: "7 ×" }, { binding: "box" }, { text: "= 56" }] };
+const WORKBOOK = { kind: "workbook" } as const;
+const TIMES = { line: [{ text: "7 ×" }, { binding: "box" }, { text: "= 56" }] } as const;
 const DIVISION = {
   line: [{ text: "47 ÷ 6 =" }, { binding: "box" }, { text: "r" }, { binding: "box" }],
-};
+} as const;
+const COMPARISON = { line: [{ text: "56" }, { binding: "box" }, { text: "65" }] } as const;
+const SIGNS = { text: "Write the missing numbers, and the sign <, > or = between two numbers." };
 const FIRST_SENTENCES = [
   "It was a day like any other.",
   "The door was open, and nobody had opened it.",
   "I am going to write about a day.",
 ];
+const LADDER =
+  "The rungs of a ladder are 30 cm apart. From the lowest rung to the highest it is 180 cm. How many rungs are there?";
+/** What the ladder's statement gives and asks: the chips app shows (R57 spec). */
+const LADDER_CHIPS = {
+  givens: ["The rungs are 30 cm apart.", "It is 180 cm from the lowest rung to the highest."],
+  unknown: "How many rungs there are.",
+};
+const ANYWHERE = [{ answer_slots: [{ binding: "anywhere" }] }] as const;
+const SQUARES = { kind: "handwriting_sheet", grid: "squares" } as const;
 
 /** A valid example on a handwriting sheet with one item and one answer slot, as most are. */
-function oneSlot(id: string, text: string, slot: object, grid?: string): object {
-  const canvas =
+function oneSlot(id: string, text: string, slot: AnswerSlot, grid?: GridKind): Task {
+  const canvas: Task["canvas"] =
     grid === undefined ? { kind: "handwriting_sheet" } : { kind: "handwriting_sheet", grid };
   return { id, statement: [{ text }], canvas, items: [{ answer_slots: [slot] }] };
 }
 
-/** The open views of the valid examples: their closed fields left out, as app gets them. */
-const VALID: Readonly<Record<string, object>> = {
+/** A template's line of the workbook to fill in, {first} × [ ] = {product} (R60 spec). */
+const FACTOR_LINE = {
+  line: [{ text: "{first} ×" }, { binding: "box" }, { text: "= {product}" }],
+} as const;
+
+/**
+ * The open views of the valid examples: their closed fields left out, as app gets them. A template's
+ * placeholders stand in them as written: app gets an instance's open view, numbers in their place
+ * (R60 spec), and an open view of either is a task.
+ */
+const VALID: Readonly<Record<string, Task>> = {
   "anchor-among-supporting-skills": oneSlot(
     "refraction-1",
-    "Луч падает на стекло под углом 45°. Найди скорость света в стекле.",
+    "Луч света переходит из воздуха в стекло с показателем преломления 1,5. В воздухе свет проходит 300 тысяч км/с. Сколько тысяч км/с он проходит в стекле?",
     { binding: "anywhere" },
   ),
   "best-first-sentence": oneSlot(
@@ -80,6 +125,29 @@ const VALID: Readonly<Record<string, object>> = {
     { binding: "choice", options: FIRST_SENTENCES },
     "lines",
   ),
+  "divisible-by-3-and-4": {
+    id: "divisible-by-3-and-4-1",
+    statement: [{ text: "Write a number from 1 to 50 that divides by 3 and by 4." }],
+    givens: ["The number is from 1 to 50.", "It divides by 3.", "It divides by 4."],
+    unknown: "Such a number.",
+    canvas: { kind: "handwriting_sheet" },
+    items: ANYWHERE,
+  },
+  "division-with-remainder": {
+    id: "division-with-remainder",
+    statement: [{ text: "Divide, and write the quotient and the remainder." }],
+    canvas: WORKBOOK,
+    items: [
+      {
+        line: [
+          { text: "{dividend} ÷ {divisor} =" },
+          { binding: "box" },
+          { text: "r" },
+          { binding: "box" },
+        ],
+      },
+    ],
+  },
   "essay-about-yourself": oneSlot(
     "a-day-you-remember-1",
     "Write a short essay about a day of your life that you remember well.",
@@ -92,20 +160,105 @@ const VALID: Readonly<Record<string, object>> = {
     { binding: "sheet" },
     "lines",
   ),
-  ladder: oneSlot(
-    "gaps-ladder-1",
-    "The rungs of a ladder are 30 cm apart. From the lowest rung to the highest it is 180 cm. How many rungs are there?",
-    { binding: "anywhere" },
-    "squares",
+  "even-or-odd": oneSlot(
+    "sum-even-or-odd-1",
+    "Kate adds up the numbers from 1 to 9. Is the sum even or odd? Write even or odd.",
+    { binding: "zone", zone: { left: 300, top: 1100, width: 400, height: 200 } },
   ),
+  "fraction-in-lowest-terms": {
+    id: "pizza-left-1",
+    statement: [{ text: "Write the fraction in lowest terms." }],
+    canvas: WORKBOOK,
+    items: [
+      {
+        line: [
+          { text: "2 of 8 slices of the pizza are left: that is" },
+          { binding: "box" },
+          { text: "of the pizza." },
+        ],
+      },
+    ],
+  },
+  "fraction-template": {
+    id: "fraction-template",
+    statement: [{ text: "Write the fraction of the pizza." }],
+    canvas: WORKBOOK,
+    items: [
+      {
+        line: [
+          { text: "{part} of {whole} slices of the pizza are left: that is" },
+          { binding: "box" },
+          { text: "of the pizza." },
+        ],
+      },
+    ],
+  },
+  "heads-and-legs": {
+    id: "heads-and-legs-1",
+    statement: [
+      {
+        text: "A farmyard has chickens and rabbits, 6 heads and 16 legs in all. A chicken has 2 legs, and a rabbit has 4. How many rabbits are there?",
+      },
+    ],
+    givens: ["6 heads in all", "16 legs in all", "A chicken has 2 legs.", "A rabbit has 4 legs."],
+    unknown: "How many rabbits there are.",
+    canvas: SQUARES,
+    items: ANYWHERE,
+  },
+  "heads-and-legs-template": {
+    id: "heads-and-legs-2",
+    statement: [
+      {
+        text: "A farmyard has chickens and rabbits, {heads} heads and {legs} legs in all. A chicken has 2 legs, and a rabbit has 4. How many rabbits are there?",
+      },
+    ],
+    givens: [
+      "{heads} heads in all",
+      "{legs} legs in all",
+      "A chicken has 2 legs.",
+      "A rabbit has 4 legs.",
+    ],
+    unknown: "How many rabbits there are.",
+    canvas: SQUARES,
+    items: ANYWHERE,
+  },
+  ladder: {
+    id: "gaps-ladder-1",
+    statement: [{ text: LADDER }],
+    ...LADDER_CHIPS,
+    canvas: SQUARES,
+    items: ANYWHERE,
+  },
+  "missing-factor": {
+    id: "missing-factor",
+    statement: [{ text: "Write the missing number." }],
+    canvas: WORKBOOK,
+    items: [FACTOR_LINE],
+  },
+  "number-thought-of-template": {
+    id: "number-thought-of",
+    statement: [
+      {
+        text: "Masha had some sweets. She gave half of them to Ann, and then she gave {to_ben} sweets to Ben. Now she has {left} sweets. How many sweets did Masha have at first?",
+      },
+    ],
+    givens: [
+      "Masha gave half of her sweets to Ann.",
+      "Then she gave {to_ben} sweets to Ben.",
+      "Now she has {left} sweets.",
+    ],
+    unknown: "How many sweets Masha had at first.",
+    canvas: SQUARES,
+    items: ANYWHERE,
+  },
   "workbook-page": {
     id: "tables-and-division-1",
-    statement: [{ text: "Write the missing numbers and signs." }],
+    statement: [SIGNS],
     canvas: WORKBOOK,
     items: [
       TIMES,
       { line: [{ binding: "box" }, { text: "÷ 8 = 4" }] },
-      { line: [{ text: "56" }, { binding: "box" }, { text: "65" }] },
+      COMPARISON,
       {
         line: [
           { text: "Tom has 3 bags of 4 apples. He has" },
@@ -121,7 +274,9 @@ const VALID: Readonly<Record<string, object>> = {
     statement: [
       LEAVES,
       CLOCK,
-      { text: "a) When does Anna leave? b) She walks for 25 minutes. When does she arrive?" },
+      {
+        text: "a) How many minutes past three does Anna leave? b) She walks for 25 minutes. How many minutes past three does she arrive?",
+      },
     ],
     canvas: { kind: "handwriting_sheet" },
     items: [
@@ -132,23 +287,75 @@ const VALID: Readonly<Record<string, object>> = {
 };
 
 /** The open views of the vectors, each a change to the example it varies. */
-const zones = VALID["zones-and-picture"] as { readonly statement: readonly object[] };
-const OPEN_VIEWS: Readonly<Record<string, object>> = {
-  "answer-anywhere": VALID.ladder as object,
+const zones = VALID["zones-and-picture"] as Task;
+const OPEN_VIEWS: Readonly<Record<string, Task>> = {
+  "answer-anywhere": oneSlot("gaps-ladder-1", LADDER, { binding: "anywhere" }, "squares"),
   "choice-for-adults": oneSlot(
     "a-day-you-remember-1",
     "Which first sentence makes a reader want to go on?",
     { binding: "choice", options: FIRST_SENTENCES.slice(0, 2) },
     "lines",
   ),
+  "essay-rubric-closed": oneSlot(
+    "undiscovered-island-1",
+    "Imagine an island that nobody has found yet. Write a short essay about your first morning there, in paragraphs.",
+    { binding: "sheet" },
+    "lines",
+  ),
+  "hints-closed": {
+    id: "gaps-ladder-1",
+    statement: [{ text: LADDER }],
+    ...LADDER_CHIPS,
+    canvas: { kind: "handwriting_sheet" },
+    items: ANYWHERE,
+  },
+  "template-closed": VALID["missing-factor"] as Task,
   "workbook-lines": {
     id: "tables-page",
-    statement: [{ text: "Write the missing numbers." }],
+    statement: [SIGNS],
     canvas: WORKBOOK,
-    items: [TIMES, DIVISION],
+    items: [TIMES, DIVISION, COMPARISON],
   },
   "zones-and-picture": { ...zones, statement: zones.statement.slice(0, 2) },
 };
+
+/** Every valid example and open-view vector by its name: a vector may have its example's. */
+const EVERY: readonly (readonly [string, Task])[] = [
+  ...Object.entries(VALID),
+  ...Object.entries(OPEN_VIEWS),
+];
+
+/** An answer anywhere on the sheet with this check, where the example's fault is. */
+function checked(check: object): object {
+  return { items: [{ answer_slots: [{ binding: "anywhere", check }] }] };
+}
+
+/** The line 7 × [ ] = 56 of a workbook to fill in, its box with this check, or none. */
+function missing(check?: object): object {
+  const box = check === undefined ? { binding: "box" } : { binding: "box", check };
+  return {
+    statement: [{ text: "Write the missing number." }],
+    canvas: WORKBOOK,
+    items: [{ line: [{ text: "7 ×" }, box, { text: "= 56" }] }],
+  };
+}
+
+/** A template of the line {a} × [ ] = {product}, the key of its box this one (R60 spec). */
+function templated(template: object, key = "{b}"): object {
+  const box = { binding: "box", check: { kind: "number", key } };
+  return {
+    template,
+    statement: [{ text: "Write the missing number." }],
+    canvas: WORKBOOK,
+    items: [{ line: [{ text: "{a} ×" }, box, { text: "= {product}" }] }],
+  };
+}
+
+const DIGITS = { from: 2, to: 9 };
+const FACTORS = { parameters: { a: DIGITS, b: DIGITS }, derived: { product: "a * b" } };
+const EIGHT = { kind: "number", key: "8" };
+/** A solver's program that finds the missing factor (R61 spec). */
+const FACTOR = 'def solve(numbers):\n    return {"factor": numbers["product"] // numbers["a"]}\n';
 
 /**
  * The invalid examples: the name, the place their first line names, `# error: <keyword> at
@@ -175,12 +382,58 @@ const INVALID: readonly (readonly [string, string, object])[] = [
     "#/items/0/answer_slots/0/binding",
     { items: [{ answer_slots: [{ binding: "box" }] }] },
   ],
+  ["box-without-a-key", "#/items/0/line/1", missing()],
+  [
+    "check-on-a-piece-of-text",
+    "#/items/0/line/0",
+    {
+      ...missing(),
+      items: [
+        {
+          line: [{ text: "7 ×", check: EIGHT }, { binding: "box", check: EIGHT }, { text: "= 56" }],
+        },
+      ],
+    },
+  ],
   [
     "choice-of-one",
     "#/items/0/answer_slots/0/options",
     { items: [{ answer_slots: [{ binding: "choice", options: ["7"] }] }] },
   ],
   ["difficulty-six", "#/difficulty", { difficulty: 6 }],
+  [
+    "domain-past-the-integers",
+    "#/template/parameters/b/to",
+    templated({ ...FACTORS, parameters: { a: DIGITS, b: { from: 2, to: 1e20 } } }),
+  ],
+  [
+    "domain-without-to",
+    "#/template/parameters/b",
+    templated({ ...FACTORS, parameters: { a: DIGITS, b: { from: 2 } } }),
+  ],
+  ["empty-givens", "#/givens", { id: "gaps-ladder-1", givens: [] }],
+  [
+    "expression-too-long",
+    "#/template/constraint",
+    templated({ ...FACTORS, constraint: Array(111).fill("a < 9").join(" and ") }),
+  ],
+  ["form-on-a-number", "#/items/0/line/1/check", missing({ ...EIGHT, form: "reduced" })],
+  [
+    "fraction-key-as-a-decimal",
+    "#/items/0/line/1/check/key",
+    {
+      statement: [{ text: "Write the fraction in lowest terms." }],
+      canvas: WORKBOOK,
+      items: [
+        {
+          line: [
+            { text: "2/8 =" },
+            { binding: "box", check: { kind: "fraction", key: "0.25", form: "reduced" } },
+          ],
+        },
+      ],
+    },
+  ],
   [
     "full-id-as-supporting-skill",
     "#/skills/supporting/0",
@@ -198,6 +451,40 @@ const INVALID: readonly (readonly [string, string, object])[] = [
   ],
   ["grid-step-ten", "#/canvas/grid_step", { canvas: { kind: "handwriting_sheet", grid_step: 10 } }],
   [
+    "item-without-a-key",
+    "#/items/1/answer_slots/0",
+    {
+      statement: [
+        {
+          text: "a) How many minutes past three does Anna leave? b) How many minutes past three does she arrive?",
+        },
+      ],
+      items: [
+        {
+          text: "a)",
+          answer_slots: [{ binding: "zone", zone: ZONE, check: { kind: "number", key: "15" } }],
+        },
+        { text: "b)", answer_slots: [{ binding: "zone", zone: { ...ZONE, left: 500 } }] },
+      ],
+    },
+  ],
+  ["key-as-a-number", "#/items/0/answer_slots/0/check/key", checked({ ...SEVEN, key: 7 })],
+  [
+    "key-with-a-leading-zero",
+    "#/items/0/answer_slots/0/check/key",
+    checked({ ...SEVEN, key: "07" }),
+  ],
+  [
+    "key-with-a-unit-beside-a-placeholder",
+    "#/items/0/line/1/check/key",
+    templated(FACTORS, "{b} apples"),
+  ],
+  [
+    "leak-phrase-twice",
+    "#/leak_phrases",
+    { id: "gaps-ladder-1", leak_phrases: ["seven rungs", "seven rungs"] },
+  ],
+  [
     "line-on-the-sheet",
     "#/items/0",
     {
@@ -211,19 +498,138 @@ const INVALID: readonly (readonly [string, string, object])[] = [
     "#/items/0/line",
     { canvas: WORKBOOK, items: [{ line: [{ text: "7 × 8 = 56" }] }] },
   ],
-  ["no-items", "#/items", { items: [] }],
+  ["no-items", "#/items", { items: [], solution: undefined }],
   ["no-primary-skill", "#/skills", { skills: { supporting: ["time-calendar"] } }],
+  ["no-solution", "#", { id: "gaps-ladder-1", solution: undefined }],
+  [
+    "number-on-the-whole-sheet",
+    "#/items/0/answer_slots/0/check/kind",
+    { items: [{ answer_slots: [{ binding: "sheet", check: SEVEN }] }], solution: undefined },
+  ],
+  [
+    "options-in-a-chosen-check",
+    "#/items/0/answer_slots/0/check",
+    {
+      statement: [{ text: "Which first sentence makes a reader want to go on?" }],
+      canvas: { kind: "handwriting_sheet", grid: "lines" },
+      items: [
+        {
+          answer_slots: [
+            {
+              binding: "choice",
+              options: FIRST_SENTENCES.slice(0, 2),
+              check: {
+                kind: "choice",
+                options: FIRST_SENTENCES.slice(0, 2),
+                key: FIRST_SENTENCES[1],
+              },
+            },
+          ],
+        },
+      ],
+    },
+  ],
   [
     "options-on-a-zone",
     "#/items/0/answer_slots/0",
     { items: [{ answer_slots: [{ binding: "zone", zone: ZONE, options: ["6", "7"] }] }] },
   ],
   [
+    "parameter-named-if",
+    "#/template/parameters",
+    templated({
+      parameters: { a: DIGITS, if: DIGITS },
+      derived: { b: "a + 1", product: "a * (a + 1)" },
+    }),
+  ],
+  [
+    "picture-wider-than-the-integers",
+    "#/statement/1/width",
+    {
+      statement: [
+        LEAVES,
+        { ...CLOCK, alt: "A clock whose hands show a quarter past three.", width: 1e16 },
+      ],
+    },
+  ],
+  [
     "picture-without-alt",
     "#/statement/1",
     { statement: [LEAVES, { picture: CLOCK.picture, width: 240, height: 240 }] },
   ],
+  [
+    "predicate-too-long",
+    "#/items/0/answer_slots/0/check/predicate",
+    {
+      statement: [{ text: "Write a number from 1 to 50 that divides by 3 and by 4." }],
+      ...checked({ kind: "predicate", predicate: Array(101).fill("value != 0").join(" and ") }),
+    },
+  ],
   ["provenance-by-author", "#", { provenance: "author" }],
+  [
+    "quantity-not-in-this-version",
+    "#/items/0/answer_slots/0/check/kind",
+    {
+      statement: [{ text: "How fast does light go in glass?" }],
+      ...checked({ kind: "quantity", key: "200000" }),
+    },
+  ],
+  [
+    "rubric-in-a-box",
+    "#/items/0/line/1/check/kind",
+    missing({ kind: "rubric", criteria: [{ text: "The number is written neatly." }] }),
+  ],
+  [
+    "rubric-without-criteria",
+    "#/items/0/answer_slots/0/check",
+    {
+      statement: [
+        {
+          text: "Write a short essay about your first morning on an island that nobody has found yet.",
+        },
+      ],
+      canvas: { kind: "handwriting_sheet", grid: "lines" },
+      items: [{ answer_slots: [{ binding: "sheet", check: { kind: "rubric" } }] }],
+      solution: undefined,
+    },
+  ],
+  [
+    "solver-program-too-long",
+    "#/template/solver/program",
+    templated(
+      {
+        ...FACTORS,
+        solver: { program: `# ${"x".repeat(70)}\n`.repeat(120) + FACTOR, results: ["factor"] },
+      },
+      "{factor}",
+    ),
+  ],
+  [
+    "solver-with-a-result-named-for",
+    "#/template/solver/results/0",
+    templated({
+      ...FACTORS,
+      solver: { program: FACTOR.replace("factor", "for"), results: ["for"] },
+    }),
+  ],
+  [
+    "solver-with-a-result-twice",
+    "#/template/solver/results",
+    templated(
+      { ...FACTORS, solver: { program: FACTOR, results: ["factor", "factor"] } },
+      "{factor}",
+    ),
+  ],
+  [
+    "solver-with-an-empty-program",
+    "#/template/solver/program",
+    templated({ ...FACTORS, solver: { program: "", results: ["factor"] } }, "{factor}"),
+  ],
+  [
+    "solver-without-results",
+    "#/template/solver",
+    templated({ ...FACTORS, solver: { program: FACTOR } }),
+  ],
   [
     "sound-in-the-statement",
     "#/statement/1/picture",
@@ -234,7 +640,69 @@ const INVALID: readonly (readonly [string, string, object])[] = [
       ],
     },
   ],
+  [
+    "technique-by-title",
+    "#/techniques/0",
+    { id: "gaps-ladder-1", techniques: ["Start with small numbers"] },
+  ],
+  ["template-without-parameters", "#/template/parameters", templated({ parameters: {} }, "7")],
   ["text-and-picture-in-one-part", "#/statement/0", { statement: [{ ...LEAVES, ...CLOCK }] }],
+  ["tolerance-in-a-check", "#/items/0/answer_slots/0/check", checked({ ...SEVEN, tolerance: "1" })],
+  [
+    "trap-value-in-words",
+    "#/items/0/answer_slots/0/check/trap_values/0/value",
+    {
+      id: "gaps-ladder-1",
+      ...checked({ ...SEVEN, trap_values: [{ value: "six", trap: "off-by-one" }] }),
+    },
+  ],
+  [
+    "trap-value-without-a-trap",
+    "#/items/0/answer_slots/0/check/trap_values/0",
+    {
+      id: "gaps-ladder-1",
+      ...checked({
+        ...SEVEN,
+        trap_values: [{ value: "6", text: "That is how many gaps there are between the rungs." }],
+      }),
+    },
+  ],
+  [
+    "trap-values-on-a-predicate",
+    "#/items/1/answer_slots/0/check",
+    {
+      id: "multiples-1",
+      statement: [
+        { text: "a) What is 3 × 4? b) Write another number that divides by 3 and by 4." },
+      ],
+      items: [
+        {
+          text: "a)",
+          answer_slots: [
+            {
+              binding: "zone",
+              zone: { ...ZONE, top: 200, width: 300 },
+              check: { kind: "number", key: "12" },
+            },
+          ],
+        },
+        {
+          text: "b)",
+          answer_slots: [
+            {
+              binding: "zone",
+              zone: { ...ZONE, top: 600, width: 300 },
+              check: {
+                kind: "predicate",
+                predicate: "value % 12 == 0 and value != 12",
+                trap_values: [{ value: "6", trap: "ignored-condition" }],
+              },
+            },
+          ],
+        },
+      ],
+    },
+  ],
   [
     "two-answers-anywhere",
     "#/items",
@@ -242,6 +710,23 @@ const INVALID: readonly (readonly [string, string, object])[] = [
       items: [
         { answer_slots: [{ binding: "anywhere" }] },
         { answer_slots: [{ binding: "anywhere" }] },
+      ],
+    },
+  ],
+  [
+    "written-choice-without-options",
+    "#/items/0/line/1/check",
+    {
+      statement: [{ text: "Write the sign <, > or = between the two numbers." }],
+      canvas: WORKBOOK,
+      items: [
+        {
+          line: [
+            { text: "56" },
+            { binding: "box", check: { kind: "choice", key: "<" } },
+            { text: "65" },
+          ],
+        },
       ],
     },
   ],
@@ -257,20 +742,49 @@ const INVALID: readonly (readonly [string, string, object])[] = [
   ],
 ];
 
-/** A task without its closed fields, its items' too: what the open view of it would be. */
+/**
+ * The invalid examples whose place is open but whose fault is not: the check of a box or an answer
+ * slot left out, or one on a piece of a line's text, and the solution left out. The open view leaves
+ * all of them out, and what the element gets is a task.
+ */
+const CLOSED_FAULTS = [
+  "box-without-a-key",
+  "check-on-a-piece-of-text",
+  "item-without-a-key",
+  "no-solution",
+];
+
+/** Whether an example's fault is in a closed field: at its place, under it, or among CLOSED_FAULTS. */
+function closedFault(name: string, place: string): boolean {
+  const closed = [...CLOSED, ...CLOSED_IN_ITEMS, ...CLOSED_IN_SLOTS];
+  return CLOSED_FAULTS.includes(name) || place.split("/").some((step) => closed.includes(step));
+}
+
+/** An object without these fields. */
+function without(value: object, names: readonly string[]): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(value).filter(([key]) => !names.includes(key)));
+}
+
+/** A task without its closed fields, its items', answer slots' and boxes' too: its open view. */
 function openOf(task: object): Record<string, unknown> {
-  const open = Object.fromEntries(Object.entries(task).filter(([key]) => !CLOSED.includes(key)));
+  const open = without(task, CLOSED);
   if (Array.isArray(open.items)) {
-    open.items = open.items.map((item: object) =>
-      Object.fromEntries(Object.entries(item).filter(([key]) => key !== "skills")),
-    );
+    open.items = open.items.map((item: object) => {
+      const fields = without(item, CLOSED_IN_ITEMS);
+      for (const key of ["answer_slots", "line"]) {
+        const slots = fields[key];
+        if (Array.isArray(slots)) fields[key] = slots.map((slot) => without(slot, CLOSED_IN_SLOTS));
+      }
+      return fields;
+    });
   }
   return open;
 }
 
 test("the open view of every valid example and open-view vector of the format is a task: a copy of it", () => {
-  for (const [name, task] of Object.entries({ ...VALID, ...OPEN_VIEWS })) {
-    expect(taskOf(task), name).toEqual(task);
+  expect(EVERY).toHaveLength(16 + 7);
+  for (const [name, task] of EVERY) {
+    expect(taskOf(task), name).toStrictEqual(task);
     expect(taskOf(task), name).not.toBe(task);
   }
 });
@@ -288,11 +802,11 @@ test("the element reads each field of a task once: what it shows is what it chec
   expect(reads).toBe(1);
 });
 
-test("an invalid example of the format is a TypeError at the place its first line names, or under it, unless the place is closed", () => {
+test("an invalid example of the format is a TypeError at the place its first line names, or under it, unless its fault is closed", () => {
   let refused = 0;
   for (const [name, place, change] of INVALID) {
     const open = openOf({ id: name, ...RUNGS, ...RUNG_SKILLS, ...change });
-    if (CLOSED.some((key) => place.startsWith(`#/${key}`))) {
+    if (closedFault(name, place)) {
       // Its fault is in a field the open view has not: what the element gets is a task.
       expect(taskOf(open), name).toEqual(open);
       continue;
@@ -301,11 +815,12 @@ test("an invalid example of the format is a TypeError at the place its first lin
     expect(under(message, pathOf(place, "task")), `${name}: ${message}`).toBe(true);
     refused++;
   }
-  expect(refused).toBe(17);
+  expect(INVALID).toHaveLength(55);
+  expect(refused).toBe(19);
 });
 
 test("a task with its closed fields is no open view: a TypeError at the first of them", () => {
-  for (const [name, task] of Object.entries({ ...VALID, ...OPEN_VIEWS })) {
+  for (const [name, task] of EVERY) {
     expect(() => taskOf({ ...task, ...RUNG_SKILLS }), name).toThrow(
       /^task\.skills: no field of a task's open view$/,
     );
@@ -320,6 +835,31 @@ test("a task with its closed fields is no open view: a TypeError at the first of
   const line = { ...TIMES, skills: { primary: ["times-tables"] } };
   expect(() => taskOf({ ...OPEN_VIEWS["workbook-lines"], items: [line] })).toThrow(
     /^task\.items\[0\]\.skills: no field of an item of a workbook$/,
+  );
+  // What the format has closed since: the solution, what helps on the way, the template (R56 spec,
+  // R57 spec, R60 spec), the simpler case of an item and the check of each answer slot and box.
+  const later: [string, unknown][] = [
+    ["solution", RUNGS.solution],
+    ["techniques", ["draw", "small-numbers"]],
+    ["traps", ["ignored-condition"]],
+    ["leak_phrases", ["seven rungs"]],
+    ["template", FACTORS],
+  ];
+  for (const [field, value] of later) {
+    expect(() => taskOf({ ...sheetTask(), [field]: value }), field).toThrow(
+      new RegExp(`^task\\.${field}: no field of a task's open view$`),
+    );
+  }
+  const slot = { binding: "anywhere", check: SEVEN };
+  expect(() => taskOf({ ...sheetTask(), items: [{ answer_slots: [slot] }] })).toThrow(
+    /^task\.items\[0\]\.answer_slots\[0\]\.check: no field of an answer slot$/,
+  );
+  const simpler = { answer_slots: [{ binding: "anywhere" }], simpler_case: "Try 60 cm first." };
+  expect(() => taskOf({ ...sheetTask(), items: [simpler] })).toThrow(
+    /^task\.items\[0\]\.simpler_case: no field of an item of a handwriting sheet$/,
+  );
+  expect(() => taskOf({ ...OPEN_VIEWS["workbook-lines"], ...missing(EIGHT) })).toThrow(
+    /^task\.items\[0\]\.line\[1\]\.check: no field of a piece of a line$/,
   );
 });
 
@@ -460,6 +1000,7 @@ test("a field left out by undefined is no field; null is a value, and a wrong on
   expect(() =>
     taskOf({ ...sheet, lang: undefined, canvas: { ...sheet.canvas, grid: undefined } }),
   ).not.toThrow();
+  expect(taskOf({ ...sheet, givens: undefined, unknown: undefined })).toStrictEqual(sheet);
   expect(
     sheetOf(templateOf(taskOf({ ...sheet, canvas: { ...sheet.canvas, grid_step: undefined } })))
       .grid.step,
@@ -511,6 +1052,24 @@ test("a value that is no open view of a task is a TypeError that names its field
       part({ alt: "Posts" }),
       /^task\.statement\[0\]\.alt: no field of a paragraph of the statement$/,
     ],
+    // What the statement gives and asks: texts not empty, the givens all different (R57 spec).
+    [at({ givens: [] }), /^task\.givens: a list of givens, one at least, not \[\]$/],
+    [at({ givens: "The path is 20 m long." }), /^task\.givens: a list of givens, not "The/],
+    [at({ givens: null }), /^task\.givens: a list of givens, not null$/],
+    [
+      at({ givens: ["The path is 20 m long.", ""] }),
+      /^task\.givens\[1\]: a given, a string not empty, not ""$/,
+    ],
+    [
+      at({ givens: ["A post every 4 m.", "A post every 4 m."] }),
+      /^task\.givens: givens all different, not \["A post every 4 m\.","A post every 4 m\."\]$/,
+    ],
+    [
+      at({ unknown: "" }),
+      /^task\.unknown: what the task asks to find, a string not empty, not ""$/,
+    ],
+    [at({ unknown: ["How many posts."] }), /^task\.unknown: what the task asks to find/],
+    [at({ unknown: null }), /^task\.unknown: .* not null$/],
     // A picture's path from media/, to a PNG, JPEG or WebP file.
     ...[
       "",
@@ -638,10 +1197,14 @@ test("a value that is no open view of a task is a TypeError that names its field
 });
 
 test("two templates are the same when they show the same, whatever objects they came from", () => {
-  const one: Task = sheetTask({ grid: "squares", grid_step: 50, statement: [{ text: "Count." }] });
-  const same: Task = sheetTask({ id: "posts-2", statement: [{ text: "Count." }] });
+  const one: SheetTask = sheetTask({
+    grid: "squares",
+    grid_step: 50,
+    statement: [{ text: "Count." }],
+  });
+  const same: SheetTask = sheetTask({ id: "posts-2", statement: [{ text: "Count." }] });
   expect(sameTemplate(templateOf(one), templateOf(same))).toBe(true);
-  const others: Task[] = [
+  const others: SheetTask[] = [
     sheetTask({ grid: "lines", statement: [{ text: "Count." }] }),
     sheetTask({ grid_step: 25, statement: [{ text: "Count." }] }),
     sheetTask({ statement: [{ text: "Count!" }] }),

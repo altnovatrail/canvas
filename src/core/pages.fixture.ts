@@ -106,7 +106,7 @@ export const PAGES: readonly CorpusPage[] = [
   {
     name: "workbook-page",
     about:
-      "The format's example of a workbook page (spec/format/examples/task/valid/workbook-page.yaml at v0.2.37), copied: two short lines to a row, a short line before a long one alone, and a line of two boxes.",
+      "The format's example of a workbook page (spec/format/examples/task/valid/workbook-page.yaml at v0.4.1), copied: two short lines to a row, a short line before a long one alone, and a line of two boxes.",
     items: [
       line("7 × [] = 56"),
       line("[] ÷ 8 = 4"),
@@ -119,7 +119,7 @@ export const PAGES: readonly CorpusPage[] = [
   {
     name: "tables-page",
     about:
-      "The format's example of a module's workbook task (spec/format/examples/module/valid/with-tasks/tasks/tables-page.yaml at v0.2.37), copied.",
+      "The format's example of a module's workbook task (spec/format/examples/module/valid/with-tasks/tasks/tables-page.yaml at v0.4.1), copied.",
     items: [line("7 × [] = 56"), line("47 ÷ 6 = [] r []")],
     fonts: true,
   },

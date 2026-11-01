@@ -6,8 +6,9 @@ import { isBox, type Page, type PageBox, type PageText, pageOf } from "../core/p
 import { PAGES, SHORT, shortLines } from "../core/pages.fixture.js";
 import type { View } from "../core/screen.js";
 import { cellsForCheck } from "../core/submission.js";
+import type { WorkbookItem } from "../core/task.js";
 import { moduleManifest, sheetTask, workbookTask } from "../core/tasks.fixture.js";
-import type { ExportedWork, Filled, Mark, Task, WorkbookItem } from "./index.js";
+import type { ExportedWork, Filled, Mark, Task } from "./index.js";
 import { at, level, placed, press, screenshot, settle } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 

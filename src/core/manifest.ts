@@ -3,9 +3,9 @@
 // checking and the explanation language, which the task's statement is in (R51 spec). The rest of
 // the manifest it passes over: what a manifest may hold, module-kit checks. Its canvas settings are
 // the canvas's own, though: a setting the element does not know is a TypeError, as a field of a
-// task is, for the element would draw the module's canvas without it. The type is the
-// element's own until spec's releases give the format's (T35 in spec's RUN.md; R44 spec), and how
-// app gets the manifest with a task is T34's there to decide (В42 in RUN.md).
+// task is, for the element would draw the module's canvas without it. The type is spec's, from
+// its npm package at the version of the spec/ submodule (R73 spec; R41), and app gets the
+// manifest's open view once for a module's package and gives it to the element as it is (R36 spec).
 
 import { CROP } from "./crop.js";
 import { closed, record, shown, whole } from "./fields.js";
@@ -16,18 +16,8 @@ import { closed, record, shown, whole } from "./fields.js";
  */
 export const FORMAT = "0.1";
 
-/** The open view of a module's manifest, as much of it as the element reads. */
-export interface Manifest {
-  readonly module_format_version: typeof FORMAT;
-  readonly languages: {
-    /** The language the module explains in, a BCP 47 tag: the statement's language. */
-    readonly explanation: string;
-  };
-  readonly canvas?: {
-    /** The height of a digit on the crop for checking, whole px from 1 to 256: 32 unless given. */
-    readonly digit_height?: number;
-  };
-}
+/** The open view of a module's manifest, whole: spec's type (R73 spec). */
+export type { Manifest } from "@altnovatrail/spec/formatv0/open";
 
 /**
  * What the element makes of a manifest: the height of a digit its crop for checking is drawn at,

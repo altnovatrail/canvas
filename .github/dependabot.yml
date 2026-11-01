@@ -16,10 +16,10 @@ updates:
     cooldown:
       default-days: 3
 
-  # The npm packages the code is built and checked with. Two additions to architecture 3.3 of
-  # .github, each for a reason of canvas's own (R12 in docs/decisions.md). The browser the tests run
-  # in is no package: it comes with the toolchain stage of .devcontainer/Dockerfile, and a pull
-  # request that raises playwright stays red until the image there is raised with it, by hand.
+  # The npm packages the code is built and checked with. Three additions to architecture 3.3 of
+  # .github, each for a reason of canvas's own (R12 and R41 in docs/decisions.md). The browser the
+  # tests run in is no package: it comes with the toolchain stage of .devcontainer/Dockerfile, and a
+  # pull request that raises playwright stays red until the image there is raised with it, by hand.
   - package-ecosystem: npm
     directory: /
     schedule:
@@ -36,3 +36,6 @@ updates:
       # moves by hand.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # The types of the module format are spec's, at the version of the tag the spec/ submodule
+      # stands on: the two move together, in a move to a new tag of spec (R73 spec).
+      - dependency-name: "@altnovatrail/spec"
