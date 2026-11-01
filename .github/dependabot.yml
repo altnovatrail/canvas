@@ -27,8 +27,8 @@ updates:
     cooldown:
       default-days: 3
     groups:
-      # @vitest/browser-playwright pins vitest exactly, so the two move in one pull request. Vite,
-      # which vitest runs on and just demo serves with, moves with them.
+      # @vitest/browser-playwright and @vitest/coverage-v8 pin vitest exactly, so the three move in
+      # one pull request. Vite, which vitest runs on and just demo serves with, moves with them.
       vitest:
         patterns: ["vitest", "@vitest/*", "vite"]
     ignore:

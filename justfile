@@ -24,10 +24,11 @@ ci-lint: _install
     {{ bin }}/tsc --noEmit -p tsconfig.element.json
     {{ bin }}/tsc --noEmit -p tsconfig.node.json
 
-# Build the package, run the tests in Node and in Chromium, and check the package the way a
-# consumer takes it.
+# Build the package, run the tests in Node and in Chromium with their coverage, which .github's
+# TypeScript wrapper sends to Codecov from coverage/lcov.info (R43), and check the package the way
+# a consumer takes it.
 ci-test: build
-    {{ bin }}/vitest run
+    {{ bin }}/vitest run --coverage
     node scripts/package.ts
 
 # Fail on a published advisory, high or above, for a package the package ships with. Of the tools
