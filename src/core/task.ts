@@ -6,7 +6,7 @@
 // canvas kinds apart, which the rest of the element reads.
 
 import type * as open from "@altnovatrail/spec/formatv0/open";
-import { closed, listOf, shown, text, whole } from "./fields.js";
+import { closed, listOf, sameItems, shown, text, whole } from "./fields.js";
 import {
   DEFAULT_GRID,
   GRID_KINDS,
@@ -274,9 +274,8 @@ export function templateOf(task: CheckedTask | undefined): Template {
       }
     }
   }
-  const { grid = DEFAULT_GRID.kind, grid_step = GRID_STEP } = task.canvas;
   return {
-    grid: { kind: grid, step: grid_step },
+    grid: gridFrom(task.canvas),
     statement: task.statement,
     tools: allowedOf(task.canvas),
   };
@@ -315,8 +314,7 @@ export function sameLayer(a: Template, b: Template): boolean {
 
 /** Whether two templates show the same statement. */
 export function sameStatement(a: Template, b: Template): boolean {
-  if (a.statement.length !== b.statement.length) return false;
-  return a.statement.every((part, i) => samePart(part, b.statement[i]));
+  return sameItems(a.statement, b.statement, samePart);
 }
 
 /** The names of Windows devices, which no ID or file of a module has (common.schema.json). */
@@ -344,28 +342,43 @@ function idOf(value: unknown, path: string): string {
   return value;
 }
 
-function partOf(value: unknown, path: string): StatementPart {
+/** A part of a statement — a task's or a worked example's: a paragraph, or a picture. */
+export function partOf(value: unknown, path: string): StatementPart {
+  return textOrPictureOf(value, path, "the statement");
+}
+
+/**
+ * A part of a text the learner reads, `of` naming the text: a paragraph, or a picture with what it
+ * shows and the size it is shown at — of a task's statement, a worked example's, or its demo.
+ */
+export function textOrPictureOf(value: unknown, path: string, of: string): StatementPart {
   const part = closed(value, path, ["text", "picture", "alt", "width", "height"], "a part");
   if (part.picture === undefined) {
-    closed(part, path, ["text"], "a paragraph of the statement");
+    closed(part, path, ["text"], `a paragraph of ${of}`);
     return { text: text(part.text, `${path}.text`, "a paragraph") };
   }
-  closed(part, path, ["picture", "alt", "width", "height"], "a picture of the statement");
+  closed(part, path, ["picture", "alt", "width", "height"], `a picture of ${of}`);
   const picture = pictureOf(part.picture, `${path}.picture`);
-  if (typeof part.alt !== "string") {
+  const alt = altOf(part.alt, `${path}.alt`);
+  const width = whole(part.width, `${path}.width`, 1);
+  return { picture, alt, width, height: whole(part.height, `${path}.height`, 1) };
+}
+
+/** What a picture shows, in words, which a screen reader reads: "" for one that only decorates. */
+export function altOf(value: unknown, path: string): string {
+  if (typeof value !== "string") {
     throw new TypeError(
-      `${path}.alt: what the picture shows, in words, or "" for a picture that only decorates, not ${shown(part.alt)}`,
+      `${path}: what the picture shows, in words, or "" for a picture that only decorates, not ${shown(value)}`,
     );
   }
-  const width = whole(part.width, `${path}.width`, 1);
-  return { picture, alt: part.alt, width, height: whole(part.height, `${path}.height`, 1) };
+  return value;
 }
 
 /**
  * A picture's path from the module's media/: names in kebab-case, none a Windows device, joined by
  * /, and the extension of a PNG, JPEG or WebP file, at most 128 characters (picture_path).
  */
-function pictureOf(value: unknown, path: string): string {
+export function pictureOf(value: unknown, path: string): string {
   if (typeof value === "string" && value.length <= 128) {
     const names = value.split("/");
     const file = names.pop() ?? "";
@@ -397,18 +410,38 @@ function canvasOf(value: unknown, path: string): SheetCanvas | WorkbookCanvas {
       `${path}.kind: "${SHEET_KIND}" or "${WORKBOOK_KIND}", not ${shown(canvas.kind)}`,
     );
   }
-  const sheet: { -readonly [K in keyof SheetCanvas]: SheetCanvas[K] } = { kind: SHEET_KIND };
+  const sheet: { -readonly [K in keyof SheetCanvas]: SheetCanvas[K] } = {
+    kind: SHEET_KIND,
+    ...gridOf(canvas, path),
+  };
+  if (canvas.tools !== undefined) sheet.tools = toolsOf(canvas.tools, `${path}.tools`);
+  return sheet;
+}
+
+/** The grid a handwriting sheet's canvas draws, the defaults filled in: squares of 50 units. */
+export function gridFrom({
+  grid = DEFAULT_GRID.kind,
+  grid_step = GRID_STEP,
+}: Pick<SheetCanvas, "grid" | "grid_step">): Grid {
+  return { kind: grid, step: grid_step };
+}
+
+/** A handwriting sheet's grid as its canvas gives it: its kind and its step, each if given. */
+export function gridOf(
+  canvas: Record<string, unknown>,
+  path: string,
+): Pick<SheetCanvas, "grid" | "grid_step"> {
+  const grid: { -readonly [K in "grid" | "grid_step"]?: SheetCanvas[K] } = {};
   if (canvas.grid !== undefined) {
     if (!GRID_KINDS.includes(canvas.grid as GridKind)) {
       throw new TypeError(`${path}.grid: "squares", "lines" or "dots", not ${shown(canvas.grid)}`);
     }
-    sheet.grid = canvas.grid as GridKind;
+    grid.grid = canvas.grid as GridKind;
   }
   if (canvas.grid_step !== undefined) {
-    sheet.grid_step = whole(canvas.grid_step, `${path}.grid_step`, GRID_STEP_MIN, GRID_STEP_MAX);
+    grid.grid_step = whole(canvas.grid_step, `${path}.grid_step`, GRID_STEP_MIN, GRID_STEP_MAX);
   }
-  if (canvas.tools !== undefined) sheet.tools = toolsOf(canvas.tools, `${path}.tools`);
-  return sheet;
+  return grid;
 }
 
 /**
@@ -478,7 +511,7 @@ function slotOf(value: unknown, path: string): AnswerSlot {
   }
 }
 
-function zoneOf(value: unknown, path: string): Zone {
+export function zoneOf(value: unknown, path: string): Zone {
   const zone = closed(value, path, ["left", "top", "width", "height"], "a zone");
   return {
     left: whole(zone.left, `${path}.left`, 0, 999),
@@ -527,8 +560,11 @@ function linePartOf(value: unknown, path: string): LinePart {
   return { binding: "box" };
 }
 
-function samePart(a: StatementPart, b: StatementPart | undefined): boolean {
-  if (b === undefined) return false;
+/**
+ * Whether two parts of a text the learner reads show the same: the same paragraph, or the same
+ * picture with the same description and size.
+ */
+export function samePart(a: StatementPart, b: StatementPart): boolean {
   if ("text" in a) return "text" in b && a.text === b.text;
   return (
     "picture" in b &&

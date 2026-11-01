@@ -10,6 +10,7 @@
 
 export type { Filling } from "./boxes.js";
 export type { Crop, Frame } from "./crop.js";
+export type { WorkedExample } from "./example.js";
 export type { Box } from "./geometry.js";
 export type { GridKind } from "./grid.js";
 export type { Group } from "./groups.js";

@@ -87,3 +87,12 @@ export function shown(value: unknown): string {
     return String(value);
   }
 }
+
+/** Whether two lists are the same, item by item, by `same`: by identity unless given. */
+export function sameItems<T>(
+  a: readonly T[],
+  b: readonly T[],
+  same: (x: T, y: T) => boolean = Object.is,
+): boolean {
+  return a.length === b.length && a.every((item, n) => n in b && same(item, b[n] as T));
+}

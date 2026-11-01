@@ -1,9 +1,10 @@
-// The tasks and manifests of the tests and of the demo page: open views of the module format's
-// draft 0.1 that the element takes (R32), each changed only where its test needs it, so that the
-// tests say one thing about the format and change together when it does. A module of the tests
-// alone: the build leaves it out, as it leaves out the tests (tsconfig.build.json), and the
-// package check holds to that (scripts/package.ts).
+// The tasks, worked examples and manifests of the tests and of the demo page: open views of the
+// module format 0.1 that the element takes (R32, R42), each changed only where its test needs it,
+// so that the tests say one thing about the format and change together when it does. A module of
+// the tests alone: the build leaves it out, as it leaves out the tests (tsconfig.build.json), and
+// the package check holds to that (scripts/package.ts).
 
+import type { CheckedExample, ExampleCanvas, ExamplePart } from "./example.js";
 import type { Manifest } from "./manifest.js";
 import type {
   SheetCanvas,
@@ -94,4 +95,40 @@ export function refusal(call: () => unknown): string {
     throw error;
   }
   throw new Error("the call threw no TypeError");
+}
+
+/** What a test gives a worked example: its statement, its demo and its grid, and the rest. */
+export interface ExampleChange {
+  readonly statement?: readonly StatementPart[];
+  readonly demo?: readonly ExamplePart[];
+  readonly grid?: ExampleCanvas["grid"];
+  readonly grid_step?: number;
+}
+
+/**
+ * The demo of most worked examples: a paragraph, a picture beside the sheet, a picture on an area
+ * of it, and a paragraph, as the format's lesson of gaps and posts has them.
+ */
+export const DEMO: readonly ExamplePart[] = Object.freeze([
+  { text: "Draw the path, and mark a lamp at each end." },
+  { picture: "pictures/lamp.png", alt: "A lamp.", width: 60, height: 120 },
+  {
+    picture: "pictures/path-in-gaps.png",
+    alt: "A line for the path, cut into 4 equal gaps of 5 m, with a lamp at every mark.",
+    area: { left: 100, top: 150, width: 800, height: 200 },
+  },
+  { text: "20 ÷ 5 = 4 gaps, and one lamp more than gaps: 5 lamps." },
+]);
+
+/**
+ * A worked example on a handwriting sheet ruled in squares: a statement of one line and the demo
+ * of DEMO, unless the test gives others.
+ */
+export function workedExample(change: ExampleChange = {}): CheckedExample {
+  const {
+    statement = [{ text: "A path is 20 m long, with a lamp every 5 m. How many lamps are there?" }],
+    demo = DEMO,
+    ...canvas
+  } = change;
+  return { statement, canvas: { kind: "handwriting_sheet", ...canvas }, demo };
 }
