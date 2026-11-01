@@ -91,8 +91,11 @@ async function twoFingers(
   const bottom = Math.min(box.bottom, window.innerHeight);
   const one = { id: 1, clientX: box.left + box.width / 3, clientY: (top + bottom) / 2 };
   const two = { ...one, id: 2, clientX: one.clientX + 60 };
-  await touches("touchStart", [one]);
-  await touches("touchStart", [one, two]);
+  // The second finger 10 ms after the first by the events' own times, well within PAIR_MS: a frame
+  // between the two on a loaded runner may take longer than that by the clock.
+  const down = Date.now() / 1000;
+  await touches("touchStart", [one], down);
+  await touches("touchStart", [one, two], down + 0.01);
   let now = [one, two];
   for (let step = 1; step <= 5; step++) {
     now = moved([one, two], (dy * step) / 5);

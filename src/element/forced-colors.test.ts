@@ -247,7 +247,10 @@ test("with forced colours a picture on an area of the sheet keeps the colours of
       },
     ],
   });
-  element.media = () => quarters();
+  // The file made before it is asked for: arrive() waits only for the decodes of files that have
+  // come, and a canvas may take longer than that to encode one.
+  const file = await quarters();
+  element.media = async () => file;
   document.body.append(element);
   made.push(element);
   await arrive();

@@ -92,6 +92,10 @@ async function pictured(
   const shown = await demo();
   if (change !== undefined) shown.element.workedExample = workedExample(change);
   shown.element.media = media;
+  // The loads first, however long the consumer's media takes: a file a canvas encodes may come
+  // after the first task, and arrive() waits only for the decodes of files that have come.
+  await new Promise((resolve) => setTimeout(resolve));
+  await Promise.allSettled(media.mock.results.map(({ value }) => value));
   await arrive();
   return {
     ...shown,
