@@ -332,7 +332,10 @@ test("the rule is its words: a second writing of it, in BigInt, agrees on the co
       }
     }
   }
-});
+  // Every rule on the corpus, 200 crowds and the boxes that overlap, each stroke placed twice, takes
+  // about half a second here, and more on a CI runner, with the coverage of the tests on and the
+  // browsers of the other projects beside it: past Vitest's default of five seconds.
+}, 30_000);
 
 /** What the test vectors say of themselves (R37). */
 const ABOUT =
