@@ -25,6 +25,7 @@ import type { Vec2 } from "perfect-freehand";
 import { type Cell, cellOf, cellsOf, type Filled, filledOf, sheetFilledOf } from "../core/boxes.js";
 import { Clock } from "../core/clock.js";
 import { ERASER_BUTTON, Eraser } from "../core/eraser.js";
+import { sameItems } from "../core/fields.js";
 import { type Box, boxOf } from "../core/geometry.js";
 import { gridPath } from "../core/grid.js";
 import { type Contact, Hands } from "../core/hands.js";
@@ -77,6 +78,7 @@ import { Tools } from "./tools.js";
 
 export type { Filled, Filling } from "../core/boxes.js";
 export type { Crop, Frame } from "../core/crop.js";
+export type { WorkedExample } from "../core/example.js";
 export type { Box } from "../core/geometry.js";
 export type { GridKind } from "../core/grid.js";
 export type { Group } from "../core/groups.js";
@@ -1702,15 +1704,6 @@ function rectOf({ left, top, width, height }: PageBox): SVGRectElement {
 /** The bytes of a PNG as a Blob, for the consumer to send or show. */
 function blobOf(png: Uint8Array<ArrayBuffer>): Blob {
   return new Blob([png], { type: "image/png" });
-}
-
-/** Whether two lists are the same, item by item, by `same`: by identity unless given. */
-function sameItems<T>(
-  a: readonly T[],
-  b: readonly T[],
-  same: (x: T, y: T) => boolean = Object.is,
-): boolean {
-  return a.length === b.length && a.every((item, n) => n in b && same(item, b[n] as T));
 }
 
 function sameBox(a: Box | null, b: Box | null): boolean {

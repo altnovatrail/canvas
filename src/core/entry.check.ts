@@ -27,6 +27,7 @@ export type Given = [
   types.Stroke,
   types.Submission,
   types.Task,
+  types.WorkedExample,
   types.WorkbookSubmission,
 ];
 
@@ -44,6 +45,8 @@ export const snap = core.snapOf;
 export const task = core.taskOf;
 // @ts-expect-error Nor what the sheet makes of one.
 export const template = core.templateOf;
+// @ts-expect-error Nor its check of a worked example (R42).
+export const example = core.exampleOf;
 // @ts-expect-error Nor its reading of a manifest.
 export const settings = core.settingsOf;
 // @ts-expect-error Nor the layout of a workbook's page, which vectors/pages.json pins (R34, R35).
