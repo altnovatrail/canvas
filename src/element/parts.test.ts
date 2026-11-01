@@ -10,10 +10,15 @@ import type { DemoChangeEvent, DemoState, NovatrailCanvas } from "./index.js";
 import {
   accessibilityTree,
   arrive,
+  type Colour,
   deferred,
   file,
   placed,
+  QUARTERS,
+  quarters,
+  sameColours,
   settle,
+  sheetColours,
   spacer,
   upgraded,
   watch,
@@ -27,7 +32,9 @@ import { probe } from "./probe.js";
 // items as they were built, and a part comes into sight at once, below the row of buttons. DEMO,
 // the demo of the tests, has four parts: a paragraph, a picture beside the sheet, a picture on an
 // area of it, and a paragraph. The pictures' files come from the consumer's media, each reference
-// once, as the example comes, with the statement's (T64).
+// once, as the example comes, with the statement's (T64). A picture on an area stands on the layer
+// of the author's demo, stretched over its area, and the sheet scrolls to the area as it opens
+// (T61).
 
 const made: HTMLElement[] = [];
 // The decodes the element asks for, which arrive() waits for.
@@ -65,17 +72,25 @@ async function demo(height?: number, parent?: HTMLElement) {
 /** The items of the list, as nodes. */
 const itemsOf = (list: HTMLOListElement): Element[] => [...list.children];
 
+/** The pictures on areas of the sheet, on the layer of the author's demo, in its order (T61). */
+const onTheSheet = (root: ShadowRoot): SVGImageElement[] => [
+  ...root.querySelectorAll<SVGImageElement>(".show image"),
+];
+
 /**
- * A demo of DEMO, after a statement of these parts if given, whose pictures come from the
- * consumer's media with every file come and decoded: what it asked for, and the addresses the
- * element made of the files and let go, in order.
+ * A demo of DEMO, or of the example these changes make, whose pictures come from the consumer's
+ * media — the file `give` gives for a reference — with every file come and decoded: what it asked
+ * for, and the addresses the element made of the files and let go, in order.
  */
-async function pictured(statement?: ExampleChange["statement"]) {
+async function pictured(
+  change?: ExampleChange,
+  give: (ref: string) => Promise<Blob> = async () => file(),
+) {
   const created = vi.spyOn(URL, "createObjectURL");
   const revoked = vi.spyOn(URL, "revokeObjectURL");
-  const media = vi.fn(async (_ref: string) => file());
+  const media = vi.fn(give);
   const shown = await demo();
-  if (statement !== undefined) shown.element.workedExample = workedExample({ statement });
+  if (change !== undefined) shown.element.workedExample = workedExample(change);
   shown.element.media = media;
   await arrive();
   return {
@@ -216,6 +231,8 @@ test("a picture that only decorates is its number alone in the region: beside th
   expect(status.textContent).toBe("Part 2 of 2.");
   expect(list.lastElementChild?.childNodes).toHaveLength(0);
   expect(root.querySelectorAll('.parts [role="img"]')).toHaveLength(0);
+  // On the sheet it stands all the same (T61).
+  expect(onTheSheet(root)).toHaveLength(1);
 });
 
 test("a state the consumer gives shows its parts and hides or shows the demo with no event, nothing told and nothing scrolled; one that says the same keeps the object, fewer parts go from the end, and a wrong one is a TypeError that names its field and changes nothing", async () => {
@@ -300,9 +317,10 @@ test("demochange goes up from the element and out of a consumer's shadow tree, w
   expect(event?.detail).toBe(element.demoState);
 });
 
-test("a screen reader reads the row, the statement and the list of the open parts in that order, in Chromium's own tree, a picture on an area of the sheet by its words", async () => {
-  const { next } = await demo();
+test("a screen reader reads the row, the statement and the list of the open parts in that order, in Chromium's own tree, a picture on an area of the sheet by its words, and not the picture itself on the sheet", async () => {
+  const { root: shadow, next } = await pictured();
   for (let n = 0; n < 3; n++) next.click();
+  expect(onTheSheet(shadow)[0]?.getAttribute("href")).toMatch(/^blob:/);
   const nodes = await accessibilityTree();
   const byId = new Map(nodes.map((node) => [node.nodeId, node]));
   const order: typeof nodes = [];
@@ -461,10 +479,9 @@ test("in a browser that keeps no decoded address at hand, a part's frame shows i
 });
 
 test("one call of media for a reference, the statement's and the demo's alike, as the example comes; a part opened shows the statement's address at once, and so does one opened again after the consumer gave fewer", async () => {
-  const { element, root, list, next, asked, addresses } = await pictured([
-    { text: "Look at the lamp." },
-    LAMP,
-  ]);
+  const { element, root, list, next, asked, addresses } = await pictured({
+    statement: [{ text: "Look at the lamp." }, LAMP],
+  });
   expect(asked()).toEqual(["pictures/lamp.png", "pictures/path-in-gaps.png"]);
   expect(addresses()).toHaveLength(2);
   const shown = root.querySelector<HTMLImageElement>(".statement img")?.src;
@@ -504,27 +521,36 @@ test("a new example names its pictures before the last one's go: a file both nam
   expect(list.children).toHaveLength(0);
 });
 
-test("the files of a hidden demo stay: Demo hides and shows the list alone, its pictures as they were, asking for nothing and letting no address go", async () => {
-  const { list, next, demo: shown, asked, gone } = await pictured();
-  next.click();
-  next.click();
+test("the files of a hidden demo stay: Demo hides and shows the list and the pictures on the sheet alone, as they were, asking for nothing and letting no address go", async () => {
+  const { root, list, next, demo: shown, asked, gone } = await pictured();
+  for (let n = 0; n < 3; n++) next.click();
   const image = list.querySelector("img");
   expect(image).not.toBeNull();
-  const changes = watch(list);
+  const [onSheet] = onTheSheet(root);
+  const layer = root.querySelector(".show g");
+  if (!layer || !onSheet) throw new Error("no picture on the sheet");
+  const changes = [watch(list), watch(layer)];
   shown.click();
+  expect(onSheet.getBoundingClientRect().width).toBe(0);
   shown.click();
   await arrive();
-  expect(changes().map(({ type, attributeName }) => [type, attributeName])).toEqual([
+  expect(
+    changes.flatMap((change) => change().map(({ type, attributeName }) => [type, attributeName])),
+  ).toEqual([
     ["attributes", "hidden"],
     ["attributes", "hidden"],
+    ["attributes", "display"],
+    ["attributes", "display"],
   ]);
   expect(list.querySelector("img")).toBe(image);
+  expect(onTheSheet(root)).toEqual([onSheet]);
+  expect(onSheet.getBoundingClientRect().width).toBeGreaterThan(0);
   expect(asked()).toHaveLength(2);
   expect(gone()).toEqual([]);
 });
 
 test("the addresses go when the element leaves the page and come back with it, the statement's and the list's alike, with no new call of media", async () => {
-  const { element, root, next, asked, gone } = await pictured([LAMP]);
+  const { element, root, next, asked, gone } = await pictured({ statement: [LAMP] });
   next.click();
   next.click();
   const before = [...root.querySelectorAll("img")].map((image) => image.src);
@@ -543,4 +569,160 @@ test("the addresses go when the element leaves the page and come back with it, t
   expect(before).not.toContain(after[0]);
   expect((await fetch(after[0] ?? "")).ok).toBe(true);
   expect(asked()).toHaveLength(2);
+});
+
+test("a picture on an area stands on the layer of the author's demo once its part opens, stretched over the area, its corners at the area's, and of two that overlap the later stands over the earlier; in the same press it has its address, decoded", async () => {
+  const over: Colour = [200, 0, 200];
+  const { element, root, next, addresses } = await pictured(
+    {
+      demo: [
+        {
+          picture: "pictures/under.png",
+          alt: "Under.",
+          area: { left: 100, top: 100, width: 400, height: 300 },
+        },
+        {
+          picture: "pictures/over.png",
+          alt: "",
+          area: { left: 300, top: 250, width: 400, height: 300 },
+        },
+      ],
+    },
+    (ref) => quarters(ref === "pictures/over.png" ? [over, over, over, over] : QUARTERS),
+  );
+  expect(onTheSheet(root)).toHaveLength(0);
+  next.click();
+  const [under] = onTheSheet(root);
+  expect(addresses()).toContain(under?.getAttribute("href"));
+  expect(
+    ["x", "y", "width", "height", "preserveAspectRatio"].map((name) => under?.getAttribute(name)),
+  ).toEqual(["100", "100", "400", "300", "none"]);
+  // A tenth in from each corner of the area: a picture fitted in it, 2 : 1 in 4 : 3, would leave
+  // the top and the bottom of the area bare.
+  const corners = [
+    [140, 130],
+    [460, 130],
+    [140, 370],
+    [460, 370],
+  ] as const;
+  expect(sameColours(await sheetColours(element, corners), QUARTERS)).toEqual([
+    true,
+    true,
+    true,
+    true,
+  ]);
+  next.click();
+  expect(onTheSheet(root).map((image) => image.getAttribute("y"))).toEqual(["100", "250"]);
+  // The earlier alone, where they overlap, and the later alone.
+  const shown = await sheetColours(element, [
+    [140, 130],
+    [460, 370],
+    [680, 530],
+  ]);
+  expect(sameColours(shown, [QUARTERS[0] ?? over, over, over])).toEqual([true, true, true]);
+});
+
+test("a picture on the sheet shows nothing till its file is decoded, while its item says its words; its address goes when the element leaves the page and comes back with it, with no new call of media", async () => {
+  const path = deferred<Blob>();
+  const media = vi.fn((ref: string) =>
+    ref === "pictures/path-in-gaps.png" ? path.promise : Promise.resolve(file()),
+  );
+  const { element, root, list, next } = await demo();
+  element.media = media;
+  for (let n = 0; n < 3; n++) next.click();
+  const [image] = onTheSheet(root);
+  expect(image?.hasAttribute("href")).toBe(false);
+  expect(list.lastElementChild?.textContent).toMatch(/^A line for the path/);
+  path.resolve(file());
+  await arrive();
+  const shown = image?.getAttribute("href");
+  expect(shown).toMatch(/^blob:/);
+  element.remove();
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(image?.hasAttribute("href")).toBe(false);
+  document.body.append(element);
+  await arrive();
+  expect(image?.getAttribute("href")).toMatch(/^blob:/);
+  expect(image?.getAttribute("href")).not.toBe(shown);
+  expect(media).toHaveBeenCalledTimes(2);
+});
+
+test("the pictures on the sheet go and come with their parts: a state the consumer gives takes them off from the end and puts them back, hidden with a hidden demo; an equal example keeps them, and another begins with none and with its pictures in sight", async () => {
+  const { element, root, next } = await pictured();
+  for (let n = 0; n < 3; n++) next.click();
+  const layer = root.querySelector(".show g");
+  const [image] = onTheSheet(root);
+  element.demoState = { opened: 2, hidden: false };
+  expect(onTheSheet(root)).toHaveLength(0);
+  expect(image?.isConnected).toBe(false);
+  element.demoState = { opened: 4, hidden: true };
+  const [back] = onTheSheet(root);
+  expect(back?.getAttribute("href")).toMatch(/^blob:/);
+  expect(layer?.getAttribute("display")).toBe("none");
+  element.workedExample = structuredClone(workedExample());
+  expect(onTheSheet(root)).toEqual([back]);
+  element.workedExample = workedExample({ grid: "dots" });
+  expect(onTheSheet(root)).toHaveLength(0);
+  expect(layer?.hasAttribute("display")).toBe(false);
+});
+
+/** A worked example of one part: a picture on this area of the sheet. */
+const onArea = (area: { left: number; top: number; width: number; height: number }) =>
+  workedExample({ demo: [{ picture: "pictures/path.png", alt: "A path.", area }] });
+
+test("Next brings a picture on an area into sight by its area, not by its item: in the element's own container, where the picture then stands over the area's box", async () => {
+  const { element, root, list, next, viewport } = await demo(300);
+  element.workedExample = onArea({ left: 100, top: 1100, width: 800, height: 200 });
+  await settle();
+  next.click();
+  const spot = root.querySelector(".spot");
+  const port = viewport.getBoundingClientRect();
+  const box = spot?.getBoundingClientRect();
+  expect(box?.top).toBeGreaterThanOrEqual(port.top - 0.5);
+  expect(box?.bottom).toBeLessThanOrEqual(port.bottom + 0.5);
+  expect(list.lastElementChild?.getBoundingClientRect().bottom).toBeLessThan(port.top);
+  await settle();
+  const drawn = onTheSheet(root)[0]?.getBoundingClientRect();
+  const still = spot?.getBoundingClientRect();
+  for (const side of ["left", "top", "width", "height"] as const) {
+    expect(drawn?.[side]).toBeCloseTo(still?.[side] ?? Number.NaN, 0);
+  }
+  expect(still?.top).toBeCloseTo(box?.top ?? Number.NaN, 0);
+});
+
+test("in a page that scrolls the element, Next brings a picture's area out from under the row stuck at the consumer's offset", async () => {
+  const { element, root, list, next, row } = await demo();
+  element.workedExample = onArea({ left: 100, top: 1100, width: 800, height: 200 });
+  element.style.setProperty("--novatrail-canvas-top", "30px");
+  spacer(made);
+  await settle();
+  const spot = root.querySelector(".spot");
+  // The area's top just under the top of the screen, under the row that sticks there.
+  window.scrollTo(0, window.scrollY + (spot?.getBoundingClientRect().top ?? 0) - 10);
+  await settle();
+  next.click();
+  const top = row.getBoundingClientRect().bottom;
+  expect(spot?.getBoundingClientRect().top).toBeCloseTo(top, 0);
+  expect(list.lastElementChild?.getBoundingClientRect().bottom).toBeLessThan(0);
+});
+
+test("Next brings a picture on an area taller than what is in sight into sight by its top, under the row, whether the area is above what is in sight or below it", async () => {
+  const { element, root, next, viewport, row } = await demo(300);
+  const top = () => root.querySelector(".spot")?.getBoundingClientRect().top;
+  // From above: the container scrolled to the sheet's bottom, past the area's top.
+  element.workedExample = onArea({ left: 0, top: 100, width: 1000, height: 1300 });
+  await settle();
+  viewport.scrollTop = viewport.scrollHeight;
+  await settle();
+  next.click();
+  expect(top()).toBeCloseTo(viewport.getBoundingClientRect().top, 0);
+  expect(top()).toBeCloseTo(row.getBoundingClientRect().bottom, 0);
+  // From below: the container at its top, and the area's top under what is in sight.
+  element.workedExample = onArea({ left: 0, top: 600, width: 1000, height: 800 });
+  viewport.scrollTop = 0;
+  await settle();
+  next.click();
+  expect(viewport.scrollTop).toBeGreaterThan(0);
+  expect(top()).toBeCloseTo(viewport.getBoundingClientRect().top, 0);
 });

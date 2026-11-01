@@ -11,8 +11,8 @@ import { at, level, screenshot, sheetWork } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The sheet's layers in Chromium (R23): the stack in the order of concepts 8 spec, one view for
-// every layer at any width and scroll, the cap of k, the task's grid, the theme, and the task as a
-// property. A worked example's canvas takes no pointer (R42).
+// every layer at any width and scroll — the author's demo too (T61) — the cap of k, the task's
+// grid, the theme, and the task as a property. A worked example's canvas takes no pointer (R42).
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -133,8 +133,14 @@ test("a worked example's canvas alone takes no pointer, the stage keeps the menu
 test("every layer shows the sheet by one view, whatever the width and the scroll, and the sheet is at most 1000 CSS pixels wide, in the middle", async () => {
   for (const width of [400, 1000, 1400]) {
     const { element, root, canvas, viewport, view } = await sheet(width, 300);
+    // The template, the author's demo (T61), the tutor's sketch and the marks.
     const svgs = [...root.querySelectorAll<SVGSVGElement>(".stage > svg")];
-    expect(svgs).toHaveLength(3);
+    expect(svgs.map((svg) => svg.getAttribute("class"))).toEqual([
+      "template",
+      "show",
+      "sketch",
+      "marks",
+    ]);
     const k = Math.min(width, 1000) / 1000;
     expect(view().k).toBeCloseTo(k, 6);
     const rect = canvas.getBoundingClientRect();

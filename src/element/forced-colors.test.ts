@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { CROP } from "../core/crop.js";
 import { pageOf } from "../core/page.js";
 import { SHORT } from "../core/pages.fixture.js";
@@ -7,17 +7,25 @@ import { SHEET } from "../core/sheet.js";
 import { workForCheck } from "../core/submission.js";
 import { workbookTask, workedExample } from "../core/tasks.fixture.js";
 import "./index.js";
-import { sheetWork } from "./pointer.fixture.js";
+import {
+  arrive,
+  QUARTERS,
+  quarters,
+  sameColours,
+  sheetColours,
+  sheetWork,
+} from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The sheet with forced colours, in a browser context that is in the mode from the start (R23):
 // the system's colours stand in for the consumer's theme on the screen, the tutor's frames and a
-// workbook's print too, and the crop for checking is as it always is. vitest.config.ts runs this
-// file alone, in a project of its own.
+// workbook's print too, and the crop for checking is as it always is; a picture keeps its own
+// colours. vitest.config.ts runs this file alone, in a project of its own.
 
 const made: HTMLElement[] = [];
 afterEach(() => {
   for (const element of made.splice(0)) element.remove();
+  vi.restoreAllMocks();
 });
 
 const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
@@ -223,4 +231,35 @@ test("with forced colours a worked example's Demo draws its triangle in the colo
   expect(next.getAttribute("aria-disabled")).toBe("true");
   expect(getComputedStyle(next).color).toBe(system("GrayText"));
   expect(getComputedStyle(triangle).fill).toBe(system("ButtonText"));
+});
+
+test("with forced colours a picture on an area of the sheet keeps the colours of its file, as a picture does (T61)", async () => {
+  // The decodes the element asks for, which arrive() waits for.
+  vi.spyOn(HTMLImageElement.prototype, "decode");
+  const element = document.createElement("novatrail-canvas");
+  element.style.width = "400px";
+  element.workedExample = workedExample({
+    demo: [
+      {
+        picture: "pictures/path.png",
+        alt: "A path.",
+        area: { left: 100, top: 100, width: 400, height: 300 },
+      },
+    ],
+  });
+  element.media = () => quarters();
+  document.body.append(element);
+  made.push(element);
+  await arrive();
+  const next = element.shadowRoot?.querySelector<HTMLButtonElement>(".tools .demo button");
+  if (!next) throw new Error("the row has no Next");
+  next.click();
+  // The middle of each quarter of the picture, on the sheet.
+  const shown = await sheetColours(element, [
+    [200, 175],
+    [400, 175],
+    [200, 325],
+    [400, 325],
+  ]);
+  expect(sameColours(shown, QUARTERS)).toEqual([true, true, true, true]);
 });

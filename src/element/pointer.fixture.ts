@@ -2,9 +2,10 @@
 // point of it, a level stroke that a script makes, real input through the DevTools protocol — a
 // mouse, a pen and touches (R29) — the pixels of a screenshot, Chromium's own accessibility tree
 // and an element given its properties before it was upgraded; and for the pictures, a picture's
-// file, a load the test settles, the wait for the files that came, and what changes in a node
-// (R23, R42). The tests take them from here rather than each keeping a copy. Like the tests, the
-// build leaves this module out (tsconfig.build.json), and the package never has it.
+// file — an SVG, or a PNG of four colours — a load the test settles, the wait for the files that
+// came, and what changes in a node (R23, R42). The tests take them from here rather than each
+// keeping a copy. Like the tests, the build leaves this module out (tsconfig.build.json), and the
+// package never has it.
 
 import { vi } from "vitest";
 import { cdp, page } from "vitest/browser";
@@ -31,6 +32,33 @@ export async function settle(): Promise<void> {
 export function file(colour = "#c33"): Blob {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><rect width="40" height="20" fill="${colour}"/></svg>`;
   return new Blob([svg], { type: "image/svg+xml" });
+}
+
+/** A colour as a screenshot's pixel has it: red, green and blue. */
+export type Colour = readonly [number, number, number];
+
+/** The colours of the quarters of a picture by `quarters()`: the top left first, then by rows. */
+export const QUARTERS: readonly Colour[] = [
+  [255, 0, 0],
+  [0, 160, 0],
+  [0, 0, 255],
+  [255, 200, 0],
+];
+
+/**
+ * A raster picture's file, as the module format has its pictures: a PNG 40 × 20 pixels in four
+ * quarters of their own colours, so that where each corner of it stands on the screen tells how
+ * it is laid out, as a picture of one colour would not.
+ */
+export async function quarters(colours: readonly Colour[] = QUARTERS): Promise<Blob> {
+  const canvas = new OffscreenCanvas(40, 20);
+  const context = canvas.getContext("2d");
+  if (context === null) throw new Error("no context to draw the picture with");
+  colours.forEach(([red, green, blue], n) => {
+    context.fillStyle = `rgb(${red} ${green} ${blue})`;
+    context.fillRect((n % 2) * 20, Math.floor(n / 2) * 10, 20, 10);
+  });
+  return canvas.convertToBlob({ type: "image/png" });
 }
 
 /** A promise and the hands that settle it: a load of media the test settles when it will. */
@@ -247,6 +275,36 @@ export async function touches(
     ...(at === undefined ? {} : { timestamp: at }),
   });
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+}
+
+/**
+ * The colours of the screen at these points of an element's sheet, in sheet units, read off a
+ * screenshot of it once its layout and drawing have run.
+ */
+export async function sheetColours(
+  element: NovatrailCanvas,
+  points: readonly (readonly [number, number])[],
+): Promise<number[][]> {
+  await settle();
+  const shot = await screenshot(element);
+  const canvas = element.shadowRoot?.querySelector("canvas");
+  const { view } = probe(element);
+  if (!canvas || view === undefined) throw new Error("the element's sheet is not laid out");
+  const host = element.getBoundingClientRect();
+  return points.map(([x, y]) => {
+    const { clientX, clientY } = at(canvas, view, x, y);
+    return shot(clientX - host.left, clientY - host.top);
+  });
+}
+
+/** Which of the screen's colours are the colours expected, but for the screen's rounding. */
+export function sameColours(
+  shown: readonly (readonly number[])[],
+  expected: readonly Colour[],
+): boolean[] {
+  return shown.map((colour, n) =>
+    colour.every((value, c) => Math.abs(value - (expected[n]?.[c] ?? -99)) <= 12),
+  );
 }
 
 /** The pixels of a screenshot of an element, at the density of the screen, without a file. */
