@@ -5,6 +5,8 @@
 
 import type * as open from "@altnovatrail/spec/formatv0/open";
 import type {
+  DemoChangeEvent,
+  DemoState,
   ExportedWork,
   Filled,
   HistoryChangeEvent,
@@ -98,6 +100,18 @@ sheet.workedExample = {
 };
 sheet.workedExample = undefined;
 export const example: WorkedExample | undefined = sheet.workedExample;
+/**
+ * How far the learner has gone through the demo, which app keeps as demochange tells it and gives
+ * back after the example (R42); the event's type holds on the element and on the document alike.
+ */
+sheet.demoState = { opened: 2, hidden: true };
+sheet.demoState = undefined;
+export const state: DemoState | undefined = sheet.demoState;
+sheet.addEventListener("demochange", (event: DemoChangeEvent) => event.detail.opened);
+document.addEventListener("demochange", (event) => {
+  const kept: DemoState = event.detail;
+  sheet.demoState = kept;
+});
 
 // @ts-expect-error The picture of the whole sheet is no part of the interface (R27).
 sheet.exportPNG();
@@ -129,6 +143,14 @@ sheet.manifest = null;
 sheet.workedExample = null;
 // @ts-expect-error A task is no worked example: it has items and no demo.
 sheet.workedExample = posts;
+// @ts-expect-error null is no state of a demo: undefined, and undefined alone, changes nothing.
+sheet.demoState = null;
+// @ts-expect-error A state says whether the demo is hidden too.
+sheet.demoState = { opened: 1 };
+document.addEventListener("demochange", (event) => {
+  // @ts-expect-error The state told is the learner's, to read.
+  event.detail.opened = 2;
+});
 // @ts-expect-error The grid's step is grid_step in the format, not step.
 sheet.task = { ...posts, canvas: { kind: "handwriting_sheet", step: 40 } };
 // @ts-expect-error The height of a digit is the manifest's, not the task's.

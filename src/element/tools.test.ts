@@ -82,9 +82,12 @@ test("the row is a toolbar of the pen and the eraser, undo and clear, named in E
   await expect.element(found.clear).toBeVisible();
   await expect.element(found.up).toBeVisible();
   await expect.element(found.down).toBeVisible();
-  // The order the arrow keys go through, and the language the names are in. Up and Down are on
-  // every device (R33), and the last button is pen mode's, which out of it the row hides (R29).
+  // The order the arrow keys go through, and the language the names are in. A worked example's
+  // Next and Demo come first, and a sheet hides them (R42). Up and Down are on every device (R33),
+  // and the last button is pen mode's, which out of it the row hides (R29).
   expect([...row.querySelectorAll("button")].map((each) => each.textContent)).toEqual([
+    "Next",
+    "Demo",
     "Pen",
     "Eraser",
     "Undo",
@@ -93,7 +96,7 @@ test("the row is a toolbar of the pen and the eraser, undo and clear, named in E
     "Down",
     "Draw with finger",
   ]);
-  expect(row.querySelectorAll("button[hidden]")).toHaveLength(1);
+  expect(row.querySelectorAll("button[hidden]")).toHaveLength(3);
   expect(row.lang).toBe("en");
 });
 
@@ -107,6 +110,8 @@ test("the labels follow the element's own lang: Russian for ru and its regions, 
     await expect.element(buttons(element, russian).undo).toBeVisible();
   }
   expect([...row.querySelectorAll("button")].map((each) => each.textContent)).toEqual([
+    "Дальше",
+    "Показ",
     "Перо",
     "Ластик",
     "Отменить",
@@ -375,7 +380,7 @@ test("a new task without the eraser puts the pen back, with no event, and the fo
   expect(element.tool).toBe("pen");
 });
 
-test("a worked example's row is named so in the element's language and has Up and Down alone, the stop of Tab and the focus on the first, and leaving it brings the rest back", async () => {
+test("a worked example's row is named so in the element's language and has Next, Demo, Up and Down alone, the stop of Tab and the focus on Next, and leaving it brings the rest back", async () => {
   // A device with touch, in pen mode: a worked example's row has no finger's button even so (R42).
   Object.defineProperty(navigator, "maxTouchPoints", { value: 5, configurable: true });
   try {
@@ -383,7 +388,7 @@ test("a worked example's row is named so in the element's language and has Up an
     const fresh = await sheet();
     const stop = () => fresh.root.querySelector('[tabindex="0"]')?.textContent;
     fresh.element.workedExample = workedExample();
-    expect(stop()).toBe("Up");
+    expect(stop()).toBe("Next");
     fresh.element.workedExample = undefined;
     expect(stop()).toBe("Pen");
     const { element, root, row } = await sheet();
@@ -398,15 +403,17 @@ test("a worked example's row is named so in the element's language and has Up an
     button(element, "Pen").focus();
     element.workedExample = workedExample();
     expect(row.getAttribute("aria-label")).toBe("Worked example");
-    expect(shown()).toEqual(["Up", "Down"]);
+    expect(shown()).toEqual(["Next", "Demo", "Up", "Down"]);
     expect(page.elementLocator(element).getByRole("radiogroup").elements()).toHaveLength(0);
-    expect(focused()).toBe("Up");
-    expect(stops()).toEqual(["Up"]);
+    expect(focused()).toBe("Next");
+    expect(stops()).toEqual(["Next"]);
     const moves: [keys: string, to: string][] = [
-      ["{ArrowRight}", "Down"],
+      ["{ArrowRight}", "Demo"],
       ["{ArrowRight}", "Up"],
+      ["{ArrowLeft}", "Demo"],
+      ["{ArrowLeft}", "Next"],
       ["{ArrowLeft}", "Down"],
-      ["{Home}", "Up"],
+      ["{Home}", "Next"],
       ["{End}", "Down"],
     ];
     for (const [keys, to] of moves) {
@@ -418,7 +425,7 @@ test("a worked example's row is named so in the element's language and has Up an
     await expect
       .element(page.elementLocator(element).getByRole("toolbar", { name: russian.example }))
       .toBeVisible();
-    expect(shown()).toEqual([russian.up, russian.down]);
+    expect(shown()).toEqual([russian.next, russian.demo, russian.up, russian.down]);
     // Out of the example the row is the sheet's again, and the stop stays where the focus left it.
     element.workedExample = undefined;
     await settle();
@@ -448,21 +455,25 @@ test("an eraser given before the element is upgraded, with a task without it, le
   }
 });
 
-test("every button is at least 44 CSS pixels square, in English and in Russian, on a narrow sheet, pen mode's too", async () => {
+test("every button is at least 44 CSS pixels square, in English and in Russian, on a narrow sheet, pen mode's too, and a worked example's", async () => {
   // A device with touch, in pen mode: the row shows every button it has (R29, R33).
   Object.defineProperty(navigator, "maxTouchPoints", { value: 5, configurable: true });
   try {
     const { element, row } = await sheet(400);
     PEN_MODE.on = true;
-    for (const tag of ["en", "ru"]) {
-      element.setAttribute("lang", tag);
-      await settle();
-      const shown = row.querySelectorAll("button:not([hidden])");
-      expect(shown).toHaveLength(7);
-      for (const each of shown) {
-        const rect = each.getBoundingClientRect();
-        expect(rect.width).toBeGreaterThanOrEqual(44);
-        expect(rect.height).toBeGreaterThanOrEqual(44);
+    // A sheet's seven buttons, then a worked example's four (R42).
+    for (const count of [7, 4]) {
+      if (count === 4) element.workedExample = workedExample();
+      for (const tag of ["en", "ru"]) {
+        element.setAttribute("lang", tag);
+        await settle();
+        const shown = row.querySelectorAll("button:not([hidden])");
+        expect(shown).toHaveLength(count);
+        for (const each of shown) {
+          const rect = each.getBoundingClientRect();
+          expect(rect.width).toBeGreaterThanOrEqual(44);
+          expect(rect.height).toBeGreaterThanOrEqual(44);
+        }
       }
     }
   } finally {

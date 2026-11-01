@@ -192,8 +192,12 @@ function revoke(picture: Picture): void {
   picture.url = undefined;
 }
 
-/** The frame of a picture, at the picture's size: narrower when the statement is. */
-function frameOf(part: PicturePart): HTMLElement {
+/**
+ * The frame of a picture, at the picture's size: narrower when the statement is. It shows what the
+ * picture shows in words until its file comes, and a worked example's list of parts shows its
+ * pictures beside the sheet so (R42).
+ */
+export function frameOf(part: PicturePart): HTMLElement {
   const frame = document.createElement("div");
   frame.className = "picture";
   frame.style.width = `${part.width}px`;

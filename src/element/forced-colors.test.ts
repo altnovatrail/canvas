@@ -5,7 +5,7 @@ import { SHORT } from "../core/pages.fixture.js";
 import { toScreen, type View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
 import { workForCheck } from "../core/submission.js";
-import { workbookTask } from "../core/tasks.fixture.js";
+import { workbookTask, workedExample } from "../core/tasks.fixture.js";
 import "./index.js";
 import { sheetWork } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
@@ -129,7 +129,8 @@ test("with forced colours the row of buttons takes the system's colours of butto
   await settle();
   const root = element.shadowRoot;
   const row = root?.querySelector(".tools");
-  const [pen, eraser, undo, , up] = [...(root?.querySelectorAll(".tools button") ?? [])];
+  // A worked example's Next and Demo come first, hidden on a sheet (R42).
+  const [, , pen, eraser, undo, , up] = [...(root?.querySelectorAll(".tools button") ?? [])];
   if (!row || !pen || !eraser || !undo || !up) throw new Error("the element has no row of buttons");
   expect(getComputedStyle(row).backgroundColor).toBe(system("Canvas"));
   expect(getComputedStyle(eraser).backgroundColor).toBe(system("ButtonFace"));
@@ -194,4 +195,32 @@ test("with forced colours a workbook's text and the frames of its boxes are the 
   const mark = element.shadowRoot?.querySelector(".marks rect");
   if (!mark) throw new Error("no frame drawn");
   expect(getComputedStyle(mark).stroke).toBe(system("Highlight"));
+});
+
+test("with forced colours a worked example's Demo draws its triangle in the colour of button text, Next unavailable is the grey of disabled text, and a picture's frame in the list of parts the system's text colour", async () => {
+  const element = document.createElement("novatrail-canvas");
+  element.style.width = "400px";
+  element.style.setProperty("--novatrail-canvas-ink", "rgb(0, 0, 255)");
+  element.workedExample = workedExample();
+  document.body.append(element);
+  made.push(element);
+  await settle();
+  const root = element.shadowRoot;
+  const [next, demo] = [...(root?.querySelectorAll(".tools .demo button") ?? [])];
+  const triangle = demo?.querySelector("svg");
+  if (!(next instanceof HTMLButtonElement) || !demo || !triangle) {
+    throw new Error("the row has no Next and Demo");
+  }
+  expect(getComputedStyle(triangle).fill).toBe(system("ButtonText"));
+  // The paragraph and the picture beside the sheet, which stands in its frame till its file comes.
+  next.click();
+  next.click();
+  const frame = root?.querySelector(".parts .picture");
+  if (!frame) throw new Error("the list has no picture");
+  expect(getComputedStyle(frame).borderTopColor).toBe(system("CanvasText"));
+  // A hidden demo has no part for Next to open.
+  (demo as HTMLButtonElement).click();
+  expect(next.getAttribute("aria-disabled")).toBe("true");
+  expect(getComputedStyle(next).color).toBe(system("GrayText"));
+  expect(getComputedStyle(triangle).fill).toBe(system("ButtonText"));
 });

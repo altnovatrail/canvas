@@ -4,10 +4,11 @@
 // areas of it. The element checks it as the schema does, every object closed (R32), and by the
 // format's rule lesson.areas too: an area lies on the sheet. What the check gives is the element's
 // own shape of the same example, the kinds of its parts apart, which the rest of the element reads,
-// and the sheet makes a template of it as of a task: its grid, its statement and the pen alone.
+// and the sheet makes a template of it as of a task: its grid, its statement and the pen alone. How
+// far the learner has gone through the demo is a state of its own, which app keeps and gives back.
 
 import type * as open from "@altnovatrail/spec/formatv0/open";
-import { closed, listOf, sameItems, shown } from "./fields.js";
+import { closed, listOf, sameItems, shown, whole } from "./fields.js";
 import type { GridKind } from "./grid.js";
 import { SHEET } from "./sheet.js";
 import {
@@ -62,8 +63,25 @@ export interface CheckedExample {
   readonly demo: readonly ExamplePart[];
 }
 
+/**
+ * How far the learner has gone through the author's demo (R42): how many of its parts are open,
+ * from the first, and whether the whole demo is hidden. app keeps it and may give it back.
+ */
+export interface DemoState {
+  /** How many parts are open, from the first: from 0 to all of them. */
+  readonly opened: number;
+  /** Whether the whole demo is hidden: its open parts stay open, out of sight. */
+  readonly hidden: boolean;
+}
+
+/** Where every demo starts: no part open, and nothing hidden. One for every element. */
+export const DEMO_START: DemoState = Object.freeze({ opened: 0, hidden: false });
+
 /** The path the element names a worked example's fields by: its property's name. */
 const ROOT = "workedExample";
+
+/** The path the element names the state of a demo's fields by: its property's name. */
+const STATE = "demoState";
 
 /** A worked example's tools: the pen alone, which writes nothing on its sheet (R42). */
 const PEN_ALONE: readonly Tool[] = Object.freeze(["pen"]);
@@ -88,6 +106,20 @@ export function exampleOf(value: unknown): CheckedExample {
  */
 export function exampleTemplate(example: CheckedExample): SheetTemplate {
   return { grid: gridFrom(example.canvas), statement: example.statement, tools: PEN_ALONE };
+}
+
+/**
+ * The state of a demo of `parts` parts, checked (R42): an object of `opened`, a whole number from 0
+ * to `parts`, and `hidden`, true or false, both of them and nothing else. What it refuses is a
+ * TypeError that names the field by its path. It gives a frozen copy of its own.
+ */
+export function demoStateOf(value: unknown, parts: number): DemoState {
+  const state = closed(value, STATE, ["opened", "hidden"], "the state of a demo");
+  const opened = whole(state.opened, `${STATE}.opened`, 0, parts);
+  if (typeof state.hidden !== "boolean") {
+    throw new TypeError(`${STATE}.hidden: true or false, not ${shown(state.hidden)}`);
+  }
+  return Object.freeze({ opened, hidden: state.hidden });
 }
 
 /** Whether a part of the demo stands on the sheet, in an area of it. */
