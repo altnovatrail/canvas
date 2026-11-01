@@ -121,7 +121,10 @@ describe("the work of a workbook", () => {
         }
       }
     }
-  });
+    // Every workbook at two densities, each filled box drawn at every height of eval and drawn
+    // again by the crop's own rule, takes about a second here, and more on a CI runner, where the
+    // browsers of the other projects run beside it: past Vitest's default of five seconds.
+  }, 30_000);
 
   test("goes in the task's order, whatever order the boxes were written in, and leaves the draft", () => {
     const checked = cellsForCheck(STROKES, CELLS, CROP.digit);
