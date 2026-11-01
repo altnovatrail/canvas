@@ -238,6 +238,23 @@ export function isSheet(task: CheckedTask): task is SheetTask {
 }
 
 /**
+ * Whether a task's one answer slot is anywhere on the sheet or the whole sheet, which the strokes
+ * on the sheet fill (R42): not a sheet of choices, whose options app marks, nor a workbook.
+ */
+export function wholeSheet(task: CheckedTask | undefined): boolean {
+  return (
+    task !== undefined &&
+    isSheet(task) &&
+    task.items.some(({ answer_slots }) => answer_slots.some(isWhole))
+  );
+}
+
+/** Whether an answer slot is anywhere on the sheet or the whole sheet: its task's only one. */
+function isWhole({ binding }: AnswerSlot): boolean {
+  return binding === "anywhere" || binding === "sheet";
+}
+
+/**
  * The template of a task `taskOf` gave, or of no task for `undefined`. A workbook's lines are laid
  * out on its page, and a task whose lines do not fit is a TypeError at the first item that does not
  * (R34, R35). A zone on the sheet is a TypeError until an epic of its own; a choice the sheet passes
@@ -417,10 +434,7 @@ function toolsOf(value: unknown, path: string): string[] {
  */
 function sheetItemsOf(value: unknown): SheetItem[] {
   const items = listOf(value, "task.items", 1, "items", sheetItemOf);
-  const entire = items.some((item) =>
-    item.answer_slots.some(({ binding }) => binding === "anywhere" || binding === "sheet"),
-  );
-  if (!entire) return items;
+  if (!items.some(({ answer_slots }) => answer_slots.some(isWhole))) return items;
   if (items.length > 1) {
     throw new TypeError(
       `task.items: one item, for an answer anywhere on the sheet or the whole sheet is its task's only answer slot, not ${items.length}`,

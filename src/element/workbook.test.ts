@@ -455,8 +455,9 @@ test("an action's historychange finds filled already new, and a history or a tas
   // Other lines put the same stroke in no box, or in one of theirs.
   other.element.task = workbookTask(SHORT);
   expect(other.element.filled).toHaveLength(SHORT.length);
+  // A sheet's answer anywhere: the strokes stay, and they fill it (R42).
   other.element.task = sheetTask();
-  expect(other.element.filled).toBeNull();
+  expect(other.element.filled).toEqual([[true]]);
   other.element.task = workbookTask(EXAMPLE);
   expect(other.element.filled).toEqual(given);
   expect(heard).toEqual([]);

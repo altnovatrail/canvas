@@ -11,17 +11,18 @@ import {
   type Tool,
 } from "./index.js";
 
-// The trial consumer (R27, R28, R32, R38, R39, R41; RUN.md, T15, T41, T44, T49, T53, T55): a page
-// that takes the element as app is to take it. It gives the task and the module's manifest, of
-// spec's types as app holds them, the media and the language, keeps the history of writing as
-// historychange tells it and gives it back, hears the learner's choice of tool, takes the work for
-// checking at Check, and gives the tutor's marks back with their submission's context, then opens
-// the sheet again in a new element. On a workbook it writes in the boxes and beside them, reads
-// which are filled, takes the crop of each filled box, and gives a mark on a box back. It goes
-// through the package's entry points alone, never the probe the other tests read. It writes as a
-// script does: pointer events on the canvas in the element's open shadow root, at the points the
-// canvas's rectangle gives. The learner's erasing, undo and clearing go through the sheet's own
-// buttons, and the workbook's boxes are found the same way, by their roles and their Russian names.
+// The trial consumer (R27, R28, R32, R38, R39, R41, R42; RUN.md, T15, T41, T44, T49, T53, T55,
+// T57): a page that takes the element as app is to take it. It gives the task and the module's
+// manifest, of spec's types as app holds them, the media and the language, keeps the history of
+// writing as historychange tells it and gives it back, hears the learner's choice of tool, reads
+// which answer slots are filled, takes the work for checking at Check, and gives the tutor's marks
+// back with their submission's context, then opens the sheet again in a new element. On a workbook
+// it writes in the boxes and beside them, reads which are filled, takes the crop of each filled
+// box, and gives a mark on a box back. It goes through the package's entry points alone, never the
+// probe the other tests read. It writes as a script does: pointer events on the canvas in the
+// element's open shadow root, at the points the canvas's rectangle gives. The learner's erasing,
+// undo and clearing go through the sheet's own buttons, and the workbook's boxes are found the same
+// way, by their roles and their Russian names.
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -248,7 +249,9 @@ test("app's path: write, erase, undo and clear with the sheet's buttons, keep th
   const listen = (event: Event) => onDocument.push(event);
   document.addEventListener("historychange", listen);
   try {
-    // Check on an empty sheet: there is no work, and app asks for a solution first.
+    // Check on an empty sheet: there is no work, and app asks for a solution first. The step's exit
+    // condition that every answer slot holds something reads filled: the answer anywhere is empty.
+    expect(sheet.filled).toEqual([[false]]);
     expect(await sheet.exportWork()).toBeNull();
     // What the statement gives and asks the element takes, and shows nothing of: app shows the
     // chips (R57 spec).
@@ -292,7 +295,9 @@ test("app's path: write, erase, undo and clear with the sheet's buttons, keep th
     expect(sheet.history).toHaveLength(before.length + 1);
     expect(store).toEqual(sheet.history);
 
-    // Check: the crop as a PNG and the context of its submission, which app keeps.
+    // Check: the crop as a PNG and the context of its submission, which app keeps. The answer
+    // anywhere holds strokes now, so the step's exit condition holds (R42).
+    expect(sheet.filled).toEqual([[true]]);
     const work = await check(sheet);
     const crop = await read(work);
     expect(crop.type).toBe("image/png");
