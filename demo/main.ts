@@ -17,7 +17,9 @@
 // element too, of the grid the controls give, on which the learner writes nothing, and Check finds
 // no work (T59; R42). Its row's Next opens the parts of its demo one at a time and Demo hides and
 // shows them; the page keeps how far the learner has gone as demochange tells it, and gives it back
-// to the next element and the next example, after the example, as app is to (T60; R42).
+// to the next element and the next example, after the example, as app is to (T60; R42). The
+// page's picture comes into the statement and into the demo, beside the sheet, from one call of
+// its media, as the example comes (T64; R42).
 // Under the sheet the page draws the groups of the strokes the history leaves, after every
 // historychange, by the sheet's rule or by the pause and the reaches its fields give (T12; R24),
 // and their crop for checking at the height of digits the manifest gives, with the frames of those

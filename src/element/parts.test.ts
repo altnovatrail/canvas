@@ -1,8 +1,23 @@
-import { afterEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
-import { moduleManifest, sheetTask, workedExample } from "../core/tasks.fixture.js";
+import {
+  type ExampleChange,
+  moduleManifest,
+  sheetTask,
+  workedExample,
+} from "../core/tasks.fixture.js";
 import type { DemoChangeEvent, DemoState, NovatrailCanvas } from "./index.js";
-import { accessibilityTree, placed, settle, spacer, upgraded } from "./pointer.fixture.js";
+import {
+  accessibilityTree,
+  arrive,
+  deferred,
+  file,
+  placed,
+  settle,
+  spacer,
+  upgraded,
+  watch,
+} from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The parts of a worked example's demo in Chromium (R42): the row's Next opens them one at a time
@@ -11,12 +26,18 @@ import { probe } from "./probe.js";
 // presses alone. A polite region tells a screen reader of the part just opened, the list keeps its
 // items as they were built, and a part comes into sight at once, below the row of buttons. DEMO,
 // the demo of the tests, has four parts: a paragraph, a picture beside the sheet, a picture on an
-// area of it, and a paragraph.
+// area of it, and a paragraph. The pictures' files come from the consumer's media, each reference
+// once, as the example comes, with the statement's (T64).
 
 const made: HTMLElement[] = [];
+// The decodes the element asks for, which arrive() waits for.
+beforeEach(() => {
+  vi.spyOn(HTMLImageElement.prototype, "decode");
+});
 afterEach(() => {
   for (const element of made.splice(0)) element.remove();
   window.scrollTo(0, 0);
+  vi.restoreAllMocks();
 });
 
 /**
@@ -43,6 +64,35 @@ async function demo(height?: number, parent?: HTMLElement) {
 
 /** The items of the list, as nodes. */
 const itemsOf = (list: HTMLOListElement): Element[] => [...list.children];
+
+/**
+ * A demo of DEMO, after a statement of these parts if given, whose pictures come from the
+ * consumer's media with every file come and decoded: what it asked for, and the addresses the
+ * element made of the files and let go, in order.
+ */
+async function pictured(statement?: ExampleChange["statement"]) {
+  const created = vi.spyOn(URL, "createObjectURL");
+  const revoked = vi.spyOn(URL, "revokeObjectURL");
+  const media = vi.fn(async (_ref: string) => file());
+  const shown = await demo();
+  if (statement !== undefined) shown.element.workedExample = workedExample({ statement });
+  shown.element.media = media;
+  await arrive();
+  return {
+    ...shown,
+    asked: () => media.mock.calls.map(([ref]) => ref),
+    addresses: () => created.mock.results.map(({ value }) => String(value)),
+    gone: () => revoked.mock.calls.map(([url]) => url),
+  };
+}
+
+/** A lamp beside the sheet, the picture of DEMO's second part, in a statement. */
+const LAMP = {
+  picture: "pictures/lamp.png",
+  alt: "A lamp, as the statement has it.",
+  width: 60,
+  height: 120,
+};
 
 test("Next opens the demo's parts one at a time at the end of the list, which keeps the items it has, by Enter, Space and the pointer alike; at the last it stands unavailable, keeps the focus and opens nothing", async () => {
   const { element, root, list, next, told } = await demo();
@@ -355,4 +405,142 @@ test("a state given before the element is upgraded is taken after its example, a
   } finally {
     warn.mockRestore();
   }
+});
+
+test("a picture beside the sheet shows its file in its frame once it has come and is decoded, read by its words; till then, and if it never comes, the frame shows them, and a picture on an area is asked for as the example comes", async () => {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const lamp = deferred<Blob>();
+  const media = vi.fn((ref: string) =>
+    ref === "pictures/lamp.png" ? lamp.promise : Promise.reject(new Error("offline")),
+  );
+  const { element, list, next } = await demo();
+  element.media = media;
+  next.click();
+  next.click();
+  const frame = list.querySelector<HTMLElement>(".picture");
+  expect(frame?.getAttribute("aria-label")).toBe("A lamp.");
+  expect(frame?.textContent).toBe("A lamp.");
+  lamp.resolve(file());
+  await arrive();
+  const image = frame?.querySelector("img");
+  expect(image?.alt).toBe("A lamp.");
+  expect(image?.src).toMatch(/^blob:/);
+  expect(image?.naturalWidth).toBeGreaterThan(0);
+  expect(frame?.hasAttribute("role")).toBe(false);
+  expect(frame?.getBoundingClientRect().height).toBe(120);
+  await expect
+    .element(page.elementLocator(element).getByRole("img", { name: "A lamp." }))
+    .toBeVisible();
+  // The picture on an area was asked for with the example, before its part opened; it did not
+  // come, and the one warning is of the picture.
+  expect(media.mock.calls.map(([ref]) => ref)).toEqual([
+    "pictures/lamp.png",
+    "pictures/path-in-gaps.png",
+  ]);
+  expect(warn.mock.calls.map(([message]) => String(message))).toEqual([
+    'the picture "pictures/path-in-gaps.png" did not come: Error: offline',
+  ]);
+  // A new example asks again for the file that did not come, and not for the one that did.
+  element.workedExample = workedExample({ statement: [{ text: "Another example." }] });
+  await arrive();
+  expect(media.mock.calls.map(([ref]) => ref).slice(2)).toEqual(["pictures/path-in-gaps.png"]);
+  expect(warn).toHaveBeenCalledTimes(2);
+});
+
+test("in a browser that keeps no decoded address at hand, a part's frame shows its words till its own picture decodes", async () => {
+  const { list, next } = await pictured();
+  vi.spyOn(HTMLImageElement.prototype, "complete", "get").mockReturnValue(false);
+  next.click();
+  next.click();
+  const frame = list.querySelector<HTMLElement>(".picture");
+  expect(frame?.querySelector("img")).toBeNull();
+  expect(frame?.getAttribute("aria-label")).toBe("A lamp.");
+  await arrive();
+  expect(frame?.querySelector("img")?.alt).toBe("A lamp.");
+  expect(frame?.hasAttribute("role")).toBe(false);
+});
+
+test("one call of media for a reference, the statement's and the demo's alike, as the example comes; a part opened shows the statement's address at once, and so does one opened again after the consumer gave fewer", async () => {
+  const { element, root, list, next, asked, addresses } = await pictured([
+    { text: "Look at the lamp." },
+    LAMP,
+  ]);
+  expect(asked()).toEqual(["pictures/lamp.png", "pictures/path-in-gaps.png"]);
+  expect(addresses()).toHaveLength(2);
+  const shown = root.querySelector<HTMLImageElement>(".statement img")?.src;
+  expect(shown).toBe(addresses()[0]);
+  next.click();
+  next.click();
+  // In the same press: the address is decoded, and the picture is whole.
+  const image = list.querySelector("img");
+  expect(image?.src).toBe(shown);
+  expect(image?.complete).toBe(true);
+  expect(image?.naturalWidth).toBeGreaterThan(0);
+  element.demoState = { opened: 1, hidden: false };
+  expect(list.querySelector("img")).toBeNull();
+  next.click();
+  expect(list.querySelector("img")?.src).toBe(shown);
+  await arrive();
+  expect(asked()).toHaveLength(2);
+  expect(addresses()).toHaveLength(2);
+});
+
+test("a new example names its pictures before the last one's go: a file both name stays, one only the last named lets its address go at once, and taking the example off lets the rest go", async () => {
+  const { element, list, next, asked, addresses, gone } = await pictured();
+  const [lamp, path] = addresses();
+  element.workedExample = workedExample({
+    demo: [
+      { picture: "pictures/lamp.png", alt: "A lamp.", width: 60, height: 120 },
+      { picture: "pictures/posts.png", alt: "Posts.", width: 120, height: 40 },
+    ],
+  });
+  expect(gone()).toEqual([path]);
+  next.click();
+  expect(list.querySelector("img")?.src).toBe(lamp);
+  await arrive();
+  expect(asked()).toEqual(["pictures/lamp.png", "pictures/path-in-gaps.png", "pictures/posts.png"]);
+  element.workedExample = undefined;
+  expect(gone()).toEqual([path, lamp, addresses()[2]]);
+  expect(list.children).toHaveLength(0);
+});
+
+test("the files of a hidden demo stay: Demo hides and shows the list alone, its pictures as they were, asking for nothing and letting no address go", async () => {
+  const { list, next, demo: shown, asked, gone } = await pictured();
+  next.click();
+  next.click();
+  const image = list.querySelector("img");
+  expect(image).not.toBeNull();
+  const changes = watch(list);
+  shown.click();
+  shown.click();
+  await arrive();
+  expect(changes().map(({ type, attributeName }) => [type, attributeName])).toEqual([
+    ["attributes", "hidden"],
+    ["attributes", "hidden"],
+  ]);
+  expect(list.querySelector("img")).toBe(image);
+  expect(asked()).toHaveLength(2);
+  expect(gone()).toEqual([]);
+});
+
+test("the addresses go when the element leaves the page and come back with it, the statement's and the list's alike, with no new call of media", async () => {
+  const { element, root, next, asked, gone } = await pictured([LAMP]);
+  next.click();
+  next.click();
+  const before = [...root.querySelectorAll("img")].map((image) => image.src);
+  expect(before).toHaveLength(2);
+  element.remove();
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(gone()).toEqual([before[0], expect.stringMatching(/^blob:/)]);
+  expect(root.querySelectorAll("img")).toHaveLength(0);
+  expect(root.querySelector(".parts .picture")?.textContent).toBe("A lamp.");
+  document.body.append(element);
+  await arrive();
+  const after = [...root.querySelectorAll("img")].map((image) => image.src);
+  expect(after).toHaveLength(2);
+  expect(after[0]).toBe(after[1]);
+  expect(before).not.toContain(after[0]);
+  expect((await fetch(after[0] ?? "")).ok).toBe(true);
+  expect(asked()).toHaveLength(2);
 });

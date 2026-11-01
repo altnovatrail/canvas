@@ -1,10 +1,12 @@
 // The pointer of the element's tests in Chromium: a sheet put on the page, the client point over a
 // point of it, a level stroke that a script makes, real input through the DevTools protocol — a
 // mouse, a pen and touches (R29) — the pixels of a screenshot, Chromium's own accessibility tree
-// and an element given its properties before it was upgraded. The tests take them from here
-// rather than each keeping a copy. Like the tests, the build leaves this module out
-// (tsconfig.build.json), and the package never has it.
+// and an element given its properties before it was upgraded; and for the pictures, a picture's
+// file, a load the test settles, the wait for the files that came, and what changes in a node
+// (R23, R42). The tests take them from here rather than each keeping a copy. Like the tests, the
+// build leaves this module out (tsconfig.build.json), and the package never has it.
 
+import { vi } from "vitest";
 import { cdp, page } from "vitest/browser";
 import { toScreen, type View } from "../core/screen.js";
 import "./index.js";
@@ -23,6 +25,52 @@ export async function settle(): Promise<void> {
   for (let frames = 0; frames < 2; frames += 1) {
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   }
+}
+
+/** A picture's file: a small SVG, which a browser shows. */
+export function file(colour = "#c33"): Blob {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><rect width="40" height="20" fill="${colour}"/></svg>`;
+  return new Blob([svg], { type: "image/svg+xml" });
+}
+
+/** A promise and the hands that settle it: a load of media the test settles when it will. */
+export function deferred<T>() {
+  let resolve: (value: T) => void = () => {};
+  let reject: (reason: unknown) => void = () => {};
+  const promise = new Promise<T>((yes, no) => {
+    resolve = yes;
+    reject = no;
+  });
+  return { promise, resolve, reject };
+}
+
+/**
+ * The loads that settled run on, the files they gave decode, and the frames after them come. It
+ * waits for the decodes themselves, not for a time: under the load of the whole suite a decode can
+ * take longer than any time the test would guess. The decodes are those a spy on
+ * `HTMLImageElement.prototype.decode` records, which the test's file puts before each test.
+ */
+export async function arrive(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve));
+  const decode = HTMLImageElement.prototype.decode;
+  if (!vi.isMockFunction(decode)) throw new Error("arrive waits for the decodes a spy records");
+  await Promise.allSettled(decode.mock.results.map((result) => result.value));
+  await settle();
+}
+
+/**
+ * What changes in a node and under it from now on: the function it gives back stops watching and
+ * gives every change, those not yet told too.
+ */
+export function watch(node: Node): () => MutationRecord[] {
+  const records: MutationRecord[] = [];
+  const observer = new MutationObserver((list) => records.push(...list));
+  observer.observe(node, { subtree: true, childList: true, attributes: true, characterData: true });
+  return () => {
+    records.push(...observer.takeRecords());
+    observer.disconnect();
+    return records;
+  };
 }
 
 /**
