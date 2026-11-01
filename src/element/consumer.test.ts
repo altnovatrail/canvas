@@ -3,6 +3,7 @@ import { afterEach, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { type Anchor, type HistoryEvent, SHEET, type Submission } from "../core/index.js";
 import {
+  type DemoState,
   type ExportedSheet,
   type ExportedWorkbook,
   type Marks,
@@ -12,14 +13,15 @@ import {
 } from "./index.js";
 
 // The trial consumer (R27, R28, R32, R38, R39, R41, R42; RUN.md, T15, T41, T44, T49, T53, T55,
-// T57, T59): a page that takes the element as app is to take it. It gives the task and the module's
+// T57, T59, T60): a page that takes the element as app is to take it. It gives the task and the module's
 // manifest, of spec's types as app holds them, the media and the language, keeps the history of
 // writing as historychange tells it and gives it back, hears the learner's choice of tool, reads
 // which answer slots are filled, takes the work for checking at Check, and gives the tutor's marks
 // back with their submission's context, then opens the sheet again in a new element. On a workbook
 // it writes in the boxes and beside them, reads which are filled, takes the crop of each filled
 // box, and gives a mark on a box back. A lesson's worked example it gives to a new element, where
-// the learner writes nothing. It goes through the package's entry points alone, never the
+// the learner writes nothing, opens the parts of its demo and hides it, while app keeps how far
+// the learner has gone, as demochange tells it, and gives that back to a new element. It goes through the package's entry points alone, never the
 // probe the other tests read. It writes as a script does: pointer events on the canvas in the
 // element's open shadow root, at the points the canvas's rectangle gives. The learner's erasing,
 // undo and clearing go through the sheet's own buttons, and the workbook's boxes are found the same
@@ -418,7 +420,7 @@ test("a history without the marked strokes takes the marks off, and the next tas
   await expect.element(buttons(next).pen).toBeChecked();
 });
 
-test("app's path through a lesson: after a task, its worked example on a new element, named so, with Up and Down alone, on which the learner writes nothing", async () => {
+test("app's path through a lesson: after a task, its worked example on a new element, named so, with Next, Demo, Up and Down alone, on which the learner writes nothing", async () => {
   const { sheet, store } = await app();
   write(sheet, 100, 100, 300);
   expect(store).toHaveLength(1);
@@ -442,7 +444,7 @@ test("app's path through a lesson: after a task, its worked example on a new ele
       .getByRole("button")
       .elements()
       .map((each) => each.textContent),
-  ).toEqual(["Выше", "Ниже"]);
+  ).toEqual(["Дальше", "Показ", "Выше", "Ниже"]);
   await expect.element(within.getByText(/How many posts stand along a path 12 m/)).toBeVisible();
   await expect
     .element(within.getByRole("img", { name: "A path with posts along it" }))
@@ -458,6 +460,55 @@ test("app's path through a lesson: after a task, its worked example on a new ele
     example.task = TASK;
   }).toThrow(TypeError);
   expect(example.workedExample).toBe(EXAMPLE);
+});
+
+test("app's path through a worked example's demo: it keeps how far the learner has gone as demochange tells it, and a new element it gives that to shows the same, telling nothing", async () => {
+  let kept: DemoState | undefined;
+  let told = 0;
+  /** app's worked example: a new element, the example, and then the state app keeps, if any. */
+  const lesson = async (state?: DemoState) => {
+    const element = document.createElement("novatrail-canvas");
+    element.style.width = "500px";
+    element.style.height = "400px";
+    element.lang = "ru";
+    element.manifest = MODULE;
+    // The example before its state, as the JSX of app's React is to have them (R42).
+    element.workedExample = EXAMPLE;
+    if (state !== undefined) element.demoState = state;
+    element.addEventListener("demochange", ({ detail }) => {
+      kept = detail;
+      told += 1;
+    });
+    document.body.append(element);
+    made.push(element);
+    await settle();
+    return element;
+  };
+  const first = await lesson();
+  expect(first.demoState).toEqual({ opened: 0, hidden: false });
+  const within = page.elementLocator(first);
+  const next = within.getByRole("button", { name: "Дальше" });
+  await next.click();
+  await next.click();
+  expect(kept).toEqual({ opened: 2, hidden: false });
+  expect(kept).toBe(first.demoState);
+  expect(within.getByRole("listitem").elements()).toHaveLength(2);
+  await within.getByRole("button", { name: "Показ", expanded: true }).click();
+  expect(kept).toEqual({ opened: 2, hidden: true });
+  expect(within.getByRole("listitem").elements()).toHaveLength(0);
+  expect(told).toBe(3);
+  // The next time the learner comes to the segment: a new element, as app gives every one (R20).
+  first.remove();
+  const again = await lesson(kept);
+  expect(told).toBe(3);
+  expect(again.demoState).toEqual({ opened: 2, hidden: true });
+  const shown = page.elementLocator(again);
+  await shown.getByRole("button", { name: "Показ", expanded: false }).click();
+  expect(shown.getByRole("listitem").elements()).toHaveLength(2);
+  expect(kept).toEqual({ opened: 2, hidden: false });
+  await expect
+    .element(shown.getByRole("button", { name: "Дальше" }))
+    .not.toHaveAttribute("aria-disabled");
 });
 
 test("the height of digits is the manifest's at the moment of Check: another manifest between two checks gives another, and none gives 32", async () => {

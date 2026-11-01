@@ -1,13 +1,14 @@
 // The pointer of the element's tests in Chromium: a sheet put on the page, the client point over a
 // point of it, a level stroke that a script makes, real input through the DevTools protocol — a
-// mouse, a pen and touches (R29) — and the pixels of a screenshot. The tests take them from here
+// mouse, a pen and touches (R29) — the pixels of a screenshot, Chromium's own accessibility tree
+// and an element given its properties before it was upgraded. The tests take them from here
 // rather than each keeping a copy. Like the tests, the build leaves this module out
 // (tsconfig.build.json), and the package never has it.
 
 import { cdp, page } from "vitest/browser";
 import { toScreen, type View } from "../core/screen.js";
 import "./index.js";
-import type { ExportedSheet, NovatrailCanvas, Task } from "./index.js";
+import { type ExportedSheet, NovatrailCanvas, type Task } from "./index.js";
 import { probe } from "./probe.js";
 
 /** The work of a sheet for checking, as its exportWork() gives it (R27): a sheet's, and not null. */
@@ -61,6 +62,40 @@ export function spacer(made: HTMLElement[]): void {
   rest.style.height = "2000px";
   document.body.append(rest);
   made.push(rest);
+}
+
+/**
+ * An element given these properties before it was upgraded, as a page that renders before it
+ * imports the package gives them, then put on the page, where it is upgraded: it goes into `made`.
+ */
+export function upgraded(made: HTMLElement[], given: Record<string, unknown>): NovatrailCanvas {
+  const template = document.createElement("template");
+  template.innerHTML = "<novatrail-canvas></novatrail-canvas>";
+  const early = template.content.firstElementChild;
+  if (!(early instanceof HTMLElement)) throw new Error("the template has no element");
+  for (const [name, value] of Object.entries(given)) Reflect.set(early, name, value);
+  document.body.append(early);
+  made.push(early);
+  if (!(early instanceof NovatrailCanvas)) throw new Error("the element was not upgraded");
+  return early;
+}
+
+/**
+ * The nodes of Chromium's own accessibility tree of the test's frame, through the DevTools
+ * protocol: the frame named vitest-iframe, found in the page's tree of frames.
+ */
+export async function accessibilityTree() {
+  const { frameTree } = await cdp().send("Page.getFrameTree");
+  const frames = [frameTree];
+  let frameId: string | undefined;
+  while (frames.length > 0 && frameId === undefined) {
+    const next = frames.shift();
+    if (next?.frame.name === "vitest-iframe") frameId = next.frame.id;
+    frames.push(...(next?.childFrames ?? []));
+  }
+  if (frameId === undefined) throw new Error("no frame of the test in the tree");
+  const { nodes } = await cdp().send("Accessibility.getFullAXTree", { frameId });
+  return nodes;
 }
 
 /** The client point over a point of the sheet. */

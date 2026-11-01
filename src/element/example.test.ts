@@ -1,8 +1,8 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { gridPath } from "../core/grid.js";
 import { moduleManifest, sheetTask, workedExample } from "../core/tasks.fixture.js";
-import { type HistoryChange, NovatrailCanvas, type WorkedExample } from "./index.js";
-import { at, input, level, placed, press, settle, touches } from "./pointer.fixture.js";
+import type { HistoryChange, WorkedExample } from "./index.js";
+import { at, input, level, placed, press, settle, touches, upgraded } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
 
@@ -240,14 +240,7 @@ test("a worked example given before the element is upgraded is taken, and with a
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   try {
     const upgrade = (given: Record<string, unknown>) => {
-      const template = document.createElement("template");
-      template.innerHTML = "<novatrail-canvas></novatrail-canvas>";
-      const early = template.content.firstElementChild;
-      if (!(early instanceof HTMLElement)) throw new Error("the template has no element");
-      for (const [name, value] of Object.entries(given)) Reflect.set(early, name, value);
-      document.body.append(early);
-      made.push(early);
-      if (!(early instanceof NovatrailCanvas)) throw new Error("the element was not upgraded");
+      const early = upgraded(made, given);
       expect(Object.hasOwn(early, "workedExample")).toBe(false);
       return early;
     };

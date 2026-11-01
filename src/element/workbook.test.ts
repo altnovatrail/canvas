@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "vitest";
-import { cdp, page } from "vitest/browser";
+import { page } from "vitest/browser";
 import { cellsOf } from "../core/boxes.js";
 import type { Box } from "../core/geometry.js";
 import { isBox, type Page, type PageBox, type PageText, pageOf } from "../core/page.js";
@@ -9,7 +9,15 @@ import { cellsForCheck } from "../core/submission.js";
 import type { WorkbookItem } from "../core/task.js";
 import { moduleManifest, sheetTask, workbookTask } from "../core/tasks.fixture.js";
 import type { ExportedWork, Filled, Mark, Task } from "./index.js";
-import { at, level, placed, press, screenshot, settle } from "./pointer.fixture.js";
+import {
+  accessibilityTree,
+  at,
+  level,
+  placed,
+  press,
+  screenshot,
+  settle,
+} from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The workbook in Chromium (R34, R35, R36): its lines on the template where the layout puts them,
@@ -225,21 +233,6 @@ test("a box's frame is one CSS pixel on whole device pixels, in the ink's colour
     expect(darkest).toBeLessThanOrEqual(17 + 3);
   }
 });
-
-/** The nodes of Chromium's own accessibility tree of this test's frame, through the DevTools protocol. */
-async function accessibilityTree() {
-  const { frameTree } = await cdp().send("Page.getFrameTree");
-  const frames = [frameTree];
-  let frameId: string | undefined;
-  while (frames.length > 0 && frameId === undefined) {
-    const next = frames.shift();
-    if (next?.frame.name === "vitest-iframe") frameId = next.frame.id;
-    frames.push(...(next?.childFrames ?? []));
-  }
-  if (frameId === undefined) throw new Error("no frame of the test in the tree");
-  const { nodes } = await cdp().send("Accessibility.getFullAXTree", { frameId });
-  return nodes;
-}
 
 /**
  * What the tree reads of each item of the list, in order: its text and the names of its pictures,

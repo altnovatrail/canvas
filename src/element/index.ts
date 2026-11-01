@@ -21,7 +21,10 @@
 // workbook's work for checking is the crop of each filled box, with the table of the boxes' strokes
 // for its context (T49; R38). A lesson's worked example it shows on a sheet the learner does not
 // write on: its statement above the sheet, its grid, and a row without the tools of writing, while
-// a finger or a pen scrolls the sheet as the browser scrolls the statement (T59; R42).
+// a finger or a pen scrolls the sheet as the browser scrolls the statement (T59; R42). The parts of
+// its demo the learner opens one at a time with the row's Next, into a list above the sheet that a
+// polite region tells a screen reader of, and hides and shows with Demo; app keeps how far the
+// learner has gone by `demoState` and `demochange` (T60; R42).
 
 import type { Vec2 } from "perfect-freehand";
 import { type Cell, cellOf, cellsOf, type Filled, filledOf, sheetFilledOf } from "../core/boxes.js";
@@ -29,6 +32,10 @@ import { Clock } from "../core/clock.js";
 import { ERASER_BUTTON, Eraser } from "../core/eraser.js";
 import {
   type CheckedExample,
+  DEMO_START,
+  type DemoState,
+  demoStateOf,
+  type ExamplePart,
   exampleOf,
   exampleTemplate,
   sameExample,
@@ -77,16 +84,17 @@ import {
   wholeSheet,
 } from "../core/task.js";
 import { nextIdOf, resumeOf, Work } from "../core/work.js";
-import { write } from "./attributes.js";
+import { SVG, write } from "./attributes.js";
 import { labelsFor } from "./labels.js";
+import { Parts } from "./parts.js";
 import { attachProbe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
 import { type Media, Statement } from "./statement.js";
-import { type RowKind, Tools } from "./tools.js";
+import { type DemoControls, type RowKind, Tools } from "./tools.js";
 
 export type { Filled, Filling } from "../core/boxes.js";
 export type { Crop, Frame } from "../core/crop.js";
-export type { WorkedExample } from "../core/example.js";
+export type { DemoState, WorkedExample } from "../core/example.js";
 export type { Box } from "../core/geometry.js";
 export type { GridKind } from "../core/grid.js";
 export type { Group } from "../core/groups.js";
@@ -154,6 +162,12 @@ export interface ToolChange {
 /** The event the element sends when the learner changes the tool with its buttons (R28). */
 export type ToolChangeEvent = CustomEvent<ToolChange>;
 
+/**
+ * The event the element sends when the learner opens the next part of a worked example's demo, or
+ * hides or shows the whole demo, with its buttons (R42): its detail is the new `demoState`.
+ */
+export type DemoChangeEvent = CustomEvent<DemoState>;
+
 /** The colour of the ink unless the consumer's theme gives one. */
 const INK = "#111";
 /** The colour of the sheet unless the consumer's theme gives one. */
@@ -162,6 +176,10 @@ const PAPER = "#fff";
 const HISTORY_CHANGE = "historychange";
 /** The event the element sends when the learner chooses another tool with its buttons. */
 const TOOL_CHANGE = "toolchange";
+/** The event the element sends when the learner opens a part of the demo, or hides or shows it. */
+const DEMO_CHANGE = "demochange";
+/** What Next and Demo control, by their IDs in the shadow root: the region, and the list (R42). */
+const DEMO_IDS: DemoControls = { status: "demo-status", parts: "demo-parts" };
 /**
  * The colour of the tutor's frames unless the consumer's theme gives one: a blue, for now, and not
  * a red, which would read as «wrong» (E4 in RUN.md, «Не входит»).
@@ -184,8 +202,6 @@ const ERASER_RADIUS_PX = 10;
  */
 const UP_DOWN = 4 / 5;
 
-const SVG = "http://www.w3.org/2000/svg";
-
 // The statement and the sheet stand in a column of their own, as wide as the element up to
 // 1000 CSS pixels and in its middle beyond, and scroll in a container of their own, by the
 // browser's own scrolling: the wheel, the scroll bar and the keyboard work as anywhere on a page.
@@ -195,9 +211,12 @@ const SVG = "http://www.w3.org/2000/svg";
 // scrolling: it sticks to the top of whatever scrolls the element, as far down as the consumer's
 // --novatrail-canvas-top says, while the element is in sight, over the sheet as it scrolls by
 // (R28). The element is as tall as the row, the statement and the sheet unless it is given a
-// height: then the statement and the sheet scroll in it, under the row. On the canvas the browser
-// neither scrolls nor zooms: the pointer writes, and two fingers scroll by the element's own code
-// (R29), as Up and Down of the row do with a single pointer, a pair the row wraps together (R33).
+// height: then the statement and the sheet scroll in it, under the row. A worked example's open
+// parts stand between the statement and the sheet, and the region that tells of them is out of
+// sight, but not out of the tree a screen reader reads, where a hidden region would tell nothing
+// (R42). On the canvas the browser neither scrolls nor zooms: the pointer writes, and two fingers
+// scroll by the element's own code (R29), as Up and Down of the row do with a single pointer, a
+// pair the row wraps together (R33).
 // The canvas and the buttons take pointer events only as the element does: a consumer's
 // pointer-events: none on the element stops the writing and the buttons' pointer, though not
 // their keys (R20, R28). A worked example's canvas takes no pointer at all: a finger or a pen on
@@ -220,7 +239,9 @@ const STYLE = `
   padding: 8px 0; display: flex; flex-wrap: wrap; gap: 8px;
   background: var(--novatrail-canvas-paper, ${PAPER}); color: var(--novatrail-canvas-ink, ${INK});
 }
-.tools .choice, .tools .updown { display: flex; gap: 8px; margin-inline-end: 16px; }
+.tools .demo, .tools .choice, .tools .updown {
+  display: flex; gap: 8px; margin-inline-end: 16px;
+}
 .tools button {
   box-sizing: border-box; min-width: 44px; min-height: 44px; padding: 0 16px; margin: 0;
   font: inherit; color: inherit; background: transparent; cursor: pointer;
@@ -232,10 +253,16 @@ const STYLE = `
 }
 .tools [aria-disabled="true"] { opacity: 0.4; cursor: default; }
 .tools [hidden] { display: none; }
+.tools button svg {
+  display: inline-block; width: 0.75em; height: 0.75em; margin-inline-end: 6px;
+  vertical-align: -0.05em; fill: currentColor;
+}
+.tools [aria-expanded="false"] svg { transform: rotate(-90deg); }
+.tools:dir(rtl) [aria-expanded="false"] svg { transform: rotate(90deg); }
 .viewport {
   flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overflow-anchor: none;
 }
-.column { width: min(100%, ${K_MAX * SHEET.width}px); margin: 0 auto; }
+.column { position: relative; width: min(100%, ${K_MAX * SHEET.width}px); margin: 0 auto; }
 .statement { padding: 0 0 12px; overflow-wrap: break-word; }
 .statement:empty { display: none; }
 .statement p { margin: 0 0 8px; }
@@ -246,6 +273,13 @@ const STYLE = `
 }
 .picture.decorative, .picture.shown { border: none; padding: 0; }
 .picture img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.parts { margin: 0 0 12px; padding-block: 0; padding-inline: 2em 0; overflow-wrap: break-word; }
+.parts:empty, .parts[hidden] { display: none; }
+.parts li { margin: 0 0 8px; }
+.status {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
 .sheet {
   aspect-ratio: ${SHEET.width} / ${SHEET.height};
   background: var(--novatrail-canvas-paper, ${PAPER});
@@ -403,18 +437,25 @@ export class NovatrailCanvas extends HTMLElement {
   readonly #canvasStyle = getComputedStyle(this.#canvas);
   /** The task's statement, above the sheet (R23). */
   readonly #statement = new Statement();
+  /** A worked example's open parts, under its statement, and the region that tells of them (R42). */
+  readonly #parts = new Parts(DEMO_IDS);
   /** The element's own buttons, above the statement and the sheet (R28). */
-  readonly #tools = new Tools({
-    choose: (tool) => this.#choose(tool),
-    undo: () => this.undo(),
-    clear: () => this.clear(),
-    upOrDown: (onward) => this.#upOrDown(onward),
-    // The finger writes again on every sheet of the page, with no event: the next pen's touch
-    // puts the page back in pen mode (R29).
-    fingers: () => {
-      PEN_MODE.on = false;
+  readonly #tools = new Tools(
+    {
+      choose: (tool) => this.#choose(tool),
+      undo: () => this.undo(),
+      clear: () => this.clear(),
+      upOrDown: (onward) => this.#upOrDown(onward),
+      // The finger writes again on every sheet of the page, with no event: the next pen's touch
+      // puts the page back in pen mode (R29).
+      fingers: () => {
+        PEN_MODE.on = false;
+      },
+      next: () => this.#openNext(),
+      toggle: () => this.#toggleDemo(),
     },
-  });
+    DEMO_IDS,
+  );
   /** The sheet's clock, for its strokes and its actions alike (R22). */
   readonly #clock = new Clock();
   /**
@@ -470,6 +511,8 @@ export class NovatrailCanvas extends HTMLElement {
   /** A lesson's worked example as the consumer gave it, and as the element checked it (R42). */
   #workedExample: WorkedExample | undefined;
   #example: CheckedExample | undefined;
+  /** How far the learner has gone through the example's demo, frozen, or undefined without one. */
+  #demoState: DemoState | undefined;
   #shownTemplate: Template = NO_TASK;
   /**
    * A workbook's page, its boxes in the task's order and their frames, and the box each stroke is
@@ -515,7 +558,8 @@ export class NovatrailCanvas extends HTMLElement {
       const box = entry.contentBoxSize[0];
       if (box !== undefined) this.#area = { width: box.inlineSize, height: box.blockSize };
     }
-    // The container's new size, or the statement's: either moves the sheet.
+    // The container's new size, the statement's or that of the list of a demo's parts: each moves
+    // the sheet.
     this.#layout();
   });
   /** The size of the container's visible part, in CSS pixels as laid out, before any transform. */
@@ -558,7 +602,7 @@ export class NovatrailCanvas extends HTMLElement {
       this.#marksLayer,
     );
     this.#sheet.append(this.#stage);
-    this.#column.append(this.#statement.element, this.#sheet);
+    this.#column.append(this.#statement.element, this.#parts.list, this.#parts.status, this.#sheet);
     this.#viewport.append(this.#column);
     root.append(style, this.#tools.element, this.#viewport);
     this.#lay(NO_TASK);
@@ -602,6 +646,8 @@ export class NovatrailCanvas extends HTMLElement {
     this.#adopt("tool");
     this.#adopt("task");
     this.#adopt("workedExample");
+    // The demo's state after its example: it is a TypeError without one.
+    this.#adopt("demoState");
     this.#adopt("manifest");
     this.#adopt("media");
     // The history before the marks: they hold on to its strokes.
@@ -683,6 +729,10 @@ export class NovatrailCanvas extends HTMLElement {
    * writing and is named a worked example's. `task`, `history` other than the empty one and
    * `marks` are TypeErrors, and so is an eraser: the tool is the pen alone, and `exportWork()` and
    * `filled` give null. The next segment of a lesson is a new element (R20).
+   *
+   * The parts of the demo the learner opens one at a time with the row's Next, into a list between
+   * the statement and the sheet, and hides and shows whole with Demo; `demoState` tells how far
+   * they have gone. Another example starts its demo at the beginning.
    */
   get workedExample(): WorkedExample | undefined {
     return this.#workedExample;
@@ -695,8 +745,12 @@ export class NovatrailCanvas extends HTMLElement {
     const shown = this.#example;
     this.#workedExample = example;
     this.#example = checked;
+    // The demo's state before the template, whose row shows it: another example starts at the
+    // beginning, with no event, and no example has none.
     if (checked === undefined) {
       this.#sheet.classList.remove("example");
+      this.#demoState = undefined;
+      this.#parts.clear();
       this.#present(NO_TASK);
     } else if (shown === undefined || !sameExample(checked, shown)) {
       // No mark stands on its sheet: its history is empty, and every submission has strokes. What
@@ -704,8 +758,41 @@ export class NovatrailCanvas extends HTMLElement {
       this.#hands.reset();
       this.#latch = undefined;
       this.#sheet.classList.add("example");
+      this.#demoState = DEMO_START;
+      this.#parts.clear();
       this.#present(exampleTemplate(checked));
     }
+  }
+
+  /**
+   * How far the learner has gone through the worked example's demo (R42): `opened`, how many of
+   * its parts are open, from the first, and `hidden`, whether the whole demo is hidden — frozen,
+   * and the same object until it changes. A new example starts at `{ opened: 0, hidden: false }`,
+   * and without one it is `undefined`. The learner changes it with the row's Next and Demo, which
+   * say so with a `demochange`; the consumer may give it back, which says nothing, tells a screen
+   * reader nothing, and scrolls nothing. It is given after the example, for it is checked against
+   * the example's parts: before one, a state is a TypeError, and `undefined` changes nothing. A
+   * state is an object of `opened`, a whole number from 0 to the number of parts, and `hidden`,
+   * true or false, or it is a TypeError that names the field. One that says the same changes
+   * nothing. Parts do not close one by one for the learner, but a consumer may give fewer.
+   */
+  get demoState(): DemoState | undefined {
+    return this.#demoState;
+  }
+
+  set demoState(state: DemoState | undefined) {
+    if (state === undefined) return;
+    const example = this.#example;
+    if (example === undefined) {
+      throw new TypeError(
+        `<${TAG}> shows no worked example: the state of its demo is given after the example`,
+      );
+    }
+    const checked = demoStateOf(state, example.demo.length);
+    const shown = this.#demoState;
+    if (shown?.opened === checked.opened && shown.hidden === checked.hidden) return;
+    this.#parts.quiet();
+    this.#showDemo(example, checked);
   }
 
   /**
@@ -730,6 +817,7 @@ export class NovatrailCanvas extends HTMLElement {
     this.#manifest = manifest;
     if (settings.lang !== this.#settings.lang) {
       this.#statement.lang = settings.lang;
+      this.#parts.lang = settings.lang;
       write(this.#lines, "lang", settings.lang ?? null);
     }
     this.#settings = settings;
@@ -872,6 +960,7 @@ export class NovatrailCanvas extends HTMLElement {
   connectedCallback(): void {
     this.#resize.observe(this.#viewport);
     this.#resize.observe(this.#statement.element);
+    this.#resize.observe(this.#parts.list);
     this.#watchDensity();
     this.#watchColours();
     this.#statement.connect();
@@ -988,7 +1077,15 @@ export class NovatrailCanvas extends HTMLElement {
    * element's upgrade, which would leave it dead.
    */
   #adopt(
-    name: "tool" | "task" | "workedExample" | "manifest" | "media" | "history" | "marks",
+    name:
+      | "tool"
+      | "task"
+      | "workedExample"
+      | "demoState"
+      | "manifest"
+      | "media"
+      | "history"
+      | "marks",
   ): void {
     if (!Object.hasOwn(this, name)) return;
     const value: unknown = Reflect.get(this, name);
@@ -1565,8 +1662,88 @@ export class NovatrailCanvas extends HTMLElement {
   }
 
   /**
-   * The row of buttons as the sheet now is: the tools the task allows, the one in use, and whether
-   * undo and clearing have anything to do (R28).
+   * The learner opened the next part of the demo with the row's Next (R42). The list grows above
+   * the sheet, and the layout keeps a sheet scrolled into sight where it was at once, before the
+   * scroll of the container is heard; then the part comes into sight below the row of buttons, the
+   * region tells of it, and whoever listens hears of the new state. The focus stays on Next, which
+   * opens the part after it. Nothing happens while the demo is hidden, or open whole.
+   */
+  #openNext(): void {
+    const example = this.#example;
+    const part = this.#nextPart();
+    if (example === undefined || part === undefined) return;
+    const opened = (this.#demoState?.opened ?? 0) + 1;
+    this.#showDemo(example, Object.freeze({ opened, hidden: false }));
+    const item = this.#parts.item(opened);
+    if (item !== undefined) this.#bringIntoSight(item);
+    const { lang, labels } = labelsFor(this.getAttribute("lang"));
+    const number = `${labels.part} ${opened} ${labels.of} ${example.demo.length}.`;
+    this.#parts.tell(part, { number, lang });
+    this.#demoChanged();
+  }
+
+  /**
+   * The learner hid the whole demo with the row's Demo, or showed it again (R42): its open parts
+   * stay open, out of sight, and the region tells of none. A sheet scrolled into sight stays where
+   * it was, and nothing else scrolls.
+   */
+  #toggleDemo(): void {
+    const example = this.#example;
+    const state = this.#demoState;
+    if (example === undefined || state === undefined) return;
+    this.#parts.quiet();
+    this.#showDemo(example, Object.freeze({ opened: state.opened, hidden: !state.hidden }));
+    this.#demoChanged();
+  }
+
+  /**
+   * The demo as a state has it: the list, laid out at once, so that the sheet's place is the new
+   * one before any scroll is heard (R42), and the row.
+   */
+  #showDemo(example: CheckedExample, state: DemoState): void {
+    this.#demoState = state;
+    this.#parts.show(example.demo, state);
+    this.#layout();
+    this.#refresh();
+  }
+
+  /** Whoever listens hears of the demo's new state, which the learner chose (R42). */
+  #demoChanged(): void {
+    const detail = this.#demoState;
+    this.dispatchEvent(new CustomEvent(DEMO_CHANGE, { bubbles: true, composed: true, detail }));
+  }
+
+  /** The part Next opens: the one after those open, while the demo is shown (R42). */
+  #nextPart(): ExamplePart | undefined {
+    const state = this.#demoState;
+    if (state === undefined || state.hidden) return undefined;
+    return this.#example?.demo[state.opened];
+  }
+
+  /**
+   * An item of the list comes into sight at once, as near as it is (R42), and then out from under
+   * the row of buttons, should the row stick over where it came to: what scrolls back up goes back
+   * as far as the row covers it. A margin of scrolling would hold for every scroller of the chain
+   * alike — the sheet's container, which the row stands above, and the page, which it sticks over.
+   */
+  #bringIntoSight(item: HTMLElement): void {
+    item.scrollIntoView({ block: "nearest", behavior: "instant" });
+    // A scroller that comes to its top hands the rest on to the next, as Up does (R33): each of
+    // the chain goes once.
+    const gone = new Set<Element | Window>();
+    for (;;) {
+      const row = this.#tools.element.getBoundingClientRect();
+      const cover = row.bottom - item.getBoundingClientRect().top;
+      const latch = cover > 0.5 ? this.#scrollerFor(false) : undefined;
+      if (latch === undefined || gone.has(latch.target)) return;
+      gone.add(latch.target);
+      latch.target.scrollBy({ top: -cover / latch.scale, behavior: "instant" });
+    }
+  }
+
+  /**
+   * The row of buttons as the sheet now is: the tools the task allows, the one in use, whether
+   * undo and clearing have anything to do (R28), and a worked example's demo (R42).
    */
   #refresh(): void {
     // The finger's button comes and goes between the strokes of the whole page alone: a row that
@@ -1575,6 +1752,7 @@ export class NovatrailCanvas extends HTMLElement {
     if (this.#writer() === undefined && !PEN_MODE.writing) {
       this.#finger = PEN_MODE.on && navigator.maxTouchPoints > 0;
     }
+    const demo = this.#demoState;
     this.#tools.show({
       kind: this.#rowKind(),
       tools: this.#shownTemplate.tools,
@@ -1582,6 +1760,8 @@ export class NovatrailCanvas extends HTMLElement {
       undoable: this.#work.undoable,
       clearable: this.#work.strokes.length > 0,
       finger: this.#finger,
+      opens: this.#nextPart() !== undefined,
+      expanded: demo?.hidden !== true,
     });
   }
 
@@ -1939,5 +2119,6 @@ declare global {
   interface GlobalEventHandlersEventMap {
     historychange: HistoryChangeEvent;
     toolchange: ToolChangeEvent;
+    demochange: DemoChangeEvent;
   }
 }

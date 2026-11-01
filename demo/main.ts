@@ -14,8 +14,10 @@
 // R36). The counter tells how many of its boxes are filled (T48; R37), and Check sends the crop of
 // each filled box, which the page shows with its place and its size (T49; R38); a box picked comes
 // back to the element as a mark of the tutor's on it (T53; R39). A lesson's worked example is a new
-// element too, of the grid the controls give, on which the learner writes nothing: its row has Up
-// and Down alone, and Check finds no work (T59; R42).
+// element too, of the grid the controls give, on which the learner writes nothing, and Check finds
+// no work (T59; R42). Its row's Next opens the parts of its demo one at a time and Demo hides and
+// shows them; the page keeps how far the learner has gone as demochange tells it, and gives it back
+// to the next element and the next example, after the example, as app is to (T60; R42).
 // Under the sheet the page draws the groups of the strokes the history leaves, after every
 // historychange, by the sheet's rule or by the pause and the reaches its fields give (T12; R24),
 // and their crop for checking at the height of digits the manifest gives, with the frames of those
@@ -40,6 +42,8 @@ import {
 } from "../src/core/tasks.fixture.js";
 import "../src/element/index.js";
 import type {
+  DemoChangeEvent,
+  DemoState,
   ExportedCell,
   GridKind,
   HistoryChangeEvent,
@@ -165,7 +169,8 @@ function taskFor(n: number): Task {
 
 /**
  * The worked example of the page's number `n`: a sheet of the grid chosen, with a statement and its
- * picture, and the demo's parts, which a later version of the element shows (R42).
+ * picture, and the parts of its demo — a paragraph, a picture beside the sheet, one on an area of
+ * it, and a paragraph — which the learner opens one at a time (R42).
  */
 function exampleFor(n: number): WorkedExample {
   return workedExample({
@@ -179,6 +184,16 @@ function exampleFor(n: number): WorkedExample {
         width: 340,
         height: 80,
       },
+    ],
+    demo: [
+      { text: "Draw the path, 20 m long, and mark a post at each end." },
+      { picture: "pictures/posts.png", alt: "Posts along a path", width: 170, height: 40 },
+      {
+        picture: "pictures/posts.png",
+        alt: "The path cut into 5 gaps of 4 m, with a post at every mark.",
+        area: { left: 100, top: 100, width: 800, height: 188 },
+      },
+      { text: "20 ÷ 4 = 5 gaps, and one post more than gaps: 6 posts." },
     ],
   });
 }
@@ -202,6 +217,12 @@ function manifestFor(): Manifest {
  * historychange has told, added on, and given back to an element that opens the sheet again.
  */
 let kept: HistoryEvent[] = [];
+/**
+ * How far the learner has gone through the worked example's demo, as demochange told it and as app
+ * is to keep it: given back to the next element of the example and to the next example, after it.
+ */
+let shownDemo: DemoState | undefined;
+let demoChanges = 0;
 let taskNumber = 1;
 let changes = 0;
 let choices = 0;
@@ -218,6 +239,7 @@ function mount(history?: readonly HistoryEvent[], marks?: Marks): NovatrailCanva
     if (asksExample()) {
       examples.add(element);
       element.workedExample = exampleFor(taskNumber);
+      if (shownDemo !== undefined) element.demoState = shownDemo;
     } else {
       element.task = taskFor(taskNumber);
     }
@@ -234,7 +256,15 @@ function mount(history?: readonly HistoryEvent[], marks?: Marks): NovatrailCanva
   // On the element itself: an ancestor would miss a stroke that lands as the element leaves.
   element.addEventListener("historychange", told);
   element.addEventListener("toolchange", chose);
+  element.addEventListener("demochange", demoTold);
   return element;
+}
+
+/** What demochange tells: the learner opened a part of the demo, or hid or showed it. */
+function demoTold({ detail }: DemoChangeEvent): void {
+  shownDemo = detail;
+  demoChanges++;
+  count();
 }
 
 /** The language the page gives an element, which its buttons are labelled in: none for "". */
@@ -259,7 +289,14 @@ function count(): void {
   const boxes = sheet.filled?.flat() ?? [];
   const filled =
     sheet.filled === null ? "" : ` · filled ${boxes.filter(Boolean).length} of ${boxes.length}`;
-  counter.textContent = `Task ${taskNumber} · ${told} · toolchange × ${choices}, ${sheet.tool}${filled}`;
+  // How far the learner has gone through a worked example's demo (R42).
+  const state = sheet.demoState;
+  const parts = sheet.workedExample?.demo.length ?? 0;
+  const demo =
+    state === undefined
+      ? ""
+      : ` · demochange × ${demoChanges}, ${state.opened} of ${parts} open${state.hidden ? ", hidden" : ""}`;
+  counter.textContent = `Task ${taskNumber} · ${told} · toolchange × ${choices}, ${sheet.tool}${filled}${demo}`;
 }
 
 const SVG = "http://www.w3.org/2000/svg";
@@ -684,8 +721,13 @@ function regrid(): void {
     return;
   }
   try {
-    if (asksExample()) sheet.workedExample = exampleFor(taskNumber);
-    else sheet.task = taskFor(taskNumber);
+    if (asksExample()) {
+      // Another example starts its demo at the beginning: the page gives back what it keeps.
+      sheet.workedExample = exampleFor(taskNumber);
+      if (shownDemo !== undefined) sheet.demoState = shownDemo;
+    } else {
+      sheet.task = taskFor(taskNumber);
+    }
     status.textContent = "";
   } catch (error) {
     status.textContent = error instanceof Error ? error.message : String(error);
@@ -713,11 +755,13 @@ function mounted(next: NovatrailCanvas): void {
   const old = sheet;
   old.removeEventListener("historychange", told);
   old.removeEventListener("toolchange", chose);
+  old.removeEventListener("demochange", demoTold);
   sheet = next;
   old.replaceWith(next);
   // A new sheet starts with the pen.
   changes = 0;
   choices = 0;
+  demoChanges = 0;
   showGroups();
   showMarks();
   count();
@@ -739,6 +783,7 @@ part("reopen", HTMLButtonElement).addEventListener("click", () => {
 part("next", HTMLButtonElement).addEventListener("click", () => {
   taskNumber++;
   kept = [];
+  shownDemo = undefined;
   forget();
   status.textContent = "";
   mounted(mount());

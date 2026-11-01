@@ -14,6 +14,7 @@ export type Given = [
   types.CellPlace,
   types.Crop,
   types.CropNumbers,
+  types.DemoState,
   types.Filling,
   types.Frame,
   types.GridKind,
@@ -47,6 +48,8 @@ export const task = core.taskOf;
 export const template = core.templateOf;
 // @ts-expect-error Nor its check of a worked example (R42).
 export const example = core.exampleOf;
+// @ts-expect-error Nor of the state of its demo.
+export const demoState = core.demoStateOf;
 // @ts-expect-error Nor its reading of a manifest.
 export const settings = core.settingsOf;
 // @ts-expect-error Nor the layout of a workbook's page, which vectors/pages.json pins (R34, R35).

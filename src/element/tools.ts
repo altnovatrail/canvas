@@ -7,18 +7,20 @@
 // scroll to (R33). In pen mode a last button lets a finger write again (R29). The labels are in
 // the element's language (labels.ts), and the row is named by the canvas kind: the sheet or the
 // workbook (R36). A lesson's worked example names it too, and has no tools of writing in it: the
-// learner does not write on its sheet, and Up and Down are the row's first buttons (R42). A button
+// learner does not write on its sheet. Its first buttons are its demo's, Next, which opens the next
+// part, and Demo, a disclosure button that hides the whole demo and shows it again (R42). A button
 // that goes gives its stop of Tab and the focus to the first button shown. This module is no entry
 // point of the package.
 
 import type { Tool } from "../core/task.js";
-import { write } from "./attributes.js";
+import { SVG, write } from "./attributes.js";
 import { labelsFor } from "./labels.js";
 
 /**
  * What the row asks of the element: a tool the learner chose — perhaps the one in use — an undo, a
- * clearing, a scroll on down the sheet, for `onward`, or back up it, and the finger to write again,
- * out of pen mode.
+ * clearing, a scroll on down the sheet, for `onward`, or back up it, the finger to write again,
+ * out of pen mode, and on a worked example the next part of its demo, or the whole demo hidden or
+ * shown (R42).
  */
 export interface ToolActions {
   readonly choose: (tool: Tool) => void;
@@ -26,6 +28,16 @@ export interface ToolActions {
   readonly clear: () => void;
   readonly upOrDown: (onward: boolean) => void;
   readonly fingers: () => void;
+  readonly next: () => void;
+  readonly toggle: () => void;
+}
+
+/** What Next and Demo control, by their IDs in the element's shadow root (R42). */
+export interface DemoControls {
+  /** The region that tells of the part Next opens. */
+  readonly status: string;
+  /** The list of the open parts, which Demo hides and shows. */
+  readonly parts: string;
 }
 
 /** What the row is of, and is named by: a sheet, a workbook or a worked example (R36, R42). */
@@ -33,7 +45,8 @@ export type RowKind = "sheet" | "workbook" | "example";
 
 /**
  * What the row shows: what it is of, the tools the task allows, the one in use, whether undo and
- * clearing have anything to do, and whether the finger may be asked to write again.
+ * clearing have anything to do, whether the finger may be asked to write again, and on a worked
+ * example whether Next has a part to open and whether the demo is shown (R42).
  */
 export interface ToolState {
   readonly kind: RowKind;
@@ -42,12 +55,19 @@ export interface ToolState {
   readonly undoable: boolean;
   readonly clearable: boolean;
   readonly finger: boolean;
+  readonly opens: boolean;
+  readonly expanded: boolean;
 }
 
 /** The row of the element's own buttons, as the element shows it. */
 export class Tools {
   /** The row: a toolbar, named in the element's language. */
   readonly element = document.createElement("div");
+  /** Next and Demo, a worked example's first buttons, kept together on a narrow screen (R42). */
+  readonly #demoPair = document.createElement("div");
+  readonly #next = plainButton();
+  readonly #demo = plainButton();
+  readonly #demoLabel = document.createElement("span");
   readonly #group = document.createElement("div");
   readonly #pen = radioButton();
   readonly #eraser = radioButton();
@@ -60,6 +80,8 @@ export class Tools {
   readonly #finger = plainButton();
   /** The buttons in the order the arrow keys go through them: the row's own. */
   readonly #buttons: readonly HTMLButtonElement[] = [
+    this.#next,
+    this.#demo,
     this.#pen,
     this.#eraser,
     this.#undo,
@@ -75,17 +97,34 @@ export class Tools {
   /** Whether a button of the row has had the focus: Tab comes to the first button until one has. */
   #chosen = false;
 
-  constructor(actions: ToolActions) {
+  constructor(actions: ToolActions, controls: DemoControls) {
     this.element.className = "tools";
     this.element.setAttribute("role", "toolbar");
+    this.#demoPair.className = "demo";
+    // Next and Demo control what they do not hold: the region that tells of a part, and the list.
+    this.#next.setAttribute("aria-controls", controls.status);
+    this.#demo.setAttribute("aria-controls", controls.parts);
+    this.#demo.setAttribute("aria-expanded", "true");
+    this.#demo.append(triangle(), this.#demoLabel);
+    this.#demoPair.append(this.#next, this.#demo);
     this.#group.className = "choice";
     this.#group.setAttribute("role", "radiogroup");
     this.#group.append(this.#pen, this.#eraser);
     this.#pair.className = "updown";
     this.#pair.append(this.#up, this.#down);
     // The finger's button comes last: coming and going, it moves no other button of the row.
-    this.element.append(this.#group, this.#undo, this.#clear, this.#pair, this.#finger);
-    this.#finger.hidden = true;
+    this.element.append(
+      this.#demoPair,
+      this.#group,
+      this.#undo,
+      this.#clear,
+      this.#pair,
+      this.#finger,
+    );
+    // A worked example's buttons and the finger's come with what they are for.
+    for (const hidden of [this.#demoPair, this.#next, this.#demo, this.#finger]) {
+      hidden.hidden = true;
+    }
     // Tab comes to the first button shown, until another has had the focus.
     this.#stopAt(this.#first());
     // The element decides whether a choice is a change: the tool in use, chosen again, is none.
@@ -99,6 +138,8 @@ export class Tools {
     };
     doing(this.#undo, actions.undo);
     doing(this.#clear, actions.clear);
+    doing(this.#next, actions.next);
+    this.#demo.addEventListener("click", () => actions.toggle());
     // Up and Down ask the element anew at every press, unavailable or not: a scroll the element did
     // not hear may have left either standing as it no longer is.
     this.#up.addEventListener("click", () => actions.upOrDown(false));
@@ -117,15 +158,20 @@ export class Tools {
 
   /**
    * The row as the sheet now is. Only what has changed is written. A worked example's row has no
-   * tools of writing, no undo and no clearing, for the learner does not write on its sheet (R42).
+   * tools of writing, no undo and no clearing, for the learner does not write on its sheet, and has
+   * Next, unavailable while the demo is hidden or open whole, and Demo, expanded while the demo is
+   * shown (R42).
    */
-  show({ kind, tools, tool, undoable, clearable, finger }: ToolState): void {
+  show({ kind, tools, tool, undoable, clearable, finger, opens, expanded }: ToolState): void {
     if (kind !== this.#kind) {
       this.#kind = kind;
       this.#name();
     }
     const writes = kind !== "example";
     this.#reveal([
+      [this.#demoPair, !writes],
+      [this.#next, !writes],
+      [this.#demo, !writes],
       [this.#group, writes],
       [this.#pen, writes],
       [this.#eraser, writes && tools.includes("eraser")],
@@ -137,6 +183,8 @@ export class Tools {
     write(this.#eraser, "aria-checked", String(tool === "eraser"));
     write(this.#undo, "aria-disabled", undoable ? null : "true");
     write(this.#clear, "aria-disabled", clearable ? null : "true");
+    write(this.#next, "aria-disabled", opens ? null : "true");
+    write(this.#demo, "aria-expanded", String(expanded));
   }
 
   /**
@@ -159,6 +207,8 @@ export class Tools {
     this.element.lang = lang;
     this.#name();
     this.#group.setAttribute("aria-label", labels.tool);
+    this.#next.textContent = labels.next;
+    this.#demoLabel.textContent = labels.demo;
     this.#pen.textContent = labels.pen;
     this.#eraser.textContent = labels.eraser;
     this.#undo.textContent = labels.undo;
@@ -195,7 +245,7 @@ export class Tools {
 
   /**
    * Buttons come or go, all of them at once, and then a button that went gives its stop of Tab and
-   * the focus to the first button shown: the pen on a sheet, Up on a worked example (R28, R42). Till
+   * the focus to the first button shown: the pen on a sheet, Next on a worked example (R28, R42). Till
    * a button has had the focus, the stop is the first button shown, whichever it is now. Nothing is
    * read or written while every button stays as it is: the row is shown anew after every stroke.
    */
@@ -233,6 +283,20 @@ function radioButton(): HTMLButtonElement {
   button.setAttribute("role", "radio");
   button.setAttribute("aria-checked", "false");
   return button;
+}
+
+/**
+ * The triangle of a disclosure button, pointing down while what it shows is shown: a picture that
+ * says nothing, for aria-expanded says it (R42).
+ */
+function triangle(): SVGSVGElement {
+  const svg = document.createElementNS(SVG, "svg");
+  svg.setAttribute("viewBox", "0 0 10 10");
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS(SVG, "path");
+  path.setAttribute("d", "M1 3h8L5 8z");
+  svg.append(path);
+  return svg;
 }
 
 function plainButton(): HTMLButtonElement {

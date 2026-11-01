@@ -2,6 +2,8 @@ import { expect, test } from "vitest";
 import {
   type AreaPicture,
   type CheckedExample,
+  DEMO_START,
+  demoStateOf,
   type ExamplePart,
   exampleOf,
   exampleTemplate,
@@ -267,4 +269,38 @@ test("the sheet makes a template of a worked example as of a task: its grid, its
   });
   expect(Object.isFrozen(template.tools)).toBe(true);
   expect(exampleTemplate(exampleOf(workedExample())).grid).toEqual({ kind: "squares", step: 50 });
+});
+
+test("the state of a demo is how many of its parts are open and whether it is hidden, a frozen copy of its own, and anything else is a TypeError that names its field", () => {
+  const given = { opened: 2, hidden: true };
+  const state = demoStateOf(given, 4);
+  expect(state).toStrictEqual({ opened: 2, hidden: true });
+  expect(state).not.toBe(given);
+  expect(Object.isFrozen(state)).toBe(true);
+  // A state equal to the start is a copy too: the element keeps the object it has.
+  expect(demoStateOf({ opened: 0, hidden: false }, 4)).not.toBe(DEMO_START);
+  expect(DEMO_START).toStrictEqual({ opened: 0, hidden: false });
+  expect(Object.isFrozen(DEMO_START)).toBe(true);
+  expect(demoStateOf({ opened: 4, hidden: false }, 4).opened).toBe(4);
+  // A field left out by undefined is no field: both are wanted.
+  expect(demoStateOf({ opened: 1, hidden: false, extra: undefined }, 4).opened).toBe(1);
+  const wrong: [unknown, RegExp][] = [
+    [null, /^demoState: an object, not null$/],
+    [[1, false], /^demoState: an object, not \[1,false\]$/],
+    [{ hidden: false }, /^demoState\.opened: a whole number from 0 to 4, not undefined$/],
+    [{ opened: 1 }, /^demoState\.hidden: true or false, not undefined$/],
+    [{ opened: 1.5, hidden: false }, /^demoState\.opened: a whole number from 0 to 4, not 1\.5$/],
+    [{ opened: -1, hidden: false }, /^demoState\.opened: .* not -1$/],
+    [{ opened: 5, hidden: false }, /^demoState\.opened: .* not 5$/],
+    [{ opened: "1", hidden: false }, /^demoState\.opened: .* not "1"$/],
+    [{ opened: Number.NaN, hidden: false }, /^demoState\.opened: .* not NaN$/],
+    [{ opened: 1, hidden: 0 }, /^demoState\.hidden: true or false, not 0$/],
+    [{ opened: 1, hidden: "false" }, /^demoState\.hidden: true or false, not "false"$/],
+    [
+      { opened: 1, hidden: false, shown: true },
+      /^demoState\.shown: no field of the state of a demo$/,
+    ],
+  ];
+  for (const [value, message] of wrong)
+    expect(refusal(() => demoStateOf(value, 4))).toMatch(message);
 });
