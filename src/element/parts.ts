@@ -4,11 +4,15 @@
 // stays as it is while the demo is the same: hidden, the list keeps its open parts out of sight. A
 // paragraph is its text; a picture beside the sheet is a frame of its size, as a statement's
 // picture is, which shows the picture once the element's pictures have its file and what it shows
-// in words till then; a picture on an area of the sheet is read by its words here, while the
-// picture itself stands on the sheet. This module is no entry point of the package.
+// in words till then. A picture on an area of the sheet is read by its words here, while the
+// picture itself stands on the layer of the author's demo, stretched over its area, the later part
+// over the earlier, and nothing stands there till its file is decoded (T61). This module is no
+// entry point of the package.
 
-import { type DemoState, type ExamplePart, onSheet } from "../core/example.js";
-import { write } from "./attributes.js";
+import { type AreaPicture, type DemoState, type ExamplePart, onSheet } from "../core/example.js";
+import { SHEET } from "../core/sheet.js";
+import type { Zone } from "../core/task.js";
+import { placeOver, SVG, write } from "./attributes.js";
 import type { Pictures } from "./pictures.js";
 import { framed } from "./statement.js";
 
@@ -29,9 +33,22 @@ export class Parts {
    * sight alone, for a region out of the tree of what a screen reader reads tells nothing.
    */
   readonly status = document.createElement("div");
+  /**
+   * The pictures on areas of the sheet, for the layer of the author's demo: in sheet units, as the
+   * layer's view box counts, in the demo's order, so that a later part is drawn over an earlier.
+   */
+  readonly layer = document.createElementNS(SVG, "g");
+  /**
+   * Where the sheet scrolls to for a picture on an area just opened: a box of the area in the
+   * sheet's own flow, not on its sticky stage, whose pictures move only at the next frame. It is
+   * hidden, so it paints nothing and takes no pointer, but it has a box to scroll into sight.
+   */
+  readonly spot = document.createElement("div");
   readonly #pictures: Pictures;
   /** What takes the picture of an item off, once the item leaves the list. */
   readonly #off = new WeakMap<Element, () => void>();
+  /** The area of the sheet of an item whose picture stands there. */
+  readonly #areas = new WeakMap<Element, Zone>();
 
   /** The list and the region, by their IDs, whose pictures the element's pictures give files. */
   constructor(ids: { readonly status: string; readonly parts: string }, pictures: Pictures) {
@@ -41,6 +58,7 @@ export class Parts {
     this.status.className = "status";
     this.status.id = ids.status;
     this.status.setAttribute("role", "status");
+    this.spot.className = "spot";
   }
 
   /**
@@ -68,6 +86,8 @@ export class Parts {
       if (part !== undefined) this.list.append(this.#itemOf(part));
     }
     if (this.list.hidden !== hidden) this.list.hidden = hidden;
+    // An SVG element has no hidden attribute: the presentation attribute hides it.
+    write(this.layer, "display", hidden ? "none" : null);
   }
 
   /** No part open, the list shown, and nothing told: a demo begins, or goes. */
@@ -75,12 +95,30 @@ export class Parts {
     for (const item of [...this.list.children]) this.#takeOff(item);
     this.list.replaceChildren();
     this.list.hidden = false;
+    write(this.layer, "display", null);
+    this.spot.removeAttribute("style");
     this.quiet();
   }
 
-  /** The item of the `n`th part, from 1, if it is open. */
-  item(n: number): HTMLElement | undefined {
+  /**
+   * What the `n`th part, from 1, comes into sight by once it is open (R42): its item, or for a
+   * picture on an area of the sheet the spot, which it places on that area, in shares of the sheet,
+   * which keeps its proportions.
+   */
+  target(n: number): HTMLElement | undefined {
     const item = this.list.children[n - 1];
+    const area = item === undefined ? undefined : this.#areas.get(item);
+    if (area !== undefined) {
+      const { left, top, width, height } = area;
+      const share = (value: number, of: number) => `${(100 * value) / of}%`;
+      Object.assign(this.spot.style, {
+        left: share(left, SHEET.width),
+        top: share(top, SHEET.height),
+        width: share(width, SHEET.width),
+        height: share(height, SHEET.height),
+      });
+      return this.spot;
+    }
     return item instanceof HTMLElement ? item : undefined;
   }
 
@@ -120,7 +158,8 @@ export class Parts {
   /**
    * The item of an open part: a paragraph's text, a picture beside the sheet in its frame, or the
    * words of a picture on an area of the sheet, which a screen reader reads as the picture, while
-   * the item stays an item of the list. One that only decorates leaves its item empty.
+   * the item stays an item of the list, and the picture itself on the sheet. One that only
+   * decorates leaves its item empty, and on the sheet it stands all the same.
    */
   #itemOf(part: ExamplePart): HTMLLIElement {
     const item = document.createElement("li");
@@ -131,13 +170,38 @@ export class Parts {
       const { frame, off } = framed(this.#pictures, part);
       this.#off.set(item, off);
       item.append(frame);
-    } else if (part.alt !== "") {
-      const words = document.createElement("div");
-      words.setAttribute("role", "img");
-      words.setAttribute("aria-label", part.alt);
-      words.textContent = part.alt;
-      item.append(words);
+    } else {
+      this.#off.set(item, this.#onTheSheet(part));
+      this.#areas.set(item, part.area);
+      if (part.alt !== "") {
+        const words = document.createElement("div");
+        words.setAttribute("role", "img");
+        words.setAttribute("aria-label", part.alt);
+        words.textContent = part.alt;
+        item.append(words);
+      }
     }
     return item;
+  }
+
+  /**
+   * A picture on its area of the sheet, at the end of the layer, stretched over the area: its
+   * corners at the area's (README of the format, §21; SVG 2). It shows its file's address once the
+   * element's pictures have it decoded, and nothing till then: its words are in its item. What it
+   * gives back takes the picture off the sheet.
+   */
+  #onTheSheet(part: AreaPicture): () => void {
+    const image = document.createElementNS(SVG, "image");
+    placeOver(image, part.area);
+    image.setAttribute("preserveAspectRatio", "none");
+    this.layer.append(image);
+    const off = this.#pictures.place(part.picture, {
+      show: (url) => image.setAttribute("href", url),
+      hide: () => image.removeAttribute("href"),
+    });
+    return () => {
+      off();
+      image.remove();
+    };
   }
 }

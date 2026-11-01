@@ -26,7 +26,9 @@
 // polite region tells a screen reader of, and hides and shows with Demo; app keeps how far the
 // learner has gone by `demoState` and `demochange` (T60; R42). The pictures of the statement and of
 // the demo come from the consumer's media, one file for each reference, all of them as the task or
-// the example comes: a part opened shows its picture at once (T64; R42).
+// the example comes: a part opened shows its picture at once (T64; R42). A picture on an area of
+// the sheet stands on the layer of the author's demo, over its area, and the sheet scrolls to the
+// area as the part opens (T61; R42).
 
 import type { Vec2 } from "perfect-freehand";
 import { type Cell, cellOf, cellsOf, type Filled, filledOf, sheetFilledOf } from "../core/boxes.js";
@@ -86,7 +88,7 @@ import {
   wholeSheet,
 } from "../core/task.js";
 import { nextIdOf, resumeOf, Work } from "../core/work.js";
-import { SVG, write } from "./attributes.js";
+import { placeOver, SVG, write } from "./attributes.js";
 import { labelsFor } from "./labels.js";
 import { Parts } from "./parts.js";
 import { type Media, Pictures } from "./pictures.js";
@@ -218,7 +220,9 @@ const UP_DOWN = 4 / 5;
 // parts stand between the statement and the sheet, and the region that tells of them is out of
 // sight, but not out of the tree a screen reader reads, where a hidden region would tell nothing
 // (R42). A picture's frame there stands in its item's line, from its top, so that the item's
-// number stands at the top too, as a paragraph's does, and not at the picture's bottom (T64). On
+// number stands at the top too, as a paragraph's does, and not at the picture's bottom (T64). A
+// picture on an area of the sheet stands on the layer of the author's demo, and the sheet scrolls
+// to a hidden box of the area in its own flow, which neither paints nor takes a pointer (T61). On
 // the canvas the browser neither scrolls nor zooms: the pointer writes, and two fingers scroll by
 // the element's own code (R29), as Up and Down of the row do with a single pointer, a pair the
 // row wraps together (R33).
@@ -287,13 +291,14 @@ const STYLE = `
   overflow: hidden; clip-path: inset(50%); white-space: nowrap;
 }
 .sheet {
-  aspect-ratio: ${SHEET.width} / ${SHEET.height};
+  position: relative; aspect-ratio: ${SHEET.width} / ${SHEET.height};
   background: var(--novatrail-canvas-paper, ${PAPER});
 }
 .stage {
   position: sticky; top: 0; max-height: 100%; overflow: clip;
   user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
 }
+.spot { position: absolute; visibility: hidden; }
 .stage > * { position: absolute; inset: 0; width: 100%; height: 100%; }
 .stage > :not(canvas) { pointer-events: none; }
 .grid {
@@ -410,7 +415,7 @@ function marksLayer(): SVGSVGElement {
   return svg;
 }
 
-/** An HTML layer of the sheet, empty in the first code: the module's widget, the author's show. */
+/** An HTML layer of the sheet, empty in the first code: the module's widget, from stage 4. */
 function htmlLayer(name: string): HTMLDivElement {
   const div = document.createElement("div");
   div.className = name;
@@ -430,9 +435,10 @@ export class NovatrailCanvas extends HTMLElement {
   readonly #grid = document.createElementNS(SVG, "path");
   readonly #print = document.createElementNS(SVG, "g");
   readonly #lines = document.createElementNS(SVG, "g");
-  /** The module's widget, from stage 4 (R16 spec), and the author's show: empty for now. */
+  /** The module's widget, from stage 4 (R16 spec): empty for now. */
   readonly #widget = htmlLayer("widget");
-  readonly #show = htmlLayer("show");
+  /** The author's demo: a worked example's pictures on areas of the sheet (T61; R42). */
+  readonly #show = svgLayer("show");
   /** The tutor's layer, in two: the sketch under the learner's work, the marks over it (T14). */
   readonly #sketch = svgLayer("sketch");
   /** The learner's work: the ink. */
@@ -601,6 +607,7 @@ export class NovatrailCanvas extends HTMLElement {
     this.#lines.setAttribute("role", "list");
     this.#print.append(this.#lines);
     this.#template.append(this.#grid, this.#print);
+    this.#show.append(this.#parts.layer);
     this.#stage.append(
       this.#template,
       this.#widget,
@@ -609,7 +616,7 @@ export class NovatrailCanvas extends HTMLElement {
       this.#canvas,
       this.#marksLayer,
     );
-    this.#sheet.append(this.#stage);
+    this.#sheet.append(this.#stage, this.#parts.spot);
     this.#column.append(this.#statement.element, this.#parts.list, this.#parts.status, this.#sheet);
     this.#viewport.append(this.#column);
     root.append(style, this.#tools.element, this.#viewport);
@@ -1690,8 +1697,8 @@ export class NovatrailCanvas extends HTMLElement {
     if (example === undefined || part === undefined) return;
     const opened = (this.#demoState?.opened ?? 0) + 1;
     this.#showDemo(example, Object.freeze({ opened, hidden: false }));
-    const item = this.#parts.item(opened);
-    if (item !== undefined) this.#bringIntoSight(item);
+    const target = this.#parts.target(opened);
+    if (target !== undefined) this.#bringIntoSight(target);
     const { lang, labels } = labelsFor(this.getAttribute("lang"));
     const number = `${labels.part} ${opened} ${labels.of} ${example.demo.length}.`;
     this.#parts.tell(part, { number, lang });
@@ -1737,10 +1744,13 @@ export class NovatrailCanvas extends HTMLElement {
   }
 
   /**
-   * An item of the list comes into sight at once, as near as it is (R42), and then out from under
-   * the row of buttons, should the row stick over where it came to: what scrolls back up goes back
-   * as far as the row covers it. A margin of scrolling would hold for every scroller of the chain
-   * alike — the sheet's container, which the row stands above, and the page, which it sticks over.
+   * An item of the list, or an area of the sheet, comes into sight at once, as near as it is (R42),
+   * and then out from under the row of buttons, should the row stick over where it came to: what
+   * scrolls back up goes back as far as the row covers it. A margin of scrolling would hold for
+   * every scroller of the chain alike — the sheet's container, which the row stands above, and the
+   * page, which it sticks over. An area of the sheet taller than what is in sight comes by its top
+   * from below, but by its bottom from above, and then the row's cover brings its top back into
+   * sight, under the row (T61).
    */
   #bringIntoSight(item: HTMLElement): void {
     item.scrollIntoView({ block: "nearest", behavior: "instant" });
@@ -1806,7 +1816,7 @@ export class NovatrailCanvas extends HTMLElement {
     const viewBox = `0 ${screen.vy} ${SHEET.width} ${height}`;
     if (viewBox === this.#viewBox) return;
     this.#viewBox = viewBox;
-    for (const layer of [this.#template, this.#sketch, this.#marksLayer]) {
+    for (const layer of [this.#template, this.#show, this.#sketch, this.#marksLayer]) {
       layer.setAttribute("viewBox", viewBox);
     }
   }
@@ -2003,12 +2013,9 @@ function textOf({ text, left, baseline, width }: PageText): SVGTextElement {
 }
 
 /** A box, a picture to a screen reader, which its name tells of (R34). */
-function rectOf({ left, top, width, height }: PageBox): SVGRectElement {
+function rectOf(box: PageBox): SVGRectElement {
   const rect = document.createElementNS(SVG, "rect");
-  rect.setAttribute("x", String(left));
-  rect.setAttribute("y", String(top));
-  rect.setAttribute("width", String(width));
-  rect.setAttribute("height", String(height));
+  placeOver(rect, box);
   rect.setAttribute("role", "img");
   return rect;
 }
