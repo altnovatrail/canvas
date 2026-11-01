@@ -1,15 +1,18 @@
 // The labels of the element's own buttons and of a workbook's boxes, in the languages of its
-// interface (R28, R29, R33, R36, R37): English and Russian, as О-2 recommends, until app's T07 gives the
-// shared scheme of translations of the packages of the interface. The language is the element's
-// own `lang`, looked up as RFC 4647 does it. This module is no entry point of the package.
+// interface (R28, R29, R33, R36, R37, R42): English and Russian, as О-2 recommends, until app's T07
+// gives the shared scheme of translations of the packages of the interface. The language is the
+// element's own `lang`, looked up as RFC 4647 does it. This module is no entry point of the
+// package.
 
 /**
- * What the element says: the row of buttons its own name — the canvas kind's — the name of the group
- * of tools and each button, and a workbook's box its name.
+ * What the element says: the row of buttons its own name — the canvas kind's, or a worked
+ * example's — the name of the group of tools and each button, and a workbook's box its name.
  */
 export interface Labels {
   readonly sheet: string;
   readonly workbook: string;
+  /** The row of a lesson's worked example, which has no tools of writing (R42). */
+  readonly example: string;
   readonly tool: string;
   readonly pen: string;
   readonly eraser: string;
@@ -30,6 +33,7 @@ export interface Labels {
 const ENGLISH: Labels = Object.freeze({
   sheet: "Sheet",
   workbook: "Workbook",
+  example: "Worked example",
   tool: "Tool",
   pen: "Pen",
   eraser: "Eraser",
@@ -53,6 +57,7 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
     Object.freeze({
       sheet: "Лист",
       workbook: "Тетрадь",
+      example: "Пример",
       tool: "Инструмент",
       pen: "Перо",
       eraser: "Ластик",

@@ -15,6 +15,7 @@ import type {
   Tool,
   ToolChangeEvent,
   WorkbookSubmission,
+  WorkedExample,
 } from "./index.js";
 
 declare const sheet: NovatrailCanvas;
@@ -23,6 +24,7 @@ declare const done: ExportedWork;
 declare const boxes: WorkbookSubmission;
 declare const manifest: Manifest;
 declare const given: open.Task;
+declare const lesson: open.WorkedExample;
 
 /** A task's open view on a handwriting sheet, as the module format 0.1 has it (R32). */
 const posts = {
@@ -84,6 +86,18 @@ export const filled: Filled | null = sheet.filled;
 export const first: boolean | undefined = sheet.filled?.[0]?.[0];
 sheet.history = undefined;
 sheet.history = [];
+/** A lesson's worked example, of spec's type, goes in as it is, and off by undefined (R42). */
+sheet.workedExample = lesson;
+sheet.workedExample = {
+  statement: posts.statement,
+  canvas: { kind: "handwriting_sheet", grid: "lines" },
+  demo: [
+    { text: "Draw the path." },
+    { picture: "pictures/path.png", alt: "", width: 60, height: 20 },
+  ],
+};
+sheet.workedExample = undefined;
+export const example: WorkedExample | undefined = sheet.workedExample;
 
 // @ts-expect-error The picture of the whole sheet is no part of the interface (R27).
 sheet.exportPNG();
@@ -111,6 +125,10 @@ if ("cells" in done) {
 sheet.marks = { submission: boxes, marks: [{ kind: "frame", at: { cell: "a" }, name: "This" }] };
 // @ts-expect-error null is no manifest: undefined, and undefined alone, is none.
 sheet.manifest = null;
+// @ts-expect-error null is no worked example: undefined, and undefined alone, is none (R42).
+sheet.workedExample = null;
+// @ts-expect-error A task is no worked example: it has items and no demo.
+sheet.workedExample = posts;
 // @ts-expect-error The grid's step is grid_step in the format, not step.
 sheet.task = { ...posts, canvas: { kind: "handwriting_sheet", step: 40 } };
 // @ts-expect-error The height of a digit is the manifest's, not the task's.

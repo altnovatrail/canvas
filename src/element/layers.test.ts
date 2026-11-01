@@ -5,14 +5,14 @@ import { shortLines } from "../core/pages.fixture.js";
 import type { View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
 import { workForCheck } from "../core/submission.js";
-import { sheetTask } from "../core/tasks.fixture.js";
+import { sheetTask, workedExample } from "../core/tasks.fixture.js";
 import { NovatrailCanvas } from "./index.js";
 import { at, level, screenshot, sheetWork } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The sheet's layers in Chromium (R23): the stack in the order of concepts 8 spec, one view for
 // every layer at any width and scroll, the cap of k, the task's grid, the theme, and the task as a
-// property.
+// property. A worked example's canvas takes no pointer (R42).
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -106,6 +106,27 @@ test("the sheet is a stack of layers in the order of concepts 8 spec, and of the
   for (const box of [canvas, stage, sheetBox, viewport, ...buttons]) {
     expect(getComputedStyle(box).pointerEvents).toBe("none");
   }
+});
+
+test("a worked example's canvas alone takes no pointer, the stage keeps the menu and the selection off the sheet, and out of it the consumer's none reaches the canvas again", async () => {
+  const { element, canvas, stage } = await sheet(400);
+  const layers = [...stage.children];
+  element.workedExample = workedExample();
+  expect([...stage.children]).toEqual(layers);
+  expect(getComputedStyle(canvas).pointerEvents).toBe("none");
+  expect(getComputedStyle(stage).pointerEvents).toBe("auto");
+  // A long press or a right click opens no menu over the sheet, on the stage now as on the canvas.
+  for (const target of [stage, canvas]) {
+    const menu = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+    target.dispatchEvent(menu);
+    expect(menu.defaultPrevented).toBe(true);
+  }
+  expect(getComputedStyle(stage).userSelect).toBe("none");
+  // The class goes with the example, and the canvas inherits again: it set no pointer-events.
+  element.workedExample = undefined;
+  expect(getComputedStyle(canvas).pointerEvents).toBe("auto");
+  element.style.pointerEvents = "none";
+  expect(getComputedStyle(canvas).pointerEvents).toBe("none");
 });
 
 test("every layer shows the sheet by one view, whatever the width and the scroll, and the sheet is at most 1000 CSS pixels wide, in the middle", async () => {

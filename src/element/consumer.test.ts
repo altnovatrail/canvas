@@ -12,13 +12,14 @@ import {
 } from "./index.js";
 
 // The trial consumer (R27, R28, R32, R38, R39, R41, R42; RUN.md, T15, T41, T44, T49, T53, T55,
-// T57): a page that takes the element as app is to take it. It gives the task and the module's
+// T57, T59): a page that takes the element as app is to take it. It gives the task and the module's
 // manifest, of spec's types as app holds them, the media and the language, keeps the history of
 // writing as historychange tells it and gives it back, hears the learner's choice of tool, reads
 // which answer slots are filled, takes the work for checking at Check, and gives the tutor's marks
 // back with their submission's context, then opens the sheet again in a new element. On a workbook
 // it writes in the boxes and beside them, reads which are filled, takes the crop of each filled
-// box, and gives a mark on a box back. It goes through the package's entry points alone, never the
+// box, and gives a mark on a box back. A lesson's worked example it gives to a new element, where
+// the learner writes nothing. It goes through the package's entry points alone, never the
 // probe the other tests read. It writes as a script does: pointer events on the canvas in the
 // element's open shadow root, at the points the canvas's rectangle gives. The learner's erasing,
 // undo and clearing go through the sheet's own buttons, and the workbook's boxes are found the same
@@ -76,6 +77,28 @@ const MODULE: open.Manifest = {
 };
 
 const PATH = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="60"><rect width="200" height="60" fill="#eee"/></svg>`;
+
+/**
+ * The open view of a lesson's worked example, as app is to have it from api, of spec's type (R73
+ * spec): a statement with a picture, a sheet ruled in lines, and the author's demo — a paragraph, a
+ * picture on an area of the sheet and a paragraph (R58 spec).
+ */
+const EXAMPLE: open.WorkedExample = {
+  statement: [
+    { text: "How many posts stand along a path 12 m long, one every 4 m?" },
+    { picture: "pictures/path.png", alt: "A path with posts along it", width: 200, height: 60 },
+  ],
+  canvas: { kind: "handwriting_sheet", grid: "lines" },
+  demo: [
+    { text: "Draw the path, and mark a post every 4 m." },
+    {
+      picture: "pictures/path.png",
+      alt: "The path cut into 3 gaps of 4 m, with a post at every mark.",
+      area: { left: 100, top: 100, width: 800, height: 240 },
+    },
+    { text: "12 ÷ 4 = 3 gaps, and one post more than gaps: 4 posts." },
+  ],
+};
 
 /**
  * The open view of a workbook's task: two lines of one box, and one of two, «47 ÷ 6 = [ ] r [ ]»
@@ -393,6 +416,48 @@ test("a history without the marked strokes takes the marks off, and the next tas
     .element(page.elementLocator(next).getByRole("button", { name: "Отменить", disabled: true }))
     .toBeVisible();
   await expect.element(buttons(next).pen).toBeChecked();
+});
+
+test("app's path through a lesson: after a task, its worked example on a new element, named so, with Up and Down alone, on which the learner writes nothing", async () => {
+  const { sheet, store } = await app();
+  write(sheet, 100, 100, 300);
+  expect(store).toHaveLength(1);
+  // The lesson's next segment, its worked example: a new element in place of the task's (R20, R42).
+  const example = document.createElement("novatrail-canvas");
+  example.style.width = "500px";
+  example.style.height = "400px";
+  example.lang = "ru";
+  example.manifest = MODULE;
+  example.media = async () => new Blob([PATH], { type: "image/svg+xml" });
+  example.workedExample = EXAMPLE;
+  const told: unknown[] = [];
+  example.addEventListener("historychange", ({ detail }) => told.push(detail));
+  made.push(example);
+  sheet.replaceWith(example);
+  await settle();
+  const within = page.elementLocator(example);
+  await expect.element(within.getByRole("toolbar", { name: "Пример" })).toBeVisible();
+  expect(
+    within
+      .getByRole("button")
+      .elements()
+      .map((each) => each.textContent),
+  ).toEqual(["Выше", "Ниже"]);
+  await expect.element(within.getByText(/How many posts stand along a path 12 m/)).toBeVisible();
+  await expect
+    .element(within.getByRole("img", { name: "A path with posts along it" }))
+    .toBeVisible();
+  // The learner writes nothing on it, and app has nothing to keep, to read or to check.
+  write(example, 100, 100, 300);
+  expect(example.history).toEqual([]);
+  expect(told).toEqual([]);
+  expect(example.filled).toBeNull();
+  expect(await example.exportWork()).toBeNull();
+  // The segment after it is a new element too: a task is a TypeError on the example's.
+  expect(() => {
+    example.task = TASK;
+  }).toThrow(TypeError);
+  expect(example.workedExample).toBe(EXAMPLE);
 });
 
 test("the height of digits is the manifest's at the moment of Check: another manifest between two checks gives another, and none gives 32", async () => {

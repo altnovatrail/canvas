@@ -19,12 +19,21 @@
 // R35, R36). Each stroke is in one box or in none, by a rule of whole numbers, and `filled` tells
 // which boxes hold one: a filled box's frame is thicker, and its name says so (T48; R37). A
 // workbook's work for checking is the crop of each filled box, with the table of the boxes' strokes
-// for its context (T49; R38).
+// for its context (T49; R38). A lesson's worked example it shows on a sheet the learner does not
+// write on: its statement above the sheet, its grid, and a row without the tools of writing, while
+// a finger or a pen scrolls the sheet as the browser scrolls the statement (T59; R42).
 
 import type { Vec2 } from "perfect-freehand";
 import { type Cell, cellOf, cellsOf, type Filled, filledOf, sheetFilledOf } from "../core/boxes.js";
 import { Clock } from "../core/clock.js";
 import { ERASER_BUTTON, Eraser } from "../core/eraser.js";
+import {
+  type CheckedExample,
+  exampleOf,
+  exampleTemplate,
+  sameExample,
+  type WorkedExample,
+} from "../core/example.js";
 import { sameItems } from "../core/fields.js";
 import { type Box, boxOf } from "../core/geometry.js";
 import { gridPath } from "../core/grid.js";
@@ -60,7 +69,6 @@ import {
   NO_TASK,
   sameLayer,
   sameStatement,
-  sameTools,
   type Task,
   type Template,
   type Tool,
@@ -74,7 +82,7 @@ import { labelsFor } from "./labels.js";
 import { attachProbe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
 import { type Media, Statement } from "./statement.js";
-import { Tools } from "./tools.js";
+import { type RowKind, Tools } from "./tools.js";
 
 export type { Filled, Filling } from "../core/boxes.js";
 export type { Crop, Frame } from "../core/crop.js";
@@ -192,9 +200,11 @@ const SVG = "http://www.w3.org/2000/svg";
 // (R29), as Up and Down of the row do with a single pointer, a pair the row wraps together (R33).
 // The canvas and the buttons take pointer events only as the element does: a consumer's
 // pointer-events: none on the element stops the writing and the buttons' pointer, though not
-// their keys (R20, R28). The theme is the consumer's, by custom properties that the shadow tree
-// inherits; with forced colours the system's colours stand in for them. The element is horizontal
-// whatever writing mode the page is in: a sheet has no other (R36).
+// their keys (R20, R28). A worked example's canvas takes no pointer at all: a finger or a pen on
+// its sheet scrolls, and zooms, as the browser does on the statement, and a long press or a right
+// click opens no menu over the sheet all the same (R42). The theme is the consumer's, by custom
+// properties that the shadow tree inherits; with forced colours the system's colours stand in for
+// them. The element is horizontal whatever writing mode the page is in: a sheet has no other (R36).
 //
 // A workbook's lines are printed in the ink's colour and the consumer's font, and nothing else the
 // element inherits — spacing, weight, transforms, the direction — moves them: `all: initial` takes
@@ -240,7 +250,10 @@ const STYLE = `
   aspect-ratio: ${SHEET.width} / ${SHEET.height};
   background: var(--novatrail-canvas-paper, ${PAPER});
 }
-.stage { position: sticky; top: 0; max-height: 100%; overflow: clip; }
+.stage {
+  position: sticky; top: 0; max-height: 100%; overflow: clip;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+}
 .stage > * { position: absolute; inset: 0; width: 100%; height: 100%; }
 .stage > :not(canvas) { pointer-events: none; }
 .grid {
@@ -261,8 +274,9 @@ const STYLE = `
 .print rect.filled { stroke-width: 3px; }
 canvas {
   display: block; color: var(--novatrail-canvas-ink, ${INK}); transition: color 1ms step-end;
-  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  touch-action: none;
 }
+.sheet.example canvas { pointer-events: none; touch-action: auto; }
 .marks rect {
   fill: none; stroke: var(--novatrail-canvas-mark, ${MARK}); stroke-width: 2px;
   vector-effect: non-scaling-stroke;
@@ -453,6 +467,9 @@ export class NovatrailCanvas extends HTMLElement {
   #unwatchPen: (() => void) | undefined;
   #tool: Tool = "pen";
   #task: Task | undefined;
+  /** A lesson's worked example as the consumer gave it, and as the element checked it (R42). */
+  #workedExample: WorkedExample | undefined;
+  #example: CheckedExample | undefined;
   #shownTemplate: Template = NO_TASK;
   /**
    * A workbook's page, its boxes in the task's order and their frames, and the box each stroke is
@@ -562,8 +579,10 @@ export class NovatrailCanvas extends HTMLElement {
       this.#eraser.end(event.pointerId);
       this.#lifted(event.pointerId);
     });
-    // A long press of a pen or a finger, or a right click, opens no menu over the sheet.
-    this.#canvas.addEventListener("contextmenu", (event) => event.preventDefault());
+    // A long press of a pen or a finger, or a right click, opens no menu over the sheet: the
+    // canvas's event comes up to the stage, and so does the stage's own, where a worked example's
+    // sheet takes the pointer instead (R42).
+    this.#stage.addEventListener("contextmenu", (event) => event.preventDefault());
     // A new colour of the ink, from the consumer's theme or the page's colour scheme, ends a
     // transition of the canvas's colour a millisecond long: the ink is drawn anew in it.
     this.#canvas.addEventListener("transitionend", () => this.#request());
@@ -582,6 +601,7 @@ export class NovatrailCanvas extends HTMLElement {
 
     this.#adopt("tool");
     this.#adopt("task");
+    this.#adopt("workedExample");
     this.#adopt("manifest");
     this.#adopt("media");
     // The history before the marks: they hold on to its strokes.
@@ -598,7 +618,7 @@ export class NovatrailCanvas extends HTMLElement {
    * theirs with a `toolchange`, and the consumer may set it too, which says nothing (R28). A press
    * under way goes on as it began. A pen's eraser erases whatever the tool. A task without the
    * eraser has none of it: "eraser" is a TypeError then, and a new task without it puts the pen
-   * back.
+   * back. A worked example has the pen alone, which writes nothing on its sheet (R42).
    */
   get tool(): Tool {
     return this.#tool;
@@ -609,7 +629,8 @@ export class NovatrailCanvas extends HTMLElement {
       throw new TypeError(`the tool of <${TAG}> is "pen" or "eraser", not ${JSON.stringify(tool)}`);
     }
     if (!this.#shownTemplate.tools.includes(tool)) {
-      throw new TypeError(`the task of <${TAG}> allows no ${tool}`);
+      const shown = this.#example === undefined ? "task" : "worked example";
+      throw new TypeError(`the ${shown} of <${TAG}> allows no ${tool}`);
     }
     this.#tool = tool;
     this.#refresh();
@@ -626,7 +647,8 @@ export class NovatrailCanvas extends HTMLElement {
    * a zone; the sheet passes over a choice and an item's text, which app shows. Another task of the
    * same layer, tools and statement changes nothing, and any other changes the template alone, of
    * either kind: the work stays, for the next task is a new element (R20). A task without the
-   * eraser puts the pen back, with no event.
+   * eraser puts the pen back, with no event. While a worked example is shown a task is a TypeError,
+   * and `undefined` changes nothing: the element shows one or the other (R42).
    */
   get task(): Task | undefined {
     return this.#task;
@@ -634,27 +656,55 @@ export class NovatrailCanvas extends HTMLElement {
 
   set task(task: Task | undefined) {
     if (task === this.#task) return;
+    if (this.#example !== undefined) {
+      throw new TypeError(
+        `<${TAG}> shows a worked example: a task is shown by a new element, or once the example is undefined`,
+      );
+    }
     const checked = task === undefined ? undefined : taskOf(task);
     const template = templateOf(checked);
     this.#task = task;
     this.#whole = wholeSheet(checked);
-    // The layer and the statement apart: a new grid or new lines leave the statement and its
-    // pictures as they are, and the other way round.
-    const shown = this.#shownTemplate;
-    this.#shownTemplate = template;
-    if (!sameLayer(template, shown)) {
-      this.#lay(template);
-      // A page of other boxes, or of the other kind, puts the marks back or takes them off (R39).
-      this.#replace();
-    } else if (this.#laid === undefined) {
-      // The same grid may ask another answer: the sheet's strokes, or choices that app marks (R42).
-      this.#fill();
-    }
-    if (!sameStatement(template, shown)) this.#statement.show(template.statement);
-    // The row is named by the canvas kind.
-    if (isWorkbook(template) !== isWorkbook(shown) || !sameTools(template, shown)) {
-      if (!template.tools.includes(this.#tool)) this.#tool = "pen";
-      this.#refresh();
+    this.#present(template);
+  }
+
+  /**
+   * A lesson's worked example (R42; R58 spec): the open view of a segment `worked_example` of the
+   * module format 0.1 — its statement, which the element shows above the sheet as a task's (R23),
+   * the grid of its sheet, and the parts of the author's demo. The type is spec's (R73 spec; R41).
+   * The element shows a task or a worked example, not both: an example while a task is given, while
+   * the sheet has a history of writing, or while a stroke or an erasing is under way, is a
+   * TypeError, and so is one the schema refuses, at its field. `undefined` takes the example off,
+   * and the sheet is one with no task again. An example equal to the one shown changes nothing, and
+   * another replaces it, its grid and its statement apart, as a task does.
+   *
+   * On a worked example's sheet the learner does not write: the canvas takes no input, and a finger
+   * or a pen there scrolls the sheet as the browser scrolls the statement. Its row has no tools of
+   * writing and is named a worked example's. `task`, `history` other than the empty one and
+   * `marks` are TypeErrors, and so is an eraser: the tool is the pen alone, and `exportWork()` and
+   * `filled` give null. The next segment of a lesson is a new element (R20).
+   */
+  get workedExample(): WorkedExample | undefined {
+    return this.#workedExample;
+  }
+
+  set workedExample(example: WorkedExample | undefined) {
+    if (example === this.#workedExample) return;
+    if (example !== undefined) this.#mayShowExample();
+    const checked = example === undefined ? undefined : exampleOf(example);
+    const shown = this.#example;
+    this.#workedExample = example;
+    this.#example = checked;
+    if (checked === undefined) {
+      this.#sheet.classList.remove("example");
+      this.#present(NO_TASK);
+    } else if (shown === undefined || !sameExample(checked, shown)) {
+      // No mark stands on its sheet: its history is empty, and every submission has strokes. What
+      // the hands hold — a palm, two fingers scrolling — goes: the sheet takes no input now.
+      this.#hands.reset();
+      this.#latch = undefined;
+      this.#sheet.classList.add("example");
+      this.#present(exampleTemplate(checked));
     }
   }
 
@@ -718,7 +768,8 @@ export class NovatrailCanvas extends HTMLElement {
    * event, the next stroke takes the next ID, and the tutor's marks go back on the strokes, or off,
    * if the history has not their strokes. A history that is where the sheet's began loses what came
    * after, and says so in the console. The task and the history are each the consumer's to give, in
-   * either order.
+   * either order. A worked example's sheet has the empty history alone: any other is a TypeError
+   * (R42).
    */
   get history(): readonly HistoryEvent[] {
     return this.#work.history;
@@ -745,6 +796,10 @@ export class NovatrailCanvas extends HTMLElement {
         history: before,
       };
       return;
+    }
+    // A worked example's sheet is no one's to write on (R42).
+    if (this.#example !== undefined) {
+      throw new TypeError(`<${TAG}> shows a worked example, whose sheet has no history of writing`);
     }
     // undefined, and undefined alone, is the empty history: null is a value, and a wrong one.
     const work = Work.restore(history === undefined ? [] : history, this.#clock);
@@ -775,9 +830,9 @@ export class NovatrailCanvas extends HTMLElement {
    * yet lifted. A workbook's boxes, each whether it holds one (R34, R37): a stroke is in one box
    * or in none, by the rule of R37, and what is in none is the draft. A sheet's one answer anywhere
    * on it or the whole sheet, whether the sheet holds one (R42). `null` for a sheet of choices,
-   * whose options app marks, and for a sheet with no task. Frozen, and the same array until a slot
-   * changes. An action on the sheet changes it before its `historychange`, and a task or a history
-   * given changes it with no event.
+   * whose options app marks, for a sheet with no task, and for a worked example. Frozen, and the
+   * same array until a slot changes. An action on the sheet changes it before its
+   * `historychange`, and a task or a history given changes it with no event.
    */
   get filled(): Filled | null {
     return this.#filled;
@@ -797,13 +852,16 @@ export class NovatrailCanvas extends HTMLElement {
    * given before the task and the history they hold on to, and marks that are not marks. A new
    * history, and a new page, put the marks back on their strokes, or take them off. `undefined`
    * takes the marks off. Every value is checked as it comes, and marks equal to those shown write
-   * nothing.
+   * nothing. A worked example's sheet has nothing to mark: marks are a TypeError there (R42).
    */
   get marks(): Marks | undefined {
     return this.#marks;
   }
 
   set marks(marks: Marks | undefined) {
+    if (marks !== undefined && this.#example !== undefined) {
+      throw new TypeError(`<${TAG}> shows a worked example, whose sheet has nothing to mark`);
+    }
     const given = marks === undefined ? undefined : marksOf(marks);
     const shown = given === undefined ? [] : this.#places(given);
     this.#marks = marks;
@@ -879,9 +937,11 @@ export class NovatrailCanvas extends HTMLElement {
    * places to be checked (R09 spec), and gives the context back with the tutor's marks. It is the
    * sheet as it is when this is called: a stroke under way is not on it yet, while the strokes
    * under an eraser not yet lifted still are, as `filled` has them. A sheet without strokes, and a
-   * workbook with no box filled, have no work to check, and the promise gives null (H3).
+   * workbook with no box filled, have no work to check, and the promise gives null (H3); so has a
+   * worked example, whose sheet the learner does not write on (R42).
    */
   async exportWork(): Promise<ExportedWork | null> {
+    if (this.#example !== undefined) return null;
     const { digit } = this.#settings;
     if (isWorkbook(this.#shownTemplate)) {
       const work = cellsForCheck(this.#work.strokes, this.#cells, digit);
@@ -927,7 +987,9 @@ export class NovatrailCanvas extends HTMLElement {
    * take leaves the property as the element starts it, with a warning, rather than fail the
    * element's upgrade, which would leave it dead.
    */
-  #adopt(name: "tool" | "task" | "manifest" | "media" | "history" | "marks"): void {
+  #adopt(
+    name: "tool" | "task" | "workedExample" | "manifest" | "media" | "history" | "marks",
+  ): void {
     if (!Object.hasOwn(this, name)) return;
     const value: unknown = Reflect.get(this, name);
     Reflect.deleteProperty(this, name);
@@ -936,6 +998,51 @@ export class NovatrailCanvas extends HTMLElement {
     } catch (error) {
       if (!(error instanceof TypeError)) throw error;
       console.warn(`${error.message}: <${TAG}> goes on as it starts`);
+    }
+  }
+
+  /**
+   * A task's template, or a worked example's, in place of the last (R23, R42). The layer and the
+   * statement apart: a new grid or new lines leave the statement and its pictures as they are, and
+   * the other way round. A tool not allowed puts the pen back, with no event, and the row shows
+   * what it is of, by its name, and the tools allowed: only what has changed is written.
+   */
+  #present(template: Template): void {
+    const shown = this.#shownTemplate;
+    this.#shownTemplate = template;
+    if (!sameLayer(template, shown)) {
+      this.#lay(template);
+      // A page of other boxes, or of the other kind, puts the marks back or takes them off (R39).
+      this.#replace();
+    } else if (this.#laid === undefined) {
+      // The same grid may ask another answer: the sheet's strokes, or choices that app marks (R42).
+      this.#fill();
+    }
+    if (!sameStatement(template, shown)) this.#statement.show(template.statement);
+    if (!template.tools.includes(this.#tool)) this.#tool = "pen";
+    this.#refresh();
+  }
+
+  /**
+   * Whether the element may show a worked example now (R42): not while it shows a task, not on a
+   * sheet the learner has written on, and not while a stroke or an erasing is under way, which
+   * would land on a sheet that takes none. A TypeError says which.
+   */
+  #mayShowExample(): void {
+    if (this.#task !== undefined) {
+      throw new TypeError(
+        `<${TAG}> shows a task: a worked example is shown by a new element, or once the task is undefined`,
+      );
+    }
+    if (this.#work.history.length > 0) {
+      throw new TypeError(
+        `<${TAG}> has a history of writing: a worked example is shown by a new element`,
+      );
+    }
+    if (this.#writer() !== undefined) {
+      throw new TypeError(
+        `<${TAG}> is being written on: a worked example comes once the stroke or the erasing ends`,
+      );
     }
   }
 
@@ -1085,6 +1192,9 @@ export class NovatrailCanvas extends HTMLElement {
    * recorder takes the primary button alone (R28).
    */
   #down(event: PointerEvent): void {
+    // A worked example's sheet takes no input (R42): the canvas takes no pointer then, and an event
+    // that a script sends it does nothing either, nor puts the page in pen mode.
+    if (this.#example !== undefined) return;
     // A pointer that comes down again lost its way up: what it was writing or erasing ends where it
     // was, as on a lost capture.
     this.#recorder.end(event.pointerId);
@@ -1466,13 +1576,19 @@ export class NovatrailCanvas extends HTMLElement {
       this.#finger = PEN_MODE.on && navigator.maxTouchPoints > 0;
     }
     this.#tools.show({
-      workbook: isWorkbook(this.#shownTemplate),
+      kind: this.#rowKind(),
       tools: this.#shownTemplate.tools,
       tool: this.#tool,
       undoable: this.#work.undoable,
       clearable: this.#work.strokes.length > 0,
       finger: this.#finger,
     });
+  }
+
+  /** What the row of buttons is of, and is named by: a worked example, or the canvas kind (R42). */
+  #rowKind(): RowKind {
+    if (this.#example !== undefined) return "example";
+    return isWorkbook(this.#shownTemplate) ? "workbook" : "sheet";
   }
 
   #request(): void {

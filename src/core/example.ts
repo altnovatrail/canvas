@@ -3,7 +3,8 @@
 // shown on, and the demo's parts in order: paragraphs, pictures beside the sheet and pictures on
 // areas of it. The element checks it as the schema does, every object closed (R32), and by the
 // format's rule lesson.areas too: an area lies on the sheet. What the check gives is the element's
-// own shape of the same example, the kinds of its parts apart, which the rest of the element reads.
+// own shape of the same example, the kinds of its parts apart, which the rest of the element reads,
+// and the sheet makes a template of it as of a task: its grid, its statement and the pen alone.
 
 import type * as open from "@altnovatrail/spec/formatv0/open";
 import { closed, listOf, sameItems, shown } from "./fields.js";
@@ -17,9 +18,11 @@ import {
   partOf,
   pictureOf,
   SHEET_KIND,
+  type SheetTemplate,
   type StatementPart,
   samePart,
   type TextPart,
+  type Tool,
   textOrPictureOf,
   type Zone,
   zoneOf,
@@ -62,6 +65,9 @@ export interface CheckedExample {
 /** The path the element names a worked example's fields by: its property's name. */
 const ROOT = "workedExample";
 
+/** A worked example's tools: the pen alone, which writes nothing on its sheet (R42). */
+const PEN_ALONE: readonly Tool[] = Object.freeze(["pen"]);
+
 /**
  * A worked example's open view, checked as the format's schema and its rule lesson.areas check it,
  * and a copy of it with the fields the schema names: the element reads each field once. What they
@@ -74,6 +80,14 @@ export function exampleOf(value: unknown): CheckedExample {
   const canvas = exampleCanvasOf(example.canvas, `${ROOT}.canvas`);
   const demo = listOf(example.demo, `${ROOT}.demo`, 1, "parts of the demo", demoPartOf);
   return { statement, canvas, demo };
+}
+
+/**
+ * What the sheet makes of a worked example, as of a task (R42): the grid on the sheet, the
+ * statement above it, and the pen alone, for the learner does not write on it.
+ */
+export function exampleTemplate(example: CheckedExample): SheetTemplate {
+  return { grid: gridFrom(example.canvas), statement: example.statement, tools: PEN_ALONE };
 }
 
 /** Whether a part of the demo stands on the sheet, in an area of it. */
