@@ -209,7 +209,8 @@ place.append(sheet);
 
 function count(): void {
   const told = `historychange × ${changes} · ${kept.length} events kept`;
-  // A workbook's boxes: how many are filled, as the element tells (R37).
+  // The answer slots the strokes fill, as the element tells: a workbook's boxes, or a sheet's answer
+  // anywhere or the whole sheet; nothing on a sheet of choices (R37, R42).
   const boxes = sheet.filled?.flat() ?? [];
   const filled =
     sheet.filled === null ? "" : ` · filled ${boxes.filter(Boolean).length} of ${boxes.length}`;

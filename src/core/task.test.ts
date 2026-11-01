@@ -17,6 +17,7 @@ import {
   type Template,
   taskOf,
   templateOf,
+  wholeSheet,
 } from "./task.js";
 import { pathOf, refusal, sheetTask, under } from "./tasks.fixture.js";
 
@@ -881,6 +882,24 @@ test("the names of the provisional type are no fields of the format's: a TypeErr
     [{ ...sheet, lang: "en" }, /^task\.lang: no field of a task's open view$/],
   ];
   for (const [value, message] of wrong) expect(() => taskOf(value)).toThrow(message);
+});
+
+test("a task's one answer anywhere on the sheet or the whole sheet is the sheet's to fill; choices, zones and a workbook's lines are not (R42)", () => {
+  const whole = EVERY.filter(([, task]) => wholeSheet(taskOf(task))).map(([name]) => name);
+  expect(whole).toEqual([
+    "anchor-among-supporting-skills",
+    "divisible-by-3-and-4",
+    "essay-about-yourself",
+    "essay",
+    "heads-and-legs",
+    "heads-and-legs-template",
+    "ladder",
+    "number-thought-of-template",
+    "answer-anywhere",
+    "essay-rubric-closed",
+    "hints-closed",
+  ]);
+  expect(wholeSheet(undefined)).toBe(false);
 });
 
 test("what the sheet shows of a task: its grid, its statement and its tools; a choice and an item's text pass", () => {

@@ -32,10 +32,24 @@ export interface BoxRule {
 export const BOX_RULE: BoxRule = Object.freeze({ margin: 120, limit: 1600 });
 
 /**
- * Which boxes of a workbook are filled (R34, R37): per item, per box, in the task's order, whether
- * the box holds a stroke.
+ * Which answer slots the learner's strokes fill, per item, per slot, in the task's order: a
+ * workbook's boxes, each whether it holds a stroke (R34, R37), or a sheet's one answer anywhere on
+ * it or the whole sheet, whether the sheet holds one (R42).
  */
 export type Filled = readonly (readonly boolean[])[];
+
+/** A sheet's one answer slot, filled and not: the same frozen arrays for every sheet (R42). */
+const STROKED: Filled = Object.freeze([Object.freeze([true])]);
+const BLANK: Filled = Object.freeze([Object.freeze([false])]);
+
+/**
+ * What a sheet's one answer slot — anywhere on it, or the whole sheet — is filled with (R42): a
+ * stroke on the sheet, or none. The same array each time, as a workbook's filling stays the same
+ * until a box changes.
+ */
+export function sheetFilledOf(stroked: boolean): Filled {
+  return stroked ? STROKED : BLANK;
+}
 
 /** The boxes of a page in the task's order: by item, then by slot. */
 export function cellsOf(page: Page): readonly Cell[] {

@@ -22,7 +22,7 @@
 // for its context (T49; R38).
 
 import type { Vec2 } from "perfect-freehand";
-import { type Cell, cellOf, cellsOf, type Filled, filledOf } from "../core/boxes.js";
+import { type Cell, cellOf, cellsOf, type Filled, filledOf, sheetFilledOf } from "../core/boxes.js";
 import { Clock } from "../core/clock.js";
 import { ERASER_BUTTON, Eraser } from "../core/eraser.js";
 import { type Box, boxOf } from "../core/geometry.js";
@@ -65,6 +65,7 @@ import {
   type Tool,
   taskOf,
   templateOf,
+  wholeSheet,
 } from "../core/task.js";
 import { nextIdOf, resumeOf, Work } from "../core/work.js";
 import { write } from "./attributes.js";
@@ -459,8 +460,10 @@ export class NovatrailCanvas extends HTMLElement {
   #cells: readonly Cell[] = [];
   #rects: readonly SVGRectElement[] = [];
   #taken = new WeakMap<Stroke, number>();
-  /** Which boxes are filled, the same array until one changes; null on a sheet (R37). */
+  /** Which answer slots are filled, the same array until one changes, or null (R37, R42). */
   #filled: Filled | null = null;
+  /** Whether the task's one answer is anywhere on the sheet or the whole sheet (R42). */
+  #whole = false;
   /** The module's manifest as the consumer gave it, and what the element makes of it (R32). */
   #manifest: Manifest | undefined;
   #settings: Settings = NO_MANIFEST;
@@ -629,8 +632,10 @@ export class NovatrailCanvas extends HTMLElement {
 
   set task(task: Task | undefined) {
     if (task === this.#task) return;
-    const template = templateOf(task === undefined ? undefined : taskOf(task));
+    const checked = task === undefined ? undefined : taskOf(task);
+    const template = templateOf(checked);
     this.#task = task;
+    this.#whole = wholeSheet(checked);
     // The layer and the statement apart: a new grid or new lines leave the statement and its
     // pictures as they are, and the other way round.
     const shown = this.#shownTemplate;
@@ -639,6 +644,9 @@ export class NovatrailCanvas extends HTMLElement {
       this.#lay(template);
       // A page of other boxes, or of the other kind, puts the marks back or takes them off (R39).
       this.#replace();
+    } else if (this.#laid === undefined) {
+      // The same grid may ask another answer: the sheet's strokes, or choices that app marks (R42).
+      this.#fill();
     }
     if (!sameStatement(template, shown)) this.#statement.show(template.statement);
     // The row is named by the canvas kind.
@@ -760,11 +768,13 @@ export class NovatrailCanvas extends HTMLElement {
   }
 
   /**
-   * Which boxes of a workbook are filled (R34, R37): per item, per box, in the task's order, whether
-   * the box holds one of the strokes `exportWork()` would take — not the stroke under way, but
-   * those under an eraser not yet lifted. A stroke is in one box or in none, by the rule of R37:
-   * what is in none is the draft. Frozen, and the same array until a box changes; `null` on a
-   * sheet. An action on the sheet changes it before its `historychange`, and a task or a history
+   * Which answer slots the learner's strokes fill, per item, per slot, in the task's order, by the
+   * strokes `exportWork()` would take — not the stroke under way, but those under an eraser not
+   * yet lifted. A workbook's boxes, each whether it holds one (R34, R37): a stroke is in one box
+   * or in none, by the rule of R37, and what is in none is the draft. A sheet's one answer anywhere
+   * on it or the whole sheet, whether the sheet holds one (R42). `null` for a sheet of choices,
+   * whose options app marks, and for a sheet with no task. Frozen, and the same array until a slot
+   * changes. An action on the sheet changes it before its `historychange`, and a task or a history
    * given changes it with no event.
    */
   get filled(): Filled | null {
@@ -939,6 +949,9 @@ export class NovatrailCanvas extends HTMLElement {
     write(this.#template, "aria-hidden", workbook ? null : "true");
     write(this.#template, "role", workbook ? "none" : null);
     this.#lines.replaceChildren(...(workbook ? template.page.items.map(itemOf) : []));
+    // A canvas of the other kind fills its answer slots anew: a workbook's are its own arrays, and a
+    // sheet's those all sheets share (R42).
+    if (workbook !== (this.#laid !== undefined)) this.#filled = null;
     this.#laid = workbook ? template.page : undefined;
     this.#cells = workbook ? cellsOf(template.page) : [];
     // The frames in the order of the lines, the task's: item by item, slot by slot.
@@ -949,14 +962,20 @@ export class NovatrailCanvas extends HTMLElement {
   }
 
   /**
-   * Which boxes the strokes on the sheet fill, by the rule of R37, each stroke's box worked out
-   * once: a new array, and the frames marked anew, only if a box changed — and then it says so.
+   * Which answer slots the strokes fill, and whether that changed. A workbook's boxes by the rule
+   * of R37, each stroke's box worked out once: a new array, and the frames marked anew, only if a
+   * box changed. A sheet's one answer anywhere on it or the whole sheet by any stroke on it, or
+   * nothing for a sheet of choices or with no task (R42).
    */
   #fill(): boolean {
     const page = this.#laid;
     if (page === undefined) {
-      this.#filled = null;
-      return false;
+      // A sheet: its one answer anywhere on it or the whole sheet is filled by any stroke the work
+      // for checking would take; a sheet of choices, whose options app marks, has nothing to say.
+      const filled = this.#whole ? sheetFilledOf(this.#work.strokes.length > 0) : null;
+      const changed = filled !== this.#filled;
+      this.#filled = filled;
+      return changed;
     }
     const taken = this.#work.strokes.map((stroke) => {
       let found = this.#taken.get(stroke);

@@ -1,5 +1,5 @@
 // Type-checked by ci-lint and never built: the element's interface as a consumer's types see it
-// (R07, R27, R28, R32, R37, R38, R39). What a consumer may do type-checks; each line under a
+// (R07, R27, R28, R32, R37, R38, R39, R42). What a consumer may do type-checks; each line under a
 // directive must be an error, and were it not, the directive would go unused, and that would be the
 // error instead.
 
@@ -76,7 +76,10 @@ sheet.marks = {
   submission: boxes,
   marks: [{ kind: "frame", at: { cell: { item: 1, slot: 2 } }, name: "This box" }],
 };
-/** Which boxes of a workbook are filled, per item, per box; null on a sheet (R37). */
+/**
+ * Which answer slots the strokes fill, per item, per slot: a workbook's boxes, or a sheet's one answer
+ * anywhere or the whole sheet; null for a sheet of choices or with no task (R37, R42).
+ */
 export const filled: Filled | null = sheet.filled;
 export const first: boolean | undefined = sheet.filled?.[0]?.[0];
 sheet.history = undefined;
