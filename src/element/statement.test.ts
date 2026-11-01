@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, type MockInstance, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import type { View } from "../core/screen.js";
+import type { SheetTask } from "../core/task.js";
 import { moduleManifest, sheetTask } from "../core/tasks.fixture.js";
 import { type Media, NovatrailCanvas, type Task } from "./index.js";
 import { at, level } from "./pointer.fixture.js";
@@ -69,7 +70,7 @@ function file(colour = "#c33"): Blob {
 }
 
 /** A task with these pictures, each 120 × 60 CSS pixels, after a line of text. */
-function withPictures(...pictures: [ref: string, alt: string][]): Task {
+function withPictures(...pictures: [ref: string, alt: string][]): SheetTask {
   return sheetTask({
     statement: [
       { text: "Look at the pictures." },

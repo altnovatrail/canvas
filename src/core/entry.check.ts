@@ -9,8 +9,8 @@ import * as core from "./index.js";
 
 export type Given = [
   types.Anchor,
-  types.AnswerSlot,
   types.Box,
+  types.Canvas,
   types.CellPlace,
   types.Crop,
   types.CropNumbers,
@@ -20,25 +20,14 @@ export type Given = [
   types.Group,
   types.HistoryEvent,
   types.InkPoint,
-  types.LinePart,
   types.Manifest,
   types.Mark,
   types.Marks,
-  types.PicturePart,
-  types.SheetCanvas,
-  types.SheetItem,
   types.SheetSubmission,
-  types.SheetTask,
-  types.StatementPart,
   types.Stroke,
   types.Submission,
   types.Task,
-  types.TextPart,
-  types.WorkbookCanvas,
-  types.WorkbookItem,
   types.WorkbookSubmission,
-  types.WorkbookTask,
-  types.Zone,
 ];
 
 /** The fold reads a history as the sheet hands it out, into the strokes it leaves. */
@@ -61,3 +50,5 @@ export const settings = core.settingsOf;
 export const page = core.pageOf;
 // @ts-expect-error Nor the rule of its boxes, which vectors/boxes.json pins (R37).
 export const box = core.cellOf;
+// @ts-expect-error Nor the element's own shape of a task it checked: a task is of spec's type (R41).
+export type Checked = types.SheetTask;

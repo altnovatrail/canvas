@@ -2,11 +2,11 @@
 // TypeScript that runs the same in a browser and in Node, for the tests and the synthetic samples
 // too (R05, R07). Importing it registers no element: the element is the other entry point. It
 // gives the sheet's size, the types of the data the element takes and gives — the strokes and the
-// history of writing, the task, the tutor's marks with the context of their submission, of a sheet
-// or of a workbook — and the fold of a history into the strokes it leaves, so that a consumer reads
-// a history it keeps without the DOM (R27). The rules of the groups, the crop and the snapping
-// stay inside until the eval protocol, which takes them as they are, comes out (epic E3 in spec's
-// RUN.md; R31).
+// history of writing, the task and the manifest, of spec's types (R73 spec), the tutor's marks with
+// the context of their submission, of a sheet or of a workbook — and the fold of a history into the
+// strokes it leaves, so that a consumer reads a history it keeps without the DOM (R27). The rules
+// of the groups, the crop and the snapping stay inside until the eval protocol, which takes them as
+// they are, comes out (epic E3 in spec's RUN.md; R31).
 
 export type { Filling } from "./boxes.js";
 export type { Crop, Frame } from "./crop.js";
@@ -27,18 +27,4 @@ export type {
   WorkbookSubmission,
 } from "./marks.js";
 export { SHEET } from "./sheet.js";
-export type {
-  AnswerSlot,
-  LinePart,
-  PicturePart,
-  SheetCanvas,
-  SheetItem,
-  SheetTask,
-  StatementPart,
-  Task,
-  TextPart,
-  WorkbookCanvas,
-  WorkbookItem,
-  WorkbookTask,
-  Zone,
-} from "./task.js";
+export type { Canvas, Task } from "./task.js";

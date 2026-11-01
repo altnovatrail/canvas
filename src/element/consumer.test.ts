@@ -1,3 +1,4 @@
+import type * as open from "@altnovatrail/spec/formatv0/open";
 import { afterEach, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { type Anchor, type HistoryEvent, SHEET, type Submission } from "../core/index.js";
@@ -10,17 +11,17 @@ import {
   type Tool,
 } from "./index.js";
 
-// The trial consumer (R27, R28, R32, R38, R39; RUN.md, T15, T41, T44, T49, T53): a page that takes
-// the element as app is to take it. It gives the task, the module's manifest, the media and the
-// language, keeps the history of writing as historychange tells it and gives it back, hears the
-// learner's choice of tool, takes the work for checking at Check, and gives the tutor's marks back
-// with their submission's context, then opens the sheet again in a new element. On a workbook it
-// writes in the boxes and beside them, reads which are filled, takes the crop of each filled box,
-// and gives a mark on a box back. It goes through the package's entry points alone, never the
-// probe the other tests read. It writes as a script does: pointer events on the canvas in the
-// element's open shadow root, at the points the canvas's rectangle gives. The learner's erasing,
-// undo and clearing go through the sheet's own buttons, and the workbook's boxes are found the
-// same way, by their roles and their Russian names.
+// The trial consumer (R27, R28, R32, R38, R39, R41; RUN.md, T15, T41, T44, T49, T53, T55): a page
+// that takes the element as app is to take it. It gives the task and the module's manifest, of
+// spec's types as app holds them, the media and the language, keeps the history of writing as
+// historychange tells it and gives it back, hears the learner's choice of tool, takes the work for
+// checking at Check, and gives the tutor's marks back with their submission's context, then opens
+// the sheet again in a new element. On a workbook it writes in the boxes and beside them, reads
+// which are filled, takes the crop of each filled box, and gives a mark on a box back. It goes
+// through the package's entry points alone, never the probe the other tests read. It writes as a
+// script does: pointer events on the canvas in the element's open shadow root, at the points the
+// canvas's rectangle gives. The learner's erasing, undo and clearing go through the sheet's own
+// buttons, and the workbook's boxes are found the same way, by their roles and their Russian names.
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -33,26 +34,34 @@ async function settle(): Promise<void> {
   await frame();
 }
 
+/** What the task's statement gives and asks: app's chips (R57 spec). */
+const CHIPS = {
+  givens: ["The path is 20 m long.", "A post stands every 4 m, from one end to the other."],
+  unknown: "How many posts there are.",
+};
+
 /**
- * The open view of a task, as app is to have it from api, in the names of the module format's
- * draft: a statement with a picture, and the answer anywhere on the sheet.
+ * The open view of a task, as app is to have it from api, of spec's type (R73 spec): a statement
+ * with a picture, what it gives and asks, and the answer anywhere on the sheet. The chips of what it
+ * gives and asks are app's to show, and the element shows nothing of them (R57 spec).
  */
-const TASK: Task = {
+const TASK: open.Task = {
   id: "posts-along-a-path",
   statement: [
     { text: "How many posts stand along a path 20 m long, one every 4 m?" },
     { picture: "pictures/path.png", alt: "A path with posts along it", width: 200, height: 60 },
   ],
+  ...CHIPS,
   canvas: { kind: "handwriting_sheet", grid: "squares", grid_step: 50 },
   items: [{ answer_slots: [{ binding: "anywhere" }] }],
 };
 
 /**
- * The open view of the task's module's manifest, whole, as app has it: the element reads its format
- * version, its height of digits, 24 px, and its explanation language, English, and passes over the
- * rest.
+ * The open view of the task's module's manifest, whole, as app has it, of spec's type: the element
+ * reads its format version, its height of digits, 24 px, and its explanation language, English, and
+ * passes over the rest.
  */
-const MODULE = {
+const MODULE: open.Manifest = {
   module_format_version: "0.1",
   id: "novatrail/olympiad-math",
   version: "0.1.0",
@@ -63,7 +72,7 @@ const MODULE = {
   canvas: { digit_height: 24 },
   authors: [{ name: "The NovaTrail authors" }],
   license: "Apache-2.0",
-} as const;
+};
 
 const PATH = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="60"><rect width="200" height="60" fill="#eee"/></svg>`;
 
@@ -241,6 +250,13 @@ test("app's path: write, erase, undo and clear with the sheet's buttons, keep th
   try {
     // Check on an empty sheet: there is no work, and app asks for a solution first.
     expect(await sheet.exportWork()).toBeNull();
+    // What the statement gives and asks the element takes, and shows nothing of: app shows the
+    // chips (R57 spec).
+    const shown = sheet.shadowRoot?.textContent ?? "";
+    for (const chip of [...CHIPS.givens, CHIPS.unknown]) {
+      expect(shown).not.toContain(chip);
+    }
+    expect(shown).toContain("How many posts stand along a path");
 
     // «A», two lines 40 units apart, and «B» far off: a group is strokes within 50 units (R24).
     write(sheet, 100, 100, 300);

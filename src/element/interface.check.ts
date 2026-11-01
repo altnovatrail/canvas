@@ -3,6 +3,7 @@
 // directive must be an error, and were it not, the directive would go unused, and that would be the
 // error instead.
 
+import type * as open from "@altnovatrail/spec/formatv0/open";
 import type {
   ExportedWork,
   Filled,
@@ -21,8 +22,9 @@ declare const crop: SheetSubmission["crop"];
 declare const done: ExportedWork;
 declare const boxes: WorkbookSubmission;
 declare const manifest: Manifest;
+declare const given: open.Task;
 
-/** A task's open view on a handwriting sheet, in the names of the module format's draft (R32). */
+/** A task's open view on a handwriting sheet, as the module format 0.1 has it (R32). */
 const posts = {
   id: "posts-1",
   statement: [{ text: "How many posts are there?" }],
@@ -58,6 +60,9 @@ sheet.task = {
 };
 sheet.manifest = manifest;
 sheet.manifest = undefined;
+/** app's task, of spec's type, goes in as it is (R73 spec; R41), the chips of what it gives too. */
+sheet.task = given;
+sheet.task = { ...posts, givens: ["A post every 4 m."], unknown: "How many posts there are." };
 
 export const work: Promise<ExportedWork | null> = sheet.exportWork();
 /** The work's key tells its kind: the crop of a sheet, or the crops of a workbook's boxes (R38). */
@@ -107,8 +112,8 @@ sheet.manifest = null;
 sheet.task = { ...posts, canvas: { kind: "handwriting_sheet", step: 40 } };
 // @ts-expect-error The height of a digit is the manifest's, not the task's.
 sheet.task = { ...posts, canvas: { kind: "handwriting_sheet", digit: 48 } };
-// @ts-expect-error A line of text and boxes is an item of a workbook, not of a handwriting sheet.
-sheet.task = { ...posts, items: [{ line: [{ binding: "box" }] }] };
+// @ts-expect-error What the statement gives is a list of texts, not one (R57 spec).
+sheet.task = { ...posts, givens: "A post every 4 m." };
 // @ts-expect-error A tool the sheet has not is no tool of it.
 sheet.tool = "ruler";
 // @ts-expect-error Marks whose submission has no digest are no marks of a submission (R27).
