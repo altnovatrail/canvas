@@ -24,7 +24,9 @@
 // a finger or a pen scrolls the sheet as the browser scrolls the statement (T59; R42). The parts of
 // its demo the learner opens one at a time with the row's Next, into a list above the sheet that a
 // polite region tells a screen reader of, and hides and shows with Demo; app keeps how far the
-// learner has gone by `demoState` and `demochange` (T60; R42).
+// learner has gone by `demoState` and `demochange` (T60; R42). The pictures of the statement and of
+// the demo come from the consumer's media, one file for each reference, all of them as the task or
+// the example comes: a part opened shows its picture at once (T64; R42).
 
 import type { Vec2 } from "perfect-freehand";
 import { type Cell, cellOf, cellsOf, type Filled, filledOf, sheetFilledOf } from "../core/boxes.js";
@@ -87,9 +89,10 @@ import { nextIdOf, resumeOf, Work } from "../core/work.js";
 import { SVG, write } from "./attributes.js";
 import { labelsFor } from "./labels.js";
 import { Parts } from "./parts.js";
+import { type Media, Pictures } from "./pictures.js";
 import { attachProbe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
-import { type Media, Statement } from "./statement.js";
+import { Statement } from "./statement.js";
 import { type DemoControls, type RowKind, Tools } from "./tools.js";
 
 export type { Filled, Filling } from "../core/boxes.js";
@@ -112,7 +115,7 @@ export type {
   WorkbookSubmission,
 } from "../core/marks.js";
 export type { Canvas, Task, Tool } from "../core/task.js";
-export type { Media } from "./statement.js";
+export type { Media } from "./pictures.js";
 
 /** The name the element is registered under. */
 export const TAG = "novatrail-canvas";
@@ -214,9 +217,11 @@ const UP_DOWN = 4 / 5;
 // height: then the statement and the sheet scroll in it, under the row. A worked example's open
 // parts stand between the statement and the sheet, and the region that tells of them is out of
 // sight, but not out of the tree a screen reader reads, where a hidden region would tell nothing
-// (R42). On the canvas the browser neither scrolls nor zooms: the pointer writes, and two fingers
-// scroll by the element's own code (R29), as Up and Down of the row do with a single pointer, a
-// pair the row wraps together (R33).
+// (R42). A picture's frame there stands in its item's line, from its top, so that the item's
+// number stands at the top too, as a paragraph's does, and not at the picture's bottom (T64). On
+// the canvas the browser neither scrolls nor zooms: the pointer writes, and two fingers scroll by
+// the element's own code (R29), as Up and Down of the row do with a single pointer, a pair the
+// row wraps together (R33).
 // The canvas and the buttons take pointer events only as the element does: a consumer's
 // pointer-events: none on the element stops the writing and the buttons' pointer, though not
 // their keys (R20, R28). A worked example's canvas takes no pointer at all: a finger or a pen on
@@ -276,6 +281,7 @@ const STYLE = `
 .parts { margin: 0 0 12px; padding-block: 0; padding-inline: 2em 0; overflow-wrap: break-word; }
 .parts:empty, .parts[hidden] { display: none; }
 .parts li { margin: 0 0 8px; }
+.parts .picture { display: inline-flex; vertical-align: top; margin: 0; }
 .status {
   position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
   overflow: hidden; clip-path: inset(50%); white-space: nowrap;
@@ -435,10 +441,12 @@ export class NovatrailCanvas extends HTMLElement {
   readonly #context = this.#canvas.getContext("2d");
   /** The canvas's style as it is computed, read live: its colour is the ink's on the screen. */
   readonly #canvasStyle = getComputedStyle(this.#canvas);
+  /** The files of the pictures of the statement and of a worked example's demo (R23, R42). */
+  readonly #pictures = new Pictures();
   /** The task's statement, above the sheet (R23). */
-  readonly #statement = new Statement();
+  readonly #statement = new Statement(this.#pictures);
   /** A worked example's open parts, under its statement, and the region that tells of them (R42). */
-  readonly #parts = new Parts(DEMO_IDS);
+  readonly #parts = new Parts(DEMO_IDS, this.#pictures);
   /** The element's own buttons, above the statement and the sheet (R28). */
   readonly #tools = new Tools(
     {
@@ -824,12 +832,15 @@ export class NovatrailCanvas extends HTMLElement {
   }
 
   /**
-   * What gives the files of the statement's pictures, by their references (R07). Until a picture's
+   * What gives the files of the pictures, by their references (R07): a task's statement's, and a
+   * worked example's — its statement's and every part's of its demo, which it asks for as the
+   * example comes, before the learner opens them (R42). A reference is asked for once, whichever
+   * pictures show it, and its file stays while the task or the example names it. Until a picture's
    * file comes, or if it never does, its frame shows what it shows in words. A new function serves
-   * the pictures that have no file yet, and stops no load the last one began.
+   * the references that have no file yet, and stops no load the last one began.
    */
   get media(): Media | undefined {
-    return this.#statement.media;
+    return this.#pictures.media;
   }
 
   set media(media: Media | undefined) {
@@ -838,7 +849,7 @@ export class NovatrailCanvas extends HTMLElement {
         `the media of <${TAG}> is a function that gives a Blob, not ${typeof media}`,
       );
     }
-    this.#statement.media = media;
+    this.#pictures.media = media;
   }
 
   /**
@@ -963,7 +974,7 @@ export class NovatrailCanvas extends HTMLElement {
     this.#resize.observe(this.#parts.list);
     this.#watchDensity();
     this.#watchColours();
-    this.#statement.connect();
+    this.#pictures.connect();
     // The page's pen mode, on every sheet of it (R29). The row shows a change once the event that
     // made it is over: by then a pen that came down writes, and every row of the page waits for its
     // stroke. The sheet tells the page whether it is written on, and hears when a stroke ends.
@@ -1060,7 +1071,7 @@ export class NovatrailCanvas extends HTMLElement {
     window.removeEventListener("resize", this.#resized);
     // A stroke that ended here may be the one the other rows of the page waited for.
     PEN_MODE.settle();
-    this.#statement.disconnect();
+    this.#pictures.disconnect();
     this.#resize.disconnect();
     this.#unwatchDensity?.();
     this.#unwatchDensity = undefined;
@@ -1102,7 +1113,10 @@ export class NovatrailCanvas extends HTMLElement {
    * A task's template, or a worked example's, in place of the last (R23, R42). The layer and the
    * statement apart: a new grid or new lines leave the statement and its pictures as they are, and
    * the other way round. A tool not allowed puts the pen back, with no event, and the row shows
-   * what it is of, by its name, and the tools allowed: only what has changed is written.
+   * what it is of, by its name, and the tools allowed: only what has changed is written. Then the
+   * element names the pictures of the task or the example, its statement's and its demo's: a file
+   * both the last and the new name stays, and shows at once in the new statement, while those no
+   * longer named go, their frames already gone with the last statement.
    */
   #present(template: Template): void {
     const shown = this.#shownTemplate;
@@ -1116,6 +1130,8 @@ export class NovatrailCanvas extends HTMLElement {
       this.#fill();
     }
     if (!sameStatement(template, shown)) this.#statement.show(template.statement);
+    const parts = [...template.statement, ...(this.#example?.demo ?? [])];
+    this.#pictures.name(parts.flatMap((part) => ("picture" in part ? [part.picture] : [])));
     if (!template.tools.includes(this.#tool)) this.#tool = "pen";
     this.#refresh();
   }

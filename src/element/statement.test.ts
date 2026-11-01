@@ -1,10 +1,10 @@
-import { afterEach, beforeEach, expect, type MockInstance, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import type { View } from "../core/screen.js";
 import type { SheetTask } from "../core/task.js";
 import { moduleManifest, sheetTask } from "../core/tasks.fixture.js";
 import { type Media, NovatrailCanvas, type Task } from "./index.js";
-import { at, level } from "./pointer.fixture.js";
+import { arrive, at, deferred, file, level, settle, watch } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The task's statement above the sheet in Chromium (R23): its text, its language, which the
@@ -12,32 +12,15 @@ import { probe } from "./probe.js";
 // that stand in for them, and the addresses of their files, which go when the pictures leave.
 
 const made: HTMLElement[] = [];
-/** The decodes the element asks for: a picture shows only once its file is decoded. */
-let decodes: MockInstance<HTMLImageElement["decode"]>;
+// The decodes the element asks for, which arrive() waits for: a picture shows only once its file is
+// decoded.
 beforeEach(() => {
-  decodes = vi.spyOn(HTMLImageElement.prototype, "decode");
+  vi.spyOn(HTMLImageElement.prototype, "decode");
 });
 afterEach(() => {
   for (const element of made.splice(0)) element.remove();
   vi.restoreAllMocks();
 });
-
-const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-async function settle(): Promise<void> {
-  await frame();
-  await frame();
-}
-
-/**
- * The loads that settled run on, the pictures they gave decode, and the frames after them come.
- * It waits for the decodes themselves, not for a time: under the load of the whole suite a decode
- * can take longer than any time the test would guess.
- */
-async function arrive(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve));
-  await Promise.allSettled(decodes.mock.results.map((result) => result.value));
-  await settle();
-}
 
 /** A sheet `width` CSS pixels wide, with a task, and media if given, before it is on the page. */
 async function sheet(width: number, task: Task, media?: Media, height?: number) {
@@ -63,12 +46,6 @@ function viewOf(element: HTMLElement): View {
   return view;
 }
 
-/** A picture's file: a small SVG, which a browser shows. */
-function file(colour = "#c33"): Blob {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><rect width="40" height="20" fill="${colour}"/></svg>`;
-  return new Blob([svg], { type: "image/svg+xml" });
-}
-
 /** A task with these pictures, each 120 × 60 CSS pixels, after a line of text. */
 function withPictures(...pictures: [ref: string, alt: string][]): SheetTask {
   return sheetTask({
@@ -77,32 +54,6 @@ function withPictures(...pictures: [ref: string, alt: string][]): SheetTask {
       ...pictures.map(([picture, alt]) => ({ picture, alt, width: 120, height: 60 })),
     ],
   });
-}
-
-/**
- * What changes in a node and under it from now on: the function it gives back stops watching and
- * gives every change, those not yet told too.
- */
-function watch(node: Node): () => MutationRecord[] {
-  const records: MutationRecord[] = [];
-  const observer = new MutationObserver((list) => records.push(...list));
-  observer.observe(node, { subtree: true, childList: true, attributes: true, characterData: true });
-  return () => {
-    records.push(...observer.takeRecords());
-    observer.disconnect();
-    return records;
-  };
-}
-
-/** A promise and the hands that settle it. */
-function deferred<T>() {
-  let resolve: (value: T) => void = () => {};
-  let reject: (reason: unknown) => void = () => {};
-  const promise = new Promise<T>((yes, no) => {
-    resolve = yes;
-    reject = no;
-  });
-  return { promise, resolve, reject };
 }
 
 test("the statement stands above the sheet as text, in the module's language, and the element is as tall as both and the row of buttons", async () => {

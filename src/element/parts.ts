@@ -2,14 +2,15 @@
 // sheet, under the statement, in the element's own scrolling, and a polite region that tells a
 // screen reader of the part just opened. A part opens at the list's end, and an item, once built,
 // stays as it is while the demo is the same: hidden, the list keeps its open parts out of sight. A
-// paragraph is its text; a picture beside the sheet is a frame of its size, which shows what it
-// shows in words, as a statement's picture without its file; a picture on an area of the sheet is
-// read by its words here, while the picture itself stands on the sheet. This module is no entry
-// point of the package.
+// paragraph is its text; a picture beside the sheet is a frame of its size, as a statement's
+// picture is, which shows the picture once the element's pictures have its file and what it shows
+// in words till then; a picture on an area of the sheet is read by its words here, while the
+// picture itself stands on the sheet. This module is no entry point of the package.
 
 import { type DemoState, type ExamplePart, onSheet } from "../core/example.js";
 import { write } from "./attributes.js";
-import { frameOf } from "./statement.js";
+import type { Pictures } from "./pictures.js";
+import { framed } from "./statement.js";
 
 /** The number of a part the region tells of, as the labels say it, and the labels' language. */
 export interface Told {
@@ -28,8 +29,13 @@ export class Parts {
    * sight alone, for a region out of the tree of what a screen reader reads tells nothing.
    */
   readonly status = document.createElement("div");
+  readonly #pictures: Pictures;
+  /** What takes the picture of an item off, once the item leaves the list. */
+  readonly #off = new WeakMap<Element, () => void>();
 
-  constructor(ids: { readonly status: string; readonly parts: string }) {
+  /** The list and the region, by their IDs, whose pictures the element's pictures give files. */
+  constructor(ids: { readonly status: string; readonly parts: string }, pictures: Pictures) {
+    this.#pictures = pictures;
     this.list.className = "parts";
     this.list.id = ids.parts;
     this.status.className = "status";
@@ -48,19 +54,25 @@ export class Parts {
   /**
    * The demo as a state has it: as many parts open as it says, from the first, items added or
    * taken off at the list's end alone, and the list hidden or shown. Only what has changed is
-   * written.
+   * written: hidden, the parts keep their pictures.
    */
   show(demo: readonly ExamplePart[], { opened, hidden }: DemoState): void {
-    while (this.list.childElementCount > opened) this.list.lastElementChild?.remove();
+    let last = this.list.lastElementChild;
+    while (last !== null && this.list.childElementCount > opened) {
+      this.#takeOff(last);
+      last.remove();
+      last = this.list.lastElementChild;
+    }
     for (let n = this.list.childElementCount; n < opened; n++) {
       const part = demo[n];
-      if (part !== undefined) this.list.append(itemOf(part));
+      if (part !== undefined) this.list.append(this.#itemOf(part));
     }
     if (this.list.hidden !== hidden) this.list.hidden = hidden;
   }
 
   /** No part open, the list shown, and nothing told: a demo begins, or goes. */
   clear(): void {
+    for (const item of [...this.list.children]) this.#takeOff(item);
     this.list.replaceChildren();
     this.list.hidden = false;
     this.quiet();
@@ -98,26 +110,34 @@ export class Parts {
   quiet(): void {
     this.status.replaceChildren();
   }
-}
 
-/**
- * The item of an open part: a paragraph's text, a picture beside the sheet in its frame, or the
- * words of a picture on an area of the sheet, which a screen reader reads as the picture, while
- * the item stays an item of the list. One that only decorates leaves its item empty.
- */
-function itemOf(part: ExamplePart): HTMLLIElement {
-  const item = document.createElement("li");
-  if ("text" in part) {
-    // Text, never markup: a module is data (R02 spec).
-    item.textContent = part.text;
-  } else if (!onSheet(part)) {
-    item.append(frameOf(part));
-  } else if (part.alt !== "") {
-    const words = document.createElement("div");
-    words.setAttribute("role", "img");
-    words.setAttribute("aria-label", part.alt);
-    words.textContent = part.alt;
-    item.append(words);
+  /** An item leaving the list takes its picture off, once. */
+  #takeOff(item: Element): void {
+    this.#off.get(item)?.();
+    this.#off.delete(item);
   }
-  return item;
+
+  /**
+   * The item of an open part: a paragraph's text, a picture beside the sheet in its frame, or the
+   * words of a picture on an area of the sheet, which a screen reader reads as the picture, while
+   * the item stays an item of the list. One that only decorates leaves its item empty.
+   */
+  #itemOf(part: ExamplePart): HTMLLIElement {
+    const item = document.createElement("li");
+    if ("text" in part) {
+      // Text, never markup: a module is data (R02 spec).
+      item.textContent = part.text;
+    } else if (!onSheet(part)) {
+      const { frame, off } = framed(this.#pictures, part);
+      this.#off.set(item, off);
+      item.append(frame);
+    } else if (part.alt !== "") {
+      const words = document.createElement("div");
+      words.setAttribute("role", "img");
+      words.setAttribute("aria-label", part.alt);
+      words.textContent = part.alt;
+      item.append(words);
+    }
+    return item;
+  }
 }

@@ -129,7 +129,7 @@ test("a worked example is a TypeError while a task is given, on a sheet written 
 test("an example equal to the one shown changes nothing, and another changes its grid or its statement alone", async () => {
   const { element, root } = await sheet();
   const media = vi.fn(
-    async () =>
+    async (_ref: string) =>
       new Blob(['<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"/>'], {
         type: "image/svg+xml",
       }),
@@ -144,7 +144,9 @@ test("an example equal to the one shown changes nothing, and another changes its
   await settle();
   const paragraph = root.querySelector(".statement p");
   const grid = root.querySelector(".grid")?.getAttribute("d");
-  expect(media).toHaveBeenCalledOnce();
+  // The statement's picture and the demo's, each once, as the example comes (R42).
+  const asked = ["pictures/posts.png", "pictures/lamp.png", "pictures/path-in-gaps.png"];
+  expect(media.mock.calls.map(([ref]) => ref)).toEqual(asked);
   const same = structuredClone(given) as WorkedExample;
   element.workedExample = same;
   expect(element.workedExample).toBe(same);
@@ -153,7 +155,7 @@ test("an example equal to the one shown changes nothing, and another changes its
   expect(root.querySelector(".statement p")).toBe(paragraph);
   expect(root.querySelector(".grid")?.getAttribute("d")).not.toBe(grid);
   await settle();
-  expect(media).toHaveBeenCalledOnce();
+  expect(media.mock.calls.map(([ref]) => ref)).toEqual(asked);
   element.workedExample = workedExample({ statement: [{ text: "How many posts are there?" }] });
   expect(root.querySelector(".statement p")).not.toBe(paragraph);
   expect(root.querySelector(".statement")?.textContent).toBe("How many posts are there?");
