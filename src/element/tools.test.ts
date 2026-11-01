@@ -1,7 +1,7 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import type { HistoryEvent } from "../core/history.js";
-import { sheetTask } from "../core/tasks.fixture.js";
+import { sheetTask, workedExample } from "../core/tasks.fixture.js";
 import { NovatrailCanvas, type ToolChange } from "./index.js";
 import { labelsFor } from "./labels.js";
 import { at, input, level, placed, settle, spacer } from "./pointer.fixture.js";
@@ -12,7 +12,7 @@ import { PEN_MODE } from "./session.js";
 // undo and clearing, and of Up and Down (R33), found by its roles and names in the element's
 // language, worked with the pointer and with the keyboard, telling of the learner's choice of tool,
 // scrolling what two fingers would, and standing above the statement and the sheet, outside their
-// scrolling.
+// scrolling. A worked example's row has Up and Down alone (R42).
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -373,6 +373,61 @@ test("a new task without the eraser puts the pen back, with no event, and the fo
   element.task = sheetTask();
   expect(eraser.hidden).toBe(false);
   expect(element.tool).toBe("pen");
+});
+
+test("a worked example's row is named so in the element's language and has Up and Down alone, the stop of Tab and the focus on the first, and leaving it brings the rest back", async () => {
+  // A device with touch, in pen mode: a worked example's row has no finger's button even so (R42).
+  Object.defineProperty(navigator, "maxTouchPoints", { value: 5, configurable: true });
+  try {
+    // Till a button has had the focus, Tab comes to the first button shown, whichever it is now.
+    const fresh = await sheet();
+    const stop = () => fresh.root.querySelector('[tabindex="0"]')?.textContent;
+    fresh.element.workedExample = workedExample();
+    expect(stop()).toBe("Up");
+    fresh.element.workedExample = undefined;
+    expect(stop()).toBe("Pen");
+    const { element, root, row } = await sheet();
+    PEN_MODE.on = true;
+    await settle();
+    const focused = () => root.activeElement?.textContent;
+    const shown = () =>
+      [...row.querySelectorAll("button:not([hidden])")].map((each) => each.textContent);
+    const stops = () =>
+      [...root.querySelectorAll('[tabindex="0"]')].map((each) => each.textContent);
+    expect(shown()).toHaveLength(7);
+    button(element, "Pen").focus();
+    element.workedExample = workedExample();
+    expect(row.getAttribute("aria-label")).toBe("Worked example");
+    expect(shown()).toEqual(["Up", "Down"]);
+    expect(page.elementLocator(element).getByRole("radiogroup").elements()).toHaveLength(0);
+    expect(focused()).toBe("Up");
+    expect(stops()).toEqual(["Up"]);
+    const moves: [keys: string, to: string][] = [
+      ["{ArrowRight}", "Down"],
+      ["{ArrowRight}", "Up"],
+      ["{ArrowLeft}", "Down"],
+      ["{Home}", "Up"],
+      ["{End}", "Down"],
+    ];
+    for (const [keys, to] of moves) {
+      await userEvent.keyboard(keys);
+      expect(focused(), keys).toBe(to);
+    }
+    element.setAttribute("lang", "ru");
+    const russian = labelsFor("ru").labels;
+    await expect
+      .element(page.elementLocator(element).getByRole("toolbar", { name: russian.example }))
+      .toBeVisible();
+    expect(shown()).toEqual([russian.up, russian.down]);
+    // Out of the example the row is the sheet's again, and the stop stays where the focus left it.
+    element.workedExample = undefined;
+    await settle();
+    expect(row.getAttribute("aria-label")).toBe(russian.sheet);
+    expect(shown()).toHaveLength(7);
+    expect(stops()).toEqual([russian.down]);
+  } finally {
+    Reflect.deleteProperty(navigator, "maxTouchPoints");
+  }
 });
 
 test("an eraser given before the element is upgraded, with a task without it, leaves the pen and no warning", () => {

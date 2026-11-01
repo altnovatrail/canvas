@@ -13,7 +13,9 @@
 // fit among them, in the font and the explanation language the page's controls give (T51; R35,
 // R36). The counter tells how many of its boxes are filled (T48; R37), and Check sends the crop of
 // each filled box, which the page shows with its place and its size (T49; R38); a box picked comes
-// back to the element as a mark of the tutor's on it (T53; R39).
+// back to the element as a mark of the tutor's on it (T53; R39). A lesson's worked example is a new
+// element too, of the grid the controls give, on which the learner writes nothing: its row has Up
+// and Down alone, and Check finds no work (T59; R42).
 // Under the sheet the page draws the groups of the strokes the history leaves, after every
 // historychange, by the sheet's rule or by the pause and the reaches its fields give (T12; R24),
 // and their crop for checking at the height of digits the manifest gives, with the frames of those
@@ -30,7 +32,12 @@ import { GROUP_RULE, type Group, type GroupRule, groupsOf, rectOf } from "../src
 import { type HistoryEvent, replay, SHEET, type Stroke } from "../src/core/index.js";
 import { PAGES } from "../src/core/pages.fixture.js";
 import { pictureOf } from "../src/core/raster.js";
-import { moduleManifest, sheetTask, workbookTask } from "../src/core/tasks.fixture.js";
+import {
+  moduleManifest,
+  sheetTask,
+  workbookTask,
+  workedExample,
+} from "../src/core/tasks.fixture.js";
 import "../src/element/index.js";
 import type {
   ExportedCell,
@@ -43,6 +50,7 @@ import type {
   NovatrailCanvas,
   Submission,
   Task,
+  WorkedExample,
 } from "../src/element/index.js";
 import { probe } from "../src/element/probe.js";
 
@@ -155,6 +163,35 @@ function taskFor(n: number): Task {
   });
 }
 
+/**
+ * The worked example of the page's number `n`: a sheet of the grid chosen, with a statement and its
+ * picture, and the demo's parts, which a later version of the element shows (R42).
+ */
+function exampleFor(n: number): WorkedExample {
+  return workedExample({
+    grid: grid.value as GridKind,
+    grid_step: Number(step.value),
+    statement: [
+      { text: `Example ${n}. Along a path 20 m long, a post stands every 4 m. How many posts?` },
+      {
+        picture: "pictures/posts.png",
+        alt: "A path with six posts along it",
+        width: 340,
+        height: 80,
+      },
+    ],
+  });
+}
+
+/** Whether the controls ask for a worked example rather than a task. */
+const asksExample = (): boolean => kind.value === "example";
+
+/**
+ * The elements the page put in place for a worked example, whether they took it or not: one that
+ * did not, for a step out of bounds, is still the example's, and a new grid tries again.
+ */
+const examples = new WeakSet<NovatrailCanvas>();
+
 /** The module's manifest: the explanation language and the height of digits the controls give. */
 function manifestFor(): Manifest {
   return moduleManifest({ digit_height: Number(digit.value), explanation: explanation.value });
@@ -169,13 +206,21 @@ let taskNumber = 1;
 let changes = 0;
 let choices = 0;
 
-/** A new element for the page's task, with the history and the marks given, if any. */
+/**
+ * A new element for the page's task, or its worked example, with the history and the marks given,
+ * if any.
+ */
 function mount(history?: readonly HistoryEvent[], marks?: Marks): NovatrailCanvas {
   const element = document.createElement("novatrail-canvas");
   speak(element);
   element.style.fontFamily = font.value;
   try {
-    element.task = taskFor(taskNumber);
+    if (asksExample()) {
+      examples.add(element);
+      element.workedExample = exampleFor(taskNumber);
+    } else {
+      element.task = taskFor(taskNumber);
+    }
   } catch (error) {
     // A step the page's field gives that is no task's — out of bounds, or not whole — and a page
     // whose lines do not fit leave the new element without the page's task, and the page says why.
@@ -607,7 +652,10 @@ async function check(): Promise<void> {
   status.textContent = "Checking: no writing with the pointer until it ends…";
   try {
     if (!(await send())) {
-      status.textContent = "Write a solution first.";
+      status.textContent =
+        checked.workedExample === undefined
+          ? "Write a solution first."
+          : "A worked example has no work to check: the learner writes nothing on it.";
       return;
     }
     await new Promise((resolve) => setTimeout(resolve, THINKING_MS));
@@ -623,11 +671,21 @@ async function check(): Promise<void> {
 
 /**
  * The canvas kind, the page, the grid and the tools the controls give, by a new task: the work
- * stays. A step out of bounds, and a page whose lines do not fit, are left.
+ * stays. A step out of bounds, and a page whose lines do not fit, are left. A worked example comes
+ * and goes as a new element, as the next segment of a lesson does (R20, R42), and its grid changes
+ * by a new example.
  */
 function regrid(): void {
+  if (asksExample() !== examples.has(sheet)) {
+    kept = [];
+    forget();
+    status.textContent = "";
+    mounted(mount());
+    return;
+  }
   try {
-    sheet.task = taskFor(taskNumber);
+    if (asksExample()) sheet.workedExample = exampleFor(taskNumber);
+    else sheet.task = taskFor(taskNumber);
     status.textContent = "";
   } catch (error) {
     status.textContent = error instanceof Error ? error.message : String(error);

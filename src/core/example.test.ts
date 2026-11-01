@@ -4,6 +4,7 @@ import {
   type CheckedExample,
   type ExamplePart,
   exampleOf,
+  exampleTemplate,
   onSheet,
   sameExample,
   type WorkedExample,
@@ -254,4 +255,16 @@ test("two worked examples are the same when they show the same, whatever objects
     workedExample({ demo: [draw, { ...onTheSheet, area: onTheSheet.area }, onTheSheet, count] }),
   ];
   for (const other of others) expect(sameExample(one, exampleOf(other))).toBe(false);
+});
+
+test("the sheet makes a template of a worked example as of a task: its grid, its statement, and the pen alone", () => {
+  const example = exampleOf(workedExample({ grid: "dots", grid_step: 40 }));
+  const template = exampleTemplate(example);
+  expect(template).toEqual({
+    grid: { kind: "dots", step: 40 },
+    statement: example.statement,
+    tools: ["pen"],
+  });
+  expect(Object.isFrozen(template.tools)).toBe(true);
+  expect(exampleTemplate(exampleOf(workedExample())).grid).toEqual({ kind: "squares", step: 50 });
 });

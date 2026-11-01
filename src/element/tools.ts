@@ -6,7 +6,10 @@
 // was. Up and Down scroll the sheet with a single pointer, and stand unavailable at the end they
 // scroll to (R33). In pen mode a last button lets a finger write again (R29). The labels are in
 // the element's language (labels.ts), and the row is named by the canvas kind: the sheet or the
-// workbook (R36). This module is no entry point of the package.
+// workbook (R36). A lesson's worked example names it too, and has no tools of writing in it: the
+// learner does not write on its sheet, and Up and Down are the row's first buttons (R42). A button
+// that goes gives its stop of Tab and the focus to the first button shown. This module is no entry
+// point of the package.
 
 import type { Tool } from "../core/task.js";
 import { write } from "./attributes.js";
@@ -25,12 +28,15 @@ export interface ToolActions {
   readonly fingers: () => void;
 }
 
+/** What the row is of, and is named by: a sheet, a workbook or a worked example (R36, R42). */
+export type RowKind = "sheet" | "workbook" | "example";
+
 /**
- * What the row shows: the canvas kind it is named by, the tools the task allows, the one in use,
- * whether undo and clearing have anything to do, and whether the finger may be asked to write again.
+ * What the row shows: what it is of, the tools the task allows, the one in use, whether undo and
+ * clearing have anything to do, and whether the finger may be asked to write again.
  */
 export interface ToolState {
-  readonly workbook: boolean;
+  readonly kind: RowKind;
   readonly tools: readonly Tool[];
   readonly tool: Tool;
   readonly undoable: boolean;
@@ -64,8 +70,10 @@ export class Tools {
   ];
   /** The language of the labels shown. */
   #lang: string | undefined;
-  /** Whether the row is a workbook's, named so. */
-  #workbook = false;
+  /** What the row is of, named so. */
+  #kind: RowKind = "sheet";
+  /** Whether a button of the row has had the focus: Tab comes to the first button until one has. */
+  #chosen = false;
 
   constructor(actions: ToolActions) {
     this.element.className = "tools";
@@ -78,8 +86,8 @@ export class Tools {
     // The finger's button comes last: coming and going, it moves no other button of the row.
     this.element.append(this.#group, this.#undo, this.#clear, this.#pair, this.#finger);
     this.#finger.hidden = true;
-    // Tab comes to the first button, until another has had the focus.
-    this.#stopAt(this.#pen);
+    // Tab comes to the first button shown, until another has had the focus.
+    this.#stopAt(this.#first());
     // The element decides whether a choice is a change: the tool in use, chosen again, is none.
     this.#pen.addEventListener("click", () => actions.choose("pen"));
     this.#eraser.addEventListener("click", () => actions.choose("eraser"));
@@ -100,19 +108,31 @@ export class Tools {
     // The button that had the focus last is the one Tab comes back to.
     this.element.addEventListener("focusin", (event) => {
       const focused = this.#buttons.find((button) => button === event.target);
-      if (focused !== undefined) this.#stopAt(focused);
+      if (focused === undefined) return;
+      this.#chosen = true;
+      this.#stopAt(focused);
     });
     this.label(null);
   }
 
-  /** The row as the sheet now is. Only what has changed is written. */
-  show({ workbook, tools, tool, undoable, clearable, finger }: ToolState): void {
-    if (workbook !== this.#workbook) {
-      this.#workbook = workbook;
+  /**
+   * The row as the sheet now is. Only what has changed is written. A worked example's row has no
+   * tools of writing, no undo and no clearing, for the learner does not write on its sheet (R42).
+   */
+  show({ kind, tools, tool, undoable, clearable, finger }: ToolState): void {
+    if (kind !== this.#kind) {
+      this.#kind = kind;
       this.#name();
     }
-    this.#reveal(this.#eraser, tools.includes("eraser"));
-    this.#reveal(this.#finger, finger);
+    const writes = kind !== "example";
+    this.#reveal([
+      [this.#group, writes],
+      [this.#pen, writes],
+      [this.#eraser, writes && tools.includes("eraser")],
+      [this.#undo, writes],
+      [this.#clear, writes],
+      [this.#finger, writes && finger],
+    ]);
     write(this.#pen, "aria-checked", String(tool === "pen"));
     write(this.#eraser, "aria-checked", String(tool === "eraser"));
     write(this.#undo, "aria-disabled", undoable ? null : "true");
@@ -151,7 +171,7 @@ export class Tools {
   /** The row's name: the canvas kind's, in the labels' language. */
   #name(): void {
     const { labels } = labelsFor(this.#lang ?? null);
-    write(this.element, "aria-label", this.#workbook ? labels.workbook : labels.sheet);
+    write(this.element, "aria-label", labels[this.#kind]);
   }
 
   /**
@@ -160,7 +180,7 @@ export class Tools {
    */
   #key(event: KeyboardEvent): void {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
-    const shown = this.#buttons.filter((button) => !button.hidden);
+    const shown = this.#shown();
     const at = shown.indexOf(event.target as HTMLButtonElement);
     if (at < 0) return;
     let next: HTMLButtonElement | undefined;
@@ -173,14 +193,32 @@ export class Tools {
     next?.focus();
   }
 
-  /** A button comes or goes, and one that goes takes its stop of Tab and the focus to the pen. */
-  #reveal(button: HTMLButtonElement, shown: boolean): void {
-    if (button.hidden !== shown) return;
-    const focused = button.matches(":focus");
-    button.hidden = !shown;
-    if (shown) return;
-    if (button.tabIndex === 0) this.#stopAt(this.#pen);
-    if (focused) this.#pen.focus();
+  /**
+   * Buttons come or go, all of them at once, and then a button that went gives its stop of Tab and
+   * the focus to the first button shown: the pen on a sheet, Up on a worked example (R28, R42). Till
+   * a button has had the focus, the stop is the first button shown, whichever it is now. Nothing is
+   * read or written while every button stays as it is: the row is shown anew after every stroke.
+   */
+  #reveal(wanted: readonly (readonly [HTMLElement, boolean])[]): void {
+    if (wanted.every(([element, shown]) => element.hidden !== shown)) return;
+    // Read before a button hides: a hidden one loses the focus at the next update of the style.
+    const focused = this.#buttons.find((button) => button.matches(":focus"));
+    for (const [element, shown] of wanted) element.hidden = !shown;
+    const first = this.#first();
+    if (!this.#chosen || this.#buttons.some((button) => button.tabIndex === 0 && button.hidden)) {
+      this.#stopAt(first);
+    }
+    if (focused?.hidden) first.focus();
+  }
+
+  /** The buttons the row shows, in its order. */
+  #shown(): HTMLButtonElement[] {
+    return this.#buttons.filter((button) => !button.hidden);
+  }
+
+  /** The first button the row shows: Up and Down are on every row (R33). */
+  #first(): HTMLButtonElement {
+    return this.#shown()[0] ?? this.#up;
   }
 
   /** The one button Tab comes to: the arrow keys reach the others. */
