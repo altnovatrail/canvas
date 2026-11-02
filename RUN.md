@@ -133,7 +133,7 @@ E7 — новый `spec`: поля задачи и показ примера —
 | [x] | T67 | Переход на тег `spec` линии 0.6 | Claude, проверяю я | да | тег линии 0.6 |
 | [x] | T68 | Формат 0.2 в элементе (Д5) | Claude, проверяю я | да | T67 |
 | [x] | T69 | Типы элемента из `@altnovatrail/spec/canvas` (Д5) | Claude, проверяю я | да | T67 |
-| [ ] | T70 | Первый релиз: пакет | я + Claude | — | T66, T68, T69 |
+| [x] | T70 | Первый релиз: пакет | я + Claude | — | T66, T68, T69 |
 | [ ] | T71 | Публикация шагом npm | я + Claude | — | T70 |
 | [ ] | T72 | Итог E8 | Claude, проверяю я | — | T65–T71 |
 
@@ -533,6 +533,18 @@ E5 — задачи, которые отложил E2 (R17). Тела его з�
     Две остались, по решению:
     - значки Release и номера релиза стоят с мержа, который выпускает релиз, и несколько минут до конца прогона Release показывают «no releases». Позже их не поставить: README — в путях релиза, и правка после T70 выпустила бы версию без npm;
     - раздел установки ставит `@altnovatrail/spec` и в `devDependencies` `app`, хотя пакет есть в `dependencies` `canvas`. Так велит R74 spec, а та же точная версия — одна копия.
+- **Сделано (2026-11-02), после мержа:**
+  - pull request #67 слит — мерж 5cd33ce. CI, CodeQL и Scorecard на `main` зелёные, а Release после CI выпустил v0.1.0 в 05:09:47Z: неизменяемый релиз на 5cd33ce с `altnovatrail-canvas-0.1.0.tgz`, `LICENSE`, `SHA256SUMS` и подписью `.sigstore.json` у каждого. Сумма архива — c99364dda24b117d3e408e11e6342ca296f1bf80563cf949e412761c2d64e3ce, та же, что у локального `release-files` и у пробы в pull request;
+  - `just -f spec/justfile release-verify canvas v0.1.0 altnovatrail-canvas-0.1.0.tgz` — «canvas v0.1.0, signed by the shared release.yml of .github v0.1.13»;
+  - мой шаг: архив я проверил тем же рецептом и `sha256sum --check` и опубликовал из пустой папки, с 2FA, — `npm publish ./altnovatrail-canvas-0.1.0.tgz --access public`. npm напомнил, что токены в обход 2FA для публикации ограничивают (gh.io/npm-gat-bypass2fa-deprecation);
+  - версия 0.1.0 в npm — тот же архив байт в байт: `npm pack @altnovatrail/canvas@0.1.0` дал c99364dd…e3ce, `cmp` с файлом релиза — без расхождений, `shasum` реестра — 45ae34a558788b60e545c935ea01bf77aa53eac1. Provenance у версии нет, как и задумано (раздел 3.4, шаг 4);
+  - пробный проект в скретчпаде, как `app`: `@altnovatrail/canvas` 0.1.0 в `dependencies` и `@altnovatrail/spec` 0.6.2 в `devDependencies`, оба — `--save-exact`, и в `node_modules` одна копия `spec`. TypeScript 7.0.2 с `moduleResolution: bundler`, DOM и `skipLibCheck: false` принял элемент как `CanvasElement`, его события и работу из `@altnovatrail/spec/canvas`, `Marks` и `/core`; Node импортировал `/core`: `SHEET` 1000 × 1400 и `replay`. `release-verify-npm` принял lock-файл: canvas v0.1.0 — «signed by the shared release.yml of .github v0.1.13», spec v0.6.2 — его `release.yml`, и `integrity` обоих — проверенные байты;
+  - правило 12 — на `main` 5cd33ce: у SonarCloud ворота «OK» и 0 новых находок, в code scanning — те же шесть находок Scorecard. Закрывать нечего;
+  - [docs/architecture.md](docs/architecture.md) — статус и раздел 3.4, шаги 3 и 4;
+  - `just -f spec/justfile docs-check-repo` на итоговом тексте — «ok — 11 files, 504 links, 2147 sections, 4462 numbers, 0 diagrams». Эта правка — только документы и RUN.md, вне путей релиза: релиза она не даёт.
+- **Открыто:**
+  - T71 — шаг npm всем событиям. До его мержа пути релиза не трогает ни один pull request: иначе выйдет версия без npm (раздел 3.4);
+  - мой шаг T71 — `npm trust` и «Require two-factor authentication and disallow tokens», а за 2 дня после него — мерж T71.
 
 #### T71. Публикация шагом npm
 
