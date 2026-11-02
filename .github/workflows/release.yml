@@ -1,9 +1,11 @@
 # NovaTrail's shared release (R18 .github), pinned to a release of .github by SHA with its version
 # beside it. RELEASE_LINE is the line the releases are numbered in; paths, what they are built from:
 # all a consumer gets of the package, as architecture 3.3 .github lists it for a repository of Go
-# (R08 in docs/decisions.md). Until the first release a run publishes nothing: on a pull request
-# and on main alike it builds the files, signs them and checks them, the npm package's archive too,
-# so that the release is tried before it is made (T66; T70 in RUN.md turns publishing on).
+# (R08 in docs/decisions.md). A run after CI on main, and the button, publish the release; a pull
+# request tries it, publishing nothing: it builds the files, signs them and checks them, the npm
+# package's archive too (T66, T70). The npm step is the trial's alone until the package is in the
+# registry and its trusted publisher set: the first version is published by hand from the release
+# (T70), and T71 in RUN.md gives the step to every run.
 
 name: Release
 
@@ -33,7 +35,7 @@ jobs:
       contents: write
       id-token: write
       actions: read
-    uses: altnovatrail/.github/.github/workflows/release.yml@4225639bcd04f43ef58f95cabf9fdfd947cbcb07 # v0.1.12
+    uses: altnovatrail/.github/.github/workflows/release.yml@09443e1027ef24197439dfe60a072d14c3626cc3 # v0.1.13
     with:
       # The package's code without its tests, fixtures and type checks — a pathspec's * takes any
       # depth — what builds it, what npm pack takes besides it, the toolchain stage that runs npm,
@@ -52,5 +54,5 @@ jobs:
         LICENSE
         .devcontainer/Dockerfile
         .github/workflows/release.yml
-      publish: false
-      npm-package: "@altnovatrail/canvas"
+      publish: ${{ github.event_name != 'pull_request' }}
+      npm-package: ${{ github.event_name == 'pull_request' && '@altnovatrail/canvas' || '' }}
