@@ -1,0 +1,56 @@
+# NovaTrail's shared release (R18 .github), pinned to a release of .github by SHA with its version
+# beside it. RELEASE_LINE is the line the releases are numbered in; paths, what they are built from:
+# all a consumer gets of the package, as architecture 3.3 .github lists it for a repository of Go
+# (R08 in docs/decisions.md). Until the first release a run publishes nothing: on a pull request
+# and on main alike it builds the files, signs them and checks them, the npm package's archive too,
+# so that the release is tried before it is made (T66; T70 in RUN.md turns publishing on).
+
+name: Release
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  # Every pull request, with no paths of its own: a filter would copy the list below in another
+  # syntax, and a run of a change outside the list ends once the version is worked out.
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  RELEASE_LINE: "0.1"
+
+jobs:
+  release:
+    name: Release
+    # A trial asks no CI to have passed, so this asks it of a run after CI: a commit whose checks
+    # failed is no release to try.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    permissions:
+      contents: write
+      id-token: write
+      actions: read
+    uses: altnovatrail/.github/.github/workflows/release.yml@4225639bcd04f43ef58f95cabf9fdfd947cbcb07 # v0.1.12
+    with:
+      # The package's code without its tests, fixtures and type checks — a pathspec's * takes any
+      # depth — what builds it, what npm pack takes besides it, the toolchain stage that runs npm,
+      # and this file, so that a change of the line gives a release. The lock file is no part of
+      # the archive, and the compiler is pinned in package.json.
+      paths: |
+        src/*.ts
+        :(exclude)src/*.test.ts
+        :(exclude)src/*.fixture.ts
+        :(exclude)src/*.check.ts
+        package.json
+        tsconfig.base.json
+        tsconfig.build.json
+        justfile
+        README.md
+        LICENSE
+        .devcontainer/Dockerfile
+        .github/workflows/release.yml
+      publish: false
+      npm-package: "@altnovatrail/canvas"

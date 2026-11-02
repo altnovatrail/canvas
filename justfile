@@ -3,8 +3,9 @@
 # runner's user, with HOME=/tmp and with CI from the step's environment (R19 .github; R12 in
 # docs/decisions.md). Only ci-licenses reads spec/: it runs spec's recipe licenses-check-repo, and
 # the licenses job alone gets the submodule. The code and its tests read nothing of spec/, and the
-# documents are checked by spec's own recipe, just -f spec/justfile docs-check-repo. One more
-# recipe is for the author's hands: demo serves a page to try the element on.
+# documents are checked by spec's own recipe, just -f spec/justfile docs-check-repo. release-files
+# writes the files of a release, for .github's shared release.yml (R08). One more recipe is for the
+# author's hands: demo serves a page to try the element on.
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
@@ -52,6 +53,35 @@ ci-licenses:
 build: _install
     rm -rf lib
     {{ bin }}/tsc -p tsconfig.build.json
+
+# Write the files of the release of a version, v0.1.0 say, into dist/, as .github's shared
+# release.yml runs it: in the toolchain stage, on the tree of the commit alone, with no git, no spec
+# submodule and no token (R08; R18 .github). They are the package's archive, as npm pack makes it,
+# with the version without its v; LICENSE; and SHA256SUMS of the two. The archive is packed from a
+# copy of what npm pack takes, with the version set there, so that the package.json of the tree
+# keeps 0.0.0, and scripts/release.ts checks the archive itself and names it. npm pack fixes every
+# file's time and order, so a build of the same commit gives the same sums, and the sums are printed
+# for whoever builds it again to compare.
+release-files version: build
+    #!/usr/bin/env bash
+    set -euo pipefail
+    version={{ quote(version) }}
+    if ! [[ "$version" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+        echo "release-files: the version is v<major>.<minor>.<patch>, as v0.1.0, not ${version}" >&2
+        exit 1
+    fi
+    number="${version#v}"
+    node scripts/package.ts
+    rm -rf dist
+    mkdir dist
+    stage="$(mktemp -d)"
+    trap 'rm -rf "$stage"' EXIT
+    cp -R lib package.json README.md LICENSE "$stage"
+    packed="$(cd "$stage" && npm pkg set version="$number" && npm pack --json --ignore-scripts --pack-destination "$OLDPWD/dist")"
+    archive="$(node scripts/release.ts "$number" <<< "$packed")"
+    cp LICENSE dist/LICENSE
+    (cd dist && sha256sum -- "$archive" LICENSE > SHA256SUMS)
+    cat dist/SHA256SUMS
 
 # Format and fix the code in place, the way ci-lint checks it.
 fmt: _install
