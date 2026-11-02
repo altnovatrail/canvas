@@ -1,11 +1,10 @@
 # NovaTrail's shared release (R18 .github), pinned to a release of .github by SHA with its version
 # beside it. RELEASE_LINE is the line the releases are numbered in; paths, what they are built from:
 # all a consumer gets of the package, as architecture 3.3 .github lists it for a repository of Go
-# (R08 in docs/decisions.md). A run after CI on main, and the button, publish the release; a pull
-# request tries it, publishing nothing: it builds the files, signs them and checks them, the npm
-# package's archive too (T66, T70). The npm step is the trial's alone until the package is in the
-# registry and its trusted publisher set: the first version is published by hand from the release
-# (T70), and T71 in RUN.md gives the step to every run.
+# (R08 in docs/decisions.md). A run after CI on main, and the button, publish the release and the
+# same archive to npm, through trusted publishing, with no token kept anywhere; a pull request tries
+# it, publishing nothing: it builds the files, signs them and checks them, the npm package's archive
+# too (T66, T70, T71). The first version was published by hand from its release (T70).
 
 name: Release
 
@@ -55,4 +54,4 @@ jobs:
         .devcontainer/Dockerfile
         .github/workflows/release.yml
       publish: ${{ github.event_name != 'pull_request' }}
-      npm-package: ${{ github.event_name == 'pull_request' && '@altnovatrail/canvas' || '' }}
+      npm-package: "@altnovatrail/canvas"
