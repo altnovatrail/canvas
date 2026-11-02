@@ -25,7 +25,7 @@
     "./lib/element/index.js"
   ],
   "dependencies": {
-    "@altnovatrail/spec": "0.4.1",
+    "@altnovatrail/spec": "0.6.2",
     "perfect-freehand": "1.2.3",
     "rbush": "4.0.1"
   },

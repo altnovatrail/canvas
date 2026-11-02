@@ -1,11 +1,11 @@
 # canvas's own recipes: the package's build, and the four checks .github's typescript.yml runs in
 # CI, one job each, in a new container of the toolchain stage of .devcontainer/Dockerfile — as the
 # runner's user, with HOME=/tmp and with CI from the step's environment (R19 .github; R12 in
-# docs/decisions.md). Only ci-licenses reads spec/: it runs spec's recipe licenses-check-repo, and
-# the licenses job alone gets the submodule. The code and its tests read nothing of spec/, and the
-# documents are checked by spec's own recipe, just -f spec/justfile docs-check-repo. release-files
-# writes the files of a release, for .github's shared release.yml (R08). One more recipe is for the
-# author's hands: demo serves a page to try the element on.
+# docs/decisions.md). Only ci-licenses reads spec/: it runs spec's recipes licenses-check-repo and
+# release-verify-npm, and the licenses job alone gets the submodule. The code and its tests read
+# nothing of spec/, and the documents are checked by spec's own recipe, just -f spec/justfile
+# docs-check-repo. release-files writes the files of a release, for .github's shared release.yml
+# (R08). One more recipe is for the author's hands: demo serves a page to try the element on.
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
@@ -38,15 +38,23 @@ ci-test: build
 ci-vuln:
     npm audit --omit=dev --audit-level=high
 
-# Fail if a package of package-lock.json, the tools of development too, carries a license that
-# spec's list does not allow and is no exception that licenses.json names (R12, R14). The list,
-# the reading of SPDX expressions and the rule of an exception are spec's, at the tag spec/ is on:
-# an exception off the list holds only for a package the lock file marks dev, and covers the
-# builds for each platform it names in optionalDependencies while they are dev too and under the
-# same license (R39 spec). It reads the lock file, licenses.json and spec/ at its tag, so nothing
-# is installed first, but spec/ has to be checked out. spec's recipe runs under this same just.
+# The checks of package-lock.json. First, fail if a package of it, the tools of development too,
+# carries a license that spec's list does not allow and is no exception that licenses.json names
+# (R12, R14). The list, the reading of SPDX expressions and the rule of an exception are spec's, at
+# the tag spec/ is on: an exception off the list holds only for a package the lock file marks dev,
+# and covers the builds for each platform it names in optionalDependencies while they are dev too
+# and under the same license (R39 spec). That reads the lock file, licenses.json and spec/ at its
+# tag, and installs nothing. Then, fail unless each package of @altnovatrail in the lock file is the
+# signed file of its release: spec's release-verify-npm checks the archive at the lock file's
+# resolved address against the release's bundle, by Sigstore's trust root, and the lock file's
+# integrity against the verified bytes (R77 spec; R44). RULES.md asks it of each pull request that
+# changes the lock file; here it runs on every one, inside a check main already requires. It
+# installs spec/tools from spec's lock file and reads Sigstore, the registry and GitHub: when one
+# of them cannot be read, the package is refused. So spec/ has to be checked out, and the network
+# reachable. spec's recipes run under this same just.
 ci-licenses:
     {{ quote(just_executable()) }} -f spec/justfile licenses-check-repo package-lock.json licenses.json
+    {{ quote(just_executable()) }} -f spec/justfile release-verify-npm package-lock.json
 
 # Build the package into lib/: JavaScript and its declarations. lib/ is emptied first, so that no
 # file of an older build ships.

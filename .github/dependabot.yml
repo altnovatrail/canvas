@@ -36,6 +36,7 @@ updates:
       # moves by hand.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
-      # The types of the module format are spec's, at the version of the tag the spec/ submodule
-      # stands on: the two move together, in a move to a new tag of spec (R73 spec).
+      # The types of the module format and of the element are spec's, at the version of the tag the
+      # spec/ submodule stands on: the two move together, in a move to a new tag of spec (R73 spec),
+      # and ci-licenses checks the package's signature by spec's release-verify-npm (R77 spec).
       - dependency-name: "@altnovatrail/spec"
