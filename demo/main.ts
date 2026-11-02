@@ -5,7 +5,7 @@
 // allows the eraser (T10; R22). The page keeps the history of writing as historychange tells it,
 // listening on the element itself, as app is to; Reopen puts a new element in place of the old
 // one with that history and the marks given, as a page opened again would, and Next task a new,
-// empty one. Each element has a task in the names of the module format's draft — its grid and its
+// empty one. Each element has a task in the names of the module format 0.2 — its grid and its
 // tools, which the page's controls change by a new task, and its statement above the sheet, with a
 // picture the page draws and one that never comes — and the module's manifest, whose height of
 // digits the page's control changes (T44; R32). Dark theme sets the element's custom properties

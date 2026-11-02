@@ -29,8 +29,11 @@ export const CROP = Object.freeze({
   edge: 1568,
   tokens: 1568,
   patch: 28,
-  /** The height of a digit a crop is drawn at unless the module's manifest says another, px. */
-  digit: 32,
+  /**
+   * The height of a digit a crop is drawn at unless the module's manifest says another, px: 24
+   * since the module format 0.2, with or without a manifest.
+   */
+  digit: 24,
   /**
    * The heights of digits a sample's crops are drawn at, px, until the eval protocol names its own
    * (R09; R08 tutor).

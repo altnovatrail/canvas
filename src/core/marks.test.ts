@@ -438,7 +438,8 @@ describe("the digest of a submission", () => {
   const { work } = staircase();
   const strokes = work.strokes;
   const groups = groupsOf(strokes);
-  const crop = cropOf(strokes, groups);
+  // At 32 px, as the digest was first written: the test pins how it is written, not the default.
+  const crop = cropOf(strokes, groups, 32);
   if (crop === null) throw new Error("the sheet has no crop");
   const digest = digestOf(strokes, crop, groups);
 

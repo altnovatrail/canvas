@@ -14,7 +14,7 @@ import { closed, record, shown, whole } from "./fields.js";
  * The version of the module format the element reads: while the format is v0, the platform reads
  * its current version alone, and a module of another is refused with the reason (R44 spec).
  */
-export const FORMAT = "0.1";
+export const FORMAT = "0.2";
 
 /** The open view of a module's manifest, whole: spec's type (R73 spec). */
 export type { Manifest } from "@altnovatrail/spec/formatv0/open";
@@ -28,7 +28,7 @@ export interface Settings {
   readonly lang: string | undefined;
 }
 
-/** The settings without a manifest: digits of 32 px, and the element's own language. */
+/** The settings without a manifest: digits of 24 px, and the element's own language. */
 export const NO_MANIFEST: Settings = Object.freeze({ digit: CROP.digit, lang: undefined });
 
 /**
@@ -59,7 +59,7 @@ export function settingsOf(manifest: unknown): Settings {
   return { digit: digitOf(fields.canvas), lang };
 }
 
-/** The height of a digit a manifest's canvas settings give: 32 unless given. */
+/** The height of a digit a manifest's canvas settings give: 24 unless given. */
 function digitOf(value: unknown): number {
   if (value === undefined) return CROP.digit;
   const canvas = closed(value, "manifest.canvas", ["digit_height"], "a module's canvas settings");

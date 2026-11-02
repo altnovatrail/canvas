@@ -26,7 +26,7 @@ export interface SnapRule {
 }
 
 /**
- * The rule the sheet snaps by (R26): a quarter of a digit — 8 px at 32, a quarter of H on the
+ * The rule the sheet snaps by (R26): a quarter of a digit — 6 px at 24, a quarter of H on the
  * sheet, H the height the crop scales by — and two thirds of the points. A sweep over the
  * synthetic sheets chose two thirds over the half R43 canvas-api took: as many strokes taken
  * whole, and fewer of their neighbours.

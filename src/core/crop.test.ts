@@ -135,9 +135,9 @@ describe("the crop", () => {
         expect(crop.scale * Math.min(crop.median, CROP.ceiling), name).toBeCloseTo(crop.drawn, 9);
       }
     }
-    expect(cropAt(ladder().work.strokes).scale).toBe(320 / 1000);
-    expect(cropAt(overCeiling().work.strokes).scale).toBe(320 / 1000);
-    expect(cropAt(underCeiling().work.strokes).scale).toBe(320 / 999);
+    expect(cropAt(ladder().work.strokes).scale).toBe(240 / 1000);
+    expect(cropAt(overCeiling().work.strokes).scale).toBe(240 / 1000);
+    expect(cropAt(underCeiling().work.strokes).scale).toBe(240 / 999);
   });
 
   test("has a margin of 12 px round the work, and is 200 px each way at least, the work in its middle", () => {

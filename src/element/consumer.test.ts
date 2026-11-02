@@ -62,18 +62,18 @@ const TASK: open.Task = {
 
 /**
  * The open view of the task's module's manifest, whole, as app has it, of spec's type: the element
- * reads its format version, its height of digits, 24 px, and its explanation language, English, and
- * passes over the rest.
+ * reads its format version, its height of digits, 16 px — not the format's 24, so that the test
+ * sees the manifest's — and its explanation language, English, and passes over the rest.
  */
 const MODULE: open.Manifest = {
-  module_format_version: "0.1",
+  module_format_version: "0.2",
   id: "novatrail/olympiad-math",
   version: "0.1.0",
   title: "Olympiad mathematics, grades 1–6",
   subject: "mathematics",
   audience: { age_categories: ["under_13"] },
   languages: { explanation: "en" },
-  canvas: { digit_height: 24 },
+  canvas: { digit_height: 16 },
   authors: [{ name: "The NovaTrail authors" }],
   license: "Apache-2.0",
 };
@@ -336,7 +336,7 @@ test("app's path: write, erase, undo and clear with the sheet's buttons, keep th
     expect(work.submission.groups.map(({ label }) => label)).toEqual(["A", "B", "C"]);
     // At the height of digits the module's manifest gives, and the statement in its language,
     // while the buttons are in app's.
-    expect(work.submission.crop.drawn).toBe(24);
+    expect(work.submission.crop.drawn).toBe(16);
     expect(sheet.shadowRoot?.querySelector(".statement")?.getAttribute("lang")).toBe("en");
 
     // The tutor's marks come back with the context, through JSON: a frame read by its name.
@@ -511,21 +511,21 @@ test("app's path through a worked example's demo: it keeps how far the learner h
     .not.toHaveAttribute("aria-disabled");
 });
 
-test("the height of digits is the manifest's at the moment of Check: another manifest between two checks gives another, and none gives 32", async () => {
+test("the height of digits is the manifest's at the moment of Check: another manifest between two checks gives another, and none gives 24", async () => {
   const { sheet } = await app();
   write(sheet, 100, 100, 300);
   write(sheet, 140, 100, 300);
-  expect((await check(sheet)).submission.crop.drawn).toBe(24);
+  expect((await check(sheet)).submission.crop.drawn).toBe(16);
   sheet.manifest = { ...MODULE, canvas: { digit_height: 48 } };
   expect((await check(sheet)).submission.crop.drawn).toBe(48);
   sheet.manifest = undefined;
-  expect((await check(sheet)).submission.crop.drawn).toBe(32);
+  expect((await check(sheet)).submission.crop.drawn).toBe(24);
   // A manifest app changes in place and gives again is read again.
-  const kept = { ...MODULE, canvas: { digit_height: 24 } };
+  const kept = { ...MODULE, canvas: { digit_height: 40 } };
   sheet.manifest = kept;
-  kept.canvas.digit_height = 16;
+  kept.canvas.digit_height = 20;
   sheet.manifest = kept;
-  expect((await check(sheet)).submission.crop.drawn).toBe(16);
+  expect((await check(sheet)).submission.crop.drawn).toBe(20);
 });
 
 test("historychange goes out of a consumer's own shadow tree too, from the host it is in", async () => {
