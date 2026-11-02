@@ -5,6 +5,7 @@
 // — is a TypeError (R32). What the check gives is the element's own shape of the same task, its
 // canvas kinds apart, which the rest of the element reads.
 
+import type { Tool } from "@altnovatrail/spec/canvas";
 import type * as open from "@altnovatrail/spec/formatv0/open";
 import { closed, listOf, sameItems, shown, text, whole } from "./fields.js";
 import {
@@ -24,9 +25,10 @@ export const WORKBOOK_KIND = "workbook";
 
 /**
  * What a press of the primary button does on the sheet: the pen writes, the eraser erases (R22). A
- * pen's eraser erases whatever the tool, if the task allows the eraser (R28).
+ * pen's eraser erases whatever the tool, if the task allows the eraser (R28). spec's type (R74
+ * spec).
  */
-export type Tool = "pen" | "eraser";
+export type { Tool };
 
 /** The sheet's tools, in the order their buttons stand: the pen, the eraser. */
 export const TOOLS: readonly Tool[] = Object.freeze(["pen", "eraser"]);

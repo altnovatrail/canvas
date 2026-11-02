@@ -1,24 +1,61 @@
 // Type-checked by ci-lint and never built: the element's interface as a consumer's types see it
 // (R07, R27, R28, R32, R37, R38, R39, R42). What a consumer may do type-checks; each line under a
 // directive must be an error, and were it not, the directive would go unused, and that would be the
-// error instead.
+// error instead. The types of the contract are spec's (R74 spec; T69): the element is its
+// CanvasElement, and the entry point gives the same types as spec's package.
 
+import type * as spec from "@altnovatrail/spec/canvas";
 import type * as open from "@altnovatrail/spec/formatv0/open";
+import type { All, Same } from "../core/entry.check.js";
 import type {
+  CanvasElement,
+  CanvasEventMap,
   DemoChangeEvent,
   DemoState,
+  ExportedCell,
+  ExportedSheet,
   ExportedWork,
+  ExportedWorkbook,
   Filled,
+  HistoryChange,
   HistoryChangeEvent,
   HistoryEvent,
   Manifest,
   NovatrailCanvas,
   SheetSubmission,
   Tool,
+  ToolChange,
   ToolChangeEvent,
   WorkbookSubmission,
   WorkedExample,
 } from "./index.js";
+
+/**
+ * The entry point's types of the contract are spec's, under spec's names (R74 spec; T69): a copy
+ * that went its own way would be false here. The DOM's map of events holds the contract's, each
+ * event's type, which the package puts there. The data's types the DOM-free part checks the same.
+ */
+export type Contract = All<
+  [
+    Same<CanvasElement, spec.CanvasElement>,
+    Same<CanvasEventMap, spec.CanvasEventMap>,
+    Same<DemoChangeEvent, spec.DemoChangeEvent>,
+    Same<ExportedCell, spec.ExportedCell>,
+    Same<ExportedSheet, spec.ExportedSheet>,
+    Same<ExportedWork, spec.ExportedWork>,
+    Same<ExportedWorkbook, spec.ExportedWorkbook>,
+    Same<HistoryChange, spec.HistoryChange>,
+    Same<HistoryChangeEvent, spec.HistoryChangeEvent>,
+    Same<ToolChange, spec.ToolChange>,
+    Same<ToolChangeEvent, spec.ToolChangeEvent>,
+    Same<Filled, spec.Filled>,
+    Same<Tool, spec.Tool>,
+    Same<GlobalEventHandlersEventMap["historychange"], CanvasEventMap["historychange"]>,
+    Same<GlobalEventHandlersEventMap["toolchange"], CanvasEventMap["toolchange"]>,
+    Same<GlobalEventHandlersEventMap["demochange"], CanvasEventMap["demochange"]>,
+  ]
+>;
+export const contract: Contract = true;
 
 declare const sheet: NovatrailCanvas;
 declare const crop: SheetSubmission["crop"];
@@ -39,6 +76,8 @@ const posts = {
 /** The tag gives the element's type, made or found. */
 export const made: NovatrailCanvas = document.createElement("novatrail-canvas");
 export const found: NovatrailCanvas | null = document.querySelector("novatrail-canvas");
+/** The element is the contract's, as app holds it by spec's types (R74 spec). */
+export const held: spec.CanvasElement = made;
 
 /** The event's type holds on the element and on the document it bubbles up to. */
 sheet.addEventListener("historychange", (event: HistoryChangeEvent) => event.detail.from);
@@ -113,6 +152,17 @@ document.addEventListener("demochange", (event) => {
   sheet.demoState = kept;
 });
 
+/** A task's temporary tools the element takes, though the contract's task has none (R28, R41). */
+sheet.task = { ...posts, canvas: { kind: "handwriting_sheet", tools: ["pen"] } };
+
+// @ts-expect-error The tools are the element's own: the contract's task has no tools (R41).
+held.task = { ...posts, canvas: { kind: "handwriting_sheet", tools: ["pen"] } };
+// @ts-expect-error The tutor's marks are no part of the contract until its epic E3 (R74 spec).
+held.marks = undefined;
+// @ts-expect-error Nor are the media, which the contract does not name.
+held.media = undefined;
+// @ts-expect-error Nor the commands undo and clear: the element's own buttons call them (R28).
+held.undo();
 // @ts-expect-error The picture of the whole sheet is no part of the interface (R27).
 sheet.exportPNG();
 // @ts-expect-error null is no history: undefined, and undefined alone, is the empty one.

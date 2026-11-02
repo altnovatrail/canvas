@@ -1,3 +1,4 @@
+import type { CropNumbers, Frame } from "@altnovatrail/spec/canvas";
 import RBush from "rbush";
 import { around, type Box, type Extent, extentOf } from "./geometry.js";
 import type { Group } from "./groups.js";
@@ -44,40 +45,25 @@ export const CROP = Object.freeze({
 });
 
 /**
- * A group's frame on a crop: its label, and its ink in fractions 0–1000 of the crop — every pixel
- * the ink of its strokes touches lies within it.
+ * A group's frame on a crop: its label, and its ink in fractions 0–1000 of the crop, [ymin, xmin,
+ * ymax, xmax] — every pixel the ink of its strokes touches lies within it. spec's type (R74 spec).
  */
-export interface Frame {
-  readonly label: string;
-  /** [ymin, xmin, ymax, xmax] in whole thousandths of the crop's height and width; min < max. */
-  readonly box: readonly [number, number, number, number];
-}
+export type { Frame };
 
-/** The crop of a sheet for checking (R25), all but its pixels: what lies where, at what scale. */
-export interface Crop {
+/**
+ * The crop of a sheet for checking (R25), all but its pixels: what lies where, at what scale. Its
+ * numbers the marks are placed by — D′, the size, the margins, `sheet_box`, the frames and the
+ * whole numbers they come from — are spec's CropNumbers (R74 spec), and the rest the crop's own.
+ */
+export interface Crop extends CropNumbers {
   /** D, the height of a digit asked for, px. */
   readonly digit: number;
-  /** D′, the height digits are drawn at: D, or less if the crop at D would be too large. */
-  readonly drawn: number;
   /** h_med, the median height of the bundles, in units: the floor if there are none. */
   readonly median: number;
   /** s, the crop's px to a sheet unit: D′ over h_med, or over the ceiling if h_med is above it. */
   readonly scale: number;
   /** The width of the line, px: D′ / 12, and 1 at least. */
   readonly line: number;
-  readonly width: number;
-  readonly height: number;
-  /** The margins above and to the left of the work, px; below and to the right is what is left. */
-  readonly margins: readonly [top: number, left: number];
-  /** Where the crop with its margins lies on the sheet: [ymin, xmin, ymax, xmax], in units. */
-  readonly sheetBox: readonly [number, number, number, number];
-  /** The frames of the groups, in the order of their labels. */
-  readonly frames: readonly Frame[];
-  /**
-   * The whole numbers all of it comes from, in tenths of a unit: the box of the points, and the
-   * median the scale takes.
-   */
-  readonly exact: { readonly box: Box; readonly median: number };
 }
 
 /** A stroke as the crop sees it: the box of its points in tenths. */

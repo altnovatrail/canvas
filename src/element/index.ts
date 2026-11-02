@@ -28,8 +28,17 @@
 // the demo come from the consumer's media, one file for each reference, all of them as the task or
 // the example comes: a part opened shows its picture at once (T64; R42). A picture on an area of
 // the sheet stands on the layer of the author's demo, over its area, and the sheet scrolls to the
-// area as the part opens (T61; R42).
+// area as the part opens (T61; R42). The types of its contract with app are spec's, of
+// @altnovatrail/spec/canvas: the element implements its CanvasElement, and the package puts the
+// element and its events in the DOM's maps (T69; R07).
 
+import type {
+  CanvasElement,
+  CanvasEventMap,
+  ExportedWork,
+  HistoryChange,
+  ToolChange,
+} from "@altnovatrail/spec/canvas";
 import type { Vec2 } from "perfect-freehand";
 import { type Cell, cellOf, cellsOf, type Filled, filledOf, sheetFilledOf } from "../core/boxes.js";
 import { Clock } from "../core/clock.js";
@@ -52,15 +61,7 @@ import { type Contact, Hands } from "../core/hands.js";
 import { begins, type HistoryEvent, sameHistory } from "../core/history.js";
 import type { InkPoint, Stroke } from "../core/ink.js";
 import { type Manifest, NO_MANIFEST, type Settings, settingsOf } from "../core/manifest.js";
-import {
-  type Marks,
-  marksOf,
-  type Placed,
-  placesOf,
-  type SheetSubmission,
-  shownOf,
-  type WorkbookSubmission,
-} from "../core/marks.js";
+import { type Marks, marksOf, type Placed, placesOf, shownOf } from "../core/marks.js";
 import { INK_REACH, outline } from "../core/outline.js";
 import {
   isBox,
@@ -97,10 +98,31 @@ import { PEN_MODE } from "./session.js";
 import { Statement } from "./statement.js";
 import { type DemoControls, type RowKind, Tools } from "./tools.js";
 
+/**
+ * The types of the contract of canvas and app are spec's (R74 spec; R07): the element as
+ * CanvasElement has it, what its events tell and the work it gives for checking, here, and the data
+ * — the history of writing, the context of a submission, the filled slots and the state of a demo
+ * — through the DOM-free part. The entry point gives them under spec's names, the same types. The
+ * tutor's marks, the media, the crop and a task with its temporary tools are the element's own
+ * (R26, R41).
+ */
+export type {
+  Box,
+  CanvasElement,
+  CanvasEventMap,
+  DemoChangeEvent,
+  ExportedCell,
+  ExportedSheet,
+  ExportedWork,
+  ExportedWorkbook,
+  HistoryChange,
+  HistoryChangeEvent,
+  ToolChange,
+  ToolChangeEvent,
+} from "@altnovatrail/spec/canvas";
 export type { Filled, Filling } from "../core/boxes.js";
 export type { Crop, Frame } from "../core/crop.js";
 export type { DemoState, WorkedExample } from "../core/example.js";
-export type { Box } from "../core/geometry.js";
 export type { GridKind } from "../core/grid.js";
 export type { Group } from "../core/groups.js";
 export type { HistoryEvent } from "../core/history.js";
@@ -121,57 +143,6 @@ export type { Media } from "./pictures.js";
 
 /** The name the element is registered under. */
 export const TAG = "novatrail-canvas";
-
-/**
- * What a `historychange` tells (R27): the events the history of writing has gained, in its order,
- * and where the first of them stands in it — `history` is what was there before, and these.
- */
-export interface HistoryChange {
-  readonly events: readonly HistoryEvent[];
-  readonly from: number;
-}
-
-/** The event the element sends after every action on the sheet (R27). */
-export type HistoryChangeEvent = CustomEvent<HistoryChange>;
-
-/** The work of a sheet for checking (R27): the PNG of the crop, and the context of the submission. */
-export interface ExportedSheet {
-  readonly png: Blob;
-  readonly submission: SheetSubmission;
-}
-
-/** The crop of one filled box of a workbook (R38): its item and its slot, from 1, and its PNG. */
-export interface ExportedCell {
-  readonly item: number;
-  readonly slot: number;
-  readonly png: Blob;
-}
-
-/**
- * The work of a workbook for checking (R34, R38): the crop of each filled box, in the task's order,
- * and the context of the submission.
- */
-export interface ExportedWorkbook {
-  readonly cells: readonly ExportedCell[];
-  readonly submission: WorkbookSubmission;
-}
-
-/** The work for checking, of a sheet or of a workbook: its key, `png` or `cells`, tells which (R38). */
-export type ExportedWork = ExportedSheet | ExportedWorkbook;
-
-/** What a `toolchange` tells (R28): the tool the learner chose with the element's own buttons. */
-export interface ToolChange {
-  readonly tool: Tool;
-}
-
-/** The event the element sends when the learner changes the tool with its buttons (R28). */
-export type ToolChangeEvent = CustomEvent<ToolChange>;
-
-/**
- * The event the element sends when the learner opens the next part of a worked example's demo, or
- * hides or shows the whole demo, with its buttons (R42): its detail is the new `demoState`.
- */
-export type DemoChangeEvent = CustomEvent<DemoState>;
 
 /** The colour of the ink unless the consumer's theme gives one. */
 const INK = "#111";
@@ -423,8 +394,11 @@ function htmlLayer(name: string): HTMLDivElement {
   return div;
 }
 
-/** The element `<novatrail-canvas>`. */
-export class NovatrailCanvas extends HTMLElement {
+/**
+ * The element `<novatrail-canvas>`: the contract's `CanvasElement` (R74 spec), and beyond it the
+ * tutor's marks, the media and the commands undo and clear, which the contract does not name.
+ */
+export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   readonly #viewport = document.createElement("div");
   readonly #column = document.createElement("div");
   readonly #sheet = document.createElement("div");
@@ -2138,10 +2112,7 @@ declare global {
     "novatrail-canvas": NovatrailCanvas;
   }
   // The events bubble and leave shadow trees: their types hold on the element, on its ancestors and
-  // on the document alike.
-  interface GlobalEventHandlersEventMap {
-    historychange: HistoryChangeEvent;
-    toolchange: ToolChangeEvent;
-    demochange: DemoChangeEvent;
-  }
+  // on the document alike. Their map is the contract's, and the package that registers the element
+  // puts it in the DOM's (R74 spec).
+  interface GlobalEventHandlersEventMap extends CanvasEventMap {}
 }

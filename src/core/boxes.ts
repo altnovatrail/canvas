@@ -7,6 +7,7 @@
 // core's entry point does not give the rule, and vectors/boxes.json pins it: the eval protocol
 // takes it as it is (В47 in RUN.md).
 
+import type { Filled, Filling } from "@altnovatrail/spec/canvas";
 import { extentOf, tenths } from "./geometry.js";
 import type { Stroke } from "./ink.js";
 import type { Page, PageBox } from "./page.js";
@@ -34,9 +35,9 @@ export const BOX_RULE: BoxRule = Object.freeze({ margin: 120, limit: 1600 });
 /**
  * Which answer slots the learner's strokes fill, per item, per slot, in the task's order: a
  * workbook's boxes, each whether it holds a stroke (R34, R37), or a sheet's one answer anywhere on
- * it or the whole sheet, whether the sheet holds one (R42).
+ * it or the whole sheet, whether the sheet holds one (R42). spec's type (R74 spec; R07).
  */
-export type Filled = readonly (readonly boolean[])[];
+export type { Filled };
 
 /** A sheet's one answer slot, filled and not: the same frozen arrays for every sheet (R42). */
 const STROKED: Filled = Object.freeze([Object.freeze([true])]);
@@ -105,12 +106,8 @@ export function cellOf(stroke: Stroke, cells: readonly Cell[], rule: BoxRule = B
   return chosen;
 }
 
-/** A filled box and the IDs of its strokes, in ascending order. */
-export interface Filling {
-  readonly item: number;
-  readonly slot: number;
-  readonly ids: readonly number[];
-}
+/** A filled box and the IDs of its strokes, in ascending order: spec's type (R74 spec; R07). */
+export type { Filling };
 
 /**
  * The table of the boxes the strokes fill (R34): each box that holds a stroke, in the order of

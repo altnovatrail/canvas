@@ -2,8 +2,11 @@
 // (R27). The types of the data and the fold of a history are there; the rules of the groups, the
 // crop, the snapping and the boxes are not, until the eval protocol takes them, nor is the
 // workbook's layout. Were the entry to give one of them, the directive over it would go unused,
-// and that would be the error.
+// and that would be the error. The data's types of the contract are spec's, the same types (R74
+// spec; T69).
 
+import type * as spec from "@altnovatrail/spec/canvas";
+import type * as open from "@altnovatrail/spec/formatv0/open";
 import type * as types from "./index.js";
 import * as core from "./index.js";
 
@@ -31,6 +34,34 @@ export type Given = [
   types.WorkedExample,
   types.WorkbookSubmission,
 ];
+
+/** Whether two types are one: each takes what the other does, readonly and optional fields too. */
+export type Same<A, B> =
+  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+
+/** The entry's types of the data are spec's, under spec's names: a copy gone astray is false. */
+export type Data = All<
+  [
+    Same<types.Box, spec.Box>,
+    Same<types.CellPlace, spec.CellPlace>,
+    Same<types.CropNumbers, spec.CropNumbers>,
+    Same<types.DemoState, spec.DemoState>,
+    Same<types.Filling, spec.Filling>,
+    Same<types.Frame, spec.Frame>,
+    Same<types.Group, spec.Group>,
+    Same<types.HistoryEvent, spec.HistoryEvent>,
+    Same<types.InkPoint, spec.InkPoint>,
+    Same<types.Manifest, open.Manifest>,
+    Same<types.SheetSubmission, spec.SheetSubmission>,
+    Same<types.Stroke, spec.Stroke>,
+    Same<types.Submission, spec.Submission>,
+    Same<types.WorkbookSubmission, spec.WorkbookSubmission>,
+    Same<types.WorkedExample, open.WorkedExample>,
+  ]
+>;
+export const data: Data = true;
+/** Whether every check of a list holds: `true`, or `never`, which no value is. */
+export type All<T extends readonly boolean[]> = T extends readonly true[] ? true : never;
 
 /** The fold reads a history as the sheet hands it out, into the strokes it leaves. */
 export const folded: (history: readonly types.HistoryEvent[]) => types.Stroke[] = core.replay;
