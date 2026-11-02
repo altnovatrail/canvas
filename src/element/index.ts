@@ -37,6 +37,7 @@ import type {
   CanvasEventMap,
   ExportedWork,
   HistoryChange,
+  Media,
   ToolChange,
 } from "@altnovatrail/spec/canvas";
 import type { Vec2 } from "perfect-freehand";
@@ -92,7 +93,7 @@ import { nextIdOf, resumeOf, Work } from "../core/work.js";
 import { placeOver, SVG, write } from "./attributes.js";
 import { labelsFor } from "./labels.js";
 import { Parts } from "./parts.js";
-import { type Media, Pictures } from "./pictures.js";
+import { Pictures } from "./pictures.js";
 import { attachProbe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
 import { Statement } from "./statement.js";
@@ -102,9 +103,9 @@ import { type DemoControls, type RowKind, Tools } from "./tools.js";
  * The types of the contract of canvas and app are spec's (R74 spec; R07): the element as
  * CanvasElement has it, what its events tell and the work it gives for checking, here, and the data
  * — the history of writing, the context of a submission, the filled slots and the state of a demo
- * — through the DOM-free part. The entry point gives them under spec's names, the same types. The
- * tutor's marks, the media, the crop and a task with its temporary tools are the element's own
- * (R26, R41).
+ * — through the DOM-free part. The entry point gives them under spec's names, the same types, the
+ * media too (T73). The tutor's marks, the crop and a task with its temporary tools are the
+ * element's own (R26, R41).
  */
 export type {
   Box,
@@ -117,6 +118,7 @@ export type {
   ExportedWorkbook,
   HistoryChange,
   HistoryChangeEvent,
+  Media,
   ToolChange,
   ToolChangeEvent,
 } from "@altnovatrail/spec/canvas";
@@ -139,7 +141,6 @@ export type {
   WorkbookSubmission,
 } from "../core/marks.js";
 export type { Canvas, Task, Tool } from "../core/task.js";
-export type { Media } from "./pictures.js";
 
 /** The name the element is registered under. */
 export const TAG = "novatrail-canvas";
@@ -223,7 +224,7 @@ const STYLE = `
   display: flex; gap: 8px; margin-inline-end: 16px;
 }
 .tools button {
-  box-sizing: border-box; min-width: 44px; min-height: 44px; padding: 0 16px; margin: 0;
+  box-sizing: border-box; min-width: 44px; min-height: 44px; padding: 0 8px; margin: 0;
   font: inherit; color: inherit; background: transparent; cursor: pointer;
   border: 1px solid currentColor; border-radius: 6px;
 }
@@ -234,11 +235,10 @@ const STYLE = `
 .tools [aria-disabled="true"] { opacity: 0.4; cursor: default; }
 .tools [hidden] { display: none; }
 .tools button svg {
-  display: inline-block; width: 0.75em; height: 0.75em; margin-inline-end: 6px;
-  vertical-align: -0.05em; fill: currentColor;
+  display: inline-block; width: 1.125em; height: 1.125em; margin-inline-end: 4px;
+  vertical-align: -0.25em; fill: currentColor;
 }
-.tools [aria-expanded="false"] svg { transform: rotate(-90deg); }
-.tools:dir(rtl) [aria-expanded="false"] svg { transform: rotate(90deg); }
+.tools:dir(rtl) svg.mirrored { transform: scaleX(-1); }
 .viewport {
   flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overflow-anchor: none;
 }
@@ -813,7 +813,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * What gives the files of the pictures, by their references (R07): a task's statement's, and a
+   * What gives the files of the pictures, by their references, as the contract has it (the
+   * 2026-11-02 amendment to R36 spec; R07): a task's statement's, and a
    * worked example's — its statement's and every part's of its demo, which it asks for as the
    * example comes, before the learner opens them (R42). A reference is asked for once, whichever
    * pictures show it, and its file stays while the task or the example names it. Until a picture's

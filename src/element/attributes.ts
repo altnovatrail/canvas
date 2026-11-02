@@ -3,7 +3,7 @@
 // namespace of the SVG it writes them on, and the place of an SVG shape of a box. This module is
 // no entry point of the package.
 
-/** The namespace of the SVG elements the element makes: its layers, and the row's triangle. */
+/** The namespace of the SVG elements the element makes: its layers, and the row's icons. */
 export const SVG = "http://www.w3.org/2000/svg";
 
 /** An SVG shape — a workbook's box, a demo's picture — set over a box in its layer's units. */

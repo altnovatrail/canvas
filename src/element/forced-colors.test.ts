@@ -9,6 +9,7 @@ import { workbookTask, workedExample } from "../core/tasks.fixture.js";
 import "./index.js";
 import {
   arrive,
+  iconOf,
   QUARTERS,
   quarters,
   sameColours,
@@ -125,7 +126,7 @@ test("with forced colours the sheet takes the system's colours, whatever the con
   expect(new Uint8Array(await work.png.arrayBuffer())).toEqual(own.png);
 });
 
-test("with forced colours the row of buttons takes the system's colours of buttons: the tool in use the highlight's, an unavailable button the grey of disabled text", async () => {
+test("with forced colours the row of buttons takes the system's colours of buttons, its icons too: the tool in use the highlight's, an unavailable button the grey of disabled text", async () => {
   const theme = document.createElement("div");
   theme.style.setProperty("--novatrail-canvas-ink", "rgb(0, 0, 255)");
   theme.style.setProperty("--novatrail-canvas-paper", "rgb(255, 255, 200)");
@@ -148,11 +149,15 @@ test("with forced colours the row of buttons takes the system's colours of butto
   expect(pen.getAttribute("aria-checked")).toBe("true");
   expect(getComputedStyle(pen).backgroundColor).toBe(system("Highlight"));
   expect(getComputedStyle(pen).color).toBe(system("HighlightText"));
+  // An icon is the colour of its button's text, whatever the mode makes it (R46).
+  expect(getComputedStyle(iconOf(eraser)).fill).toBe(system("ButtonText"));
+  expect(getComputedStyle(iconOf(pen)).fill).toBe(system("HighlightText"));
   // Nothing to undo yet, and nothing above to scroll back up to (R33).
   for (const unavailable of [undo, up]) {
     expect(unavailable.getAttribute("aria-disabled")).toBe("true");
     expect(getComputedStyle(unavailable).color).toBe(system("GrayText"));
     expect(getComputedStyle(unavailable).borderTopColor).toBe(system("GrayText"));
+    expect(getComputedStyle(iconOf(unavailable)).fill).toBe(system("GrayText"));
   }
 });
 
@@ -205,7 +210,7 @@ test("with forced colours a workbook's text and the frames of its boxes are the 
   expect(getComputedStyle(mark).stroke).toBe(system("Highlight"));
 });
 
-test("with forced colours a worked example's Demo draws its triangle in the colour of button text, Next unavailable is the grey of disabled text, and a picture's frame in the list of parts the system's text colour", async () => {
+test("with forced colours a worked example's Demo draws its icon in the colour of button text, Next unavailable is the grey of disabled text, and a picture's frame in the list of parts the system's text colour", async () => {
   const element = document.createElement("novatrail-canvas");
   element.style.width = "400px";
   element.style.setProperty("--novatrail-canvas-ink", "rgb(0, 0, 255)");
@@ -215,11 +220,10 @@ test("with forced colours a worked example's Demo draws its triangle in the colo
   await settle();
   const root = element.shadowRoot;
   const [next, demo] = [...(root?.querySelectorAll(".tools .demo button") ?? [])];
-  const triangle = demo?.querySelector("svg");
-  if (!(next instanceof HTMLButtonElement) || !demo || !triangle) {
+  if (!(next instanceof HTMLButtonElement) || !demo)
     throw new Error("the row has no Next and Demo");
-  }
-  expect(getComputedStyle(triangle).fill).toBe(system("ButtonText"));
+  const icon = iconOf(demo);
+  expect(getComputedStyle(icon).fill).toBe(system("ButtonText"));
   // The paragraph and the picture beside the sheet, which stands in its frame till its file comes.
   next.click();
   next.click();
@@ -230,7 +234,7 @@ test("with forced colours a worked example's Demo draws its triangle in the colo
   (demo as HTMLButtonElement).click();
   expect(next.getAttribute("aria-disabled")).toBe("true");
   expect(getComputedStyle(next).color).toBe(system("GrayText"));
-  expect(getComputedStyle(triangle).fill).toBe(system("ButtonText"));
+  expect(getComputedStyle(icon).fill).toBe(system("ButtonText"));
 });
 
 test("with forced colours a picture on an area of the sheet keeps the colours of its file, as a picture does (T61)", async () => {

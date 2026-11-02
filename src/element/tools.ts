@@ -9,12 +9,18 @@
 // workbook (R36). A lesson's worked example names it too, and has no tools of writing in it: the
 // learner does not write on its sheet. Its first buttons are its demo's, Next, which opens the next
 // part, and Demo, a disclosure button that hides the whole demo and shows it again (R42). A button
-// that goes gives its stop of Tab and the focus to the first button shown. This module is no entry
+// that goes gives its stop of Tab and the focus to the first button shown. Each button shows an
+// icon of the set every NovaTrail package of the interface draws from, before its label, which
+// stays its name: the icon says nothing to a screen reader (R46; R78 spec). This module is no entry
 // point of the package.
 
 import type { Tool } from "../core/task.js";
 import { SVG, write } from "./attributes.js";
-import { labelsFor } from "./labels.js";
+import { ICONS, ROW } from "./icons.js";
+import { type Labels, labelsFor } from "./labels.js";
+
+/** A value of the row, by its button's key: what its icon shows (icons.ts). */
+type Value = keyof typeof ROW;
 
 /**
  * What the row asks of the element: a tool the learner chose — perhaps the one in use — an undo, a
@@ -65,31 +71,35 @@ export class Tools {
   readonly element = document.createElement("div");
   /** Next and Demo, a worked example's first buttons, kept together on a narrow screen (R42). */
   readonly #demoPair = document.createElement("div");
-  readonly #next = plainButton();
-  readonly #demo = plainButton();
-  readonly #demoLabel = document.createElement("span");
+  readonly #next = plainButton("next");
+  readonly #demo = plainButton("demoShown");
   readonly #group = document.createElement("div");
-  readonly #pen = radioButton();
-  readonly #eraser = radioButton();
-  readonly #undo = plainButton();
-  readonly #clear = plainButton();
+  readonly #pen = radioButton("pen");
+  readonly #eraser = radioButton("eraser");
+  readonly #undo = plainButton("undo");
+  readonly #clear = plainButton("clear");
   /** Up and Down, a pair that a row wrapping on a narrow screen keeps together. */
   readonly #pair = document.createElement("div");
-  readonly #up = plainButton();
-  readonly #down = plainButton();
-  readonly #finger = plainButton();
-  /** The buttons in the order the arrow keys go through them: the row's own. */
-  readonly #buttons: readonly HTMLButtonElement[] = [
-    this.#next,
-    this.#demo,
-    this.#pen,
-    this.#eraser,
-    this.#undo,
-    this.#clear,
-    this.#up,
-    this.#down,
-    this.#finger,
+  readonly #up = plainButton("up");
+  readonly #down = plainButton("down");
+  readonly #finger = plainButton("finger");
+  /**
+   * The buttons with the keys of their labels, in the order the arrow keys go through them: the
+   * row's own. A button is named only by its label (R46), so each is here with its key.
+   */
+  readonly #labelled: readonly (readonly [HTMLButtonElement, keyof Labels])[] = [
+    [this.#next, "next"],
+    [this.#demo, "demo"],
+    [this.#pen, "pen"],
+    [this.#eraser, "eraser"],
+    [this.#undo, "undo"],
+    [this.#clear, "clear"],
+    [this.#up, "up"],
+    [this.#down, "down"],
+    [this.#finger, "finger"],
   ];
+  /** The buttons in the order the arrow keys go through them. */
+  readonly #buttons: readonly HTMLButtonElement[] = this.#labelled.map(([button]) => button);
   /** The language of the labels shown. */
   #lang: string | undefined;
   /** What the row is of, named so. */
@@ -105,7 +115,6 @@ export class Tools {
     this.#next.setAttribute("aria-controls", controls.status);
     this.#demo.setAttribute("aria-controls", controls.parts);
     this.#demo.setAttribute("aria-expanded", "true");
-    this.#demo.append(triangle(), this.#demoLabel);
     this.#demoPair.append(this.#next, this.#demo);
     this.#group.className = "choice";
     this.#group.setAttribute("role", "radiogroup");
@@ -160,7 +169,8 @@ export class Tools {
    * The row as the sheet now is. Only what has changed is written. A worked example's row has no
    * tools of writing, no undo and no clearing, for the learner does not write on its sheet, and has
    * Next, unavailable while the demo is hidden or open whole, and Demo, expanded while the demo is
-   * shown (R42).
+   * shown (R42). The tool in use shows its icon filled, and Demo's icon points down while the demo
+   * is shown, and along the row while it is hidden (R46).
    */
   show({ kind, tools, tool, undoable, clearable, finger, opens, expanded }: ToolState): void {
     if (kind !== this.#kind) {
@@ -185,6 +195,9 @@ export class Tools {
     write(this.#clear, "aria-disabled", clearable ? null : "true");
     write(this.#next, "aria-disabled", opens ? null : "true");
     write(this.#demo, "aria-expanded", String(expanded));
+    draw(this.#pen, "pen", tool === "pen");
+    draw(this.#eraser, "eraser", tool === "eraser");
+    draw(this.#demo, expanded ? "demoShown" : "demoHidden", false);
   }
 
   /**
@@ -207,15 +220,10 @@ export class Tools {
     this.element.lang = lang;
     this.#name();
     this.#group.setAttribute("aria-label", labels.tool);
-    this.#next.textContent = labels.next;
-    this.#demoLabel.textContent = labels.demo;
-    this.#pen.textContent = labels.pen;
-    this.#eraser.textContent = labels.eraser;
-    this.#undo.textContent = labels.undo;
-    this.#clear.textContent = labels.clear;
-    this.#up.textContent = labels.up;
-    this.#down.textContent = labels.down;
-    this.#finger.textContent = labels.finger;
+    for (const [button, key] of this.#labelled) {
+      const label = button.lastElementChild;
+      if (label !== null) label.textContent = labels[key];
+    }
   }
 
   /** The row's name: the canvas kind's, in the labels' language. */
@@ -225,7 +233,8 @@ export class Tools {
   }
 
   /**
-   * The arrow keys move the focus to the next button or the one before, round the row, and Home
+   * The arrow keys move the focus to the next button or the one before, round the row — the next
+   * is the one the arrow points to, so in a row that runs right to left it is ArrowLeft — and Home
    * and End to the first and the last: nothing is chosen, and no other key is the row's.
    */
   #key(event: KeyboardEvent): void {
@@ -233,9 +242,11 @@ export class Tools {
     const shown = this.#shown();
     const at = shown.indexOf(event.target as HTMLButtonElement);
     if (at < 0) return;
+    const onward = this.element.matches(":dir(rtl)") ? "ArrowLeft" : "ArrowRight";
+    const back = onward === "ArrowLeft" ? "ArrowRight" : "ArrowLeft";
     let next: HTMLButtonElement | undefined;
-    if (event.key === "ArrowRight") next = shown[(at + 1) % shown.length];
-    else if (event.key === "ArrowLeft") next = shown[(at - 1 + shown.length) % shown.length];
+    if (event.key === onward) next = shown[(at + 1) % shown.length];
+    else if (event.key === back) next = shown[(at - 1 + shown.length) % shown.length];
     else if (event.key === "Home") next = shown[0];
     else if (event.key === "End") next = shown.at(-1);
     else return;
@@ -278,29 +289,50 @@ export class Tools {
 }
 
 /** A button of a tool: a radio button of the group, a button still, which the arrows leave alone. */
-function radioButton(): HTMLButtonElement {
-  const button = plainButton();
+function radioButton(value: Value): HTMLButtonElement {
+  const button = plainButton(value);
   button.setAttribute("role", "radio");
   button.setAttribute("aria-checked", "false");
   return button;
 }
 
 /**
- * The triangle of a disclosure button, pointing down while what it shows is shown: a picture that
- * says nothing, for aria-expanded says it (R42).
+ * A button: its icon, an SVG that says nothing — no title, hidden from a screen reader — and its
+ * label, which names it (R46; R78 spec).
  */
-function triangle(): SVGSVGElement {
-  const svg = document.createElementNS(SVG, "svg");
-  svg.setAttribute("viewBox", "0 0 10 10");
-  svg.setAttribute("aria-hidden", "true");
-  const path = document.createElementNS(SVG, "path");
-  path.setAttribute("d", "M1 3h8L5 8z");
-  svg.append(path);
-  return svg;
-}
-
-function plainButton(): HTMLButtonElement {
+function plainButton(value: Value): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
+  const icon = document.createElementNS(SVG, "svg");
+  icon.setAttribute("aria-hidden", "true");
+  // The size of a letter, should the element's style not come; the style sets the one shown.
+  icon.setAttribute("width", "1em");
+  icon.setAttribute("height", "1em");
+  button.append(icon, document.createElement("span"));
+  draw(button, value, false);
   return button;
+}
+
+/**
+ * A value's icon on its button, filled or in outline, written only when it is another than the one
+ * there: the icon's name stays on the SVG, as data. One mirrored in a row that runs right to left
+ * says so by its class, which the style turns (R46).
+ */
+function draw(button: HTMLButtonElement, value: Value, filled: boolean): void {
+  const icon = button.firstElementChild;
+  if (!(icon instanceof SVGSVGElement)) return;
+  const { outline, filled: full, mirrored } = ROW[value];
+  const name = filled ? full : outline;
+  if (icon.dataset.icon === name) return;
+  const { viewBox, paths } = ICONS[name];
+  icon.dataset.icon = name;
+  icon.setAttribute("viewBox", viewBox);
+  icon.classList.toggle("mirrored", mirrored);
+  icon.replaceChildren(
+    ...paths.map((d) => {
+      const path = document.createElementNS(SVG, "path");
+      path.setAttribute("d", d);
+      return path;
+    }),
+  );
 }

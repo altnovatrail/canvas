@@ -51,6 +51,7 @@ jobs:
         justfile
         README.md
         LICENSE
+        NOTICE
         .devcontainer/Dockerfile
         .github/workflows/release.yml
       publish: ${{ github.event_name != 'pull_request' }}

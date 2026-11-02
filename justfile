@@ -16,14 +16,16 @@ bin := "node_modules/.bin"
 # Run the four checks CI runs, before a pull request.
 ci: ci-lint ci-test ci-vuln ci-licenses
 
-# Fail on code Biome would format or flag, and on a type error in any of the three programs: the
+# Fail on code Biome would format or flag, on a type error in any of the three programs — the
 # DOM-free part sees neither the DOM nor Node, the element sees the DOM, and the scripts, the
-# configuration and the tests see Node too (R12).
+# configuration and the tests see Node too (R12) — and on icons or a NOTICE that are not what
+# scripts/icons.ts writes from the set package-lock.json pins (R46).
 ci-lint: _install
     {{ bin }}/biome ci
     {{ bin }}/tsc --noEmit -p tsconfig.core.json
     {{ bin }}/tsc --noEmit -p tsconfig.element.json
     {{ bin }}/tsc --noEmit -p tsconfig.node.json
+    node scripts/icons.ts --check
 
 # Build the package, run the tests in Node and in Chromium with their coverage, which .github's
 # TypeScript wrapper sends to Codecov from coverage/lcov.info (R43), and check the package the way
@@ -65,11 +67,11 @@ build: _install
 # Write the files of the release of a version, v0.1.0 say, into dist/, as .github's shared
 # release.yml runs it: in the toolchain stage, on the tree of the commit alone, with no git, no spec
 # submodule and no token (R08; R18 .github). They are the package's archive, as npm pack makes it,
-# with the version without its v; LICENSE; and SHA256SUMS of the two. The archive is packed from a
-# copy of what npm pack takes, with the version set there, so that the package.json of the tree
-# keeps 0.0.0, and scripts/release.ts checks the archive itself and names it. npm pack fixes every
-# file's time and order, so a build of the same commit gives the same sums, and the sums are printed
-# for whoever builds it again to compare.
+# with the version without its v, NOTICE in it too (R46); LICENSE; and SHA256SUMS of the two. The
+# archive is packed from a copy of what npm pack takes, with the version set there, so that the
+# package.json of the tree keeps 0.0.0, and scripts/release.ts checks the archive itself and names
+# it. npm pack fixes every file's time and order, so a build of the same commit gives the same
+# sums, and the sums are printed for whoever builds it again to compare.
 release-files version: build
     #!/usr/bin/env bash
     set -euo pipefail
@@ -84,12 +86,17 @@ release-files version: build
     mkdir dist
     stage="$(mktemp -d)"
     trap 'rm -rf "$stage"' EXIT
-    cp -R lib package.json README.md LICENSE "$stage"
+    cp -R lib package.json README.md LICENSE NOTICE "$stage"
     packed="$(cd "$stage" && npm pkg set version="$number" && npm pack --json --ignore-scripts --pack-destination "$OLDPWD/dist")"
     archive="$(node scripts/release.ts "$number" <<< "$packed")"
     cp LICENSE dist/LICENSE
     (cd dist && sha256sum -- "$archive" LICENSE > SHA256SUMS)
     cat dist/SHA256SUMS
+
+# Write the icons of the row's buttons, src/element/icons.ts, and NOTICE anew, from the set of icons
+# package-lock.json pins: after a new version of the set, or of the table in scripts/icons.ts (R46).
+icons: _install
+    node scripts/icons.ts
 
 # Format and fix the code in place, the way ci-lint checks it.
 fmt: _install

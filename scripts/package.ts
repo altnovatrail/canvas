@@ -12,8 +12,11 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-/** The paths npm pack takes, besides the build: package.json and the files npm always adds. */
-const ALWAYS = new Set(["package.json", "README.md", "LICENSE"]);
+/**
+ * The paths npm pack takes, besides the build: package.json, the files npm always adds, and NOTICE,
+ * which names the icons the package embeds (R46).
+ */
+const ALWAYS = new Set(["package.json", "README.md", "LICENSE", "NOTICE"]);
 /** A file of the build: JavaScript or a declaration, at any depth under lib/core or lib/element. */
 const BUILT = /^lib\/(core|element)\/(?:[^/]+\/)*[^/]+\.(js|d\.ts)$/;
 /** What the build leaves out (tsconfig.build.json): tests, their fixtures and type-only checks. */
@@ -28,7 +31,13 @@ export function packProblems(paths: readonly string[]): string[] {
       problems.push(`npm pack takes ${path}, which is not part of the build`);
     }
   }
-  for (const path of ["package.json", "LICENSE", "lib/core/index.js", "lib/element/index.js"]) {
+  for (const path of [
+    "package.json",
+    "LICENSE",
+    "NOTICE",
+    "lib/core/index.js",
+    "lib/element/index.js",
+  ]) {
     if (!paths.includes(path)) problems.push(`npm pack leaves out ${path}`);
   }
   return problems;

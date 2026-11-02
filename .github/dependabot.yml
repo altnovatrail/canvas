@@ -18,8 +18,10 @@ updates:
 
   # The npm packages the code is built and checked with. Three additions to architecture 3.3 of
   # .github, each for a reason of canvas's own (R12 and R41 in docs/decisions.md). The browser the
-  # tests run in is no package: it comes with the toolchain stage of .devcontainer/Dockerfile, and a
-  # pull request that raises playwright stays red until the image there is raised with it, by hand.
+  # tests run in is no package: it comes with the toolchain stage of .devcontainer/Dockerfile, from
+  # spec's template, and a pull request that raises playwright stays red until the image there is
+  # raised with it, by hand, with a row «в реестр spec» for the template (R79 spec, R13). One that
+  # raises the set of icons stays red until `just icons` writes the icons and NOTICE anew (R46).
   - package-ecosystem: npm
     directory: /
     schedule:
