@@ -815,7 +815,7 @@ sheet_box = [B.ymin − my/s, B.xmin − mx/s, B.ymin − my/s + h/s, B.xmin −
 
 **Шаги автора** до первого релиза, по правилу 4, — в T66, T70 и T71:
 1. организация `altnovatrail` в npm — для публичных пакетов бесплатная. Сделано: автор создал её 2026-10-21, и реестр её видит (раздел 4);
-2. у `canvas` — неизменяемые релизы и ruleset тегов `v*`, как у `module-kit` (architecture 3.3 .github). Сейчас их нет (раздел 4): это шаг автора T66, и нужен он до T70. Без них подпись файлов `canvas` не годится и для рецепта `release-verify` (R77 spec);
+2. у `canvas` — неизменяемые релизы и ruleset тегов `v*`, как у `module-kit` (architecture 3.3 .github). Без них подпись файлов `canvas` не годится и для рецепта `release-verify` (R77 spec). Сделано 2026-11-02, до T70: неизменяемые релизы включены, а ruleset `v-tags` (26336827) — тот же, что у `module-kit` (раздел 4; поправка 2026-11-02 к R08);
 3. первый релиз выходит без входа `npm-package`: trusted publisher настраивается только у пакета, который уже есть в реестре;
 4. архив первого релиза автор проверяет рецептом `spec` `release-verify` — он есть с `spec` v0.6.2 (R44): `just -f spec/justfile release-verify canvas v0.1.0 altnovatrail-canvas-0.1.0.tgz`, — и публикует вручную, с 2FA, из пустой папки: `npm publish ./altnovatrail-canvas-0.1.0.tgz --access public`. Provenance у этой версии нет;
 5. trusted publisher — `npm trust github @altnovatrail/canvas --file release.yml --repository altnovatrail/canvas --allow-publish` или то же на сайте npm: workflow релиза самого `canvas`, без окружения и с прямой публикацией. Новая настройка по умолчанию разрешает только staged publishing, а его R08 отверг. Затем — «Require two-factor authentication and disallow tokens». Перед этим шагом стоит посмотреть, открыта ли ещё npm/cli#9969;
@@ -1101,7 +1101,7 @@ Vite 8.3.4 работает и под Vitest, и сервером `just demo`, �
 
 **Dependabot** — запись `npm` по тексту architecture 3.3 .github и три добавления: группа `vitest` с `@vitest/*` и Vite, `ignore` major-версий `@types/node` (R12) и `ignore` пакета `@altnovatrail/spec` целиком — его двигает переход вместе с подмодулем (R73 spec; R41).
 
-**CI** — общие workflow `.github`, все шесть по SHA одного релиза, v0.1.12. Job «TypeScript» в `ci.yml` зовёт `typescript.yml`, у которого job `licenses` берёт подмодуль `spec` (T32) и идёт в сеть, — там `ci-licenses` проверяет и подписи (R44), — а из окружения шага в контейнер идёт только `CI` (T36). Он даёт обёртке `contents: read` и `id-token: write`: её job `coverage` отправляет отчёт `ci-test` в Codecov по OIDC, а мерж держит `codecov/patch`, не меньше 90 % изменённых строк, когда автор поставит проверку в ruleset `main` (R43). CodeQL — со входом `languages: javascript-typescript`.
+**CI** — общие workflow `.github`, все шесть по SHA одного релиза, v0.1.12. Job «TypeScript» в `ci.yml` зовёт `typescript.yml`, у которого job `licenses` берёт подмодуль `spec` (T32) и идёт в сеть, — там `ci-licenses` проверяет и подписи (R44), — а из окружения шага в контейнер идёт только `CI` (T36). Он даёт обёртке `contents: read` и `id-token: write`: её job `coverage` отправляет отчёт `ci-test` в Codecov по OIDC, а мерж держит `codecov/patch`, не меньше 90 % изменённых строк: автор поставил проверку в ruleset `main` 2026-11-02, с `integration_id` 254 — Codecov (R43). CodeQL — со входом `languages: javascript-typescript`.
 
 **`samples/`** закрыт для агентов: правило в CLAUDE.md, `.gitignore` и правила `deny` Claude Code. Правила Bash закрывают имя папки — отдельным словом, частью пути, в кавычках, после `=` и в перенаправлении, — а не само слово: оно есть в именах файлов релиза (R15).
 
@@ -1773,7 +1773,7 @@ Vite 8.3.4 работает и под Vitest, и сервером `just demo`, �
   - `git -C spec diff --stat v0.4.1 v0.6.2 -- .devcontainer repo-template` пуст;
   - соседи:
     - `gh release list`: у `modules` релизов нет, у `module-kit` — v0.1.0 от 2026-10-21, у `tutor` — v0.1.0 от 2026-11-01, у `.github` — v0.1.12 от 2026-11-01;
-    - `gh api repos/altnovatrail/canvas/immutable-releases` — `{"enabled":false}`, а у `canvas` один ruleset — `main` (25506234).
+    - `gh api repos/altnovatrail/canvas/immutable-releases` — `{"enabled":false}`, а у `canvas` один ruleset — `main` (25506234). В тот же день, по поручению автора: `PUT …/immutable-releases` — теперь `{"enabled":true}`, а `POST …/rulesets` дал ruleset `v-tags` (26336827). Его `name`, `target`, `enforcement`, `conditions`, `rules` и `bypass_actors` совпадают с ruleset `v-tags` `module-kit` (25559103) строка в строку. В ruleset `main` с того же дня — ещё `codecov/patch` с `integration_id` 254: `gh api apps/codecov` — `id` 254.
 - **`.github` v0.1.13** (раздел 3.4), прочитано 2026-11-02:
   - релиз вышел 2026-11-02 в 01:19Z, его тег — коммит 09443e1. Между v0.1.12 и v0.1.13 из workflow изменился только `release.yml` (`gh api repos/altnovatrail/.github/compare/v0.1.12...v0.1.13`);
   - шапка `release.yml`: «With npm-package, the spec submodule is at v0.6.0 or newer, whose release-verify a run again checks the release's archive by»;
