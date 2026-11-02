@@ -15,6 +15,7 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 import { getIconData, iconToSVG } from "@iconify/utils";
 
 /** The npm package of the set. */
@@ -147,9 +148,15 @@ export function differences(
     .map(([path]) => `icons: ${path} is not what scripts/icons.ts writes; run just icons`);
 }
 
-/** Biome's format of a module, by the Biome package-lock.json pins, read from standard input. */
+/**
+ * Biome's script, as package-lock.json pins it, by its path in node_modules and run by this Node:
+ * no program is looked up in PATH, as scripts/package.ts runs npm.
+ */
+const BIOME = fileURLToPath(new URL("../node_modules/@biomejs/biome/bin/biome", import.meta.url));
+
+/** Biome's format of a module, read from standard input. */
 function formatted(text: string, path: string): string {
-  return execFileSync("node_modules/.bin/biome", ["format", `--stdin-file-path=${path}`], {
+  return execFileSync(process.execPath, [BIOME, "format", `--stdin-file-path=${path}`], {
     input: text,
     encoding: "utf8",
   });
