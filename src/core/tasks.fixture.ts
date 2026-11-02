@@ -1,5 +1,5 @@
 // The tasks, worked examples and manifests of the tests and of the demo page: open views of the
-// module format 0.1 that the element takes (R32, R42), each changed only where its test needs it,
+// module format 0.2 that the element takes (R32, R42), each changed only where its test needs it,
 // so that the tests say one thing about the format and change together when it does. A module of
 // the tests alone: the build leaves it out, as it leaves out the tests (tsconfig.build.json), and
 // the package check holds to that (scripts/package.ts).
@@ -57,7 +57,7 @@ export function moduleManifest(
 ): Manifest {
   const { digit_height, explanation = "en" } = change;
   return {
-    module_format_version: "0.1",
+    module_format_version: "0.2",
     id: "novatrail/olympiad-math",
     version: "0.1.0",
     title: "Olympiad mathematics, grades 1–6",

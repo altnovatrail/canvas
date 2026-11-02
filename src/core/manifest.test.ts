@@ -2,17 +2,20 @@ import { expect, test } from "vitest";
 import { type Manifest, NO_MANIFEST, settingsOf } from "./manifest.js";
 import { moduleManifest, pathOf, refusal, under } from "./tasks.fixture.js";
 
-// Copies of the manifest examples of the module format at spec v0.4.1
-// (spec/format/examples/manifest/): code and tests read nothing of spec/, so a move to a new tag
-// compares them with `git -C spec diff <old> <new> -- format/` (R32). Each is written as a change
-// to what the examples share, and a valid one is of spec's type (R73 spec; R41).
+// Copies of the manifest examples of the module format at spec v0.6.2, its version 0.2
+// (spec/format/examples/manifest/), and of its vectors of a manifest — the open view
+// (spec/format/vectors/open-view/manifest/) and the rule manifest.format-version
+// (spec/format/vectors/rules/manifest.format-version/): code and tests read nothing of spec/, so a
+// move to a new tag compares them with `git -C spec diff <old> <new> -- format/` (R32). Each is
+// written as a change to what the examples or the vectors share, and a valid one is of spec's type
+// (R73 spec; R41).
 
 /** The places of a manifest the element reads (R32). */
 const READ = ["#/module_format_version", "#/languages", "#/canvas"];
 
 /** What most examples share: the module of olympiad mathematics. */
 const OLYMPIAD = {
-  module_format_version: "0.1",
+  module_format_version: "0.2",
   id: "novatrail/olympiad-math",
   version: "0.1.0",
   title: "Olympiad mathematics, grades 1–6",
@@ -40,7 +43,7 @@ const BAND_3 = { id: "grade-3", title: "Grade 3", grades: [3] };
 
 /** A third party's module of physics for grade 8, in Russian. */
 const OPTICS = {
-  module_format_version: "0.1",
+  module_format_version: "0.2",
   id: "acme/optics-8",
   version: "1.2.0",
   title: "Оптика, 8 класс",
@@ -51,7 +54,20 @@ const OPTICS = {
   license: "CC-BY-SA-4.0",
 } satisfies Manifest;
 
-/** The valid examples, and the settings the element makes of each. */
+/** What the vectors share: the module of a test vector. */
+const VECTOR = {
+  module_format_version: "0.2",
+  id: "example/vector",
+  version: "0.1.0",
+  title: "A test vector",
+  subject: "mathematics",
+  audience: { age_categories: ["adult"] },
+  languages: { explanation: "en" },
+  authors: [{ name: "The NovaTrail authors" }],
+  license: "Apache-2.0",
+} satisfies Manifest;
+
+/** The valid examples and the open-view vector, and the settings the element makes of each. */
 const VALID: readonly (readonly [string, Manifest, { digit: number; lang: string }])[] = [
   [
     "olympiad-math",
@@ -66,12 +82,12 @@ const VALID: readonly (readonly [string, Manifest, { digit: number; lang: string
       dependencies: ["core.division-with-remainder", "core.fractions-of-a-whole"],
       rung_templates: RUNG_TEMPLATES,
     },
-    { digit: 32, lang: "en" },
+    { digit: 24, lang: "en" },
   ],
   [
     "school-math-grade-3",
     { ...GRADE_3, bands: [BAND_3], rung_templates: RUNG_TEMPLATES },
-    { digit: 32, lang: "en" },
+    { digit: 24, lang: "en" },
   ],
   [
     "short-essays",
@@ -89,7 +105,7 @@ const VALID: readonly (readonly [string, Manifest, { digit: number; lang: string
       ],
       rung_templates: RUNG_TEMPLATES,
     },
-    { digit: 32, lang: "en" },
+    { digit: 24, lang: "en" },
   ],
   [
     "third-party",
@@ -103,6 +119,30 @@ const VALID: readonly (readonly [string, Manifest, { digit: number; lang: string
     },
     { digit: 40, lang: "ru" },
   ],
+  // Every field of a manifest is open, so its open view is the manifest whole.
+  [
+    "every-field-open",
+    {
+      ...VECTOR,
+      audience: { age_categories: ["under_13"], grades: [3, 4] },
+      bands: [{ id: "grades-3-4", title: "Grades 3–4", grades: [3, 4] }],
+      dependencies: ["core.division-with-remainder"],
+      canvas: { digit_height: 40 },
+      rung_templates: RUNG_TEMPLATES,
+    },
+    { digit: 40, lang: "en" },
+  ],
+];
+
+/**
+ * The vectors of the rule manifest.format-version: while the format is v0, a reader reads only
+ * its current version, and refuses a module of the one before, of the one after and of one the
+ * format never had (README of the format, §2).
+ */
+const VERSIONS: readonly (readonly [string, Manifest])[] = [
+  ["next-minor", { ...VECTOR, module_format_version: "0.3" }],
+  ["previous-minor", { ...VECTOR, module_format_version: "0.1" }],
+  ["unknown-version", { ...VECTOR, module_format_version: "0.0" }],
 ];
 
 /** The invalid examples: the name, the place their first line names, and the manifest. */
@@ -144,7 +184,7 @@ const INVALID: readonly (readonly [string, string, object])[] = [
   [
     "format-version-as-number",
     "#/module_format_version",
-    { ...OLYMPIAD, module_format_version: 0.1 },
+    { ...OLYMPIAD, module_format_version: 0.2 },
   ],
   [
     "grade-zero",
@@ -190,7 +230,7 @@ const INVALID: readonly (readonly [string, string, object])[] = [
   ["unknown-subject", "#/subject", { ...OLYMPIAD, subject: "chemistry" }],
 ];
 
-test("a valid example of the format gives the height of a digit, 32 unless given, and the explanation language", () => {
+test("a valid example of the format gives the height of a digit, 24 unless given, and the explanation language", () => {
   for (const [name, manifest, settings] of VALID) {
     expect(settingsOf(manifest), name).toEqual(settings);
   }
@@ -215,18 +255,31 @@ test("an invalid example is a TypeError at its place when the element reads it, 
   expect(refused).toBe(4);
 });
 
-test("without a manifest the digits are 32 px and the statement is in the element's own language", () => {
+test("without a manifest the digits are 24 px, as without the field, and the statement is in the element's own language", () => {
   expect(settingsOf(undefined)).toBe(NO_MANIFEST);
-  expect(NO_MANIFEST).toEqual({ digit: 32, lang: undefined });
+  expect(NO_MANIFEST).toEqual({ digit: 24, lang: undefined });
 });
 
 test("a manifest of a format version the element does not read is a TypeError, as R44 spec's window has it", () => {
-  for (const version of ["0.2", "0.0", "1.0", "0.1.0", undefined]) {
+  // Each with the version as the reason names it: a string in quotes, so that the number 0.2 reads
+  // apart from the version the element takes.
+  const cases: readonly (readonly [string, unknown, string])[] = [
+    ...VERSIONS.map(([name, manifest]): readonly [string, unknown, string] => [
+      name,
+      manifest,
+      `"${manifest.module_format_version}"`,
+    ]),
+    ["1.0", { ...OLYMPIAD, module_format_version: "1.0" }, '"1.0"'],
+    ["0.2.0", { ...OLYMPIAD, module_format_version: "0.2.0" }, '"0.2.0"'],
+    ["the number 0.2", { ...OLYMPIAD, module_format_version: 0.2 }, "0.2"],
+    ["no version", { ...OLYMPIAD, module_format_version: undefined }, "undefined"],
+  ];
+  for (const [name, manifest, said] of cases) {
     expect(
-      () => settingsOf({ ...OLYMPIAD, module_format_version: version }),
-      String(version),
-    ).toThrow(
-      /^manifest\.module_format_version: "0\.1", the version of the module format the element reads, not /,
+      refusal(() => settingsOf(manifest)),
+      name,
+    ).toBe(
+      `manifest.module_format_version: "0.2", the version of the module format the element reads, not ${said}`,
     );
   }
 });

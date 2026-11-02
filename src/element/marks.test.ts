@@ -84,7 +84,7 @@ function twoGroups(canvas: HTMLCanvasElement, view: () => View): void {
   draw(canvas, view, [600, 600], [800, 600]);
 }
 
-/** The element's submission, as its exportWork() gives it (R27): its crop at 32 px, its groups. */
+/** The element's submission, as its exportWork() gives it (R27): its crop at 24 px, its groups. */
 async function sentOf(element: NovatrailCanvas): Promise<SheetSubmission> {
   return (await sheetWork(element)).submission;
 }

@@ -11,8 +11,8 @@
 // Above it all stands the element's own row of buttons — the tools the task allows, undo and
 // clearing — labelled in the element's `lang` (T41; R28). On a tablet a pen's touch puts the page
 // in pen mode, where a finger writes nothing and a button lets it write again, a palm writes
-// nothing, and two fingers scroll (T35; R29). The task comes in the names of the module format's
-// draft, checked as its schema checks it, and the module's manifest gives the height of a digit and
+// nothing, and two fingers scroll (T35; R29). The task comes in the names of the module format
+// 0.2, checked as its schema checks it, and the module's manifest gives the height of a digit and
 // the statement's language (T44; R32). Up and Down in the row scroll what two fingers would, with
 // a single pointer (T45; R33). The workbook's lines, laid out on its page, stand on the template in
 // place of the grid — numbers, text and boxes, which a screen reader reads in the task's order (T51;
@@ -698,7 +698,7 @@ export class NovatrailCanvas extends HTMLElement {
   }
 
   /**
-   * The open view of the task, of the module format 0.1 (R32): its ID, its statement, which the
+   * The open view of the task, of the module format 0.2 (R32): its ID, its statement, which the
    * element shows above the page (R23), what the statement gives and asks, which app shows (R57
    * spec), its canvas — the kind, the sheet's grid and the tools the task allows (R28) — and its
    * items. A workbook's items are its lines, which the template shows, laid out on the page (R35,
@@ -731,7 +731,7 @@ export class NovatrailCanvas extends HTMLElement {
 
   /**
    * A lesson's worked example (R42; R58 spec): the open view of a segment `worked_example` of the
-   * module format 0.1 — its statement, which the element shows above the sheet as a task's (R23),
+   * module format 0.2 — its statement, which the element shows above the sheet as a task's (R23),
    * the grid of its sheet, and the parts of the author's demo. The type is spec's (R73 spec; R41).
    * The element shows a task or a worked example, not both: an example while a task is given, while
    * the sheet has a history of writing, or while a stroke or an erasing is under way, is a
@@ -812,9 +812,9 @@ export class NovatrailCanvas extends HTMLElement {
 
   /**
    * The open view of the module's manifest (R32), of which the element reads the version of the
-   * module format — "0.1", or the manifest is a TypeError (R44 spec) — the height of a digit on the
-   * crop for checking, `canvas.digit_height`, 32 px unless given, and the explanation language, the
-   * statement's and a workbook's lines'. Without a manifest the digits are 32 px, and the statement
+   * module format — "0.2", or the manifest is a TypeError (R44 spec) — the height of a digit on the
+   * crop for checking, `canvas.digit_height`, 24 px unless given, and the explanation language, the
+   * statement's and a workbook's lines'. Without a manifest the digits are 24 px, and the statement
    * and the lines are in the element's own `lang`. The rest of it the element passes over, but for
    * the canvas settings, which are its own: one it does not know is a TypeError. A manifest it
    * cannot read is a TypeError that names the field, and the element stays as it was; the same
