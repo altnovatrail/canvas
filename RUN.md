@@ -134,7 +134,7 @@ E7 — новый `spec`: поля задачи и показ примера —
 | [x] | T68 | Формат 0.2 в элементе (Д5) | Claude, проверяю я | да | T67 |
 | [x] | T69 | Типы элемента из `@altnovatrail/spec/canvas` (Д5) | Claude, проверяю я | да | T67 |
 | [x] | T70 | Первый релиз: пакет | я + Claude | — | T66, T68, T69 |
-| [ ] | T71 | Публикация шагом npm | я + Claude | — | T70 |
+| [x] | T71 | Публикация шагом npm | я + Claude | — | T70 |
 | [ ] | T72 | Итог E8 | Claude, проверяю я | — | T65–T71 |
 
 **Почему такой порядок.**
@@ -568,6 +568,18 @@ E5 — задачи, которые отложил E2 (R17). Тела его з�
   - README — абзац статуса: следующие версии уходят в npm шагом релиза;
   - [docs/architecture.md](docs/architecture.md), раздел 3.4 — «Проба и публикация»;
   - `just -f spec/justfile docs-check-repo` на итоговом тексте — «ok — 11 files, 505 links, 2149 sections, 4462 numbers, 0 diagrams».
+- **Сделано (2026-11-02), после мержа:**
+  - мой шаг: `npm trust github @altnovatrail/canvas --file release.yml --repository altnovatrail/canvas --allow-publish` — «Trust configuration created successfully», права — «publish, stage publish». В «Publishing access» я выбрал «Require two-factor authentication and disallow bypass 2fa tokens (recommended)»: так npm теперь называет вариант, который раздел 3.4 звал «… and disallow tokens»;
+  - pull request #69 слит через три минуты после настройки — мерж fd032f1. Release после CI выпустил v0.1.1 в 05:38:13Z, а шаг npm опубликовал его в 05:39:38Z по OIDC: `_npmUser` версии — «GitHub Actions <npm-oidc-no-reply@github.com>». npm/cli#9969 ещё открыта, но `canvas` не задела;
+  - версия 0.1.1 в npm — тот же архив, байт в байт: sha256 8051559e8997f302f3e627db00b38af9104a82db1886ba40037883c9f6712fb0, как у файла релиза, а `release-verify` принял файл — «canvas v0.1.1, signed by the shared release.yml of .github v0.1.13»;
+  - provenance есть, SLSA v1: сертификат называет общий `release.yml` `.github` на 09443e1 (v0.1.13), а предикат — `release.yml` `canvas` на `main`, коммит fd032f1. Реестр принял provenance из reusable workflow другого репозитория — риск E8 о provenance (Т-27; Д7 в RUN.md `.github`) снят фактом;
+  - пробный проект поднят до 0.1.1: `tsc` с `skipLibCheck: false` принял типы, `npm audit signatures` — «2 packages have verified attestations», `release-verify-npm` принял lock-файл;
+  - в реестре есть ещё версия `0.0.0-stage`, «Temporary package placeholder for staged publishing», от 05:13:54Z — её создал npm при первой публикации, моей. Тег `latest` — 0.1.1, а такая же заглушка есть и у `@altnovatrail/spec`;
+  - журнал — поправка 2026-11-02 к R08; [docs/architecture.md](docs/architecture.md) — статус, раздел 3.4 и источники раздела 4;
+  - `just -f spec/justfile docs-check-repo` на итоговом тексте — «ok — 11 files, 509 links, 2156 sections, 4466 numbers, 0 diagrams». Только документы и RUN.md, вне путей релиза.
+- **Открыто:**
+  - строка для T27 в RUN.md `.github` — в отчёте: provenance из reusable workflow реестр принимает, обмен OIDC у репозитория с неизменяемым subject прошёл при открытой npm/cli#9969, настройка `npm trust` с `--allow-publish` получает и «stage publish», вариант «Publishing access» переименован, а первая публикация оставляет заглушку `0.0.0-stage`;
+  - T72 — итог E8.
 
 #### T72. Итог E8
 
