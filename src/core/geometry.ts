@@ -2,7 +2,10 @@ import type { Stroke } from "./ink.js";
 import type { Point } from "./screen.js";
 import { SHEET } from "./sheet.js";
 
-/** A rectangle on the sheet, in its units, as rbush takes one (R05). */
+/**
+ * A rectangle on the sheet, as rbush takes one (R05): in units, or in tenths of a unit where the
+ * rules count in whole numbers. The contract's Box, spec's, is one in tenths: of a crop's numbers.
+ */
 export interface Box {
   readonly minX: number;
   readonly minY: number;

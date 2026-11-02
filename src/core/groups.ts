@@ -1,3 +1,4 @@
+import type { Group } from "@altnovatrail/spec/canvas";
 import RBush from "rbush";
 import { type Box, boxOf, tenths } from "./geometry.js";
 import type { Stroke } from "./ink.js";
@@ -29,12 +30,10 @@ export const GROUP_RULE: GroupRule = Object.freeze({ pause: 2000, across: 50, do
 
 /**
  * A group of the strokes on a sheet: its label, by place, and the IDs of its strokes, in ascending
- * order. The labels and the IDs are the table «label → stroke IDs» of one submission (R06).
+ * order. The labels and the IDs are the table «label → stroke IDs» of one submission (R06). spec's
+ * type (R74 spec).
  */
-export interface Group {
-  readonly label: string;
-  readonly ids: readonly number[];
-}
+export type { Group };
 
 /** A stroke as the rule sees it: its box in tenths of a unit, and its time in whole milliseconds. */
 interface Piece extends Box {

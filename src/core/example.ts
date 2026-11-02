@@ -7,6 +7,7 @@
 // and the sheet makes a template of it as of a task: its grid, its statement and the pen alone. How
 // far the learner has gone through the demo is a state of its own, which app keeps and gives back.
 
+import type { DemoState } from "@altnovatrail/spec/canvas";
 import type * as open from "@altnovatrail/spec/formatv0/open";
 import { closed, listOf, sameItems, shown, whole } from "./fields.js";
 import type { GridKind } from "./grid.js";
@@ -65,14 +66,10 @@ export interface CheckedExample {
 
 /**
  * How far the learner has gone through the author's demo (R42): how many of its parts are open,
- * from the first, and whether the whole demo is hidden. app keeps it and may give it back.
+ * from the first, and whether the whole demo is hidden. app keeps it and may give it back. spec's
+ * type (R74 spec).
  */
-export interface DemoState {
-  /** How many parts are open, from the first: from 0 to all of them. */
-  readonly opened: number;
-  /** Whether the whole demo is hidden: its open parts stay open, out of sight. */
-  readonly hidden: boolean;
-}
+export type { DemoState };
 
 /** Where every demo starts: no part open, and nothing hidden. One for every element. */
 export const DEMO_START: DemoState = Object.freeze({ opened: 0, hidden: false });

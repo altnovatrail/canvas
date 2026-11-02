@@ -1,5 +1,13 @@
-import type { Cell, Filling } from "./boxes.js";
-import { CROP, type Crop, sheetBoxOf } from "./crop.js";
+import type {
+  CellPlace,
+  CropNumbers,
+  Filling,
+  SheetSubmission,
+  Submission,
+  WorkbookSubmission,
+} from "@altnovatrail/spec/canvas";
+import type { Cell } from "./boxes.js";
+import { CROP, sheetBoxOf } from "./crop.js";
 import { record, shown, whole } from "./fields.js";
 import { around, type Box, boxOf, tenths } from "./geometry.js";
 import type { Group } from "./groups.js";
@@ -36,51 +44,20 @@ export const SNAP_RULE: SnapRule = Object.freeze({
   share: Object.freeze([2, 3] as const),
 });
 
-/** The numbers of a crop that the marks are placed by: all of its `Crop` but its heights and line. */
-export type CropNumbers = Pick<
-  Crop,
-  "drawn" | "width" | "height" | "margins" | "sheetBox" | "frames" | "exact"
->;
-
 /**
- * The context of one submission of a sheet, which the element gives with its crop and takes back
- * with the tutor's marks (R07; R36 spec): the crop's numbers — its `sheet_box`, the frames of the
- * groups and the whole numbers they come from — the groups of the strokes, the table «label →
- * stroke IDs», and the digest of it all (R27). It goes back to a sheet whose history holds its
- * strokes: the same sheet, or one given the same history later. Each sheet numbers its strokes from
- * 1, so a sheet of other strokes with the same IDs tells it by the digest. The type is the
- * element's own until spec's contract gives one (epic E3 in spec's RUN.md).
+ * The context of one submission, of a sheet or of a workbook, and its parts: spec's types, of the
+ * contract of canvas and app (R74 spec; R07). A sheet's context, which the element gives with its
+ * crop and takes back with the tutor's marks, holds the crop's numbers — its `sheet_box`, the
+ * frames of the groups and the whole numbers they come from — the groups of the strokes, the table
+ * «label → stroke IDs», and the digest of it all, `digestOf` it (R27). It goes back to a sheet
+ * whose history holds its strokes: the same sheet, or one given the same history later. Each sheet
+ * numbers its strokes from 1, so a sheet of other strokes with the same IDs tells it by the digest.
+ * A workbook's holds the table «box → stroke IDs», each filled box by its place, in the task's
+ * order, and the digest of its strokes and of every box of the page, `workbookDigestOf` it (R34,
+ * R38): no numbers of the crops, for no mark on a workbook is snapped. An answer cell has no ID:
+ * its place names it, its item and its place among the item's cells, each from 1 (R51 spec).
  */
-export interface SheetSubmission {
-  readonly crop: CropNumbers;
-  readonly groups: readonly Group[];
-  /** What the submission was made of, `digestOf` it: 16 hex digits. */
-  readonly digest: string;
-}
-
-/**
- * The context of one submission of a workbook (R34, R38): the table «box → stroke IDs», each filled
- * box by its item and its slot, from 1, in the task's order, and the digest of its strokes and of
- * every box of the page. It holds no numbers of the crops: no mark on a workbook is snapped. The
- * type is the element's own until spec's contract gives one (epic E3 in spec's RUN.md).
- */
-export interface WorkbookSubmission {
-  readonly boxes: readonly Filling[];
-  /** What the submission was made of, `workbookDigestOf` it: 16 hex digits. */
-  readonly digest: string;
-}
-
-/** The context of one submission, of a sheet or of a workbook: its keys tell which (R38). */
-export type Submission = SheetSubmission | WorkbookSubmission;
-
-/**
- * An answer cell by its place (R51 spec), which has no ID: its item, and its place among the item's
- * cells, each from 1. On a workbook a cell is a box.
- */
-export interface CellPlace {
-  readonly item: number;
-  readonly slot: number;
-}
+export type { CellPlace, CropNumbers, SheetSubmission, Submission, WorkbookSubmission };
 
 /**
  * Where a mark is: a group of strokes by its label, an answer cell by its place, or a box on the

@@ -1,19 +1,22 @@
+import type {
+  CanvasElement,
+  DemoState,
+  ExportedSheet,
+  ExportedWorkbook,
+  HistoryEvent,
+  Submission,
+  Tool,
+} from "@altnovatrail/spec/canvas";
 import type * as open from "@altnovatrail/spec/formatv0/open";
 import { afterEach, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
-import { type Anchor, type HistoryEvent, SHEET, type Submission } from "../core/index.js";
-import {
-  type DemoState,
-  type ExportedSheet,
-  type ExportedWorkbook,
-  type Marks,
-  NovatrailCanvas,
-  type Task,
-  type Tool,
-} from "./index.js";
+import { type Anchor, SHEET } from "../core/index.js";
+import { type Marks, NovatrailCanvas, type Task } from "./index.js";
 
 // The trial consumer (R27, R28, R32, R38, R39, R41, R42; RUN.md, T15, T41, T44, T49, T53, T55,
-// T57, T59, T60): a page that takes the element as app is to take it. It gives the task and the module's
+// T57, T59, T60, T69): a page that takes the element as app is to take it. The types of the
+// contract it takes from spec's package, as app does (R74 spec), and only the element's own from
+// the package: the tutor's marks and the task with its tools. It gives the task and the module's
 // manifest, of spec's types as app holds them, the media and the language, keeps the history of
 // writing as historychange tells it and gives it back, hears the learner's choice of tool, reads
 // which answer slots are filled, takes the work for checking at Check, and gives the tutor's marks
@@ -228,15 +231,15 @@ async function read(work: ExportedSheet) {
   return { ...picture, grey };
 }
 
-/** The work for checking, which a sheet with strokes has: the crop of a sheet. */
-async function check(sheet: NovatrailCanvas): Promise<ExportedSheet> {
+/** The work for checking, which a sheet with strokes has: the crop of a sheet, by the contract. */
+async function check(sheet: CanvasElement): Promise<ExportedSheet> {
   const work = await sheet.exportWork();
   if (work === null || !("png" in work)) throw new Error("the sheet gave no work for checking");
   return work;
 }
 
 /** The work for checking, which a workbook with a box filled has: the crops of its boxes. */
-async function checkBoxes(book: NovatrailCanvas): Promise<ExportedWorkbook> {
+async function checkBoxes(book: CanvasElement): Promise<ExportedWorkbook> {
   const work = await book.exportWork();
   if (work === null || !("cells" in work)) throw new Error("the workbook gave no work of boxes");
   return work;
