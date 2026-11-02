@@ -10,6 +10,7 @@ const archive: Packed = {
   files: [
     { path: "package.json" },
     { path: "LICENSE" },
+    { path: "NOTICE" },
     { path: "README.md" },
     { path: "lib/core/index.js" },
     { path: "lib/core/index.d.ts" },

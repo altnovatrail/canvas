@@ -54,7 +54,7 @@
                 // spec is a read-only submodule of every other NovaTrail repository: Source
                 // Control does not offer it as one more repository to commit in.
                 "git.detectSubmodules": false,
-                // The code's format is Biome's, the one ci-lint checks (R12).
+                // The settings of this repository's kind.
                 "[typescript]": {
                     "editor.defaultFormatter": "biomejs.biome"
                 }
@@ -71,9 +71,8 @@
                 // Mermaid in the Markdown preview: the prerequisite DAG and the data flows.
                 "bierner.markdown-mermaid@1.32.1",
                 "eamodio.gitlens@19.2.0",
-                // The code's formatter and linter. The extension runs the Biome of the
-                // project's node_modules, the version package-lock.json pins (R12, R13).
-                "biomejs.biome@3.7.1"
+                // The extensions of this repository's kind.
+                "biomejs.biome@3.8.1"
             ]
         }
     }

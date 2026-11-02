@@ -14,7 +14,7 @@ import { type Anchor, SHEET } from "../core/index.js";
 import { type Marks, NovatrailCanvas, type Task } from "./index.js";
 
 // The trial consumer (R27, R28, R32, R38, R39, R41, R42; RUN.md, T15, T41, T44, T49, T53, T55,
-// T57, T59, T60, T69): a page that takes the element as app is to take it. The types of the
+// T57, T59, T60, T69, T73): a page that takes the element as app is to take it. The types of the
 // contract it takes from spec's package, as app does (R74 spec), and only the element's own from
 // the package: the tutor's marks and the task with its tools. It gives the task and the module's
 // manifest, of spec's types as app holds them, the media and the language, keeps the history of
@@ -84,6 +84,14 @@ const MODULE: open.Manifest = {
 const PATH = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="60"><rect width="200" height="60" fill="#eee"/></svg>`;
 
 /**
+ * app gives the files of the pictures through the contract, as spec's CanvasElement has them (the
+ * 2026-11-02 amendment to R36 spec).
+ */
+function media(element: CanvasElement): void {
+  element.media = async () => new Blob([PATH], { type: "image/svg+xml" });
+}
+
+/**
  * The open view of a lesson's worked example, as app is to have it from api, of spec's type (R73
  * spec): a statement with a picture, a sheet ruled in lines, and the author's demo — a paragraph, a
  * picture on an area of the sheet and a paragraph (R58 spec).
@@ -129,7 +137,7 @@ async function app(history?: readonly HistoryEvent[], task: Task = TASK) {
   sheet.lang = "ru";
   sheet.task = task;
   sheet.manifest = MODULE;
-  sheet.media = async () => new Blob([PATH], { type: "image/svg+xml" });
+  media(sheet);
   // The history first, then the marks: they hold on to its strokes.
   if (history !== undefined) sheet.history = history;
   // app listens on the element itself: an event of a sheet taken off the page reaches no ancestor.
@@ -433,7 +441,7 @@ test("app's path through a lesson: after a task, its worked example on a new ele
   example.style.height = "400px";
   example.lang = "ru";
   example.manifest = MODULE;
-  example.media = async () => new Blob([PATH], { type: "image/svg+xml" });
+  media(example);
   example.workedExample = EXAMPLE;
   const told: unknown[] = [];
   example.addEventListener("historychange", ({ detail }) => told.push(detail));

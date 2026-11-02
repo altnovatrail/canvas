@@ -2,9 +2,10 @@ import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import type { HistoryEvent } from "../core/history.js";
 import { sheetTask, workedExample } from "../core/tasks.fixture.js";
+import { ROW } from "./icons.js";
 import { NovatrailCanvas, type ToolChange } from "./index.js";
 import { labelsFor } from "./labels.js";
-import { at, input, level, placed, settle, spacer } from "./pointer.fixture.js";
+import { at, iconOf, input, level, placed, settle, spacer } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
 
@@ -12,7 +13,8 @@ import { PEN_MODE } from "./session.js";
 // undo and clearing, and of Up and Down (R33), found by its roles and names in the element's
 // language, worked with the pointer and with the keyboard, telling of the learner's choice of tool,
 // scrolling what two fingers would, and standing above the statement and the sheet, outside their
-// scrolling. A worked example's row has Up and Down alone (R42).
+// scrolling. A worked example's row has Up and Down alone (R42). Each button shows its icon before
+// its label, which stays its name (R46; R78 spec).
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -48,6 +50,12 @@ function button(element: HTMLElement, name: string): HTMLButtonElement {
   );
   if (found === undefined) throw new Error(`the row has no ${name}`);
   return found;
+}
+
+/** A button's icon: its name in the set, and whether the style mirrors it (R46). */
+function drawn(each: Element) {
+  const icon = iconOf(each);
+  return { icon, name: icon.dataset.icon, mirrored: getComputedStyle(icon).transform !== "none" };
 }
 
 /** The middle of an element, in client coordinates. */
@@ -98,6 +106,82 @@ test("the row is a toolbar of the pen and the eraser, undo and clear, named in E
   ]);
   expect(row.querySelectorAll("button[hidden]")).toHaveLength(3);
   expect(row.lang).toBe("en");
+});
+
+test("each button shows its icon before its label: an SVG that names nothing, in outline, but filled for the tool in use", async () => {
+  const { element, row } = await sheet();
+  const each = [...row.querySelectorAll("button")];
+  expect(each.map((one) => drawn(one).name)).toEqual([
+    ROW.next.outline,
+    ROW.demoShown.outline,
+    ROW.pen.filled,
+    ROW.eraser.outline,
+    ROW.undo.outline,
+    ROW.clear.outline,
+    ROW.up.outline,
+    ROW.down.outline,
+    ROW.finger.outline,
+  ]);
+  for (const one of each) {
+    const { icon } = drawn(one);
+    // The label names the button, and the icon says nothing to a screen reader (R78 spec).
+    expect(icon.getAttribute("aria-hidden")).toBe("true");
+    expect(icon.querySelector("title")).toBeNull();
+    expect(icon.getAttribute("viewBox")).toBe("0 0 24 24");
+    expect(icon.querySelectorAll("path").length).toBeGreaterThan(0);
+    expect(one.lastElementChild?.tagName).toBe("SPAN");
+  }
+  // The pen and the eraser outlined and filled are other icons, and so are Demo's two.
+  expect(ROW.pen.filled).not.toBe(ROW.pen.outline);
+  expect(ROW.eraser.filled).not.toBe(ROW.eraser.outline);
+  expect(ROW.demoHidden.outline).not.toBe(ROW.demoShown.outline);
+  button(element, "Eraser").click();
+  await settle();
+  expect(drawn(button(element, "Pen")).name).toBe(ROW.pen.outline);
+  expect(drawn(button(element, "Eraser")).name).toBe(ROW.eraser.filled);
+  // A change of language changes the labels alone.
+  element.setAttribute("lang", "ru");
+  expect(drawn(button(element, "Ластик")).name).toBe(ROW.eraser.filled);
+  expect(button(element, "Ластик").querySelectorAll("svg")).toHaveLength(1);
+});
+
+test("in a row that runs right to left, the icons of Next, Undo and a hidden Demo are mirrored, and no other, and ArrowLeft goes on to the next button", async () => {
+  const parent = document.createElement("div");
+  parent.dir = "rtl";
+  document.body.append(parent);
+  const { element, root, row } = await sheet(400, undefined, parent);
+  /** Whether each button shown mirrors its icon. */
+  const mirrored = () =>
+    Object.fromEntries(
+      [...row.querySelectorAll("button:not([hidden])")].map((one) => [
+        one.textContent,
+        drawn(one).mirrored,
+      ]),
+    );
+  expect(mirrored()).toEqual({
+    Pen: false,
+    Eraser: false,
+    Undo: true,
+    Clear: false,
+    Up: false,
+    Down: false,
+  });
+  // The arrow that points along the row goes on: the next button stands to the left (R46).
+  button(element, "Pen").focus();
+  await userEvent.keyboard("{ArrowLeft}");
+  expect(root.activeElement?.textContent).toBe("Eraser");
+  await userEvent.keyboard("{ArrowRight}");
+  expect(root.activeElement?.textContent).toBe("Pen");
+  element.workedExample = workedExample();
+  await settle();
+  expect(mirrored()).toEqual({ Next: true, Demo: false, Up: false, Down: false });
+  button(element, "Demo").click();
+  await settle();
+  expect(drawn(button(element, "Demo")).name).toBe(ROW.demoHidden.outline);
+  expect(mirrored()).toEqual({ Next: true, Demo: true, Up: false, Down: false });
+  // Left to right, nothing is mirrored.
+  parent.dir = "ltr";
+  expect(Object.values(mirrored()).some(Boolean)).toBe(false);
 });
 
 test("the labels follow the element's own lang: Russian for ru and its regions, English for any other and for none", async () => {

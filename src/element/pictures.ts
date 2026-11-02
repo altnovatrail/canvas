@@ -7,12 +7,12 @@
 // its own: the pictures here are told when to show the address and when it has gone. This module is
 // no entry point of the package.
 
-/**
- * What gives the file of a picture of a task or a worked example: the consumer's, for the canvas
- * goes to no network (R07; repositories 2.1 spec). app takes the files from what api serves, the
- * samples page from its own build.
- */
-export type Media = (ref: string) => Promise<Blob>;
+// What gives the file of a picture of a task or a worked example is spec's type, Media, of the
+// contract of canvas and app (the 2026-11-02 amendment to R36 spec; R07): the consumer's, for the
+// canvas goes to no network (repositories 2.1 spec). app takes the files from what api serves, the
+// samples page from its own build.
+
+import type { Media } from "@altnovatrail/spec/canvas";
 
 /** A picture on show, as what shows it has it. */
 export interface PictureView {

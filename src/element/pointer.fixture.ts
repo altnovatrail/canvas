@@ -133,6 +133,13 @@ export async function placed(
 }
 
 /** A page taller than the screen, which scrolls the element: it goes into `made`, to be taken off. */
+/** A button's icon, the SVG before its label (R46). */
+export function iconOf(button: Element): SVGSVGElement {
+  const icon = button.firstElementChild;
+  if (!(icon instanceof SVGSVGElement)) throw new Error("the button has no icon before its label");
+  return icon;
+}
+
 export function spacer(made: HTMLElement[]): void {
   const rest = document.createElement("div");
   rest.style.height = "2000px";

@@ -21,6 +21,7 @@ import type {
   HistoryChangeEvent,
   HistoryEvent,
   Manifest,
+  Media,
   NovatrailCanvas,
   SheetSubmission,
   Tool,
@@ -46,6 +47,7 @@ export type Contract = All<
     Same<ExportedWorkbook, spec.ExportedWorkbook>,
     Same<HistoryChange, spec.HistoryChange>,
     Same<HistoryChangeEvent, spec.HistoryChangeEvent>,
+    Same<Media, spec.Media>,
     Same<ToolChange, spec.ToolChange>,
     Same<ToolChangeEvent, spec.ToolChangeEvent>,
     Same<Filled, spec.Filled>,
@@ -157,12 +159,17 @@ sheet.task = { ...posts, canvas: { kind: "handwriting_sheet", tools: ["pen"] } }
 
 // @ts-expect-error The tools are the element's own: the contract's task has no tools (R41).
 held.task = { ...posts, canvas: { kind: "handwriting_sheet", tools: ["pen"] } };
+// The media are the contract's: app gives them through it (the 2026-11-02 amendment to R36 spec).
+held.media = async (ref) => new Blob([ref]);
+held.media = undefined;
+// @ts-expect-error A picture's file comes as a Blob, not as its address.
+held.media = async (ref: string) => ref;
 // @ts-expect-error The tutor's marks are no part of the contract until its epic E3 (R74 spec).
 held.marks = undefined;
-// @ts-expect-error Nor are the media, which the contract does not name.
-held.media = undefined;
 // @ts-expect-error Nor the commands undo and clear: the element's own buttons call them (R28).
 held.undo();
+// @ts-expect-error The same for clear.
+held.clear();
 // @ts-expect-error The picture of the whole sheet is no part of the interface (R27).
 sheet.exportPNG();
 // @ts-expect-error null is no history: undefined, and undefined alone, is the empty one.

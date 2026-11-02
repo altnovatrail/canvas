@@ -1,32 +1,31 @@
 # Development container for NovaTrail's canvas.
-# Exact versions only: the base image is pinned by digest, every tool below by an ARG default,
-# the browser by its image's digest and the system libraries by a snapshot of the Ubuntu archive.
+# Exact versions only: the base image is pinned by digest, every tool below by an ARG default.
 # Anything a builder understands: no heredocs, no RUN --mount, no TARGETARCH — architecture is
 # detected at RUN time via dpkg instead. A host that has Docker can build this, and that is the
 # whole requirement.
 #
-# Two stages. `toolchain` holds what it takes to check the documents and the code — Node, just and
-# the browser the code's tests run in — and Go, which comes with spec's devcontainer, and is the
-# stage the automated checks run inside. `devcontainer` adds what a person needs on top of that and
-# is the default stage, so building this file with no target gives the full environment.
-#
-# This is spec's devcontainer with canvas's own additions, the browser and its libraries, recorded
-# as R13 in docs/decisions.md. A move to a new tag of spec carries spec's changes into this file
-# by hand rather than replacing it.
+# Two stages. `toolchain` holds what it takes to check the repository — its documents, and its
+# code where it has any — and is the stage the automated checks run inside. `devcontainer` adds
+# what a person needs on top of that and is the default stage, so building this file with no
+# target gives the full environment.
 
-# -- toolchain: checks the documents and the code -----------------------------
+# -- toolchain: checks the repository ----------------------------------------
 
 FROM mcr.microsoft.com/devcontainers/base:3.0.12-noble@sha256:ec556aed93f62aa6d13fe72c5db09da4e29a7c9b87c568dbca0ee5717466926a AS toolchain
 
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 
-# Node.js LTS: the JSON Schema validators and the document linters are npm packages.
+# Node.js LTS: the checks of spec's justfile — of the documents, of the licenses, of the files of
+# a release and, in spec, of the schemas — are npm packages, and a repository's TypeScript runs
+# on it too.
 ARG NODE_VERSION=24.21.0
 ARG JUST_VERSION=1.58.0
-# Go: spec's Go module, which code of the platform takes from a release, is vetted and tested in
-# spec's container (R64 spec), and Go comes with the Dockerfile into the copy of every repository
-# (repositories 2.2 spec). canvas's code does not use it. It lives in /usr/local/go, where the
-# shared CodeQL workflow of .github looks for it in this stage.
+# Go: a repository's Go code is built, vetted and tested with it, and CodeQL reads that code from
+# a build with it, in /usr/local/go, where the shared CodeQL workflow of .github looks for Go in
+# this stage. In spec that code is its Go module, which code of the platform takes from a
+# release, and the Go tools in tools/, and spec's checks build the module's zip as the Go module
+# proxy will (R64 spec). Go comes with this file into the copy of every NovaTrail repository, whatever
+# its kind, and stays unused in one without Go code (R64 spec).
 ARG GO_VERSION=1.27.3
 # The sha256 of every archive, per architecture, as its publisher lists it: SHASUMS256.txt of
 # the Node release, SHA256SUMS of the just release, the sha256 go.dev/dl lists for Go. A sum
@@ -84,13 +83,13 @@ RUN arch="$(dpkg --print-architecture)"; \
 ENV PATH="/usr/local/node/bin:/usr/local/go/bin:/home/vscode/.local/bin:${PATH}" \
     GOTOOLCHAIN=local
 
-# The browser the tests run in (R13). Playwright publishes no sums for its browser downloads, so it
-# comes from Playwright's own image, pinned by tag and digest (R19 .github), and only the build a
-# headless test starts: Chrome Headless Shell. The image's tag is the version of the playwright
-# package in package-lock.json, and the revision is the one that version's browsers.json names:
-# otherwise Playwright finds no browser, and ci-test fails on it. All three are raised by hand, in
-# the pull request that raises the package: Dependabot reads FROM lines only, and this image is not
-# in one.
+# The browser the tests run in (R79 spec). Playwright publishes no sums for its browser downloads, so it
+# comes from Playwright's own image, pinned by tag and digest, and only the build a headless test
+# starts: Chrome Headless Shell. The image's tag is the version of the playwright package in
+# package-lock.json, and the revision is the one that version's browsers.json names: otherwise
+# Playwright finds no browser, and ci-test fails on it. All three are raised by hand, in spec's
+# repo-template, which a move to its new tag brings here, or here first, in the pull request that
+# raises the package (R79 spec): Dependabot reads FROM lines only, and this image is not in one.
 ARG PLAYWRIGHT_HEADLESS_SHELL_REVISION=1248
 COPY --from=mcr.microsoft.com/playwright:v1.64.1-noble@sha256:7852dc5a7d72f5fe458a597d690f6c42fbc8e9e26ddfa95f8e6ef552558d9bbf \
     /ms-playwright/chromium_headless_shell-${PLAYWRIGHT_HEADLESS_SHELL_REVISION} \
@@ -101,7 +100,7 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 # The system libraries the browser needs: Chromium's list for Ubuntu 24.04 in Playwright's
 # nativeDeps.ts at the same version, and the fonts it reads. apt pins no versions by itself, so
 # they come from the Ubuntu archive as it was at one moment: a snapshot, whose ID is raised by hand
-# like a version (R13) — with the image above, or when a newer base image needs a newer archive.
+# like a version (R40 spec) — with the image above, or when a newer base image needs a newer archive.
 # apt checks the archive's signatures as it does on any update.
 ARG UBUNTU_SNAPSHOT=20261021T000000Z
 RUN apt-get update --snapshot "$UBUNTU_SNAPSHOT"; \

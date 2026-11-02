@@ -4,6 +4,7 @@ import { packProblems } from "./package.ts";
 const build = [
   "package.json",
   "LICENSE",
+  "NOTICE",
   "README.md",
   "lib/core/index.js",
   "lib/core/index.d.ts",
@@ -11,7 +12,7 @@ const build = [
   "lib/element/index.d.ts",
 ];
 
-test("the build, package.json, README.md and LICENSE are what the package takes", () => {
+test("the build, package.json, README.md, LICENSE and NOTICE are what the package takes", () => {
   expect(packProblems(build)).toEqual([]);
 });
 
@@ -38,9 +39,10 @@ test("anything else in the package is a problem: sources, tests and their fixtur
   ]);
 });
 
-test("a package without the build or the license is a problem", () => {
+test("a package without the build, the license or the notice of the icons it embeds is a problem", () => {
   expect(packProblems(["package.json", "README.md"])).toEqual([
     "npm pack leaves out LICENSE",
+    "npm pack leaves out NOTICE",
     "npm pack leaves out lib/core/index.js",
     "npm pack leaves out lib/element/index.js",
   ]);
