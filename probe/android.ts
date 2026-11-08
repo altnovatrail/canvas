@@ -125,9 +125,11 @@ const steps: Step[] = [];
 const seen = new Set<string>();
 let shots = 0;
 
+/** A line of the log, on one line: a break in it would make a line the run never wrote. */
 function log(line: string): void {
-  console.log(line);
-  appendFileSync(join(folder, "log.txt"), `${line}\n`);
+  const one = line.replace(/[\n\r]/g, " ");
+  console.log(one);
+  appendFileSync(join(folder, "log.txt"), `${one}\n`);
 }
 
 function shell(command: string): string {
@@ -246,7 +248,8 @@ async function evaluate(page: Target, expression: string): Promise<unknown> {
       socket.onmessage = (event) => {
         const message = JSON.parse(String(event.data));
         if (message.id !== 1) return;
-        if (message.error || message.result?.exceptionDetails) fail(new Error(String(event.data)));
+        // What the page answered stays out of the log: the report alone is written, by report().
+        if (message.error || message.result?.exceptionDetails) fail(new Error("the page threw"));
         else done(message.result?.result?.value);
       };
     });
@@ -269,7 +272,10 @@ async function report(page: Target, name: string): Promise<Record<string, unknow
       }
     } catch (error) {
       log(
-        `report ${name}: ${error instanceof Error ? error.message : String(error)}`.slice(0, 200),
+        `report ${name}: ${error instanceof SyntaxError ? "not yet a report" : String(error)}`.slice(
+          0,
+          200,
+        ),
       );
     }
     await sleep(1000);
@@ -292,7 +298,9 @@ async function download(file: string): Promise<Target | undefined> {
   await settle(30);
   screenshot(`opened-${file}`);
   const page = await probePage(40);
-  record(`find ${file} among Chrome's pages`, Boolean(page), page?.url ?? "");
+  // The note names the scheme the page came by, and not its address, which DevTools gave.
+  const scheme = page?.url.startsWith("content://") ? "content://" : "another scheme";
+  record(`find ${file} among Chrome's pages`, Boolean(page), page ? `opened by ${scheme}` : "");
   return page;
 }
 
@@ -435,7 +443,7 @@ async function main(): Promise<void> {
 
   const downloads = shell("ls -l /sdcard/Download");
   writeFileSync(join(folder, "downloads.txt"), downloads);
-  log(`downloads:\n${downloads}`);
+  log("downloads: in downloads.txt");
   const failed = steps.filter(({ ok }) => !ok);
   if (failed.length > 0) {
     throw new Error(
