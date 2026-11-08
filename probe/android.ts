@@ -71,6 +71,12 @@ export function find(all: readonly Node[], pattern: RegExp): Node | undefined {
   );
 }
 
+/** The middle half of a node, where a swipe stays clear of the screen's edges. */
+export function inner({ bounds: [x1, y1, x2, y2] }: Node): [number, number, number, number] {
+  const [w, h] = [(x2 - x1) / 4, (y2 - y1) / 4];
+  return [Math.round(x1 + w), Math.round(y1 + h), Math.round(x2 - w), Math.round(y2 - h)];
+}
+
 /** The middle of a node, where a tap lands. */
 export function middle({ bounds: [x1, y1, x2, y2] }: Node): [number, number] {
   return [Math.round((x1 + x2) / 2), Math.round((y1 + y2) / 2)];
@@ -361,11 +367,13 @@ async function main(): Promise<void> {
     await tapWhen(/^Write storage$/, 5);
     const pad = find(screen(), /^Move a pen/);
     if (pad) {
-      const [x1, y1, x2, y2] = pad.bounds;
-      shell(`input touchscreen swipe ${x1 + 20} ${y1 + 20} ${x2 - 20} ${y2 - 20} 600`);
+      // Within the middle of the pad: a swipe that starts near the screen's edge is Android's
+      // gesture of going back, which closes the tab.
+      const [left, top, right, bottom] = inner(pad);
+      shell(`input touchscreen swipe ${left} ${top} ${right} ${bottom} 600`);
       let stylus = true;
       try {
-        shell(`input stylus swipe ${x1 + 20} ${y2 - 20} ${x2 - 20} ${y1 + 20} 600`);
+        shell(`input stylus swipe ${left} ${bottom} ${right} ${top} 600`);
       } catch {
         stylus = false;
       }

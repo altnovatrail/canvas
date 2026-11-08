@@ -3,7 +3,7 @@
 // itself is the workflow's, on a runner with an emulator.
 
 import { expect, test } from "vitest";
-import { find, middle, nodes } from "./android.ts";
+import { find, inner, middle, nodes } from "./android.ts";
 
 const DUMP = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0">
 <node index="0" text="" resource-id="" class="android.widget.FrameLayout" content-desc="" bounds="[0,0][1600,2560]">
@@ -29,4 +29,10 @@ test("a node is found by its text or its description, and one with no area is ne
 
 test("a tap lands in the middle of a node", () => {
   expect(middle({ text: "", description: "", bounds: [40, 900, 361, 1001] })).toEqual([201, 951]);
+});
+
+test("a swipe keeps to the middle half of a node, clear of the screen's edges", () => {
+  expect(inner({ text: "", description: "", bounds: [32, 430, 2528, 950] })).toEqual([
+    656, 560, 1904, 820,
+  ]);
 });
