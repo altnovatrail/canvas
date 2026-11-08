@@ -1,0 +1,232 @@
+// The build of the samples page (T19 in RUN.md; R55 in docs/decisions.md): one HTML file that opens
+// from a file on the device and goes to no network (R25 spec; R08, R11), of page/index.html and
+// page/main.ts with the element and all they take inline:
+//
+//   node scripts/page.ts <folder> <version>
+//
+// writes <folder>/samples-page_v<version>.html. It builds from the tree alone — no spec/, no git, no
+// token, no network — in the toolchain stage, as release-files will take it (T75). Vite's API
+// bundles page/main.ts into one script; the page's own style stays as it is. The policy of
+// scripts/csp.ts goes into a <meta> element with the hashes of both. The tasks are worked out here,
+// from tutor's file of open tasks in tasks/, checked against its sum (R49), and put into the
+// bundle: a page has no synchronous hash for openTasksOf. The license notices of all the code the
+// file carries — its own, every package bundled, the icons' set — go into the file itself, and a
+// package under a license off the list stops the build (R12).
+
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { build, createServer } from "vite";
+import { policy, styleOf } from "./csp.ts";
+
+/** Where the page's source is, from the repository's root. */
+export const TEMPLATE = "page/index.html";
+export const ENTRY = "page/main.ts";
+/** What the template holds in place of the policy, the script and the notices. */
+const POLICY_HOLE = "<!-- policy -->";
+const SCRIPT_HOLE = '<script src="main.ts"></script>';
+const NOTICES_HOLE = "<!-- notices -->";
+
+/** The licenses a package the file carries may have: the list's, as the lock file writes them. */
+export const LICENSES: ReadonlySet<string> = new Set([
+  "MIT",
+  "ISC",
+  "Apache-2.0",
+  "BSD-3-Clause",
+  "(Apache-2.0 AND BSD-3-Clause)",
+]);
+
+/** The tasks the page offers, by bank and position in tutor's file: a sheet, a free sheet, a page. */
+const CHOSEN = [
+  { bank: "eval/bank.json", index: 0, kind: "Лист" },
+  { bank: "eval/free-bank.json", index: 0, kind: "Лист" },
+  { bank: "eval/workbook.json", index: 0, kind: "Тетрадь" },
+] as const;
+
+/** The name of the page's file for a version. */
+export function fileName(version: string): string {
+  if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error(`${version} is no version X.Y.Z`);
+  return `samples-page_v${version}.html`;
+}
+
+/** The text of HTML for a text: its <, > and & escaped. */
+function escaped(text: string): string {
+  return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+
+/** A package the bundle carries: its name, version, license and the text of its license. */
+export interface Carried {
+  readonly name: string;
+  readonly version: string;
+  readonly license: string;
+  readonly text: string;
+}
+
+/** The folders of the packages among a bundle's modules, each once, in order: a package nested
+ * in another's node_modules is a package of its own, with its own license. */
+export function packagesOf(moduleIds: readonly string[]): string[] {
+  const folders = new Set<string>();
+  for (const id of moduleIds) {
+    const match = /^(.*node_modules\/(?:@[^/]+\/)?[^/]+)\//.exec(id.replaceAll("\\", "/"));
+    if (match?.[1]) folders.add(match[1]);
+  }
+  return [...folders].sort((a, b) => a.localeCompare(b));
+}
+
+/** Where the text of a package's license is kept when its npm package carries none: by its name and
+ * version, so that a new version without its own text stops the build. */
+export const NOTICES = "page/notices";
+
+/** The kept text of a package's license, by name and version, as NOTICES names it. */
+export function keptName(name: string, version: string): string {
+  return `${name.replace(/^@/, "").replaceAll("/", "-")}-${version}.txt`;
+}
+
+/** A package as the file carries it, from its folder: refused unless its license is on the list,
+ * and unless the text of its license is in its folder or kept in NOTICES. */
+export function carried(folder: string, kept = NOTICES): Carried {
+  const manifest = JSON.parse(readFileSync(join(folder, "package.json"), "utf8")) as {
+    name: string;
+    version: string;
+    license?: string;
+  };
+  const license = manifest.license ?? "";
+  if (!LICENSES.has(license)) {
+    throw new Error(`${manifest.name} carries ${license || "no license"}, which is off the list`);
+  }
+  const own = readdirSync(folder).find((name) => /^(licen[cs]e|copying)(\.|$)/i.test(name));
+  const copy = join(kept, keptName(manifest.name, manifest.version));
+  const path = own ? join(folder, own) : existsSync(copy) ? copy : undefined;
+  if (!path) throw new Error(`${manifest.name} ${manifest.version} has no text of its license`);
+  return {
+    name: manifest.name,
+    version: manifest.version,
+    license,
+    text: readFileSync(path, "utf8"),
+  };
+}
+
+/** The notices of a file: its own code's license, each package's, and the icons' NOTICE (R46). */
+export function notices(own: string, packages: readonly Carried[], icons: string): string {
+  const parts = [
+    `NovaTrail canvas — Apache-2.0\n\n${own}`,
+    ...packages.map(
+      ({ name, version, license, text }) => `${name} ${version} — ${license}\n\n${text}`,
+    ),
+    icons,
+  ];
+  const body = parts.map((part) => escaped(part.trim())).join("\n\n────────\n\n");
+  return `<details id="notices">\n<summary>Лицензии кода в этом файле</summary>\n<pre>${body}</pre>\n</details>`;
+}
+
+/** Whether a text holds a control character other than a tab or a line feed. */
+function hasControl(text: string): boolean {
+  for (const character of text) {
+    const code = character.codePointAt(0) ?? 0;
+    if ((code < 0x20 && code !== 0x09 && code !== 0x0a) || code === 0x7f) return true;
+  }
+  return false;
+}
+
+/** The page of a template, a bundle and notices: one file, the policy's hashes worked out. */
+export function pageOf(template: string, script: string, noticesHtml: string): string {
+  for (const [name, text] of [
+    [TEMPLATE, template],
+    ["the bundle", script],
+  ] as const) {
+    // The parser changes a control character — drops a carriage return, turns a NUL into U+FFFD —
+    // before the browser hashes an inline element; only a tab and a line feed stay as they are.
+    if (hasControl(text)) {
+      throw new Error(`${name} holds a control character`);
+    }
+  }
+  // Either would end the inline script before its text does.
+  if (/<\/script|<!--/i.test(script)) throw new Error("the bundle holds </script or <!--");
+  for (const hole of [POLICY_HOLE, SCRIPT_HOLE, NOTICES_HOLE]) {
+    if (template.split(hole).length !== 2) throw new Error(`${TEMPLATE} has not one ${hole}`);
+  }
+  const meta = `<meta http-equiv="Content-Security-Policy" content="${policy(styleOf(template), script)}">`;
+  return template
+    .replace(POLICY_HOLE, () => meta)
+    .replace(NOTICES_HOLE, () => noticesHtml)
+    .replace(SCRIPT_HOLE, () => `<script>${script}</script>`);
+}
+
+/** The tasks the page offers, with their open views and references, from tutor's file in tasks/. */
+async function tasksOf(): Promise<unknown[]> {
+  const server = await createServer({
+    configFile: false,
+    logLevel: "silent",
+    appType: "custom",
+    server: { middlewareMode: true, hmr: false, ws: false },
+  });
+  try {
+    const { openTasksOf, TUTOR_FILE } = (await server.ssrLoadModule(
+      "/src/eval/tasks.ts",
+    )) as typeof import("../src/eval/tasks.ts");
+    const bytes = readFileSync(join("tasks", TUTOR_FILE.name));
+    const sum = createHash("sha256").update(bytes).digest("hex");
+    if (sum !== TUTOR_FILE.sha256) throw new Error(`${TUTOR_FILE.name} is not the file of its sum`);
+    const file = JSON.parse(bytes.toString("utf8")) as {
+      banks: { bank: string; tasks: { id: string }[] }[];
+    };
+    const sha256 = (text: string) => createHash("sha256").update(text, "utf8").digest("hex");
+    const open = openTasksOf(file, TUTOR_FILE.tag, sum, sha256);
+    return CHOSEN.map(({ bank, index, kind }) => {
+      const task = file.banks.find((given) => given.bank === bank)?.tasks[index];
+      const view = open.get(bank)?.[index];
+      if (!task || !view) throw new Error(`no task ${index} in ${bank}`);
+      return { title: `${kind}: ${task.id}`, task, open: view };
+    });
+  } finally {
+    await server.close();
+  }
+}
+
+/** Build the page of a version into a folder, and give the file's path and the packages it carries. */
+export async function buildPage(
+  folder: string,
+  version: string,
+): Promise<{ path: string; packages: readonly Carried[] }> {
+  const name = fileName(version);
+  const data = { version, tasks: await tasksOf() };
+  const outputs = await build({
+    configFile: false,
+    logLevel: "silent",
+    define: { SAMPLES_PAGE: JSON.stringify(data) },
+    build: {
+      write: false,
+      target: "es2022",
+      minify: true,
+      lib: { entry: resolve(ENTRY), formats: ["iife"], name: "samplesPage", fileName: "page" },
+    },
+  });
+  const output = (Array.isArray(outputs) ? outputs : [outputs])[0] as
+    | { output: { type: string; code?: string; moduleIds?: string[] }[] }
+    | undefined;
+  const chunks = output?.output.filter(({ type }) => type === "chunk") ?? [];
+  const chunk = chunks[0];
+  if (chunks.length !== 1 || !chunk?.code) throw new Error("the page is not one script");
+  const { code, moduleIds = [] } = chunk;
+  const packages = packagesOf(moduleIds).map((folder) => carried(folder));
+  const page = pageOf(
+    readFileSync(TEMPLATE, "utf8"),
+    code.trimEnd(),
+    notices(readFileSync("LICENSE", "utf8"), packages, readFileSync("NOTICE", "utf8")),
+  );
+  mkdirSync(folder, { recursive: true });
+  const path = join(folder, name);
+  writeFileSync(path, page);
+  return { path, packages };
+}
+
+if (import.meta.main) {
+  const [folder, version, ...rest] = process.argv.slice(2);
+  if (!folder || !version || rest.length > 0) {
+    console.error("usage: node scripts/page.ts <folder> <version>");
+    process.exit(2);
+  }
+  const { path, packages } = await buildPage(folder, version);
+  console.log(path);
+  for (const { name, version: v, license } of packages) console.log(`  ${name} ${v} ${license}`);
+}

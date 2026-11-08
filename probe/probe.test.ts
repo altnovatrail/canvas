@@ -10,7 +10,8 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { type Browser, type BrowserContext, chromium, type Page } from "playwright";
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
-import { build, CSP, hash, OPEN, PAGE, pages, policy, SCRIPT, styleOf } from "./build.ts";
+import { hash, policy, styleOf } from "../scripts/csp.ts";
+import { build, CSP, OPEN, PAGE, pages, SCRIPT } from "./build.ts";
 
 /** What a report may hold, and nothing else: T29 names the fields. */
 const FIELDS = [

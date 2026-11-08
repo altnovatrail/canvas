@@ -10,9 +10,9 @@
 // the probe is in the package or in a release's paths: a probe goes out as a pre-release of its own
 // (T29). Run from the repository's root, as the recipes run their scripts.
 
-import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { policy, styleOf } from "../scripts/csp.ts";
 
 /** The names of the two files. */
 export const CSP = "t29-probe-csp.html";
@@ -24,31 +24,6 @@ export const SCRIPT = "probe/probe.js";
 /** What the source holds in place of the policy and of the script. */
 const POLICY_HOLE = "<!-- policy -->";
 const SCRIPT_HOLE = '<script src="probe.js"></script>';
-
-/** The hash a policy allows an inline element's text by. */
-export function hash(text: string): string {
-  return `'sha256-${createHash("sha256").update(text, "utf8").digest("base64")}'`;
-}
-
-/** The policy of a page with this style and this script: nothing else, and no network. */
-export function policy(style: string, script: string): string {
-  return [
-    "default-src 'none'",
-    `script-src ${hash(script)}`,
-    `style-src ${hash(style)}`,
-    "img-src blob:",
-    "connect-src 'none'",
-    "base-uri 'none'",
-    "form-action 'none'",
-  ].join("; ");
-}
-
-/** The text of the one <style> element of a page. */
-export function styleOf(page: string): string {
-  const match = /<style>([\s\S]*?)<\/style>/.exec(page);
-  if (!match || match[1] === undefined) throw new Error("the page has no <style> element");
-  return match[1];
-}
 
 /** The two pages from the source: the one with the policy, and the one without. */
 export function pages(page: string, script: string): { csp: string; open: string } {
