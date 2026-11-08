@@ -108,9 +108,35 @@ function screenshot(name: string): void {
   writeFileSync(join(folder, `${String(shots).padStart(2, "0")}-${name}.png`), png);
 }
 
+/** The nodes on the screen, or none while uiautomator cannot read it: it gives no root node while
+ * an app changes its window, and then writes no file. */
 function screen(): Node[] {
-  shell("uiautomator dump /sdcard/ui.xml > /dev/null");
-  return nodes(shell("cat /sdcard/ui.xml"));
+  try {
+    shell("rm -f /sdcard/ui.xml; uiautomator dump /sdcard/ui.xml > /dev/null 2>&1");
+    return nodes(shell("cat /sdcard/ui.xml 2>/dev/null"));
+  } catch {
+    return [];
+  }
+}
+
+/** What the screen shows in words, for the log: the texts and descriptions of its nodes. */
+function words(all: readonly Node[]): string {
+  return JSON.stringify(
+    all.map(({ text, description }) => text || description).filter((word) => word !== ""),
+  );
+}
+
+/** Wait until Chrome shows more than its splash: a screen with words on it. */
+async function settle(seconds: number): Promise<void> {
+  for (let i = 0; i < seconds; i++) {
+    const all = screen();
+    if (all.some(({ text, description }) => text || description)) {
+      log(`screen ${words(all).slice(0, 600)}`);
+      return;
+    }
+    await sleep(1000);
+  }
+  log("screen still without words");
 }
 
 function tap(node: Node): void {
@@ -218,15 +244,16 @@ function record(step: string, ok: boolean, note = ""): void {
 /** Download a file of the probe in Chrome and open it from the download, as a volunteer would. */
 async function download(file: string): Promise<Target | undefined> {
   shell(`am start -a android.intent.action.VIEW -d http://10.0.2.2:${port}/${file} -n ${MAIN}`);
-  await sleep(4000);
+  await settle(60);
   screenshot(`download-${file}`);
   // Chrome may ask before it downloads a file of this type, or over plain HTTP: the answers a
   // person gives to keep it.
   await tapWhen(/^(Download|Download anyway|Keep|Continue|OK)$/i, 5);
+  await settle(10);
   screenshot(`downloaded-${file}`);
   const opened = await tapWhen(/^Open$/i, 15);
   record(`open ${file} from Chrome's message of the download`, opened);
-  await sleep(3000);
+  await settle(30);
   screenshot(`opened-${file}`);
   const page = await probePage(15);
   record(`find ${file} among Chrome's pages`, Boolean(page), page?.url ?? "");
@@ -298,7 +325,7 @@ async function main(): Promise<void> {
   await sleep(2000);
   if (first) {
     shell(`am start -a android.intent.action.VIEW -d '${first}' -t text/html -n ${MAIN}`);
-    await sleep(5000);
+    await settle(60);
     screenshot("csp-after-restart");
     const again = await probePage(15);
     record(
