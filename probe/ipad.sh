@@ -28,8 +28,16 @@ xcrun simctl bootstatus "$udid" -b > /dev/null
   echo "WebDriverAgent $wda_tag $wda_commit"
 } > "$out/versions.txt"
 
-xcodebuild -quiet -project build/wda-src/WebDriverAgent.xcodeproj -scheme WebDriverAgentRunner \
-    -destination "id=$udid" -derivedDataPath build/wda build-for-testing
+# xcodebuild may not yet see a simulator CoreSimulator has just booted ("Unable to find a device
+# matching the provided destination specifier"): it gets three tries, a while apart.
+for try in 1 2 3; do
+  if xcodebuild -quiet -project build/wda-src/WebDriverAgent.xcodeproj -scheme WebDriverAgentRunner \
+      -destination "id=$udid" -derivedDataPath build/wda build-for-testing; then
+    break
+  fi
+  test "$try" -lt 3
+  sleep 30
+done
 xcodebuild -project build/wda-src/WebDriverAgent.xcodeproj -scheme WebDriverAgentRunner \
     -destination "id=$udid" -derivedDataPath build/wda test-without-building > "$out/wda.txt" 2>&1 &
 for _ in $(seq 1 120); do
