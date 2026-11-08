@@ -578,16 +578,19 @@ async function marked() {
   return { ...opened, boxes, submission: work.submission };
 }
 
-test("a mark of a box stands round the box and its ink, 10 units off, read by its name: it fades under a stroke, goes while all its strokes are erased and comes back with undo, and one of an empty box has none", async () => {
-  const { element, root, canvas, view, boxes, submission } = await marked();
+test("a mark of a box stands round the box and its ink, 10 units off, read by its name: it fades under a stroke, goes while all its strokes are erased and comes back with undo, and one of an empty box stands round the box alone", async () => {
+  const { element, root, canvas, view, boxes, submission, page: laid } = await marked();
   const first = boxes[0] as PageBox;
+  const empty = laid.items[1]?.boxes[0] as PageBox;
   element.marks = {
     submission,
     marks: [onBox(1, 1, "Look at this box"), onBox(2, 1, "Nothing here")],
   };
   await settle();
+  // The empty box's mark is the second amendment of 2026-11-03 to R74 spec: round its box alone.
   expect(probe(element).marks).toEqual([
     { name: "Look at this box", ids: [1], frame: padded(first) },
+    { name: "Nothing here", ids: [], frame: padded(empty) },
   ]);
   await expect.element(page.getByRole("img", { name: "Look at this box" })).toBeVisible();
   const frame = root.querySelector(".marks rect");

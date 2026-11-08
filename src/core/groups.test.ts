@@ -1,5 +1,14 @@
 import { describe, expect, test } from "vitest";
 import {
+  groupsTo,
+  historyOf,
+  type ProtocolEvent,
+  type ProtocolGroup,
+  type TenthsBox,
+  tenthsOf,
+  vectorsOf,
+} from "./contracts.fixture.js";
+import {
   GROUP_RULE,
   type Group,
   type GroupRule,
@@ -8,15 +17,15 @@ import {
   neighboursOf,
   rectOf,
 } from "./groups.js";
-import { type HistoryEvent, replay } from "./history.js";
+import { replay } from "./history.js";
 import type { Stroke } from "./ink.js";
 import { random, SHEETS, staircase, stroke, undone } from "./sheets.fixture.js";
 
 // The sheets of these tests are drawn by code, as every test's strokes are: no hand wrote them
 // (CLAUDE.md). The synthetic sheets, in sheets.fixture.ts, lie in whole tenths of a unit and whole
-// milliseconds, so that they come out the same on every machine, and so do the test vectors made
-// of them. The tests of rounding, the crowded sheets and the sheet of rounding among the vectors
-// take hundredths and fractions of a millisecond on purpose: those are what the rule rounds.
+// milliseconds, so that they come out the same on every machine. The tests of rounding and the
+// crowded sheets take hundredths and fractions of a millisecond on purpose: those are what the rule
+// rounds. The test vectors of the rule are spec's, in the eval protocol's form (R94 spec; T16).
 
 const idsOf = (groups: readonly Group[]) => groups.map(({ ids }) => ids);
 
@@ -345,59 +354,32 @@ describe("the synthetic sheets", () => {
   });
 });
 
-/** What the test vectors say of themselves (R24). */
-const ABOUT =
-  "Test vectors of canvas's rule of stroke groups, R24 in docs/decisions.md: from a history of writing, as the element records it, to the groups of the strokes the sheet shows. A proposal for the eval protocol, epic E3 in spec's RUN.md: the protocol's own vectors come in spec's releases, and canvas will test against those.";
-
-/** The test vectors, one line to an event, so that a reader can follow them. */
-function vectors(): string {
-  const lines = [
-    "{",
-    `  "about": ${JSON.stringify(ABOUT)},`,
-    `  "rule": ${JSON.stringify(GROUP_RULE)},`,
-    `  "units": ${JSON.stringify({
-      places:
-        "sheet units, the sheet 1000 × 1400 (R06); the rule takes them in whole tenths, round(10 × v), rounding half up: 100.05 units are 1001 tenths",
-      times:
-        "milliseconds from the sheet's first event (R22); the rule takes them whole, round(t), half up alike",
-      rect: "[ymin, xmin, ymax, xmax] of the group's points, raw, in sheet units",
-      labels:
-        "by place: the group's rectangle in whole tenths, its top, then its left, bottom and right; then its earliest start in whole milliseconds; then its smallest ID. A to Z, then AA, AB and on",
-    })},`,
-    '  "cases": [',
-  ];
-  SHEETS.forEach((make, n) => {
-    const sheet = make();
-    const strokes = replay(sheet.work.history);
-    const groups = groupsOf(strokes).map(({ label, ids }) => {
-      const { minX, minY, maxX, maxY } = rectOf(ids, strokes);
-      return { label, ids, rect: [minY, minX, maxY, maxX] };
-    });
-    const events = sheet.work.history.map(
-      (event: HistoryEvent, k) =>
-        `        ${JSON.stringify(event)}${k < sheet.work.history.length - 1 ? "," : ""}`,
-    );
-    lines.push(
-      "    {",
-      `      "name": ${JSON.stringify(sheet.name)},`,
-      `      "about": ${JSON.stringify(sheet.about)},`,
-      '      "history": [',
-      ...events,
-      "      ],",
-      `      "visible": ${JSON.stringify(strokes.map(({ id }) => id))},`,
-      `      "neighbours": ${JSON.stringify(neighboursOf(strokes))},`,
-      '      "groups": [',
-      ...groups.map(
-        (group, k) => `        ${JSON.stringify(group)}${k < groups.length - 1 ? "," : ""}`,
-      ),
-      "      ]",
-      n < SHEETS.length - 1 ? "    }," : "    }",
-    );
-  });
-  lines.push("  ]", "}", "");
-  return lines.join("\n");
+/** A case of spec's vectors of the groups (contracts/README.md, section 12). */
+interface GroupCase {
+  readonly name: string;
+  readonly history: { readonly events: readonly ProtocolEvent[] };
+  readonly visible: readonly number[];
+  readonly neighbours: readonly (readonly [number, number])[];
+  readonly groups: readonly ProtocolGroup[];
+  readonly group_boxes: readonly TenthsBox[];
 }
 
-test("the test vectors are what the rule gives on the synthetic sheets", async () => {
-  await expect(vectors()).toMatchFileSnapshot("../../vectors/groups.json");
+describe("spec's test vectors of the groups (R94 spec)", () => {
+  const { rule, cases } = vectorsOf<GroupCase>("groups");
+
+  test("are of the sheet's rule", () => {
+    expect(rule).toEqual(GROUP_RULE);
+  });
+
+  test.each(cases.map((each) => [each.name, each] as const))(
+    "%s: the strokes shown, their neighbours, their groups and the groups' boxes are the vectors'",
+    (_, { history, visible, neighbours, groups, group_boxes }) => {
+      const strokes = replay(historyOf(history.events));
+      expect(strokes.map(({ id }) => id).sort((a, b) => a - b)).toEqual(visible);
+      expect(neighboursOf(strokes)).toEqual(neighbours);
+      const found = groupsOf(strokes);
+      expect(groupsTo(found)).toEqual(groups);
+      expect(found.map(({ ids }) => tenthsOf(rectOf(ids, strokes)))).toEqual(group_boxes);
+    },
+  );
 });

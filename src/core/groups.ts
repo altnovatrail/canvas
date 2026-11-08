@@ -69,8 +69,8 @@ export function groupsOf(strokes: readonly Stroke[], rule: GroupRule = GROUP_RUL
 
 /**
  * The pairs of neighbours among the strokes on a sheet, by ID (R24): each pair once, the smaller
- * ID first, in ascending order. Its groups join these pairs; the test vectors give them too, for a
- * runner to see where its grouping parts from the sheet's.
+ * ID first, in ascending order. Its groups join these pairs; spec's test vectors give them too, for
+ * a runner to see where its grouping parts from the sheet's (R94 spec).
  */
 export function neighboursOf(
   strokes: readonly Stroke[],

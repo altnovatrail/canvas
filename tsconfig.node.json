@@ -4,6 +4,7 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["node"],
     "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
     "noEmit": true
   },
   "include": ["scripts/**/*.ts", "src/**/*.test.ts", "vitest.config.ts", "demo/vite.config.ts"]

@@ -1,9 +1,9 @@
 // Type-checked by ci-lint and never built: what the entry point @altnovatrail/canvas/core gives
 // (R27). The types of the data and the fold of a history are there; the rules of the groups, the
-// crop, the snapping and the boxes are not, until the eval protocol takes them, nor is the
-// workbook's layout. Were the entry to give one of them, the directive over it would go unused,
-// and that would be the error. The data's types of the contract are spec's, the same types (R74
-// spec; T69).
+// crop, the snapping and the boxes are not, though the eval protocol has taken them (R94 spec),
+// nor is the workbook's layout. Were the entry to give one of them, the directive over it would go
+// unused, and that would be the error. The data's types of the contract are spec's, the same types
+// (R74 spec; T69), and the tutor's marks are among them (R83 spec; T16).
 
 import type * as spec from "@altnovatrail/spec/canvas";
 import type * as open from "@altnovatrail/spec/formatv0/open";
@@ -42,6 +42,7 @@ export type Same<A, B> =
 /** The entry's types of the data are spec's, under spec's names: a copy gone astray is false. */
 export type Data = All<
   [
+    Same<types.Anchor, spec.Anchor>,
     Same<types.Box, spec.Box>,
     Same<types.CellPlace, spec.CellPlace>,
     Same<types.CropNumbers, spec.CropNumbers>,
@@ -52,6 +53,8 @@ export type Data = All<
     Same<types.HistoryEvent, spec.HistoryEvent>,
     Same<types.InkPoint, spec.InkPoint>,
     Same<types.Manifest, open.Manifest>,
+    Same<types.Mark, spec.Mark>,
+    Same<types.Marks, spec.Marks>,
     Same<types.SheetSubmission, spec.SheetSubmission>,
     Same<types.Stroke, spec.Stroke>,
     Same<types.Submission, spec.Submission>,
@@ -85,7 +88,7 @@ export const demoState = core.demoStateOf;
 export const settings = core.settingsOf;
 // @ts-expect-error Nor the layout of a workbook's page, which vectors/pages.json pins (R34, R35).
 export const page = core.pageOf;
-// @ts-expect-error Nor the rule of its boxes, which vectors/boxes.json pins (R37).
+// @ts-expect-error Nor the rule of its boxes, which spec's test vectors pin (R37; R94 spec).
 export const box = core.cellOf;
 // @ts-expect-error Nor the element's own shape of a task it checked: a task is of spec's type (R41).
 export type Checked = types.SheetTask;

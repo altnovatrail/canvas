@@ -1,4 +1,14 @@
 import { describe, expect, test } from "vitest";
+import {
+  cropTo,
+  type FinalStroke,
+  groupsFrom,
+  type ProtocolCropSet,
+  type ProtocolGroup,
+  strokesOf,
+  tenthsTo,
+  vectorsOf,
+} from "./contracts.fixture.js";
 import { bundlesOf, CROP, type Crop, cropOf, medianOf, tokensOf } from "./crop.js";
 import { type Group, groupsOf } from "./groups.js";
 import type { Stroke } from "./ink.js";
@@ -450,94 +460,37 @@ describe("the rule written out once more", () => {
   });
 });
 
-/** What the test vectors say of themselves (R25). */
-const ABOUT =
-  "Test vectors of canvas's crop for checking, R25 in docs/decisions.md: from the strokes a sheet shows and their groups (R24; vectors/groups.json) to the crop's numbers at each height of digits — the median, the height the digits are drawn at, the scale, the line, the size, the margins, where the crop lies on the sheet and the frames of the groups. Not its pixels: two implementations may draw them a level of grey apart. A proposal for the eval protocol, epic E3 in spec's RUN.md: the protocol's own vectors come in spec's releases, and canvas will test against those.";
-
-/** The rule in words, for a runner to follow: every number it names is a whole one. */
-const FORMULAS = {
-  tenths:
-    "every place is taken in whole tenths of a unit, t(v) = round(10 × v), half up: 100.05 units are 1001 tenths (R24). B is the box of all the points, in tenths",
-  bundles:
-    "the strokes whose points span flat × 10 tenths or more from top to bottom, joined by a chain of boxes that touch or overlap, 0 tenths apart or less both across and down; a lower stroke is a line and joins nothing",
-  median:
-    "m, the lower median of the heights of the bundles, the ⌊(n − 1) / 2⌋-th from the lowest, in tenths, or flat × 10 if there is no bundle; the scale takes H = min(m, ceiling × 10). The case's median is m / 10 units",
-  size: "for D′ from the digit asked for down to 1: w₀ = ⌈(B.xmax − B.xmin) × D′ / H⌉ + 2 × margin and h₀ = ⌈(B.ymax − B.ymin) × D′ / H⌉ + 2 × margin; width = max(w₀, side), left = margin + ⌊(width − w₀) / 2⌋, and height and top alike. D′ is drawn, the first for which max(width, height) ≤ edge and ⌈width / patch⌉ × ⌈height / patch⌉ ≤ tokens",
-  scale: "10 × D′ / H px to a unit; the line is max(D′, 12) / 12 px wide",
-  sheetBox:
-    "[(B.ymin × D′ − top × H) / (10 × D′), (B.xmin × D′ − left × H) / (10 × D′), (B.ymin × D′ − top × H + height × H) / (10 × D′), (B.xmin × D′ − left × H + width × H) / (10 × D′)] units: each one division of two whole numbers",
-  frames:
-    "for each group, g the box of its points in tenths, r = (max(D′, 12) + 24) × H, X(x) = 24 × ((x − B.xmin) × D′ + left × H) and Y(y) = 24 × ((y − B.ymin) × D′ + top × H): [⌊1000 × (Y(g.ymin) − r) / (24 × H × height)⌋, ⌊1000 × (X(g.xmin) − r) / (24 × H × width)⌋, ⌈1000 × (Y(g.ymax) + r) / (24 × H × height)⌉, ⌈1000 × (X(g.xmax) + r) / (24 × H × width)⌉] — the group's ink, its points widened by half the line and the pixel at its edge, rounded outward: every pixel the ink touches lies within, and min < max",
-  numbers:
-    "every whole number above stays below 2^53, so a double holds it exactly, and an int64 does too; the numbers that are not whole are each one division of two whole numbers",
-};
-
-/** The test vectors, one line to a stroke and to a crop, so that a reader can follow them. */
-function vectors(): string {
-  const { digit: _, tallest: __, ...rule } = CROP;
-  const formulas = Object.entries(FORMULAS).map(
-    ([key, text], k, all) =>
-      `    ${JSON.stringify(key)}: ${JSON.stringify(text)}${k < all.length - 1 ? "," : ""}`,
-  );
-  const lines = [
-    "{",
-    `  "about": ${JSON.stringify(ABOUT)},`,
-    `  "rule": ${JSON.stringify(rule)},`,
-    '  "formulas": {',
-    ...formulas,
-    "  },",
-    '  "cases": [',
-  ];
-  SHEETS_OF_THE_CROP.forEach((make, n) => {
-    const sheet = make();
-    const strokes = sheet.work.strokes;
-    const groups = groupsOf(strokes);
-    const crops = DIGITS.map((digit) => {
-      const crop = cropOf(strokes, groups, digit);
-      if (crop === null) throw new Error(`${sheet.name} has no crop`);
-      return crop;
-    });
-    const first = crops[0];
-    if (first === undefined) throw new Error("no heights of digits");
-    const { box, median: unit } = first.exact;
-    const listed = <T>(items: readonly T[], show: (item: T) => unknown) =>
-      items.map(
-        (item, k) => `        ${JSON.stringify(show(item))}${k < items.length - 1 ? "," : ""}`,
-      );
-    lines.push(
-      "    {",
-      `      "name": ${JSON.stringify(sheet.name)},`,
-      `      "about": ${JSON.stringify(sheet.about)},`,
-      '      "strokes": [',
-      ...listed(strokes, ({ id, points }) => ({ id, points: points.map(({ x, y }) => [x, y]) })),
-      "      ],",
-      `      "groups": ${JSON.stringify(groups)},`,
-      `      "bundles": ${JSON.stringify(bundlesOf(strokes))},`,
-      `      "median": ${JSON.stringify(first.median)},`,
-      `      "exact": ${JSON.stringify({ box: [box.minY, box.minX, box.maxY, box.maxX], median: unit })},`,
-      '      "crops": [',
-      ...listed(
-        crops,
-        ({ digit, drawn, scale, line, width, height, margins, sheetBox, frames }) => ({
-          digit,
-          drawn,
-          scale,
-          line,
-          width,
-          height,
-          margins,
-          sheetBox,
-          frames,
-        }),
-      ),
-      "      ]",
-      n < SHEETS_OF_THE_CROP.length - 1 ? "    }," : "    }",
-    );
-  });
-  lines.push("  ]", "}", "");
-  return lines.join("\n");
+/** A case of spec's vectors of the crop (contracts/README.md, section 12). */
+interface CropCase {
+  readonly name: string;
+  readonly strokes: readonly FinalStroke[];
+  readonly groups: readonly ProtocolGroup[];
+  readonly bundles: readonly (readonly number[])[];
+  readonly crops: ProtocolCropSet;
 }
 
-test("the test vectors are what the rule gives on the synthetic sheets", async () => {
-  await expect(vectors()).toMatchFileSnapshot("../../vectors/crops.json");
+describe("spec's test vectors of the crop (R94 spec)", () => {
+  const { rule, cases } = vectorsOf<CropCase>("crops");
+
+  test("are of the sheet's rule", () => {
+    const { digit: _, tallest: __, ...own } = CROP;
+    expect(rule).toEqual(own);
+  });
+
+  test.each(cases.map((each) => [each.name, each] as const))(
+    "%s: the bundles and the numbers of the crop at each height are the vectors'",
+    (_, { strokes, groups, bundles, crops }) => {
+      const sheet = strokesOf(strokes);
+      expect(bundlesOf(sheet)).toEqual(bundles);
+      // The protocol's median is h_med; the crop's exact one is H, the median the scale takes.
+      expect(Math.round(10 * medianOf(sheet))).toBe(crops.bundle_median);
+      for (const want of crops.crops) {
+        const crop = cropOf(sheet, groupsFrom(groups), want.digit_height);
+        if (crop === null) throw new Error("the case has no crop");
+        expect(tenthsTo(crop.exact.box)).toEqual(crops.ink_box);
+        expect(crop.exact.median).toBe(Math.min(crops.bundle_median, 10 * CROP.ceiling));
+        expect(cropTo(crop)).toEqual(want);
+      }
+    },
+  );
 });

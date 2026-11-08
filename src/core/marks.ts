@@ -1,7 +1,10 @@
 import type {
+  Anchor,
   CellPlace,
   CropNumbers,
   Filling,
+  Mark,
+  Marks,
   SheetSubmission,
   Submission,
   WorkbookSubmission,
@@ -56,40 +59,31 @@ export const SNAP_RULE: SnapRule = Object.freeze({
  * order, and the digest of its strokes and of every box of the page, `workbookDigestOf` it (R34,
  * R38): no numbers of the crops, for no mark on a workbook is snapped. An answer cell has no ID:
  * its place names it, its item and its place among the item's cells, each from 1 (R51 spec).
+ *
+ * The tutor's marks of one submission, with the submission's context, are spec's types too, of the
+ * same contract (R83 spec; T16): a mark is a frame, so far, with where it is and the name a screen
+ * reader gives it, in the consumer's words — the element words nothing. Where it is: a group of
+ * strokes by its label, an answer cell by its place, or a box on the crop the model saw,
+ * [ymin, xmin, ymax, xmax] in whole thousandths of its height and width, min < max (R53 spec). On a
+ * workbook a mark stands on a cell alone (R34).
  */
-export type { CellPlace, CropNumbers, SheetSubmission, Submission, WorkbookSubmission };
-
-/**
- * Where a mark is: a group of strokes by its label, an answer cell by its place, or a box on the
- * crop the model saw, [ymin, xmin, ymax, xmax] in whole thousandths of its height and width, min <
- * max (R53 spec). On a workbook a mark stands on a cell alone (R34).
- */
-export type Anchor =
-  | { readonly group: string }
-  | { readonly cell: CellPlace }
-  | { readonly box: readonly [number, number, number, number] };
-
-/** A mark of the tutor's layer: a frame, so far, with where it is and its name. */
-export interface Mark {
-  readonly kind: "frame";
-  readonly at: Anchor;
-  /** What a screen reader names it, in the consumer's words: the element words nothing. */
-  readonly name: string;
-}
-
-/**
- * The tutor's marks of one submission, with the submission's context (R07): a sheet's or a
- * workbook's.
- */
-export interface Marks {
-  readonly submission: Submission;
-  readonly marks: readonly Mark[];
-}
+export type {
+  Anchor,
+  CellPlace,
+  CropNumbers,
+  Mark,
+  Marks,
+  SheetSubmission,
+  Submission,
+  WorkbookSubmission,
+};
 
 /**
  * A mark on the sheet, `{stroke_ids, snapped_box}` (C2): the strokes it holds on to, by ID in
  * ascending order, and the rectangle of their points, in units, as the model saw them. A mark of a
- * workbook's cell has the box of its cell too, which its frame stands round with the ink (R39).
+ * workbook's cell has the box of its cell too, which its frame stands round with the ink (R39). A
+ * mark of a box the submission found empty holds no strokes, and its `box` is then the cell's own:
+ * `shownOf` frames it alone.
  */
 export interface Placed {
   readonly ids: readonly number[];
@@ -166,8 +160,9 @@ export function snapOf(
  * submission is in none of its groups, and no mark takes it. A group's mark holds its strokes, a
  * box's the strokes it snaps to; an answer cell's holds none on a sheet, which takes no zones.
  * `cells` are the boxes of a workbook's page, in the task's order, and null on a sheet: there a
- * cell's mark holds the strokes of its row of the table, with its box, and a cell not in the table
- * holds none (R39).
+ * cell's mark holds the strokes of its row of the table, with its box; one of a box not in the
+ * table, an empty one, holds its box alone, and one of a box not on the page holds none (R39; the
+ * second 2026-11-03 amendment to R74 spec).
  *
  * A submission of other strokes is a TypeError: a stroke of its groups the sheet does not know, or
  * a digest the sheet's strokes of those IDs do not give with the submission's numbers (R27). A
@@ -220,11 +215,14 @@ export function placesOf(
 
 /**
  * The rectangle a mark shows now (R26): around the points of those of its strokes the sheet shows,
- * in units, or null while it shows none of them. `shown` gives the box of a stroke's points by its
- * ID while the stroke is on the screen — not erased, nor under the eraser under way (R22). New
- * strokes are none of a mark's.
+ * in units, or null while it shows none of them. A mark of a box that was empty shows the box
+ * itself, always (R39). `shown` gives the box of a stroke's points by its ID while the stroke is
+ * on the screen — not erased, nor under the eraser under way (R22). New strokes are none of a
+ * mark's.
  */
 export function shownOf(placed: Placed, shown: (id: number) => Box | undefined): Box | null {
+  // A mark of a box that was empty stands round the box alone, whatever is written in it since.
+  if (placed.cell !== undefined && placed.ids.length === 0) return placed.cell;
   const boxes = placed.ids.flatMap((id) => shown(id) ?? []);
   if (boxes.length === 0) return null;
   // A cell's frame stands round its box and its ink together, by the author's answer (R39).
@@ -287,12 +285,16 @@ function cellsPlacesOf(
     const same = ({ item, slot }: CellPlace) => item === place?.item && slot === place.slot;
     const row = boxes.find(same);
     const cell = cells.find(same);
-    if (row === undefined || cell === undefined) return null;
+    if (cell === undefined) return null;
     const { left, top, width, height } = cell.box;
+    const frame = { minX: left, minY: top, maxX: left + width, maxY: top + height };
+    // A box the submission found empty is framed alone (the second 2026-11-03 amendment to R74
+    // spec; R39).
+    if (row === undefined) return { ids: [], box: frame, cell: frame };
     return {
       ids: [...row.ids].sort(byNumber),
       box: boxOf(row.ids.flatMap((id) => byId.get(id)?.points ?? [])),
-      cell: { minX: left, minY: top, maxX: left + width, maxY: top + height },
+      cell: frame,
     };
   });
 }

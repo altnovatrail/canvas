@@ -1,15 +1,15 @@
 import { describe, expect, test } from "vitest";
 import { BOX_RULE, type BoxRule, type Cell, cellOf, cellsOf, filledOf, tableOf } from "./boxes.js";
+import { type FinalStroke, strokesOf, vectorsOf } from "./contracts.fixture.js";
 import type { Stroke } from "./ink.js";
-import { pageOf } from "./page.js";
+import type { CellPlace } from "./marks.js";
+import { type PageBox, pageOf } from "./page.js";
 import { PAGES } from "./pages.fixture.js";
 import { crowd, stroke } from "./sheets.fixture.js";
 import {
-  comparisons,
   DENSITIES,
   edgeDigits,
   edgeSigns,
-  fractions,
   seeded,
   WORKBOOKS,
   type Workbook,
@@ -337,144 +337,47 @@ test("the rule is its words: a second writing of it, in BigInt, agrees on the co
   // browsers of the other projects beside it: past Vitest's default of five seconds.
 }, 30_000);
 
-/** What the test vectors say of themselves (R37). */
-const ABOUT =
-  "Test vectors of canvas's rule of boxes, R37 in docs/decisions.md: from the strokes a workbook's page shows and its boxes to the box each stroke is in, or none — the draft — and the table of the filled boxes. A proposal for the eval protocol, epic E3 in spec's RUN.md (В47 in canvas's RUN.md): the protocol's own vectors come in spec's releases, and canvas will test against those.";
-
-/** A case of the vectors: its boxes and the strokes its page shows. */
-interface Case {
+/** A case of spec's vectors of the boxes (contracts/README.md, section 12). */
+interface BoxCase {
   readonly name: string;
-  readonly about: string;
-  readonly density: string;
-  readonly cells: readonly Cell[];
-  readonly strokes: readonly Stroke[];
+  readonly boxes: readonly (PageBox & { readonly answer_slot: CellPlace })[];
+  readonly strokes: readonly FinalStroke[];
+  readonly verdicts: readonly {
+    readonly stroke_id: number;
+    readonly answer_slot: CellPlace | null;
+  }[];
+  readonly filled_boxes: readonly {
+    readonly answer_slot: CellPlace;
+    readonly stroke_ids: number[];
+  }[];
 }
 
-/** A workbook as a case, its points as dense as they were written. */
-function caseOf({ name, about, cells, work }: Workbook, density: string): Case {
-  return { name, about, density, cells, strokes: work.strokes };
-}
+describe("spec's test vectors of the boxes (R94 spec)", () => {
+  const { rule, cases } = vectorsOf<BoxCase>("boxes");
 
-/** The strokes of the edges' case. */
-const EDGE_STROKES: readonly Stroke[] = [
-  dot(1, 88, 150),
-  dot(2, 87.9, 150),
-  dot(3, 212, 150),
-  dot(4, 212.1, 150),
-  dot(5, 150, 88),
-  dot(6, 150, 87.9),
-  dot(7, 150, 212),
-  dot(8, 150, 212.1),
-  dot(9, 87.96, 150),
-  dot(10, 87.94, 150),
-  dot(11, 285.6, 140),
-  dot(12, 285.5, 140),
-  dot(13, 360, 90.4),
-  dot(14, 360, 90.3),
-  stroke(15, [70, 150, 0], [230, 150, 9]),
-  stroke(16, [70, 150, 0], [230.1, 150, 9]),
-  stroke(17, [264, 140, 0], [456, 140, 9]),
-  stroke(18, [264, 140, 0], [456.1, 140, 9]),
-  stroke(19, [150, 150, 0]),
-  stroke(20, [530, 350, 0], [580, 350, 9], [590, 350, 18], [630, 350, 27]),
-  stroke(21, [550, 350, 0], [600, 350, 9], [610, 350, 18], [620, 350, 27], [640, 350, 36]),
-  stroke(22, [550, 350, 0], [610, 350, 27]),
-];
+  test("are of the sheet's rule", () => {
+    expect(rule).toEqual(BOX_RULE);
+  });
 
-/** The cases: the hand-made workbooks, some at points every 2 units, the edges, two seeded. */
-function cases(): Case[] {
-  const dense = DENSITIES[2];
-  return [
-    ...WORKBOOKS.map((make) => caseOf(make(), "corners")),
-    ...[edgeDigits, edgeSigns, fractions, comparisons].map((make) =>
-      caseOf(make(dense), "every 2 units"),
-    ),
-    {
-      name: "edges",
-      about:
-        "Boxes of their own — 100 × 100, 120 × 80, and two that overlap — and dots and lines on and a tenth past each widened edge and the limit, rounding onto an edge, and strokes two overlapping boxes may both take: the more points held, then the earlier box.",
-      density: "as given",
-      cells: EDGES,
-      strokes: EDGE_STROKES,
+  test.each(cases.map((each) => [each.name, each] as const))(
+    "%s: each stroke's box and the table of the filled boxes are the vectors'",
+    (_, { boxes, strokes, verdicts, filled_boxes }) => {
+      const cells: Cell[] = boxes.map(({ answer_slot: { item, slot }, ...box }) => ({
+        item,
+        slot,
+        box,
+      }));
+      const page = strokesOf(strokes);
+      const found = page.map((s) => {
+        const own = cells[cellOf(s, cells)];
+        return { stroke_id: s.id, answer_slot: own ? { item: own.item, slot: own.slot } : null };
+      });
+      expect(found).toEqual(verdicts);
+      const table = tableOf(page, cells).map(({ item, slot, ids }) => ({
+        answer_slot: { item, slot },
+        stroke_ids: ids,
+      }));
+      expect(table).toEqual(filled_boxes);
     },
-    ...[1, 2].map((seed) => caseOf(seeded(seed), "corners")),
-  ];
-}
-
-/** The rows of the filled boxes by item, each its slots: as `filled` gives them. */
-function filledByCells(cells: readonly Cell[], table: ReturnType<typeof tableOf>): boolean[][] {
-  const rows: boolean[][] = [];
-  for (const { item, slot } of cells) {
-    const row = rows[item - 1] ?? [];
-    row[slot - 1] = table.some((f) => f.item === item && f.slot === slot);
-    rows[item - 1] = row;
-  }
-  return rows;
-}
-
-/** The test vectors, one line to a stroke, so that a reader can follow them. */
-function vectors(): string {
-  const lines = [
-    "{",
-    `  "about": ${JSON.stringify(ABOUT)},`,
-    `  "rule": ${JSON.stringify(BOX_RULE)},`,
-    `  "formulas": ${JSON.stringify({
-      tenths:
-        "a stroke's points in whole tenths of a page unit, round(10 × v), half up; a box [top, left, bottom, right] in whole units is 10 × each in tenths, L, T, W = right − left and H = bottom − top",
-      bounds: "x0, x1, y0, y1: the least and the most of the stroke's points in tenths",
-      size: "1000 × (x1 − x0) ≤ limit × W and 1000 × (y1 − y0) ≤ limit × H",
-      middle:
-        "1000 × (x0 + x1) ≥ 2 × (1000 × L − margin × W) and 1000 × (x0 + x1) ≤ 2 × (1000 × (L + W) + margin × W), and the same down with y, T and H",
-      held: "the points of the stroke with 1000 × x ≥ 1000 × L − margin × W, 1000 × x ≤ 1000 × (L + W) + margin × W, and the same down",
-      box: "of the boxes whose size and middle hold, the one with the most points held, and of those the earliest in the order of the boxes — the task's: by item, then by slot, each from 1; none is the draft",
-      filled:
-        "a box is filled if a stroke's box is it; the table lists the filled boxes in order, the IDs of each ascending",
-      numbers:
-        "for points on the page, 1000 × 1400, every whole number above stays below 2^31; an int64 holds each",
-    })},`,
-    '  "cases": [',
-  ];
-  const all = cases();
-  for (const [n, { name, about, density, cells, strokes }] of all.entries()) {
-    const table = tableOf(strokes, cells);
-    const rows = strokes.map((s) => {
-      const points = s.points.map(({ x, y }) => [x, y]);
-      return { id: s.id, points };
-    });
-    const verdicts = strokes.map((s) => ({ id: s.id, box: placeOf(cellOf(s, cells), cells) }));
-    const each = (row: unknown, k: number, of: readonly unknown[]) =>
-      `        ${JSON.stringify(row)}${k < of.length - 1 ? "," : ""}`;
-    lines.push(
-      "    {",
-      `      "name": ${JSON.stringify(name)},`,
-      `      "about": ${JSON.stringify(about)},`,
-      `      "density": ${JSON.stringify(density)},`,
-      '      "boxes": [',
-      ...cells.map(({ item, slot, box }, k, of) =>
-        each(
-          { item, slot, box: [box.top, box.left, box.top + box.height, box.left + box.width] },
-          k,
-          of,
-        ),
-      ),
-      "      ],",
-      '      "strokes": [',
-      ...rows.map(each),
-      "      ],",
-      '      "verdicts": [',
-      ...verdicts.map(each),
-      "      ],",
-      '      "table": [',
-      ...table.map(each),
-      "      ],",
-      `      "filled": ${JSON.stringify(filledByCells(cells, table))}`,
-      n < all.length - 1 ? "    }," : "    }",
-    );
-  }
-  lines.push("  ]", "}", "");
-  return lines.join("\n");
-}
-
-test("the test vectors are what the rule gives on the workbooks", async () => {
-  await expect(vectors()).toMatchFileSnapshot("../../vectors/boxes.json");
+  );
 });
