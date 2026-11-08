@@ -1063,18 +1063,30 @@ Vite 8.3.6 работает и под Vitest, и сервером `just demo`, �
 - источник один — `page.html` и `probe.js`, ASCII, — а `node probe/build.ts <папка>` пишет из него `t29-probe-csp.html` с политикой-кандидатом сборки страницы в `<meta>` и `t29-probe-open.html` без неё. Хеши стиля и скрипта в политике считает скрипт;
 - отчёт пробы — поля из списка T29: виден на странице и сохраняется файлом через `<a download>`;
 - тест `probe/probe.test.ts` — в проекте `node`: он сам открывает оба файла по `file://` в Chrome Headless Shell через `playwright`. Политика, хранилище, указатель и сохранённый отчёт — там;
-- проба — не пакет и не путь релиза: на компьютер T29 её выложила пре-релизом с тегом не на `v`, а в эмуляторы её отдаёт сервер `probe/serve.ts` с заголовками релиза GitHub (R54);
-- **эмуляторы в CI** — `.github/workflows/emulators.yml`, на pull request с правками `probe/`, самого workflow или `.devcontainer/Dockerfile` и по `workflow_dispatch` (R54 и его поправка):
+- проба — не пакет и не путь релиза: на компьютер T29 её выложила пре-релизом с тегом не на `v`, а в эмуляторы её отдаёт сервер `emulators/serve.ts` с заголовками релиза GitHub (R54);
+- **эмуляторы в CI** — `.github/workflows/emulators.yml`, на pull request с правками `probe/`, `emulators/`, самого workflow или `.devcontainer/Dockerfile` и по `workflow_dispatch` (R54 и его поправки):
   - `android` — `ubuntu-24.04`, эмулятор Android 16, драйвер `probe/android.ts` через `adb` и DevTools Chrome, в контейнере стадии `toolchain`;
-  - `ipad` — `xcode-27` с iPadOS 27 и `macos-26` с iPadOS 26.5, iPad Pro 13-inch (M5), WebDriverAgent v16.15.3 и драйвер `probe/ipad.ts`; выбор рантайма и устройства — `probe/simulator.ts`;
+  - `ipad` — `xcode-27` с iPadOS 27 и `macos-26` с iPadOS 26.5, iPad Pro 13-inch (M5), WebDriverAgent v16.15.3 и драйвер `probe/ipad.ts`; выбор рантайма и устройства — `emulators/simulator.ts`, загрузка Simulator — `emulators/simulator.sh`;
   - `safari` — `macos-26`, `safaridriver` для загрузки и `open -a Safari` для открытия, драйвер `probe/safari.ts`;
-  - чистые функции драйверов держат их тесты в проекте `node`, а сами прогоны — артефакты workflow со скриншотами, деревьями и отчётами. `tsconfig.node.json` проверяет `build.ts` и тест, а `probe.js` — только Biome.
+  - чистые функции драйверов держат их тесты в проекте `node`, а сами прогоны — артефакты workflow со скриншотами, деревьями и отчётами. `tsconfig.node.json` проверяет `build.ts` и тест, а `probe.js` — только Biome;
+  - общие части драйверов — в `emulators/`, вместе с драйверами страницы образцов (ниже).
 
 **Страница образцов** — `page/` и `scripts/page.ts` (R55; T19):
 - `page/index.html` — шаблон с местами для политики, скрипта и уведомлений; `page/main.ts` — страница: выбор задачи, элемент, кнопка сохранения образца; `page/notices/` — тексты лицензий пакетов, которые их не несут;
 - `node scripts/page.ts <папка> <версия>` пишет `samples-page_v<версия>.html`: Vite собирает бандл, сборщик встраивает его с политикой `scripts/csp.ts` по хешам и уведомлениями. Без `spec/`, `git` и сети — так его возьмёт `release-files` (T75);
 - тест `scripts/page.test.ts` — в проекте `node`: отказы сборщика, один файл, уведомления и та же страница по `file://` в Chrome Headless Shell — без запросов и нарушений политики, с образцом, который читает `readSample`;
 - `tsconfig.element.json` проверяет `page/`, а `tsconfig.node.json` — сборщик.
+
+**Страница в эмуляторах** — `emulators/` и `.github/workflows/page.yml` (поправка T78 к R54; T78):
+- workflow идёт на каждом pull request. Job `changes` по `git diff` решает, тронуто ли то, что входит в сборку или её проверяет: `src/`, `page/`, `scripts/page.ts`, `scripts/csp.ts`, `tasks/`, `package.json`, lock-файл, `.devcontainer/Dockerfile`, `emulators/` и сам workflow. Если нет, остальные job пропускаются, а пропущенный job GitHub считает успехом;
+- `build` собирает страницу `node scripts/page.ts build/page 0.0.0` в стадии `toolchain`, как её соберёт релиз, и отдаёт её артефактом остальным job;
+- `android` — эмулятор и версии пробы T74: Chrome скачивает страницу с сервера `emulators/serve.ts` и открывает её из загрузки, по `content://`; драйвер — `emulators/page-android.ts`;
+- `ipad` — Safari в iPad Simulator через `safaridriver`, `macos-26` с iPadOS 26.5 и `xcode-27` с iPadOS 27, без `xcode-select`. Из файла страница на iPad не работает (В64), поэтому Safari открывает её с сервера раннера, `emulators/serve.ts --inline`, как открыл бы с хостинга; драйвер — `emulators/page-ipad.ts`, его скрипт — `emulators/page-ipad.sh`. iPadOS 27 — на образе preview, и её сбой виден, но прогона не роняет;
+- оба драйвера рисуют штрих на листе и на странице тетради, сохраняют оба образца и проверяют, что страница ни о чём не просила и не нарушила политику. Наблюдатель — `emulators/watch.ts`: `ReportingObserver` с `buffered`, слушатели ошибок и копия текста каждого blob, который страница отдаёт ссылке. Его тест открывает настоящую сборку в Chrome Headless Shell — и с запросом из страницы, который он должен увидеть;
+- шаг драйвера — устройства или страницы (`emulators/run.ts`): сбой устройства даёт ещё один проход, сбой страницы роняет прогон сразу, а итог job называет, чей это сбой;
+- `saved` читает сохранённые файлы `readSample` в стадии `toolchain` — `emulators/saved.ts`: замер автора, взрослый, человек, версия страницы, `draft-0`, задача, история письма, лист и тетрадь одним кодом писавшего. `sample-check` добавит T20, вместе с разметкой;
+- `result`, «Samples page», — единственная проверка, которую требует `main`: все job выше прошли или пропущены;
+- штрихи рисует код, почерка в прогоне нет. Скриншоты, отчёты и сохранённые файлы — артефакты на семь дней.
 
 **Рецепты** — `justfile`, по договору обёртки TypeScript (раздел 3.4; R19 .github):
 

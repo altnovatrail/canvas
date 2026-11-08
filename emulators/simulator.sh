@@ -7,7 +7,7 @@
 #   udid=$(bash emulators/simulator.sh <name> <iOS version> <folder>)
 set -euo pipefail
 
-name=${1:?the simulator's name}
+name=${1:?the name of the simulator}
 ios=${2:?the version of the iOS runtime, such as 26.5 or 27}
 out=${3:?the folder of the run}
 mkdir -p "$out"
