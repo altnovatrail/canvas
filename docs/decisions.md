@@ -3711,3 +3711,19 @@
 — *Следствие:* T80 — iPad Simulator — встаёт на этот workflow своим job; T78 — проверка сборки страницы на каждом pull request — берёт тот же сервер и драйвер.
 
 — RUN.md, T74, T80, таблица 3; [architecture.md](architecture.md), разделы 2.4, 3.6, 3.7 и 4; `.github/workflows/emulators.yml`, `probe/serve.ts`, `probe/serve.test.ts`, `probe/android.ts`, `probe/android.test.ts`, `probe/android.sh`, `probe/probe.js`, `probe/page.html`.
+
+— *Поправка 2026-11-08 (T80):* **рядом с job `android` — job `ipad` на двух образах, `xcode-27` с iPadOS 27 и `macos-26` с iPadOS 26.5, и job `safari` на `macos-26`. На iPad драйвер `probe/ipad.ts` кликает по элементам WebDriverAgent — `appium/WebDriverAgent` v16.15.3, коммит 02cb92f, BSD, собранный Xcode раннера, — а Safari на macOS скачивает файлы через `safaridriver` и открывает их, как Finder, `open -a Safari`. Node на раннерах macOS — `actions/setup-node` v7.1.0, коммит 949feb2, с версией `NODE_VERSION` Dockerfile, 24.21.0: Docker там нет.**
+- **Клик, а не нажатие по рамке.** Нажатие в середину рамки из дерева попадало в то, что под диалогом: диалог Safari о загрузке есть в дереве раньше, чем на экране. WebDriverAgent кликает элемент, найденный предикатом NSPredicate, там, где по нему можно попасть, и ждёт этого.
+- **Одна сессия WebDriverAgent.** Новая сессия на `bundleId` запускает приложение заново, а новый запуск Safari рвёт загрузку; приложения сменяет `/wda/apps/activate`.
+- **Файлы в «На iPad».** Нажатие «Download» в диалоге Safari через WebDriverAgent файла не кладёт: из восьми загрузок в четырёх прогонах в «Файлах» оказалась одна. Поэтому драйвер, найдя загрузки не на месте, кладёт файлы в папку «Downloads» локального хранилища «Файлов» сам — через контейнер группы `group.com.apple.FileProvider.LocalStorage` от `simctl get_app_container` — и пишет это в находки. Главный вопрос — выполняют ли «Файлы» скрипт страницы — от этого тот же: файл тот же, и открывает его тот же Quick Look.
+- **Safari на macOS.** `safaridriver` страницу `file://` не открывает — она остаётся пустой, — а AppleScript, единственный путь в окно Safari без WebDriver, спрашивает у пользователя раннера согласие, которого никто не даёт. Поэтому job снимает экран `screencapture`, а что Safari сделал со страницей, отвечает только картинка.
+- **Лицензии.** Xcode, Simulator, Safari и `safaridriver` — на условиях Apple, бесплатных: средства CI, NovaTrail их не распространяет — они на образе раннера — и собирается без них. Это названное исключение R12 spec — здесь, как для эмулятора Android. WebDriverAgent — BSD, OSI, и тоже никуда не поставляется.
+- **Находка CodeQL #10** `js/http-to-file-access` в `probe/android.ts` закрыта 2026-11-08 пометкой «used in tests», по решению автора «на своё усмотрение» (правило 12): драйвер — средство CI, а отчёт пробы из эмулятора, прочитанный `JSON.parse`, он пишет в файлы с постоянными именами в папке артефакта. Ничего из этого не поставляется.
+
+— *Почему:* T80, разделённая из T74, — iPad и, по решению автора при её планировании, Safari на macOS (RUN.md, T80, «Решено автором (2026-11-08)»).
+
+— *Отвергнуто:* **Appium** — добавил бы дерево пакетов npm на раннере, а WebDriverAgent отвечает по HTTP и сам; **свой XCUITest** — проект Xcode, написанный без Xcode под рукой; **файлы через `simctl` с самого начала** — так не проверить ни загрузку, ни её вопрос, а с загрузкой — проверено и то и другое там, где она легла.
+
+— *Пересмотреть:* если появится способ надёжно нажать «Download» в Safari симулятора — убрать подкладку файлов; если macOS на раннере даст окну Safari отрисоваться или даст согласие на AppleScript — читать отчёт Safari на macOS, как на других.
+
+— RUN.md, T80, таблица 3; [architecture.md](architecture.md), разделы 2.4, 3.6, 3.7 и 4; `.github/workflows/emulators.yml`, `probe/ipad.ts`, `probe/ipad.test.ts`, `probe/ipad.sh`, `probe/simulator.ts`, `probe/simulator.test.ts`, `probe/safari.ts`, `probe/safari.test.ts`.

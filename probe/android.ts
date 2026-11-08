@@ -18,9 +18,10 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
+import { CSP, OPEN } from "./build.ts";
 
-/** The probe's files, as probe/build.ts names them. */
-const FILES = ["t29-probe-csp.html", "t29-probe-open.html"] as const;
+/** The probe's files, by probe/build.ts's own names. */
+const FILES = [CSP, OPEN] as const;
 /** The page's title, by which its DevTools target is found. */
 const TITLE = "canvas file probe";
 /** Chrome's package, and the activity a VIEW intent starts it at. */
