@@ -110,7 +110,9 @@ describe("the file", () => {
     const page = readFileSync(built.path, "utf8");
     expect(built.path.endsWith("samples-page_v0.0.0.html")).toBe(true);
     expect(page).toMatch(/^<!doctype html>\n<html lang="ru">\n<meta charset="utf-8">\n/);
-    const script = /<script>([\s\S]*)<\/script>/.exec(page)?.[1] ?? "";
+    // The one inline script, by where its tags stand: the builder writes them as they are.
+    const open = page.indexOf("<script>") + "<script>".length;
+    const script = page.slice(open, page.lastIndexOf("</script>"));
     expect(script.length).toBeGreaterThan(1000);
     expect(page).toContain(
       `<meta http-equiv="Content-Security-Policy" content="${policy(styleOf(page), script)}">`,
