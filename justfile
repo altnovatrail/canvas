@@ -1,8 +1,8 @@
 # canvas's own recipes: the package's build, and the four checks .github's typescript.yml runs in
 # CI, one job each, in a new container of the toolchain stage of .devcontainer/Dockerfile — as the
 # runner's user, with HOME=/tmp and with CI from the step's environment (R19 .github; R12 in
-# docs/decisions.md). Only ci-licenses reads spec/: it runs spec's recipes licenses-check-repo and
-# release-verify-npm, and the licenses job alone gets the submodule. The code and its tests read
+# docs/decisions.md). Only ci-licenses reads spec/: it runs spec's recipes licenses-check-repo,
+# release-verify-npm and sample-check, and the licenses job alone gets the submodule. The code and its tests read
 # nothing of spec/, and the documents are checked by spec's own recipe, just -f spec/justfile
 # docs-check-repo. release-files writes the files of a release, for .github's shared release.yml
 # (R08). One more recipe is for the author's hands: demo serves a page to try the element on.
@@ -53,10 +53,15 @@ ci-vuln:
 # changes the lock file; here it runs on every one, inside a check main already requires. It
 # installs spec/tools from spec's lock file and reads Sigstore, the registry and GitHub: when one
 # of them cannot be read, the package is refused. So spec/ has to be checked out, and the network
-# reachable. spec's recipes run under this same just.
+# reachable. Last, fail unless spec's sample-check takes the example sample files, one of each
+# composition, which src/eval/sample.test.ts writes in examples/ and ci-test holds to the code: the
+# eval protocol forbids a check of canvas's own, and this job alone has spec/ (R93 spec; R48).
+# sample-check runs buf from the toolchain stage on the contracts of spec/. spec's recipes run
+# under this same just.
 ci-licenses:
     {{ quote(just_executable()) }} -f spec/justfile licenses-check-repo package-lock.json licenses.json
     {{ quote(just_executable()) }} -f spec/justfile release-verify-npm package-lock.json
+    {{ quote(just_executable()) }} -f spec/justfile sample-check examples/*.json
 
 # Build the package into lib/: JavaScript and its declarations. lib/ is emptied first, so that no
 # file of an older build ships.

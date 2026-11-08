@@ -1,8 +1,9 @@
-// The tests, in three projects (R12 in docs/decisions.md). The DOM-free part and the scripts run in
-// Node; the element runs in Chromium — Chrome Headless Shell from the toolchain stage of
-// .devcontainer/Dockerfile, through Playwright (R13) — and once more with forced colours, a mode
-// of the browser's context that only its own file runs in (R23). Each project names its own files:
-// the spec submodule beside them has tests of its own, which are not canvas's.
+// The tests, in three projects (R12 in docs/decisions.md). The DOM-free part, the sample file of
+// src/eval/ and the scripts run in Node; the element runs in Chromium — Chrome Headless Shell from
+// the toolchain stage of .devcontainer/Dockerfile, through Playwright (R13) — and once more with
+// forced colours, a mode of the browser's context that only its own file runs in (R23). Each
+// project names its own files: the spec submodule beside them has tests of its own, which are not
+// canvas's.
 import { playwright } from "@vitest/browser-playwright";
 import { defaultExclude, defineConfig } from "vitest/config";
 
@@ -13,8 +14,9 @@ export default defineConfig({
     // The coverage of the tests, which ci-test asks for by --coverage and .github's TypeScript
     // wrapper sends to Codecov (R43 in docs/decisions.md): one lcov report of all three projects,
     // coverage/lcov.info, as the wrapper takes it. V8 counts it, in Node and in Chromium alike.
-    // What it covers is the package's code alone, every module of it, those no test loads too, at
-    // zero: the scripts check the package after the tests, and the demo page is tried by hand.
+    // What it covers is the code of src/: the package's, every module of it, those no test loads
+    // too, at zero, and the sample file of src/eval/, which is no part of the package (R48). The
+    // scripts check the package after the tests, and the demo page is tried by hand.
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],
@@ -25,7 +27,7 @@ export default defineConfig({
       {
         test: {
           name: "node",
-          include: ["src/core/**/*.test.ts", "scripts/**/*.test.ts"],
+          include: ["src/core/**/*.test.ts", "src/eval/**/*.test.ts", "scripts/**/*.test.ts"],
           environment: "node",
         },
       },
