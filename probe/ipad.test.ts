@@ -90,3 +90,11 @@ test("a predicate names a label whole or by its start, quoted, and a type when o
   );
   expect(quoted("it's a\\b")).toBe("'it\\'s a\\\\b'");
 });
+
+test("a report the tree splits into lines is read from the lines one after another", () => {
+  const lines = REPORT.split("\n").map((value) => ({ type: "XCUIElementTypeStaticText", value }));
+  const split = elements({ type: "XCUIElementTypeWebView", children: lines });
+  expect(reportOf(split)).toEqual({ probe: "2", file: "t29-probe-csp.html", settled: true });
+  const other = elements({ type: "XCUIElementTypeStaticText", value: '{ "x": 1 }' });
+  expect(reportOf(other)).toBeUndefined();
+});

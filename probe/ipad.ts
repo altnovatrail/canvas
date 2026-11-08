@@ -19,9 +19,10 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
+import { CSP, OPEN } from "./build.ts";
 
-/** The probe's files, as probe/build.ts names them. */
-const FILES = ["t29-probe-csp.html", "t29-probe-open.html"] as const;
+/** The probe's files, by probe/build.ts's own names. */
+const FILES = [CSP, OPEN] as const;
 const SAFARI = "com.apple.mobilesafari";
 const BUTTON = "XCUIElementTypeButton";
 const CELL = "XCUIElementTypeCell";
@@ -80,14 +81,28 @@ export function scriptState(all: readonly Element[]): "ran" | "did not run" | "u
   return "unseen";
 }
 
-/** The probe's report, where the tree shows it: the words of its block of JSON, parsed. */
+/** The probe's report, where the tree shows it: its block of JSON in one element, or the block's
+ * lines in elements one after another, as the tree may split a <pre>. */
 export function reportOf(all: readonly Element[]): Record<string, unknown> | undefined {
-  for (const word of all.flatMap((element) => element.words)) {
-    if (!word.trimStart().startsWith("{") || !word.includes('"probe"')) continue;
+  const parse = (text: string) => {
     try {
-      return JSON.parse(word) as Record<string, unknown>;
+      const parsed = JSON.parse(text) as unknown;
+      return parsed && typeof parsed === "object" && "probe" in parsed
+        ? (parsed as Record<string, unknown>)
+        : undefined;
     } catch {
-      // Not the whole block: another element may hold it.
+      return undefined;
+    }
+  };
+  const words = all.map((element) => element.words[0] ?? "");
+  for (const [i, word] of words.entries()) {
+    if (!word.trimStart().startsWith("{")) continue;
+    const whole = parse(word);
+    if (whole) return whole;
+    for (let end = i + 1; end < words.length; end++) {
+      if (words[end]?.trimEnd() !== "}") continue;
+      const joined = parse(words.slice(i, end + 1).join("\n"));
+      if (joined) return joined;
     }
   }
   return undefined;
@@ -121,10 +136,10 @@ async function call(method: string, path: string, body?: unknown): Promise<unkno
     method,
     headers: { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(60_000),
+    signal: AbortSignal.timeout(20_000),
   });
-  const answer = (await response.json()) as { value?: unknown; sessionId?: string };
   if (!response.ok) throw new Error(`${method} ${path}: ${response.status}`);
+  const answer = (await response.json()) as { value?: unknown; sessionId?: string };
   if (answer.sessionId) session = answer.sessionId;
   return answer.value;
 }
@@ -187,7 +202,8 @@ async function look(name: string): Promise<Element[]> {
  * hittable, which a tap at a frame's middle does not: a dialog in the tree may not yet be on the
  * screen, and the tap lands on what is under it. */
 async function press(predicate: string, seconds: number): Promise<boolean> {
-  for (let i = 0; i < seconds; i++) {
+  const until = Date.now() + seconds * 1000;
+  while (Date.now() < until) {
     let found: Record<string, string>[] = [];
     try {
       found = (await call("POST", `/session/${session}/elements`, {
@@ -215,7 +231,8 @@ async function press(predicate: string, seconds: number): Promise<boolean> {
 
 /** Wait until the page's first line can be read, and say what it says. */
 async function pageState(seconds: number): Promise<ReturnType<typeof scriptState>> {
-  for (let i = 0; i < seconds; i++) {
+  const until = Date.now() + seconds * 1000;
+  while (Date.now() < until) {
     const state = scriptState(await screen());
     if (state !== "unseen") return state;
     await sleep(1000);
@@ -256,7 +273,7 @@ async function fromSafari(file: string, name: string): Promise<string> {
   record(`open ${file} from Safari's downloads`, opened);
   const state = opened ? await pageState(20) : "unseen";
   await look(name);
-  findings[`${file} from Safari's downloads`] = state;
+  findings[`${name}: ${file} from Safari's downloads`] = state;
   return state;
 }
 
@@ -274,7 +291,7 @@ async function fromFiles(file: string, name: string): Promise<string> {
   record(`open ${file} from the Files app`, opened);
   const state = opened ? await pageState(20) : "unseen";
   await look(name);
-  findings[`${file} from the Files app`] = state;
+  findings[`${name}: ${file} from the Files app`] = state;
   return state;
 }
 
@@ -338,35 +355,42 @@ async function main(): Promise<void> {
 
   for (const file of FILES) await download(file);
   const landed = await placed();
-  // Safari's list of downloads holds a file only where its download landed; where none did, the
+  // Safari's list of downloads holds a file only where its download landed; where it did not, the
   // way is a finding, and the Files app, which has the files either way, answers the question.
-  const viaSafari = landed.includes(FILES[0])
-    ? await fromSafari(FILES[0], "csp-from-safari")
-    : "not tried: no download landed";
-  findings[`${FILES[0]} from Safari's downloads`] ??= viaSafari;
+  const fromList = (file: (typeof FILES)[number], name: string) =>
+    landed.includes(file)
+      ? fromSafari(file, name)
+      : Promise.resolve("not tried: no download landed");
+  const viaSafari = await fromList(FILES[0], "csp-from-safari");
+  findings[`csp-from-safari: ${FILES[0]} from Safari's downloads`] ??= viaSafari;
   if (viaSafari === "ran") await onPage(FILES[0]);
   const viaFiles = await fromFiles(FILES[0], "csp-from-files");
   if (viaFiles === "ran" && viaSafari !== "ran") await onPage(FILES[0]);
-  if (viaSafari === "ran" || viaFiles === "ran") {
-    const open = await fromSafari(FILES[1], "open-from-safari");
-    if (open === "ran") {
+  // Where the page runs, the rest goes the way that ran.
+  const way = viaSafari === "ran" ? fromSafari : viaFiles === "ran" ? fromFiles : undefined;
+  if (way) {
+    if ((await way(FILES[1], "open")) === "ran") {
       const other = reportOf(await look("open-report"));
-      if (other)
+      if (other) {
         writeFileSync(
           join(folder, `report-${FILES[1]}.json`),
           `${JSON.stringify(other, null, 2)}\n`,
         );
+      }
       record(`read the report of ${FILES[1]}`, Boolean(other));
     }
-    await call("POST", `/session/${session}/wda/apps/terminate`, { bundleId: SAFARI });
-    if ((await fromSafari(FILES[0], "csp-after-restart")) === "ran") {
+    await call("POST", `/session/${session}/wda/apps/terminate`, {
+      bundleId: way === fromSafari ? SAFARI : FILES_APP,
+    });
+    if ((await way(FILES[0], "csp-after-restart")) === "ran") {
       const again = reportOf(await look("csp-after-restart-report"));
-      if (again)
+      if (again) {
         writeFileSync(
           join(folder, "report-after-restart.json"),
           `${JSON.stringify(again, null, 2)}\n`,
         );
-      record("read the report after Safari stopped", Boolean(again));
+      }
+      record("read the report after the app stopped", Boolean(again));
     }
   }
   const failed = steps.filter(({ ok }) => !ok);

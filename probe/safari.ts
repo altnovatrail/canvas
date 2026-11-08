@@ -14,13 +14,14 @@
 // port (PORT); it installs nothing.
 
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
+import { CSP, OPEN } from "./build.ts";
 
-/** The probe's files, as probe/build.ts names them. */
-const FILES = ["t29-probe-csp.html", "t29-probe-open.html"] as const;
+/** The probe's files, by probe/build.ts's own names. */
+const FILES = [CSP, OPEN] as const;
 
 /** The names among a folder's files that a saved report of the probe has. */
 export function reports(names: readonly string[]): string[] {
@@ -50,8 +51,8 @@ async function command(method: string, path: string, body?: unknown): Promise<un
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(60_000),
   });
-  const answer = (await response.json()) as { value?: unknown };
   if (!response.ok) throw new Error(`${method} ${path}: ${response.status}`);
+  const answer = (await response.json()) as { value?: unknown };
   return answer.value;
 }
 
@@ -72,11 +73,13 @@ function shot(name: string): void {
   execFileSync("screencapture", ["-x", file], { stdio: "ignore" });
 }
 
-/** Open a file as Finder opens it, and leave what Safari shows. */
-async function finder(path: string, name: string): Promise<void> {
+/** Open a file as Finder opens it, and leave what Safari shows; say whether there was a file. */
+async function finder(path: string, name: string): Promise<boolean> {
+  if (!existsSync(path)) return false;
   execFileSync("open", ["-a", "Safari", path]);
   await sleep(8000);
   shot(name);
+  return true;
 }
 
 async function main(): Promise<void> {
@@ -89,19 +92,33 @@ async function main(): Promise<void> {
   await command("DELETE", `/session/${session}`);
   session = "";
 
-  await finder(join(downloads, FILES[0]), "csp-from-downloads");
-  await finder(join(downloads, FILES[1]), "open-from-downloads");
+  record(
+    "open the file with the policy from Downloads",
+    await finder(join(downloads, FILES[0]), "csp-from-downloads"),
+  );
+  record(
+    "open the file without the policy from Downloads",
+    await finder(join(downloads, FILES[1]), "open-from-downloads"),
+  );
   // The same file in a folder of the run's own, out of Downloads: whether a blank page is
   // Safari's reading of Downloads or of any file.
   const elsewhere = join(homedir(), "probe-copy");
   mkdirSync(elsewhere, { recursive: true });
-  copyFileSync(join(downloads, FILES[0]), join(elsewhere, FILES[0]));
-  await finder(join(elsewhere, FILES[0]), "csp-from-another-folder");
+  if (existsSync(join(downloads, FILES[0]))) {
+    copyFileSync(join(downloads, FILES[0]), join(elsewhere, FILES[0]));
+  }
+  record(
+    "open the file with the policy from another folder",
+    await finder(join(elsewhere, FILES[0]), "csp-from-another-folder"),
+  );
 
   const names = readdirSync(downloads).sort();
   writeFileSync(join(folder, "downloads.json"), `${JSON.stringify(names, null, 1)}\n`);
   findings["saved reports in Downloads"] = reports(names).join(", ") || "none";
-  record("screenshots of each file opened", shots === 3);
+  const empty = readdirSync(folder).filter(
+    (name) => name.endsWith(".png") && statSync(join(folder, name)).size === 0,
+  );
+  record("every screenshot holds a picture", shots > 0 && empty.length === 0, empty.join(", "));
   const failed = steps.filter(({ ok }) => !ok);
   if (failed.length > 0) throw new Error(`${failed.length} step(s) failed`);
 }

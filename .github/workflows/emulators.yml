@@ -105,10 +105,14 @@ jobs:
         with:
           persist-credentials: false
 
-      # NODE_VERSION of .devcontainer/Dockerfile.
+      # The Node .devcontainer/Dockerfile pins, read from it: one version for every job.
+      - name: Node's version
+        id: node
+        run: echo "version=$(sed -n 's/^ARG NODE_VERSION=//p' .devcontainer/Dockerfile)" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24.21.0
+          node-version: ${{ steps.node.outputs.version }}
 
       - name: Probe and its server
         run: |
@@ -144,10 +148,14 @@ jobs:
         with:
           persist-credentials: false
 
-      # NODE_VERSION of .devcontainer/Dockerfile.
+      # The Node .devcontainer/Dockerfile pins, read from it: one version for every job.
+      - name: Node's version
+        id: node
+        run: echo "version=$(sed -n 's/^ARG NODE_VERSION=//p' .devcontainer/Dockerfile)" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24.21.0
+          node-version: ${{ steps.node.outputs.version }}
 
       - name: Probe, its server and safaridriver
         run: |
@@ -156,7 +164,11 @@ jobs:
           nohup node probe/serve.ts build/probe 8080 > build/probe-safari/server.txt 2>&1 &
           sudo safaridriver --enable
           nohup safaridriver --port 4444 > build/probe-safari/safaridriver.txt 2>&1 &
-          sleep 3
+          for _ in $(seq 1 30); do
+            curl --silent --fail http://127.0.0.1:4444/status > /dev/null && curl --silent --fail -o /dev/null http://127.0.0.1:8080/t29-probe-csp.html && break
+            sleep 1
+          done
+          curl --silent --fail http://127.0.0.1:4444/status > /dev/null
           { sw_vers; /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" /Applications/Safari.app/Contents/Info.plist; } > build/probe-safari/versions.txt
 
       - name: Probe
