@@ -6,6 +6,7 @@
       "scripts/**",
       "probe/**",
       "demo/**/*.ts",
+      "page/**/*.ts",
       "*.ts",
       "*.json",
       "!package-lock.json"
