@@ -6,6 +6,6 @@
     "resolveJsonModule": true,
     "noEmit": true
   },
-  "include": ["src/core/**/*.ts"],
+  "include": ["src/core/**/*.ts", "src/eval/**/*.ts"],
   "exclude": ["src/**/*.test.ts"]
 }
