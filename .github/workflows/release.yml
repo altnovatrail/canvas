@@ -36,7 +36,7 @@ jobs:
       contents: write
       id-token: write
       actions: read
-    uses: altnovatrail/.github/.github/workflows/release.yml@09443e1027ef24197439dfe60a072d14c3626cc3 # v0.1.13
+    uses: altnovatrail/.github/.github/workflows/release.yml@89d3ceee0b9977b3334488a4133d084d76474e0d # v0.1.15
     with:
       # The package's code without its tests, fixtures and type checks — a pathspec's * takes any
       # depth — what builds it, what npm pack takes besides it, the toolchain stage that runs npm,
