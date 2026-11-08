@@ -315,6 +315,31 @@ canvas {
 }
 `;
 
+/** The sheet of STYLE that the elements of a document adopt, made by the first of them there. */
+const sheets = new WeakMap<Document, CSSStyleSheet>();
+
+/**
+ * Gives the element's shadow root its style, as a sheet the root adopts, and not a `<style>` in
+ * its tree: a consumer's content security policy that allows no inline style, as app's
+ * `style-src 'self'`, blocks the one and not the other, and the element asks of the policy only
+ * `img-src blob:` (R51; the second amendment of 2026-11-02 to R36 spec). A root adopts only a sheet
+ * made for its own document, by that document's window, and an element moved into another document
+ * comes there without its sheets: it adopts that document's sheet then. A document without a
+ * window, which can make no sheet, leaves the element unstyled till it comes into one that can.
+ */
+function adoptStyle(root: ShadowRoot): void {
+  const owner = root.ownerDocument;
+  const view = owner.defaultView;
+  if (view === null) return;
+  let sheet = sheets.get(owner);
+  if (sheet === undefined) {
+    sheet = new view.CSSStyleSheet();
+    sheet.replaceSync(STYLE);
+    sheets.set(owner, sheet);
+  }
+  root.adoptedStyleSheets = [sheet];
+}
+
 /** What two fingers scroll in a gesture, how much the page scales it, and the part of a pixel owed. */
 interface Latch {
   readonly target: Element | Window;
@@ -570,8 +595,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   constructor() {
     super();
     const root = this.attachShadow({ mode: "open" });
-    const style = document.createElement("style");
-    style.textContent = STYLE;
+    adoptStyle(root);
     this.#viewport.className = "viewport";
     this.#column.className = "column";
     this.#sheet.className = "sheet";
@@ -593,7 +617,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#sheet.append(this.#stage, this.#parts.spot);
     this.#column.append(this.#statement.element, this.#parts.list, this.#parts.status, this.#sheet);
     this.#viewport.append(this.#column);
-    root.append(style, this.#tools.element, this.#viewport);
+    root.append(this.#tools.element, this.#viewport);
     this.#lay(NO_TASK);
     this.#refresh();
 
@@ -949,6 +973,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#marks = marks;
     this.#given = given;
     this.#showMarks(shown);
+  }
+
+  /** The element moved into another document: its root adopts that document's sheet (R51). */
+  adoptedCallback(): void {
+    if (this.shadowRoot !== null) adoptStyle(this.shadowRoot);
   }
 
   connectedCallback(): void {
