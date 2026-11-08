@@ -16,7 +16,7 @@
 // server's port (PORT); it installs nothing.
 
 import { execFileSync } from "node:child_process";
-import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
@@ -227,7 +227,8 @@ async function pageState(seconds: number): Promise<ReturnType<typeof scriptState
 async function download(file: string): Promise<void> {
   await open(SAFARI);
   await call("POST", `/session/${session}/url`, { url: `http://localhost:${port}/${file}` });
-  await sleep(3000);
+  // The question is in the tree before it is on the screen: let it come.
+  await sleep(6000);
   const asked = await look(`download-${file}`);
   findings[`question of ${file}`] =
     locate(asked, /^Download$/) && locate(asked, /^View$/)
@@ -237,13 +238,15 @@ async function download(file: string): Promise<void> {
         : "none";
   record(`download ${file} in Safari`, await press(labelled("Download", "==", BUTTON), 10));
   // Nine kilobytes from the runner take a moment, and Safari must not leave the page meanwhile.
-  await sleep(6000);
+  await sleep(8000);
   await look(`downloaded-${file}`);
 }
 
 /** Open a downloaded file from Safari's list of downloads, and say what its page shows. */
 async function fromSafari(file: string, name: string): Promise<string> {
   await open(SAFARI);
+  // Safari hides its buttons while the address field has the keyboard.
+  await press(labelled("Hide keyboard"), 2);
   const listed = await press(`name == ${quoted("DownloadsButton")}`, 10);
   const item = locate(await look(`${name}-list`), new RegExp(`^${file.replace(/\./g, "\\.")}, `));
   if (item?.words.some((word) => word.includes("Progress"))) {
@@ -303,12 +306,37 @@ async function onPage(file: string): Promise<void> {
   await look(`${file}-saved`);
 }
 
+/** Whether the downloads came into On My iPad's Downloads folder; if they did not, put the files
+ * there as the folder of the Files app's local storage, so that the question of the Files app is
+ * still asked, and say so. */
+async function placed(): Promise<void> {
+  const groups = execFileSync("xcrun", ["simctl", "get_app_container", udid, FILES_APP, "groups"], {
+    encoding: "utf8",
+  });
+  const local = /group\.com\.apple\.FileProvider\.LocalStorage\s+(\S.*)$/m.exec(groups)?.[1];
+  if (!local) {
+    findings["Downloads of On My iPad"] = "no local storage found";
+    return;
+  }
+  const into = join(local, "File Provider Storage", "Downloads");
+  const there = FILES.filter((file) => existsSync(join(into, file)));
+  findings["Downloads of On My iPad"] =
+    there.length === FILES.length
+      ? "both downloads landed"
+      : `${there.length} of ${FILES.length} downloads landed; the rest placed by simctl's container`;
+  mkdirSync(into, { recursive: true });
+  for (const file of FILES) {
+    if (!there.includes(file)) copyFileSync(join("build/probe", file), join(into, file));
+  }
+}
+
 async function main(): Promise<void> {
   mkdirSync(folder, { recursive: true });
   const status = await call("GET", "/status");
   writeFileSync(join(folder, "agent.json"), `${JSON.stringify(status, null, 2)}\n`);
 
   for (const file of FILES) await download(file);
+  await placed();
   const viaSafari = await fromSafari(FILES[0], "csp-from-safari");
   if (viaSafari === "ran") await onPage(FILES[0]);
   const viaFiles = await fromFiles(FILES[0], "csp-from-files");

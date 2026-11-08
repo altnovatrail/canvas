@@ -155,9 +155,6 @@ jobs:
           mkdir -p build/probe-safari
           nohup node probe/serve.ts build/probe 8080 > build/probe-safari/server.txt 2>&1 &
           sudo safaridriver --enable
-          # For the driver to read the page by AppleScript, where Safari lets it (probe/safari.ts).
-          defaults write com.apple.Safari IncludeDevelopMenu -bool true
-          defaults write com.apple.Safari AllowJavaScriptFromAppleEvents -bool true
           nohup safaridriver --port 4444 > build/probe-safari/safaridriver.txt 2>&1 &
           sleep 3
           { sw_vers; /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" /Applications/Safari.app/Contents/Info.plist; } > build/probe-safari/versions.txt

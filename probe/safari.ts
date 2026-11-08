@@ -7,14 +7,14 @@
 // Safari, driven by safaridriver, downloads each file of the probe into the Downloads folder, the
 // way a volunteer gets it. A page of file:// is no page safaridriver opens — it stays blank — so the
 // file is then opened the way Finder opens it, by `open -a Safari`, and a screenshot of the screen
-// shows what Safari makes of it. Where Safari lets AppleScript run JavaScript in its page, the
-// driver also reads the page's report and presses its buttons; where it does not, that is a
-// finding, and the screenshots stand. What it found goes into build/probe-safari, which the
-// workflow keeps as its artifact. It needs safaridriver's address (SAFARIDRIVER) and the server's
+// shows what Safari makes of it; the same file opens once more from a folder of its own. The
+// page cannot be read or pressed: AppleScript, the one way into a Safari no WebDriver drives, asks
+// the runner's user for a consent nobody gives. What it found goes into build/probe-safari, which
+// the workflow keeps as its artifact. It needs safaridriver's address (SAFARIDRIVER) and the server's
 // port (PORT); it installs nothing.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -25,12 +25,6 @@ const FILES = ["t29-probe-csp.html", "t29-probe-open.html"] as const;
 /** The names among a folder's files that a saved report of the probe has. */
 export function reports(names: readonly string[]): string[] {
   return names.filter((name) => /^report-.*\.json$/.test(name)).sort();
-}
-
-/** The AppleScript that runs a line of JavaScript in Safari's front tab and gives its value. */
-export function inFrontTab(javascript: string): string {
-  const text = javascript.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-  return `tell application "Safari" to do JavaScript "${text}" in current tab of front window`;
 }
 
 /** Where the run leaves what it found: the folder the workflow keeps as its artifact. */
@@ -78,46 +72,11 @@ function shot(name: string): void {
   execFileSync("screencapture", ["-x", file], { stdio: "ignore" });
 }
 
-/** Run a line of JavaScript in Safari's front tab by AppleScript, or undefined if Safari refuses. */
-function javascript(line: string): string | undefined {
-  try {
-    return execFileSync("osascript", ["-e", inFrontTab(line)], {
-      encoding: "utf8",
-      timeout: 20_000,
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-  } catch {
-    return undefined;
-  }
-}
-
-/** The page's report, read by AppleScript and written to the folder, or undefined. */
-async function report(name: string): Promise<Record<string, unknown> | undefined> {
-  for (let i = 0; i < 10; i++) {
-    const text = javascript('document.getElementById("report").textContent');
-    if (text === undefined) return undefined;
-    try {
-      const parsed = JSON.parse(text) as Record<string, unknown>;
-      if (parsed.settled === true) {
-        writeFileSync(join(folder, `report-${name}.json`), `${JSON.stringify(parsed, null, 2)}\n`);
-        return parsed;
-      }
-    } catch {
-      // Not yet a report.
-    }
-    await sleep(1000);
-  }
-  return undefined;
-}
-
-/** Open a downloaded file as Finder opens it, and leave what Safari shows. */
-async function finder(file: string, name: string): Promise<Record<string, unknown> | undefined> {
-  execFileSync("open", ["-a", "Safari", join(downloads, file)]);
-  await sleep(6000);
+/** Open a file as Finder opens it, and leave what Safari shows. */
+async function finder(path: string, name: string): Promise<void> {
+  execFileSync("open", ["-a", "Safari", path]);
+  await sleep(8000);
   shot(name);
-  const seen = await report(name);
-  findings[`${file} by AppleScript`] = seen ? "read" : "not read";
-  return seen;
 }
 
 async function main(): Promise<void> {
@@ -130,18 +89,14 @@ async function main(): Promise<void> {
   await command("DELETE", `/session/${session}`);
   session = "";
 
-  const csp = await finder(FILES[0], "csp-opened");
-  if (csp) {
-    javascript('document.getElementById("store").click()');
-    javascript('document.getElementById("save").click()');
-    await sleep(3000);
-    await report("csp-stored");
-  }
-  await finder(FILES[1], "open-opened");
-  // Safari stopped as a person quits it, by a signal: telling it by AppleScript needs a consent.
-  execFileSync("killall", ["Safari"], { stdio: "ignore" });
-  await sleep(3000);
-  await finder(FILES[0], "csp-after-restart");
+  await finder(join(downloads, FILES[0]), "csp-from-downloads");
+  await finder(join(downloads, FILES[1]), "open-from-downloads");
+  // The same file in a folder of the run's own, out of Downloads: whether a blank page is
+  // Safari's reading of Downloads or of any file.
+  const elsewhere = join(homedir(), "probe-copy");
+  mkdirSync(elsewhere, { recursive: true });
+  copyFileSync(join(downloads, FILES[0]), join(elsewhere, FILES[0]));
+  await finder(join(elsewhere, FILES[0]), "csp-from-another-folder");
 
   const names = readdirSync(downloads).sort();
   writeFileSync(join(folder, "downloads.json"), `${JSON.stringify(names, null, 1)}\n`);
