@@ -255,7 +255,11 @@ async function download(file: string): Promise<void> {
       : locate(asked, /^Download$/)
         ? "Download"
         : "none";
-  record(`download ${file} in Safari`, await press(labelled("Download", "==", BUTTON), 10));
+  // A finding, not a step: the files reach the Files app either way (placed()), and the question
+  // is what opens them there.
+  findings[`Download of ${file} pressed`] = String(
+    await press(labelled("Download", "==", BUTTON), 15),
+  );
   // Nine kilobytes from the runner take a moment, and Safari must not leave the page meanwhile.
   await sleep(8000);
   await look(`downloaded-${file}`);
