@@ -1,7 +1,7 @@
 // The tests, in three projects (R12 in docs/decisions.md). The DOM-free part, the sample file of
-// src/eval/, the scripts and the probe of a page opened from a file (R52) run in Node: the probe's
-// test drives Chrome Headless Shell itself, by file:// addresses, which a browser project never
-// opens. The element runs in Chromium — Chrome Headless Shell from the toolchain stage of
+// src/eval/, the scripts, the probe of a page opened from a file (R52) and the drivers of the
+// emulators (R54) run in Node: the probe's test drives Chrome Headless Shell itself, by file://
+// addresses, which a browser project never opens. The element runs in Chromium — Chrome Headless Shell from the toolchain stage of
 // .devcontainer/Dockerfile, through Playwright (R13) — and once more with forced colours, a mode of
 // the browser's context that only its own file runs in (R23). Each project names its own files:
 // the spec submodule beside them has tests of its own, which are not canvas's.
@@ -33,6 +33,7 @@ export default defineConfig({
             "src/eval/**/*.test.ts",
             "scripts/**/*.test.ts",
             "probe/**/*.test.ts",
+            "emulators/**/*.test.ts",
           ],
           environment: "node",
         },

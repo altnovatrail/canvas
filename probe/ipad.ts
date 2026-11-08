@@ -1,6 +1,6 @@
 // The probe of a page opened from a file in the iPad Simulator (T80 in RUN.md; R54 in
 // docs/decisions.md). probe/ipad.sh runs it on a runner of macOS, once the simulator is booted,
-// WebDriverAgent answers on its port and probe/serve.ts hands the probe's files out:
+// WebDriverAgent answers on its port and emulators/serve.ts hands the probe's files out:
 //
 //   node probe/ipad.ts
 //
@@ -16,9 +16,10 @@
 // server on 8080 of the runner. It installs nothing.
 
 import { execFileSync } from "node:child_process";
-import { appendFileSync, copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
+import { Run } from "../emulators/run.ts";
 import { CSP, OPEN } from "./build.ts";
 
 /** The probe's files, by probe/build.ts's own names. */
@@ -111,27 +112,17 @@ export function reportOf(all: readonly Element[]): Record<string, unknown> | und
 }
 
 /** Where the run leaves what it found: the folder the workflow keeps as its artifact. */
-const folder = "build/probe-ipad";
+const run = new Run("build/probe-ipad");
+const { folder } = run;
+const log = (line: string) => run.log(line);
+const record = (step: string, ok: boolean, note = "") => run.record(step, ok, note);
 /** WebDriverAgent's port on the runner, and the server's: probe/ipad.sh starts both there. */
 const agent = "http://127.0.0.1:8100";
 const udid = process.env.UDID ?? "booted";
 const port = "8080";
-const steps: { step: string; ok: boolean; note: string }[] = [];
 const findings: Record<string, string> = {};
 let session = "";
 let shots = 0;
-
-/** A line of the log, on one line: a break in it would make a line the run never wrote. */
-function log(line: string): void {
-  const one = line.replace(/[\n\r]/g, " ");
-  console.log(one);
-  appendFileSync(join(folder, "log.txt"), `${one}\n`);
-}
-
-function record(step: string, ok: boolean, note = ""): void {
-  steps.push({ step, ok, note });
-  log(`${ok ? "ok  " : "FAIL"} ${step}${note ? ` — ${note}` : ""}`);
-}
 
 /** One call of WebDriverAgent's HTTP, its `value` back. A session and an app's launch wait for the
  * app, which a cold simulator takes long to start; the rest answer within seconds. */
@@ -362,7 +353,6 @@ async function placed(): Promise<readonly string[]> {
 }
 
 async function main(): Promise<void> {
-  mkdirSync(folder, { recursive: true });
   const status = await call("GET", "/status");
   writeFileSync(join(folder, "agent.json"), `${JSON.stringify(status, null, 2)}\n`);
 
@@ -406,8 +396,7 @@ async function main(): Promise<void> {
       record("read the report after the app stopped", Boolean(again));
     }
   }
-  const failed = steps.filter(({ ok }) => !ok);
-  if (failed.length > 0) throw new Error(`${failed.length} step(s) failed`);
+  run.check();
 }
 
 if (import.meta.main) {
@@ -417,7 +406,7 @@ if (import.meta.main) {
       process.exitCode = 1;
     })
     .finally(() => {
-      writeFileSync(join(folder, "steps.json"), `${JSON.stringify(steps, null, 2)}\n`);
+      run.close(`Probe on iPad ${process.env.IOS ?? ""}`.trim());
       writeFileSync(join(folder, "findings.json"), `${JSON.stringify(findings, null, 2)}\n`);
     });
 }

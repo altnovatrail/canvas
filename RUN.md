@@ -502,6 +502,17 @@ E3 я снял 2026-10-25 (R21), и номер не переиспользует
 - **Мой шаг:** сделать проверку обязательной в настройках ветки `main` — с подтверждением по правилу 4.
 - **Как проверить:** намеренно сломанная сборка — с запросом в сеть — даёт красный прогон, обычная — зелёный; `just ci`; `/code-review high`.
 - **Разделы:** R25 spec; R05, R08, R11, R13; architecture 3.4, 3.6, 3.7; T19, T22, T74.
+- **Решено автором (2026-11-08), при планировании** — всё по рекомендации:
+  - iPad — по http с раннера: из файла страница там не работает, «Файлы» открывают её в Quick Look (T80; В64). Сервер раннера отдаёт файл как `text/html`, как отдал бы хостинг по В64 (а), а Safari в Simulator ведёт `safaridriver` — без сборки WebDriverAgent;
+  - сохранённые образцы читает `readSample`, а `sample-check` — с T20: файл без разметки он не принимает, «the markup has no truth»;
+  - workflow идёт на каждом pull request, а первый его job по `git diff` решает, тронуто ли то, что входит в сборку или в драйверы. Если нет, эмуляторы пропускаются: пропущенный job GitHub считает успехом;
+  - коммиты, push, pull request и мерж в `main` — исполнитель: workflow идёт на pull request, пока его нет в `main`. Это отступление от правила 7 только для этой задачи; ветку после мержа исполнитель удаляет. Обязательной проверку делаю я — «Мой шаг».
+- **Выяснилось при планировании (2026-11-08):**
+  - время прогона T19 [42531521742](https://github.com/altnovatrail/canvas/actions/runs/42531521742): Android — 6 минут, из них образ `toolchain` 75 секунд; iPad 26.5 — 14,5 минуты, iPad 27 — 11, и почти всё — загрузка Simulator и сборка WebDriverAgent, а сама проба — около двух минут. Кеш образа Android не нужен;
+  - `safaridriver` ведёт Safari в iOS Simulator с `platformName: ios`, `browserName: safari` и `safari:useSimulator: true` — так его зовёт Flutter (`packages/flutter_tools/lib/src/drive/web_driver_service.dart`), а browsertime добавляет `safari:deviceUDID`. Страницы Apple «About WebDriver for Safari» и «Testing with WebDriver in Safari» об iOS молчат (прочитано 2026-11-08), так что это подтверждает прогон, а запасной путь — WebDriverAgent T80;
+  - `ReportingObserver` с `buffered: true` отдаёт и отчёты о нарушениях политики, случившихся до того, как драйвер подключился, — в WebKit (`Source/WebCore/Modules/reporting/ReportingObserver.cpp`: «For each report in global’s report buffer…») и в Chrome;
+  - у job с matrix, пропущенного по `if`, GitHub не раскрывает имя, и обязательная проверка с именем версии висела бы вечно. Обязательной становится одна — job-итог, который ждёт остальные;
+  - `justfile` — путь релиза, и рецепта сборки T78 не заводит: workflow зовёт `node scripts/page.ts`, как решила R55, а рецепт и `release-files` — T75. Пути релиза задача не трогает.
 
 #### T20. Шаги страницы образцов
 

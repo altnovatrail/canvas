@@ -1,0 +1,209 @@
+// The watch the drivers of the samples page put into it (T78 in RUN.md; R54 in
+// docs/decisions.md): its pure parts, and the watch itself in the page's build opened by file:// in
+// Chrome Headless Shell from the toolchain stage (R13), as the drivers use it in the emulators — a
+// stroke, a save, the workbook's page, and a page that asks for the network, which it must see.
+
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import { type Browser, chromium, type Page } from "playwright";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { policy, styleOf } from "../scripts/csp.ts";
+import { buildPage } from "../scripts/page.ts";
+import {
+  asked,
+  blobAt,
+  boxOf,
+  outside,
+  pageIn,
+  READ,
+  type Seen,
+  served,
+  strokeIn,
+  TASKS,
+  TO_WORKBOOK,
+  verdicts,
+  WATCH,
+  WORKBOOK,
+} from "./watch.ts";
+
+const QUIET: Seen = {
+  watched: true,
+  defined: true,
+  tasks: 3,
+  task: "0",
+  strokes: 1,
+  resources: [],
+  reports: [],
+  events: [],
+  errors: 0,
+  reporting: true,
+  blobs: 1,
+};
+
+describe("the pure parts", () => {
+  test("the build's one page is found, and a build of none or of two is refused", () => {
+    expect(pageIn(["x.txt", "samples-page_v0.0.0.html"])).toBe("samples-page_v0.0.0.html");
+    expect(() => pageIn([])).toThrow("not one page");
+    expect(() => pageIn(["samples-page_v1.html", "samples-page_v2.html"])).toThrow("not one page");
+  });
+
+  test("a stroke lies in the part of the element the window shows", () => {
+    expect(strokeIn({ x: 10, y: 100, width: 500, height: 400, view: 1000 })).toEqual([
+      [110, 220],
+      [210, 300],
+    ]);
+    // Cut by the window's bottom, and by its top when the element is scrolled up.
+    expect(strokeIn({ x: 0, y: 800, width: 100, height: 900, view: 1000 })).toEqual([
+      [20, 860],
+      [40, 900],
+    ]);
+    expect(strokeIn({ x: 0, y: -500, width: 100, height: 1000, view: 1000 })[0]).toEqual([20, 150]);
+  });
+
+  test("a request is any address but the page's own blobs, data and file", () => {
+    expect(
+      outside(["blob:x", "data:,a", "content://1", "https://a.invalid/"], ["content://1"]),
+    ).toEqual(["https://a.invalid/"]);
+  });
+
+  test("the server's log names the requests beyond the page's download, the browser's icon apart", () => {
+    const log = [
+      "serving build/page on port 8080 as pages",
+      "GET /samples-page_v0.0.0.html 200",
+      "GET /favicon.ico 404",
+      "GET /apple-touch-icon-precomposed.png 404",
+      "GET /leak 404",
+      "",
+    ];
+    expect(asked(log, "samples-page_v0.0.0.html")).toEqual({
+      others: ["GET /leak 404"],
+      icons: ["GET /favicon.ico 404", "GET /apple-touch-icon-precomposed.png 404"],
+    });
+    const folder = mkdtempSync(join(tmpdir(), "canvas-served-"));
+    try {
+      writeFileSync(join(folder, "server.txt"), log.join("\n"));
+      expect(served(folder, "samples-page_v0.0.0.html")).toEqual({
+        step: "the server was asked for nothing but the page",
+        ok: false,
+        note: "1 other request(s); the browser's icon",
+      });
+    } finally {
+      rmSync(folder, { recursive: true, force: true });
+    }
+  });
+
+  test("a quiet page passes each check, and a violation, an error or a request fails its own", () => {
+    expect(verdicts(QUIET, []).every(({ ok }) => ok)).toBe(true);
+    const loud = verdicts(
+      { ...QUIET, reports: ["connect-src"], events: ["connect-src", "img-src\n"], errors: 2 },
+      ["https://a.invalid/"],
+    );
+    expect(loud.map(({ ok }) => ok)).toEqual([true, false, false, false]);
+    expect(loud[1]?.note).toBe("3: connect-src, img-src");
+    expect(verdicts({ ...QUIET, reporting: false }, [])[0]).toMatchObject({ ok: false });
+  });
+});
+
+describe("in the page's build", () => {
+  let folder: string;
+  let file: string;
+  let browser: Browser;
+
+  beforeAll(async () => {
+    folder = mkdtempSync(join(tmpdir(), "canvas-watch-"));
+    file = (await buildPage(folder, "0.0.0")).path;
+    browser = await chromium.launch();
+  }, 120_000);
+
+  afterAll(async () => {
+    await browser?.close();
+    rmSync(folder, { recursive: true, force: true });
+  });
+
+  /** The page of a file, with the watch put in before its own script, as on Android. */
+  async function opened(path: string): Promise<Page> {
+    const page = await browser.newPage();
+    await page.addInitScript(WATCH);
+    await page.goto(pathToFileURL(path).href);
+    await page.waitForFunction(() => customElements.get("novatrail-canvas") !== undefined);
+    return page;
+  }
+
+  const read = async (page: Page) => JSON.parse(String(await page.evaluate(READ))) as Seen;
+
+  /** Wait until an expression is true in the page, asked as the drivers ask it: the page's policy
+   * keeps waitForFunction's own way, an eval in the page, out. */
+  async function until(page: Page, expression: string): Promise<void> {
+    for (let i = 0; i < 50; i++) {
+      if (await page.evaluate(expression)) return;
+      await page.waitForTimeout(100);
+    }
+    throw new Error(`never true: ${expression}`);
+  }
+
+  test("sees the tasks, a stroke, each saved file's text and the workbook's page, and nothing else", async () => {
+    const page = await opened(file);
+    try {
+      expect(await read(page)).toMatchObject({ watched: true, defined: true, tasks: TASKS });
+      const draw = async () => {
+        const box = JSON.parse(String(await page.evaluate(boxOf("novatrail-canvas"))));
+        const [[x1, y1], [x2, y2]] = strokeIn(box);
+        await page.mouse.move(x1, y1);
+        await page.mouse.down();
+        await page.mouse.move(x2, y2, { steps: 8 });
+        await page.mouse.up();
+      };
+      await draw();
+      expect((await read(page)).strokes).toBeGreaterThan(0);
+      await page.click("#save");
+      await until(page, blobAt(0));
+      expect(JSON.parse(String(await page.evaluate(blobAt(0)))).purpose).toBe(
+        "PURPOSE_MEASUREMENT",
+      );
+      // A stroke not saved: the page asks before the workbook's page, and a yes shows it.
+      await draw();
+      page.once("dialog", (dialog) => dialog.accept());
+      await page.evaluate(TO_WORKBOOK);
+      await until(page, `document.getElementById("task").value === "${WORKBOOK}"`);
+      await draw();
+      await page.click("#save");
+      await until(page, blobAt(1));
+      const seen = await read(page);
+      expect(seen.blobs).toBe(2);
+      expect(verdicts(seen, outside(seen.resources)).filter(({ ok }) => !ok)).toEqual([]);
+    } finally {
+      await page.close();
+    }
+  }, 60_000);
+
+  test("sees a request the policy stopped as a violation, from before the watch came too", async () => {
+    // The page's own script asks for the network first thing: the failure T78 must catch.
+    const broken = join(folder, "broken.html");
+    // Its policy is worked out again, as the builder does, so that the script still runs.
+    const built = readFileSync(file, "utf8");
+    const start = built.indexOf("<script>") + "<script>".length;
+    const script = built.slice(start, built.lastIndexOf("</script>"));
+    const leaking = `fetch("https://probe.invalid/leak").catch(() => {});${script}`;
+    writeFileSync(
+      broken,
+      built
+        .replace(policy(styleOf(built), script), () => policy(styleOf(built), leaking))
+        .replace(script, () => leaking),
+    );
+    // Opened with the watch put in only once it has loaded, as in Safari: the reports buffered.
+    const late = await browser.newPage();
+    try {
+      await late.goto(pathToFileURL(broken).href);
+      await late.waitForTimeout(500);
+      await late.evaluate(WATCH);
+      await until(late, `${READ}.includes("connect-src")`);
+      const seen = await read(late);
+      expect(seen.reports).toContain("connect-src");
+      expect(verdicts(seen, outside(seen.resources))[1]).toMatchObject({ ok: false });
+    } finally {
+      await late.close();
+    }
+  }, 60_000);
+});

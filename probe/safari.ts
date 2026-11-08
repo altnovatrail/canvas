@@ -1,6 +1,6 @@
 // The probe of a page opened from a file in Safari on macOS (T80 in RUN.md; R54 in
 // docs/decisions.md), on a runner of macOS. It runs once safaridriver, which the system brings and
-// the workflow enables, listens and probe/serve.ts hands the probe's files out:
+// the workflow enables, listens and emulators/serve.ts hands the probe's files out:
 //
 //   node probe/safari.ts
 //
@@ -18,6 +18,7 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSy
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
+import { command } from "../emulators/webdriver.ts";
 import { CSP, OPEN } from "./build.ts";
 
 /** The probe's files, by probe/build.ts's own names. */
@@ -30,8 +31,7 @@ export function reports(names: readonly string[]): string[] {
 
 /** Where the run leaves what it found: the folder the workflow keeps as its artifact. */
 const folder = "build/probe-safari";
-/** safaridriver's port on the runner, and the server's: the workflow starts both there. */
-const driver = "http://127.0.0.1:4444";
+/** The server's port on the runner, where the workflow starts it beside safaridriver. */
 const port = "8080";
 const downloads = join(homedir(), "Downloads");
 const steps: { step: string; ok: boolean; note: string }[] = [];
@@ -42,21 +42,6 @@ let shots = 0;
 function record(step: string, ok: boolean, note = ""): void {
   steps.push({ step, ok, note });
   console.log(`${ok ? "ok  " : "FAIL"} ${step}${note ? ` — ${note}` : ""}`);
-}
-
-/** One command of W3C WebDriver, its `value` back. */
-async function command(method: string, path: string, body?: unknown): Promise<unknown> {
-  // A path of WebDriver's own words and ids only: an id from an answer can lead nowhere else.
-  if (!/^\/[\w\-./]*$/.test(path)) throw new Error("not a path of WebDriver");
-  const response = await fetch(`${driver}${path}`, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(60_000),
-  });
-  if (!response.ok) throw new Error(`${method} ${path}: ${response.status}`);
-  const answer = (await response.json()) as { value?: unknown };
-  return answer.value;
 }
 
 /** Safari downloads a file of the probe; say whether it came into the Downloads folder. */

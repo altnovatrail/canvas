@@ -11,6 +11,8 @@ on:
   pull_request:
     paths:
       - "probe/**"
+      # The drivers' shared parts, which the samples page's workflow, page.yml, uses too.
+      - "emulators/**"
       - ".github/workflows/emulators.yml"
       # The toolchain stage the job runs the probe in.
       - ".devcontainer/Dockerfile"
@@ -49,7 +51,7 @@ jobs:
               toolchain node probe/build.ts build/probe
           docker run --detach --name probe-server --network host --user "$(id -u):$(id -g)" \
               --env HOME=/tmp --volume "$PWD:/work" --workdir /work \
-              toolchain node probe/serve.ts build/probe 8080
+              toolchain node emulators/serve.ts build/probe 8080
 
       # As the action's README asks, for the emulator to use KVM.
       - name: Enable KVM
@@ -72,7 +74,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           emulator-boot-timeout: 900
           disable-animations: true
-          script: bash probe/android.sh
+          script: bash emulators/android.sh probe/android.ts build/probe-android
 
       - name: Server log
         if: always()
@@ -118,7 +120,7 @@ jobs:
         run: |
           node probe/build.ts build/probe
           mkdir -p build/probe-ipad
-          nohup node probe/serve.ts build/probe 8080 > build/probe-ipad/server.txt 2>&1 &
+          nohup node emulators/serve.ts build/probe 8080 > build/probe-ipad/server.txt 2>&1 &
 
       - name: Xcode
         run: sudo xcode-select -s "/Applications/Xcode_${{ matrix.xcode }}.app"
@@ -161,7 +163,7 @@ jobs:
         run: |
           node probe/build.ts build/probe
           mkdir -p build/probe-safari
-          nohup node probe/serve.ts build/probe 8080 > build/probe-safari/server.txt 2>&1 &
+          nohup node emulators/serve.ts build/probe 8080 > build/probe-safari/server.txt 2>&1 &
           sudo safaridriver --enable
           nohup safaridriver --port 4444 > build/probe-safari/safaridriver.txt 2>&1 &
           for _ in $(seq 1 30); do
