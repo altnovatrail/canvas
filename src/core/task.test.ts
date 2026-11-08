@@ -27,10 +27,10 @@ function sheetOf(template: Template): SheetTemplate {
   return template;
 }
 
-// Copies of the task examples and the open-view vectors of the module format at spec v0.6.2
+// Copies of the task examples and the open-view vectors of the module format at spec v0.9.8
 // (spec/format/examples/task/ and spec/format/vectors/open-view/task/): code and tests read nothing
 // of spec/, so a move to a new tag compares them with `git -C spec diff <old> <new> -- format/`
-// (R32). The format is version 0.2 since spec v0.6.0, and no draft (R64 spec). Each is written as
+// (R32). The format is version 0.3 since spec v0.9.0, and no draft (R64 spec). Each is written as
 // a change to what the examples share, with its keys in their order: a valid example as its
 // open view, as app gets it, and an invalid one with its open fields and the closed field at fault,
 // its other closed fields left as those the examples share.

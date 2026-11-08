@@ -140,7 +140,7 @@ test("a manifest given before the element is upgraded is taken, and one it canno
   expect(language(taken)).toBe("ru");
   expect(warn).not.toHaveBeenCalled();
 
-  const left = upgrade({ ...russian, module_format_version: "0.1" });
+  const left = upgrade({ ...russian, module_format_version: "0.2" });
   expect(left.manifest).toBeUndefined();
   expect(language(left)).toBeNull();
   expect(warn).toHaveBeenCalledOnce();

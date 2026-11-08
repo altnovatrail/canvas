@@ -3,12 +3,13 @@
 // spec). A sample names its task without its key (R05 spec): the release's tag, the file's digest,
 // the bank, the bank's digest as the file gives it, the task's ID, and the digest of its open view,
 // as the module format takes a digest (contracts/README.md, section «The sample file»). The file is
-// of the module format 0.3, which the element does not read yet (T77): of a task, the samples take
-// only its ID, its kind of canvas and a workbook's items, which have the shape the layout of a page
-// reads (R35).
+// of the version of the module format the element reads, or it is refused (T77): of a task, the
+// samples take only its ID, its kind of canvas and a workbook's items, which have the shape the
+// layout of a page reads (R35).
 
 import type { TaskReferenceSchema } from "@altnovatrail/contracts/novatrail/eval/v1/sample_pb.js";
 import type { MessageInitShape } from "@bufbuild/protobuf";
+import { FORMAT } from "../core/manifest.js";
 import type { WorkbookItem } from "../core/task.js";
 
 /**
@@ -36,8 +37,9 @@ export type OpenTasks = ReadonlyMap<string, readonly OpenTask[]>;
 /**
  * The tasks of a file of open tasks of tutor, given as its parsed JSON, of the release `tag`, with
  * the SHA-256 of its bytes in hexadecimal. `sha256` gives that of a text's UTF-8 bytes: the caller's,
- * as the DOM-free part has no hash of its own. A file of another format, or a task with neither a
- * sheet nor a workbook, is a TypeError.
+ * as the DOM-free part has no hash of its own. A file of another format, of tasks of another
+ * version of the module format than the element reads, or a task with neither a sheet nor a
+ * workbook, is a TypeError.
  */
 export function openTasksOf(
   file: unknown,
@@ -45,13 +47,17 @@ export function openTasksOf(
   fileSha256: string,
   sha256: (text: string) => string,
 ): OpenTasks {
-  const { format, version, banks } = file as {
+  const { format, version, module_format_version, banks } = file as {
     readonly format?: unknown;
     readonly version?: unknown;
+    readonly module_format_version?: unknown;
     readonly banks?: unknown;
   };
   if (format !== "tutor-open-tasks" || version !== 0 || !Array.isArray(banks)) {
     throw new TypeError("a file of open tasks is tutor-open-tasks of the version 0, with banks");
+  }
+  if (module_format_version !== FORMAT) {
+    throw new TypeError(`a file of open tasks is of the module format ${FORMAT}, the element's`);
   }
   const tasks = new Map<string, readonly OpenTask[]>();
   for (const { bank, digest, tasks: given } of banks) {
