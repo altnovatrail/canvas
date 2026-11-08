@@ -1,0 +1,85 @@
+# The probe of a page opened from a file, in an emulator on a runner of GitHub (T74 in RUN.md; R54
+# in docs/decisions.md): no tablets of the author's own, so the emulators stand in for them, in the
+# software they run. The Android job builds the probe in the toolchain stage of
+# .devcontainer/Dockerfile, hands its files out from the runner as a release of GitHub does, and
+# lets Chrome in the emulator download and open them; screenshots and reports are its artifact.
+# The pen, the palm and iCloud need real tablets: debt Д7 in RUN.md.
+name: Emulators
+
+on:
+  pull_request:
+    paths:
+      - "probe/**"
+      - ".github/workflows/emulators.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels its older run, as in ci.yml.
+concurrency:
+  group: emulators-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  android:
+    name: Android
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The Dockerfile copies nothing from the repository, so it is built without a context, as
+      # .github's workflows build it. The probe needs nothing but Node: no npm ci.
+      - name: Toolchain image
+        run: docker build --target toolchain --tag toolchain - < .devcontainer/Dockerfile
+
+      # The probe's two files, and the server that hands them out on port 8080 with the headers of
+      # a release asset of GitHub, in the background on the runner's network, where the emulator
+      # reaches it as 10.0.2.2.
+      - name: Probe and its server
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp \
+              --volume "$PWD:/work" --workdir /work \
+              toolchain node probe/build.ts build/probe
+          docker run --detach --name probe-server --network host --user "$(id -u):$(id -g)" \
+              --env HOME=/tmp --volume "$PWD:/work" --workdir /work \
+              toolchain node probe/serve.ts build/probe 8080
+
+      # As the action's README asks, for the emulator to use KVM.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # A tablet of Android 16 with Google's APIs: a debuggable image, on which Chrome reads the
+      # flags that keep its first run out of the way. The emulator's build is pinned; the image's
+      # revision is what sdkmanager installs, and the run writes it down (R54).
+      - name: Emulator and probe
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_tablet
+          emulator-build: 16740729
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-boot-timeout: 900
+          disable-animations: true
+          script: bash probe/android.sh
+
+      - name: Server log
+        if: always()
+        run: docker logs probe-server > build/probe-android/server.txt 2>&1 || true
+
+      - name: Screenshots and reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: probe-android
+          path: build/probe-android
+          retention-days: 7
+          if-no-files-found: error
