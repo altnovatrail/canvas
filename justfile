@@ -82,11 +82,15 @@ build: _install
 # Write the files of the release of a version, v0.1.0 say, into dist/, as .github's shared
 # release.yml runs it: in the toolchain stage, on the tree of the commit alone, with no git, no spec
 # submodule and no token (R08; R18 .github). They are the package's archive, as npm pack makes it,
-# with the version without its v, NOTICE in it too (R46); LICENSE; and SHA256SUMS of the two. The
-# archive is packed from a copy of what npm pack takes, with the version set there, so that the
-# package.json of the tree keeps 0.0.0, and scripts/release.ts checks the archive itself and names
-# it. npm pack fixes every file's time and order, so a build of the same commit gives the same
-# sums, and the sums are printed for whoever builds it again to compare.
+# with the version without its v, NOTICE in it too (R46); the synthetic samples, as just synthetic
+# writes them, in one flat archive, synthetic-samples_<version>.tar.gz, and what each shows, one
+# line to a sample under a line of the columns' names, synthetic-samples_<version>.tsv (R50);
+# LICENSE; and SHA256SUMS of the four. The set is written outside dist/, which takes files alone.
+# The package's archive is packed from a copy of what npm pack takes, with the version set there,
+# so that the package.json of the tree keeps 0.0.0, and scripts/release.ts checks the archive
+# itself and names it. npm pack fixes every file's time and order, and scripts/archive.ts writes
+# nothing of the machine or the time, so a build of the same commit gives the same sums, and the
+# sums are printed for whoever builds it again to compare.
 release-files version: build
     #!/usr/bin/env bash
     set -euo pipefail
@@ -104,20 +108,25 @@ release-files version: build
     cp -R lib package.json README.md LICENSE NOTICE "$stage"
     packed="$(cd "$stage" && npm pkg set version="$number" && npm pack --json --ignore-scripts --pack-destination "$OLDPWD/dist")"
     archive="$(node scripts/release.ts "$number" <<< "$packed")"
+    synthetic="synthetic-samples_${version}"
+    {{ quote(just_executable()) }} synthetic "$stage/synthetic" "dist/${synthetic}.tsv" > /dev/null
+    node scripts/archive.ts "$stage/synthetic" "dist/${synthetic}.tar.gz"
     cp LICENSE dist/LICENSE
-    (cd dist && sha256sum -- "$archive" LICENSE > SHA256SUMS)
+    (cd dist && sha256sum -- "$archive" "${synthetic}.tar.gz" "${synthetic}.tsv" LICENSE > SHA256SUMS)
     cat dist/SHA256SUMS
 
 # Write the synthetic samples into a folder, one file each, <ID>.json, and print a line for each:
-# its ID, its composition and what it shows (R49). The folder is the caller's, from where just was
-# run; of what it holds, only the files of an older set, synthetic-*.json, go. The code of src/
-# names its modules by .js, so tsc builds the generator into build/ first, and Node runs that. It
-# reads tutor's file of open tasks from tasks/, which ci-licenses verifies, and needs neither
-# spec/ nor git; the network only as npm ci does, when the packages are not installed yet.
-synthetic folder: _install
+# its ID, its composition and what it shows (R49); given a list, write the lines there too, under a
+# line of the columns' names, as a release's .tsv has them (R50). The folder and the list are the
+# caller's, from where just was run; of what the folder holds, only the files of an older set,
+# synthetic-*.json, go. The code of src/ names its modules by .js, so tsc builds the generator into
+# build/ first, and Node runs that. It reads tutor's file of open tasks from tasks/, which
+# ci-licenses verifies, and needs neither spec/ nor git; the network only as npm ci does, when the
+# packages are not installed yet.
+synthetic folder list="": _install
     rm -rf build/scripts build/src
     {{ bin }}/tsc -p tsconfig.synthetic.json
-    cd {{ quote(invocation_directory()) }} && node {{ quote(justfile_directory() / "build/scripts/synthetic.js") }} {{ quote(folder) }}
+    cd {{ quote(invocation_directory()) }} && node {{ quote(justfile_directory() / "build/scripts/synthetic.js") }} {{ quote(folder) }} {{ if list == "" { "" } else { quote(list) } }}
 
 # Write the icons of the row's buttons, src/element/icons.ts, and NOTICE anew, from the set of icons
 # package-lock.json pins: after a new version of the set, or of the table in scripts/icons.ts (R46).

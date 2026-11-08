@@ -1,23 +1,12 @@
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, expect, test } from "vitest";
+import { expect, test } from "vitest";
 import { TUTOR_FILE } from "../src/eval/tasks.js";
-import { writeSet } from "./synthetic.ts";
-
-/** The temporary folders of a test, removed after it. */
-const made: string[] = [];
-const temporary = () => {
-  const folder = mkdtempSync(join(tmpdir(), "synthetic-"));
-  made.push(folder);
-  return folder;
-};
-afterEach(() => {
-  for (const folder of made.splice(0)) rmSync(folder, { recursive: true, force: true });
-});
+import { temporary } from "./folders.fixture.ts";
+import { listOf, writeSet } from "./synthetic.ts";
 
 test("the set is written one file to a sample, named by its ID, and a line printed for each", () => {
-  const folder = temporary();
+  const folder = temporary("synthetic");
   // A file of an older set goes; anything else in the folder stays.
   writeFileSync(join(folder, "synthetic-1.json"), "{}");
   writeFileSync(join(folder, "notes.txt"), "kept");
@@ -30,6 +19,12 @@ test("the set is written one file to a sample, named by its ID, and a line print
   expect(lines[0]).toBe(
     "synthetic-101\tMEASUREMENT\tADULT\ta solution of lines and its final answer, ringed, with no first error",
   );
+  expect(listOf(lines.slice(0, 2)).split("\n")).toEqual([
+    "id\tpurpose\twriter\tscenario",
+    lines[0],
+    lines[1],
+    "",
+  ]);
   const text = readFileSync(join(folder, `${ids[0]}.json`), "utf8");
   expect(JSON.parse(text)).toMatchObject({ id: ids[0], protocol: "novatrail.eval.v1" });
 }, 30_000);
@@ -40,7 +35,7 @@ test("ci-licenses verifies the release of tutor the samples answer", () => {
 });
 
 test("a file of open tasks other than the one release-verify accepted is refused", () => {
-  const root = temporary();
+  const root = temporary("synthetic");
   mkdirSync(join(root, "tasks"));
   const bytes = readFileSync(join("tasks", TUTOR_FILE.name));
   writeFileSync(join(root, "tasks", TUTOR_FILE.name), Buffer.concat([bytes, Buffer.from(" ")]));

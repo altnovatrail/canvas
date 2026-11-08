@@ -38,13 +38,21 @@ jobs:
     with:
       # The package's code without its tests, fixtures and type checks — a pathspec's * takes any
       # depth — what builds it, what npm pack takes besides it, the toolchain stage that runs npm,
-      # and this file, so that a change of the line gives a release. The lock file is no part of
-      # the archive, and the compiler is pinned in package.json.
+      # and this file, so that a change of the line gives a release. The synthetic samples too:
+      # their generator is src/eval/, which src/*.ts takes, and its script, its build, the archive's
+      # script, tutor's file of open tasks and the lock file, whose packages write each sample's
+      # JSON (R50). The lock file is no part of the package's archive, and its compiler is pinned in
+      # package.json.
       paths: |
         src/*.ts
         :(exclude)src/*.test.ts
         :(exclude)src/*.fixture.ts
         :(exclude)src/*.check.ts
+        scripts/synthetic.ts
+        scripts/archive.ts
+        tsconfig.synthetic.json
+        tasks/*
+        package-lock.json
         package.json
         tsconfig.base.json
         tsconfig.build.json
