@@ -21,4 +21,4 @@ docker run --rm --init --network host --user "$(id -u):$(id -g)" \
     --env HOME=/tmp --env CI --env ADB=/adb/adb --env PORT=8080 \
     --volume "$ANDROID_HOME/platform-tools:/adb:ro" \
     --volume "$PWD:/work" --workdir /work \
-    toolchain node probe/android.ts "$out"
+    toolchain node probe/android.ts

@@ -2,15 +2,15 @@
 // docs/decisions.md). probe/android.sh runs it in CI, in the toolchain stage's container on the
 // runner's network, once the emulator is up and probe/serve.ts hands the probe's files out:
 //
-//   node probe/android.ts <folder>
+//   node probe/android.ts
 //
 // It goes the volunteer's way in Chrome: it downloads each file of the probe, opens it from the
 // download, writes the storage, draws with the touchscreen and, where the tool has it, the stylus,
 // saves the report, opens the other file, and opens the first again after Chrome has stopped. It
 // taps what a person would tap, by the bounds uiautomator gives each node on the screen, and it
 // reads the page's report through Chrome's DevTools socket, which adb forwards to port 9222. Each
-// step leaves a screenshot and, where the page could be read, its report in the folder, which the
-// workflow keeps as its artifact; a step that fails fails the run. It needs adb (ADB, or adb on
+// step leaves a screenshot and, where the page could be read, its report in build/probe-android,
+// which the workflow keeps as its artifact; a step that fails fails the run. It needs adb (ADB, or adb on
 // the path) and the server's port (PORT, 8080 by default); it installs nothing and asks nothing of
 // the network but the emulator.
 
@@ -116,7 +116,8 @@ interface Target {
   readonly webSocketDebuggerUrl?: string;
 }
 
-const folder = process.argv[2] ?? "";
+/** Where the run leaves what it found: the folder the workflow keeps as its artifact. */
+const folder = "build/probe-android";
 const adbPath = process.env.ADB ?? "adb";
 const port = process.env.PORT ?? "8080";
 const steps: Step[] = [];
@@ -389,10 +390,6 @@ async function withPolicy(page: Target): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  if (!folder) {
-    console.error("usage: node probe/android.ts <folder>");
-    process.exit(2);
-  }
   mkdirSync(folder, { recursive: true });
   const facts = {
     android: shell("getprop ro.build.version.release").trim(),
@@ -459,6 +456,6 @@ if (import.meta.main) {
       process.exitCode = 1;
     })
     .finally(() => {
-      if (folder) writeFileSync(join(folder, "steps.json"), `${JSON.stringify(steps, null, 2)}\n`);
+      writeFileSync(join(folder, "steps.json"), `${JSON.stringify(steps, null, 2)}\n`);
     });
 }

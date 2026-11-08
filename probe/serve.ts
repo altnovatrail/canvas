@@ -26,7 +26,9 @@ export function headers(name: string, length: number): Record<string, string> {
 /** The name a request asks for, or "" when its path does not decode. */
 function nameOf(url: string | undefined): string {
   try {
-    return decodeURIComponent(new URL(url ?? "/", "http://probe").pathname.slice(1));
+    // The path alone, without its query: the name is looked up among the folder's files, so a path
+    // that tries to leave the folder names none of them.
+    return decodeURIComponent((url ?? "/").split("?")[0]?.slice(1) ?? "");
   } catch {
     return "";
   }
