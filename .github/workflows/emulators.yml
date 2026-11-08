@@ -1,9 +1,10 @@
-# The probe of a page opened from a file, in an emulator on a runner of GitHub (T74 in RUN.md; R54
-# in docs/decisions.md): no tablets of the author's own, so the emulators stand in for them, in the
-# software they run. The Android job builds the probe in the toolchain stage of
-# .devcontainer/Dockerfile, hands its files out from the runner as a release of GitHub does, and
-# lets Chrome in the emulator download and open them; screenshots and reports are its artifact.
-# The pen, the palm and iCloud need real tablets: debt Д7 in RUN.md.
+# The probe of a page opened from a file, in an emulator or a browser on a runner of GitHub (T74
+# and T80 in RUN.md; R54 in docs/decisions.md): no tablets of the author's own, so the emulators
+# stand in for them, in the software they run. Each job builds the probe, hands its files out from
+# the runner as a release of GitHub does, and lets the browser download and open them; screenshots,
+# trees and reports are its artifact. Android runs in the toolchain stage of
+# .devcontainer/Dockerfile; the runners of macOS have no Docker, so their jobs take the Dockerfile's
+# Node through setup-node. The pen, the palm and iCloud need real tablets: debt Д7 in RUN.md.
 name: Emulators
 
 on:
@@ -83,5 +84,101 @@ jobs:
         with:
           name: probe-android
           path: build/probe-android
+          retention-days: 7
+          if-no-files-found: error
+
+  # The iPad Simulator on both iPadOS the volunteers may have: 27, on the image GitHub still calls a
+  # public preview, and 26.5 on the stable one. WebDriverAgent, built from its tag by the image's
+  # Xcode, taps for the driver (T80).
+  ipad:
+    name: iPad ${{ matrix.ios }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: xcode-27, xcode: "27.1", ios: "27" }
+          - { runner: macos-26, xcode: "26.6", ios: "26.5" }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The Node .devcontainer/Dockerfile pins, read from it: one version for every job.
+      - name: Node's version
+        id: node
+        run: echo "version=$(sed -n 's/^ARG NODE_VERSION=//p' .devcontainer/Dockerfile)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ steps.node.outputs.version }}
+
+      - name: Probe and its server
+        run: |
+          node probe/build.ts build/probe
+          mkdir -p build/probe-ipad
+          nohup node probe/serve.ts build/probe 8080 > build/probe-ipad/server.txt 2>&1 &
+
+      - name: Xcode
+        run: sudo xcode-select -s "/Applications/Xcode_${{ matrix.xcode }}.app"
+
+      - name: Simulator, WebDriverAgent and probe
+        env:
+          IOS: ${{ matrix.ios }}
+        run: bash probe/ipad.sh
+
+      - name: Screenshots, trees and reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: probe-ipad-${{ matrix.ios }}
+          path: build/probe-ipad
+          retention-days: 7
+          if-no-files-found: error
+
+  # Safari on macOS, the file opened from the Downloads folder as Finder opens it, through the
+  # system's safaridriver (T80).
+  safari:
+    name: Safari on macOS
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The Node .devcontainer/Dockerfile pins, read from it: one version for every job.
+      - name: Node's version
+        id: node
+        run: echo "version=$(sed -n 's/^ARG NODE_VERSION=//p' .devcontainer/Dockerfile)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ steps.node.outputs.version }}
+
+      - name: Probe, its server and safaridriver
+        run: |
+          node probe/build.ts build/probe
+          mkdir -p build/probe-safari
+          nohup node probe/serve.ts build/probe 8080 > build/probe-safari/server.txt 2>&1 &
+          sudo safaridriver --enable
+          nohup safaridriver --port 4444 > build/probe-safari/safaridriver.txt 2>&1 &
+          for _ in $(seq 1 30); do
+            curl --silent --fail http://127.0.0.1:4444/status > /dev/null && curl --silent --fail -o /dev/null http://127.0.0.1:8080/t29-probe-csp.html && break
+            sleep 1
+          done
+          curl --silent --fail http://127.0.0.1:4444/status > /dev/null
+          { sw_vers; /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" /Applications/Safari.app/Contents/Info.plist; } > build/probe-safari/versions.txt
+
+      - name: Probe
+        run: node probe/safari.ts
+
+      - name: Reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: probe-safari
+          path: build/probe-safari
           retention-days: 7
           if-no-files-found: error
