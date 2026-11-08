@@ -6,7 +6,7 @@
 // path, no message of an error, no point of a stroke.
 
 /** The probe's version, in the report and in the keys it stores. */
-const PROBE = "1";
+const PROBE = "2";
 /** The addresses the probe asks for: nothing answers on either, and neither leaves the device's own
  * resolver for the internet but the lookup of a name that cannot exist. */
 const LOOPBACK = "http://127.0.0.1:4/probe";
