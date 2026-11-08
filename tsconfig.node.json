@@ -7,5 +7,11 @@
     "resolveJsonModule": true,
     "noEmit": true
   },
-  "include": ["scripts/**/*.ts", "src/**/*.test.ts", "vitest.config.ts", "demo/vite.config.ts"]
+  "include": [
+    "scripts/**/*.ts",
+    "probe/**/*.ts",
+    "src/**/*.test.ts",
+    "vitest.config.ts",
+    "demo/vite.config.ts"
+  ]
 }

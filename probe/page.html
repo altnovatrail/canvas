@@ -1,0 +1,18 @@
+<!doctype html>
+<meta charset="utf-8">
+<!-- policy -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>canvas file probe</title>
+<style>
+body { font: 16px/1.4 sans-serif; margin: 16px; }
+#pad { touch-action: none; user-select: none; height: 240px; border: 2px solid; padding: 8px; }
+button { font: inherit; padding: 8px 12px; margin: 8px 8px 8px 0; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+</style>
+<h1>canvas file probe</h1>
+<p id="state">The page's script did not run.</p>
+<div id="pad">Draw here with a pen, a finger or the mouse.</div>
+<p><button id="store" type="button">Write storage</button><button id="save" type="button">Save report</button></p>
+<p><img id="picture" alt="A teal square" width="16" height="16"></p>
+<pre id="report"></pre>
+<script src="probe.js"></script>

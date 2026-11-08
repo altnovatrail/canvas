@@ -12,7 +12,8 @@
 # The release's files: only release-files writes them (R08).
 /dist/
 # The generator of the synthetic samples as tsc builds it, and the set it writes: just synthetic
-# and ci-licenses (R49).
+# and ci-licenses (R49). And the files of the probe of a page opened from a file, which
+# node probe/build.ts build/probe writes for a pre-release (R52).
 /build/
 # The coverage of the tests: ci-test writes it, and Vitest clears it before each run (R43).
 /coverage/
