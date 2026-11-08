@@ -130,13 +130,15 @@ function record(step: string, ok: boolean, note = ""): void {
   log(`${ok ? "ok  " : "FAIL"} ${step}${note ? ` — ${note}` : ""}`);
 }
 
-/** One call of WebDriverAgent's HTTP, its `value` back. */
+/** One call of WebDriverAgent's HTTP, its `value` back. A session and an app's launch wait for the
+ * app, which a cold simulator takes long to start; the rest answer within seconds. */
 async function call(method: string, path: string, body?: unknown): Promise<unknown> {
+  const slow = path === "/session" || path.includes("/wda/apps/");
   const response = await fetch(`${agent}${path}`, {
     method,
     headers: { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(20_000),
+    signal: AbortSignal.timeout(slow ? 90_000 : 20_000),
   });
   if (!response.ok) throw new Error(`${method} ${path}: ${response.status}`);
   const answer = (await response.json()) as { value?: unknown; sessionId?: string };
