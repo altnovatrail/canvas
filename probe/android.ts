@@ -246,18 +246,47 @@ async function download(file: string): Promise<Target | undefined> {
   shell(`am start -a android.intent.action.VIEW -d http://10.0.2.2:${port}/${file} -n ${MAIN}`);
   await settle(60);
   screenshot(`download-${file}`);
-  // Chrome may ask before it downloads a file of this type, or over plain HTTP: the answers a
-  // person gives to keep it.
-  await tapWhen(/^(Download|Download anyway|Keep|Continue|OK)$/i, 5);
-  await settle(10);
-  screenshot(`downloaded-${file}`);
-  const opened = await tapWhen(/^Open$/i, 15);
-  record(`open ${file} from Chrome's message of the download`, opened);
+  const how = await openDownload(file);
+  record(`open ${file} from Chrome's downloads`, how !== "", how);
   await settle(30);
   screenshot(`opened-${file}`);
   const page = await probePage(15);
   record(`find ${file} among Chrome's pages`, Boolean(page), page?.url ?? "");
   return page;
+}
+
+/** Answers that let a download go on or put Chrome's offers away, as a person would give them:
+ * Chrome asks before it downloads a file of some types or over plain HTTP, and on its first run
+ * it offers notifications. */
+const AWAY = /^(Download|Download anyway|Keep|No thanks|Don.t allow|Not now|Got it)$/i;
+
+/** Open a downloaded file the way a person would: by Open in Chrome's message of the download, or
+ * else by its name in Chrome's list of downloads. Say which, or "" when neither came. */
+async function openDownload(file: string): Promise<string> {
+  for (let i = 0; i < 60; i++) {
+    const all = screen();
+    const open = find(all, /^Open$/);
+    if (open) {
+      tap(open);
+      return "Open in the message of the download";
+    }
+    const away = find(all, AWAY);
+    if (away) {
+      log(`tap ${JSON.stringify(away.text || away.description)}`);
+      tap(away);
+    } else {
+      const named = all.find(
+        ({ text, bounds: [x1, y1, x2, y2] }) => text === file && x2 > x1 && y2 > y1,
+      );
+      if (named) {
+        tap(named);
+        return "its name in Chrome's list of downloads";
+      }
+    }
+    await sleep(1000);
+  }
+  log(`screen ${words(screen()).slice(0, 600)}`);
+  return "";
 }
 
 async function main(): Promise<void> {
@@ -307,7 +336,7 @@ async function main(): Promise<void> {
     screenshot("csp-drawn");
     await report(csp, "csp-drawn");
     const saved = await tapWhen(/^Save report$/, 5);
-    await tapWhen(/^(Download|Download anyway|Keep|Continue|OK)$/i, 5);
+    await tapWhen(AWAY, 5);
     record("tap Save report", saved);
     await sleep(2000);
     screenshot("csp-saved");
