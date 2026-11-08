@@ -12,7 +12,7 @@
 // It takes every file of the folder, each a .json file, and refuses a folder that holds anything
 // else, or nothing, so that the archive is the set and only the set. Run from the repository's root.
 
-import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 
@@ -70,14 +70,15 @@ export function gzipOf(tar: Uint8Array): Buffer {
 
 /** The archive of a folder's files, each a .json file: anything else in it, or none, is an error. */
 export function archiveOf(folder: string): Buffer {
-  const names = readdirSync(folder);
-  if (names.length === 0) throw new Error(`${folder} is empty: the archive holds the set`);
-  const files = names.map((name) => {
-    const path = join(folder, name);
-    if (!name.endsWith(".json") || !statSync(path).isFile()) {
+  // What each entry is, the listing says: no second look at a path that may have changed since.
+  const entries = readdirSync(folder, { withFileTypes: true });
+  if (entries.length === 0) throw new Error(`${folder} is empty: the archive holds the set`);
+  const files = entries.map((entry) => {
+    const path = join(folder, entry.name);
+    if (!entry.name.endsWith(".json") || !entry.isFile()) {
       throw new Error(`${path} is no .json file: the archive holds the set alone`);
     }
-    return { name, bytes: readFileSync(path) };
+    return { name: entry.name, bytes: readFileSync(path) };
   });
   return gzipOf(tarOf(files));
 }
