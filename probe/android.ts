@@ -261,10 +261,20 @@ async function download(file: string): Promise<Target | undefined> {
 const AWAY = /^(Download|Download anyway|Keep|No thanks|Don.t allow|Not now|Got it)$/i;
 
 /** Open a downloaded file the way a person would: by Open in Chrome's message of the download, or
- * else by its name in Chrome's list of downloads. Say which, or "" when neither came. */
+ * else by its name in Chrome's list of downloads, which Chrome's menu opens when Chrome shows
+ * neither by itself. Say which, or "" when none came. */
 async function openDownload(file: string): Promise<string> {
   for (let i = 0; i < 60; i++) {
     const all = screen();
+    if (i === 15 || i === 35) {
+      log("no message and no list of the download: Chrome's menu, then Downloads");
+      const menu = find(all, /^Customize and control Google Chrome$/);
+      if (menu) {
+        tap(menu);
+        await tapWhen(/^Downloads$/, 5);
+        continue;
+      }
+    }
     const open = find(all, /^Open$/);
     if (open) {
       tap(open);
