@@ -21,6 +21,8 @@ import type {
   HistoryChangeEvent,
   HistoryEvent,
   Manifest,
+  Mark,
+  Marks,
   Media,
   NovatrailCanvas,
   SheetSubmission,
@@ -47,6 +49,8 @@ export type Contract = All<
     Same<ExportedWorkbook, spec.ExportedWorkbook>,
     Same<HistoryChange, spec.HistoryChange>,
     Same<HistoryChangeEvent, spec.HistoryChangeEvent>,
+    Same<Mark, spec.Mark>,
+    Same<Marks, spec.Marks>,
     Same<Media, spec.Media>,
     Same<ToolChange, spec.ToolChange>,
     Same<ToolChangeEvent, spec.ToolChangeEvent>,
@@ -164,7 +168,8 @@ held.media = async (ref) => new Blob([ref]);
 held.media = undefined;
 // @ts-expect-error A picture's file comes as a Blob, not as its address.
 held.media = async (ref: string) => ref;
-// @ts-expect-error The tutor's marks are no part of the contract until its epic E3 (R74 spec).
+// The tutor's marks are the contract's too, with the submission's context (R83 spec; T16).
+held.marks = sheet.marks;
 held.marks = undefined;
 // @ts-expect-error Nor the commands undo and clear: the element's own buttons call them (R28).
 held.undo();

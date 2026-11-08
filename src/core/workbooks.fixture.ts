@@ -1,9 +1,9 @@
 // The workbooks of the boxes' rule (R37): pages laid out by R35, with what a hand wrote in their
 // boxes and beside them, drawn by code as every test's strokes are (CLAUDE.md). Each stroke comes
 // with where it belongs as a teacher sees it — its box, the draft, or either — set down as it was
-// written, before any run of the rule. The tests of the rule and its test vectors take them, and
-// the sweep of T48 took them, each at four densities of points. A module of the tests alone: the
-// build leaves it out (tsconfig.build.json).
+// written, before any run of the rule. The tests of the rule take them, the sweep of T48 took them,
+// each at four densities of points, and spec's test vectors hold some of them (R94 spec). A module
+// of the tests alone: the build leaves it out (tsconfig.build.json).
 
 import { type Cell, cellsOf } from "./boxes.js";
 import { pageOf } from "./page.js";

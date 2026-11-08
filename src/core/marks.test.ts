@@ -1,5 +1,16 @@
 import { describe, expect, test } from "vitest";
 import type { Cell } from "./boxes.js";
+import {
+  cropTo,
+  type FinalStroke,
+  groupsFrom,
+  type ProtocolCropSet,
+  type ProtocolGroup,
+  strokesOf,
+  type TenthsBox,
+  tenthsOf,
+  vectorsOf,
+} from "./contracts.fixture.js";
 import { CROP, type Crop, cropOf } from "./crop.js";
 import { around, type Box, boxOf, tenths } from "./geometry.js";
 import { groupsOf } from "./groups.js";
@@ -735,17 +746,23 @@ describe("a workbook's marks (R39)", () => {
     refused(cases);
   });
 
-  test("of a cell holds the strokes of its row and the box of its cell, the strokes erased since known too; one of an empty box, or of none on the page, has no place", () => {
+  test("of a cell holds the strokes of its row and the box of its cell, the strokes erased since known too; one of an empty box holds its box alone, and one of none on the page has no place", () => {
     expect(known.length).toBeGreaterThan(work.strokes.length);
     const places = placesOf(of([at(first), at(empty), at({ item: 99, slot: 1 })]), known, cells);
-    expect(places).toEqual([{ ids: first.ids, box: ink, cell: boxAt(first) }, null, null]);
+    expect(places).toEqual([
+      { ids: first.ids, box: ink, cell: boxAt(first) },
+      { ids: [], box: boxAt(empty), cell: boxAt(empty) },
+      null,
+    ]);
   });
 
-  test("shows round its box and its ink together, and nothing while all its strokes are erased", () => {
-    const [placed] = placesOf(of([at(first)]), known, cells);
-    if (!placed) throw new Error("no place");
+  test("shows round its box and its ink together, and nothing while all its strokes are erased; an empty box's, round the box alone", () => {
+    const [placed, blank] = placesOf(of([at(first), at(empty)]), known, cells);
+    if (!placed || !blank) throw new Error("no place");
     expect(shownOf(placed, onScreen(work.strokes))).toEqual(around([ink, boxAt(first)]));
     expect(shownOf(placed, onScreen(work.strokes, new Set(first.ids)))).toBeNull();
+    expect(shownOf(blank, onScreen(work.strokes))).toEqual(boxAt(empty));
+    expect(shownOf(blank, onScreen(work.strokes, new Set(first.ids)))).toEqual(boxAt(empty));
   });
 
   test("of a context of the other kind, of another page, or of strokes the page has not, is a TypeError", () => {
@@ -896,102 +913,48 @@ describe("the rule written out once more", () => {
   });
 });
 
-/** What the test vectors say of themselves (R26). */
-const ABOUT =
-  "Test vectors of canvas's snapping of a model's box to the strokes, R26 in docs/decisions.md: from a submission — the strokes a sheet showed when its work went for checking, their groups (R24; vectors/groups.json) and the numbers of its crop (R25; vectors/crops.json) — and a box in whole thousandths of the crop to the strokes the box takes. A proposal for the eval protocol, epic E3 in spec's RUN.md: the margin and the share are parameters of eval (C2 of the research «Рукопись ребёнка на канве и ИИ-наставник»), and the protocol's own vectors come in spec's releases.";
-
-/** The rule in words, for a runner to follow: every number it names is a whole one. */
-const FORMULAS = {
-  tenths:
-    "every place is taken in whole tenths of a unit, t(v) = round(10 × v), half up, as the groups and the crop take them (R24, R25)",
-  crop: "the crop's numbers, as vectors/crops.json has them: D′ the height its digits are drawn at, its width w and height h in px, its margins [top, left] = [my, mx] in px, B the box of the points in tenths, [ymin, xmin, ymax, xmax], and H the height the scale takes, in tenths",
-  place:
-    "a point (x, y) in tenths lies on the crop at X = 1000 × ((x − B.xmin) × D′ + mx × H) and Y = 1000 × ((y − B.ymin) × D′ + my × H): its place in px, times 1000 × H",
-  inside:
-    "a box [ymin, xmin, ymax, xmax] in whole thousandths of the crop's height and width, widened by margin × D′ / 1000 px on every side, holds a point if (xmin × w − margin × D′) × H ≤ X ≤ (xmax × w + margin × D′) × H and (ymin × h − margin × D′) × H ≤ Y ≤ (ymax × h + margin × D′) × H, its edges too",
-  taken:
-    "a stroke with k of its n points in the box is taken if k ≥ 1 and below × k ≥ above × n, for the rule's share [above, below]: two thirds of its points at least; the strokes taken are listed by ID, ascending",
-  sheet:
-    "the same as the box laid on the sheet by the crop's sheetBox — x = sheetBox.xmin + xmin / 1000 × (sheetBox.xmax − sheetBox.xmin) — and widened there by H × margin / 1000 tenths, H / 4 at the rule's margin. The box widens first: clipped to the sheet after, it takes the same, for every point lies on the sheet",
-  strokes:
-    "the strokes are those of the submission, of its groups: a stroke written after it is in none of them, and no box takes it",
-  snapped:
-    "snapped is the rectangle of the points of the strokes taken, [ymin, xmin, ymax, xmax] in units, or null when the box takes none: the mark has no place on the sheet then",
-  numbers:
-    "for a stroke of the submission every whole number above stays below 2^31; an int64 holds every one",
-};
-
-/** The sheets of the vectors: those of the groups, and a crop at the sheet's corners, one at the least size and one at the limit. */
-const VECTOR_SHEETS = [...SHEETS, whole, answer, limit];
-
-/** The test vectors, one line to a stroke and to a box, so that a reader can follow them. */
-function vectors(): string {
-  const formulas = Object.entries(FORMULAS).map(
-    ([key, text], k, all) =>
-      `    ${JSON.stringify(key)}: ${JSON.stringify(text)}${k < all.length - 1 ? "," : ""}`,
-  );
-  const lines = [
-    "{",
-    `  "about": ${JSON.stringify(ABOUT)},`,
-    `  "rule": ${JSON.stringify(SNAP_RULE)},`,
-    '  "formulas": {',
-    ...formulas,
-    "  },",
-    '  "cases": [',
-  ];
-  const listed = <T>(items: readonly T[], show: (item: T) => unknown, indent: string) =>
-    items.map(
-      (item, k) => `${indent}${JSON.stringify(show(item))}${k < items.length - 1 ? "," : ""}`,
-    );
-  const asList = (box: Box | null) => box && [box.minY, box.minX, box.maxY, box.maxX];
-  VECTOR_SHEETS.forEach((make, n) => {
-    const sheet = make();
-    const strokes = sheet.work.strokes;
-    lines.push(
-      "    {",
-      `      "name": ${JSON.stringify(sheet.name)},`,
-      `      "about": ${JSON.stringify(sheet.about)},`,
-      '      "strokes": [',
-      ...listed(
-        strokes,
-        ({ id, points }) => ({ id, points: points.map(({ x, y }) => [x, y]) }),
-        "        ",
-      ),
-      "      ],",
-      `      "groups": ${JSON.stringify(groupsOf(strokes))},`,
-      '      "crops": [',
-    );
-    DIGITS.forEach((digit, k) => {
-      const submission = submissionOf(strokes, digit);
-      const { crop } = submission;
-      const { box, median: unit } = crop.exact;
-      const boxes = boxesAbout(crop).map((at) => {
-        const [placed] = placesOf({ submission, marks: [frameAt(at)] }, strokes);
-        return { box: at, ids: placed?.ids ?? [], snapped: asList(placed?.box ?? null) };
-      });
-      lines.push(
-        "        {",
-        `          "crop": ${JSON.stringify({
-          digit: crop.digit,
-          drawn: crop.drawn,
-          width: crop.width,
-          height: crop.height,
-          margins: crop.margins,
-          exact: { box: [box.minY, box.minX, box.maxY, box.maxX], median: unit },
-          sheetBox: crop.sheetBox,
-        })},`,
-        '          "boxes": [',
-        ...listed(boxes, (each) => each, "            "),
-        "          ]",
-        k < DIGITS.length - 1 ? "        }," : "        }",
-      );
-    });
-    lines.push("      ]", n < VECTOR_SHEETS.length - 1 ? "    }," : "    }");
-  });
-  lines.push("  ]", "}", "");
-  return lines.join("\n");
+/** A case of spec's vectors of the snapping (contracts/README.md, section 12). */
+interface SnapCase {
+  readonly name: string;
+  readonly digit_height: number;
+  readonly strokes: readonly FinalStroke[];
+  readonly groups: readonly ProtocolGroup[];
+  readonly crops: ProtocolCropSet;
+  readonly snaps: readonly {
+    readonly digit_height: number;
+    readonly box: TenthsBox;
+    readonly stroke_ids: readonly number[];
+    readonly snapped: TenthsBox | null;
+  }[];
 }
 
-test("the test vectors are what the rule gives on the synthetic sheets", async () => {
-  await expect(vectors()).toMatchFileSnapshot("../../vectors/snaps.json");
+describe("spec's test vectors of the snapping (R94 spec)", () => {
+  const { rule, cases } = vectorsOf<SnapCase>("snaps");
+
+  test("are of the sheet's rule", () => {
+    expect(rule).toEqual(SNAP_RULE);
+  });
+
+  test.each(cases.map((each) => [each.name, each] as const))(
+    "%s: each box of a model takes the vectors' strokes, and snaps to the box of their points",
+    (_, { strokes, groups, crops, snaps }) => {
+      const sheet = strokesOf(strokes);
+      const given = groupsFrom(groups);
+      for (const { digit_height, box, stroke_ids, snapped } of snaps) {
+        const crop = cropOf(sheet, given, digit_height);
+        if (crop === null) throw new Error("the case has no crop");
+        // The box is the model's on the vectors' crop: the sheet's crop is the same one.
+        expect(cropTo(crop)).toEqual(
+          crops.crops.find((each) => each.digit_height === digit_height),
+        );
+        const submission = { crop, groups: given, digest: digestOf(sheet, crop, given) };
+        const at: Fractions = [box.ymin, box.xmin, box.ymax, box.xmax];
+        const [placed] = placesOf({ submission, marks: [frameAt(at)] }, sheet);
+        expect(placed?.ids ?? []).toEqual(stroke_ids);
+        expect(placed === null || placed === undefined ? null : tenthsOf(placed.box)).toEqual(
+          snapped,
+        );
+      }
+    },
+  );
 });

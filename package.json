@@ -26,11 +26,12 @@
     "./lib/element/index.js"
   ],
   "dependencies": {
-    "@altnovatrail/spec": "0.6.5",
+    "@altnovatrail/spec": "0.9.8",
     "perfect-freehand": "1.2.3",
     "rbush": "4.0.1"
   },
   "devDependencies": {
+    "@altnovatrail/contracts": "0.9.8",
     "@biomejs/biome": "2.6.4",
     "@iconify-json/material-symbols": "1.2.97",
     "@iconify/utils": "3.1.7",

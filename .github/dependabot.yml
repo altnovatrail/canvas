@@ -42,3 +42,6 @@ updates:
       # spec/ submodule stands on: the two move together, in a move to a new tag of spec (R73 spec),
       # and ci-licenses checks the package's signature by spec's release-verify-npm (R77 spec).
       - dependency-name: "@altnovatrail/spec"
+      # The code and vectors of spec's API contracts — the eval protocol's sample file among them —
+      # come from the same tag, and move with the submodule the same way (R92 and R94 spec).
+      - dependency-name: "@altnovatrail/contracts"

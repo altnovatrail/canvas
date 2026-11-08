@@ -36,8 +36,8 @@ export const CROP = Object.freeze({
    */
   digit: 24,
   /**
-   * The heights of digits a sample's crops are drawn at, px, until the eval protocol names its own
-   * (R09; R08 tutor).
+   * The heights of digits a sample's crops are drawn at, px, as the eval protocol names them,
+   * beside the module's own (R09; R93 spec).
    */
   heights: Object.freeze([16, 24, 32, 48] as const),
   /** The tallest digit a crop takes, px: its ink then still stays within the margin. */

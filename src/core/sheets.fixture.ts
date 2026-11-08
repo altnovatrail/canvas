@@ -1,8 +1,8 @@
 // The synthetic sheets of the tests, drawn by code as every test's strokes are: no hand wrote them
 // (CLAUDE.md). Each sheet comes with what a teacher sees on it, set down before any run of the
 // code: its groups (R24) and the median height its crop scales by (R25). The tests of the groups,
-// of the crop and of the marks take them, and so do their test vectors. A module of the tests
-// alone: the build leaves it out, as it leaves out the tests (tsconfig.build.json), and the
+// of the crop and of the marks take them; the test vectors are spec's (R94 spec). A module of the
+// tests alone: the build leaves it out, as it leaves out the tests (tsconfig.build.json), and the
 // package check holds to that (scripts/package.ts).
 
 import { Clock } from "./clock.js";

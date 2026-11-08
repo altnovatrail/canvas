@@ -104,8 +104,8 @@ import { type DemoControls, type RowKind, Tools } from "./tools.js";
  * CanvasElement has it, what its events tell and the work it gives for checking, here, and the data
  * — the history of writing, the context of a submission, the filled slots and the state of a demo
  * — through the DOM-free part. The entry point gives them under spec's names, the same types, the
- * media too (T73). The tutor's marks, the crop and a task with its temporary tools are the
- * element's own (R26, R41).
+ * media (T73) and the tutor's marks (T16) too. The crop and a task with its temporary tools are
+ * the element's own (R26, R41).
  */
 export type {
   Box,
@@ -396,7 +396,7 @@ function htmlLayer(name: string): HTMLDivElement {
 
 /**
  * The element `<novatrail-canvas>`: the contract's `CanvasElement` (R74 spec), and beyond it the
- * tutor's marks, the media and the commands undo and clear, which the contract does not name.
+ * commands undo and clear, which the contract does not name.
  */
 export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   readonly #viewport = document.createElement("div");
@@ -925,9 +925,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * workbook where an answer cell is, by its item and its slot (R39). A mark holds on to the
    * strokes the model saw there and is drawn around those of them the sheet shows, as they are now
    * — a cell's around its box too: new strokes do not move it, and when all of them are erased it
-   * is gone, till undo brings them back. A box that comes near no stroke, a cell on a sheet, which
-   * takes no zones, and a box of a workbook that was empty, have no frame: the question is asked
-   * without one. The type is the element's own until spec's contract gives one. A submission goes
+   * is gone, till undo brings them back. A box of a workbook that was empty is framed alone (the
+   * second 2026-11-03 amendment to R74 spec). A box that comes near no stroke, and a cell on a
+   * sheet, which takes no zones, have no frame: the question is asked without one. The type is
+   * spec's (R83 spec; T16). A submission goes
    * back to a sheet whose history holds its strokes, as its digest tells (R27), and a workbook's
    * to a page of its boxes: one of other strokes or other boxes is a TypeError, and so are marks
    * given before the task and the history they hold on to, and marks that are not marks. A new
