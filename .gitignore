@@ -11,6 +11,9 @@
 *.tsbuildinfo
 # The release's files: only release-files writes them (R08).
 /dist/
+# The generator of the synthetic samples as tsc builds it, and the set it writes: just synthetic
+# and ci-licenses (R49).
+/build/
 # The coverage of the tests: ci-test writes it, and Vitest clears it before each run (R43).
 /coverage/
 # The screenshots Vitest takes of a failed test in the browser: Vitest 5 puts them under .vitest/.
