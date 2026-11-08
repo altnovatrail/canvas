@@ -2,13 +2,14 @@
 // runs it: from the build of tsconfig.synthetic.json, since the code of src/ imports its modules by
 // .js names, which Node does not take for .ts ones.
 //
-//   node build/scripts/synthetic.js <folder>
+//   node build/scripts/synthetic.js <folder> [<list>]
 //
 // It reads tutor's file of open tasks from tasks/ of the repository it was built in, which
 // ci-licenses verifies by spec's release-verify (R77 spec), and refuses one whose bytes are not
 // those TUTOR_FILE names. Of what the folder holds it removes only the files of a set,
 // synthetic-*.json, so that none of an older set stays, and prints a line for each sample — its
-// ID, its composition and what it shows — for the description of the release (T24).
+// ID, its composition and what it shows. Given a list, it writes the lines there too, under a line
+// of the columns' names: the release's synthetic-samples_v<X.Y.Z>.tsv (R50).
 
 import { createHash } from "node:crypto";
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -30,6 +31,11 @@ export function lineOf({ id, scenario, sample }: Synthetic): string {
   return `${id}\t${purpose}\t${writer}\t${SCENARIOS[scenario]}`;
 }
 
+/** The list of the set: a line of the columns' names, then the set's lines, each ended. */
+export function listOf(lines: readonly string[]): string {
+  return `${["id\tpurpose\twriter\tscenario", ...lines].join("\n")}\n`;
+}
+
 /** Write the set into `folder`, with tutor's file from `root`/tasks, and give each sample's line. */
 export function writeSet(folder: string, root: string): string[] {
   const bytes = readFileSync(join(root, "tasks", TUTOR_FILE.name));
@@ -49,12 +55,14 @@ export function writeSet(folder: string, root: string): string[] {
 }
 
 if (import.meta.main) {
-  const [folder, ...rest] = process.argv.slice(2);
+  const [folder, list, ...rest] = process.argv.slice(2);
   if (folder === undefined || rest.length > 0) {
-    console.error("usage: node build/scripts/synthetic.js <folder>");
+    console.error("usage: node build/scripts/synthetic.js <folder> [<list>]");
     process.exit(2);
   }
   // The build is build/scripts/ of the repository, whose root holds tasks/.
   const root = fileURLToPath(new URL("../..", import.meta.url));
-  for (const line of writeSet(folder, root)) console.log(line);
+  const lines = writeSet(folder, root);
+  if (list !== undefined) writeFileSync(list, listOf(lines));
+  for (const line of lines) console.log(line);
 }
