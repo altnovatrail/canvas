@@ -5,10 +5,10 @@
 // each at four densities of points, and spec's test vectors hold some of them (R94 spec). A module
 // of the tests alone: the build leaves it out (tsconfig.build.json).
 
+import { type Density, fontOf, Hand, random } from "../eval/hand.js";
 import { type Cell, cellsOf } from "./boxes.js";
 import { pageOf } from "./page.js";
 import { line, PAGES } from "./pages.fixture.js";
-import { type Density, DIGITS, type Font, Hand, random } from "./sheets.fixture.js";
 import type { Work } from "./work.js";
 
 /**
@@ -39,16 +39,6 @@ export const DENSITIES: readonly (Density | undefined)[] = [
   { step: 2, wobble: 0.5, seed: 12 },
   { step: 3, wobble: 0.5, seed: 13 },
 ];
-
-/** A font `height` units high, of the proportions of the digits of the synthetic sheets. */
-function fontOf(height: number): Font {
-  return {
-    ...DIGITS,
-    height,
-    width: Math.round((height * DIGITS.width) / DIGITS.height),
-    advance: Math.round((height * DIGITS.advance) / DIGITS.height),
-  };
-}
 
 /** How text is set in a box: its height, and its middle moved off the box's middle. */
 interface Setting {
