@@ -32,17 +32,17 @@
   },
   "devDependencies": {
     "@altnovatrail/contracts": "0.9.8",
-    "@biomejs/biome": "2.6.4",
+    "@biomejs/biome": "2.6.5",
     "@bufbuild/protobuf": "2.16.0",
     "@iconify-json/material-symbols": "1.2.97",
     "@iconify/utils": "3.1.7",
     "@types/node": "24.19.2",
     "@types/rbush": "4.0.0",
-    "@vitest/browser-playwright": "5.0.5",
-    "@vitest/coverage-v8": "5.0.5",
+    "@vitest/browser-playwright": "5.1.0",
+    "@vitest/coverage-v8": "5.1.0",
     "playwright": "1.64.1",
     "typescript": "7.0.2",
     "vite": "8.3.5",
-    "vitest": "5.0.5"
+    "vitest": "5.1.0"
   }
 }
