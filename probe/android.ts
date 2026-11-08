@@ -10,8 +10,9 @@
 // taps what a person would tap, by the bounds uiautomator gives each node on the screen, and it
 // reads the page's report through Chrome's DevTools socket, which adb forwards to port 9222. Each
 // step leaves a screenshot and, where the page could be read, its report in the folder, which the
-// workflow keeps as its artifact. It needs adb (ADB, or adb on the path) and the server's port
-// (PORT, 8080 by default); it installs nothing and asks nothing of the network but the emulator.
+// workflow keeps as its artifact; a step that fails fails the run. It needs adb (ADB, or adb on
+// the path) and the server's port (PORT, 8080 by default); it installs nothing and asks nothing of
+// the network but the emulator.
 
 import { execFileSync } from "node:child_process";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
@@ -28,6 +29,10 @@ const MAIN = `${CHROME}/com.google.android.apps.chrome.Main`;
 /** The flags that keep Chrome's first run from standing in the way, as Chrome reads them on a
  * debuggable image from this file. */
 const FLAGS = "_ --disable-fre --no-default-browser-check --no-first-run";
+/** Answers that let a download go on or put Chrome's offers away, as a person would give them:
+ * Chrome may ask before it downloads a file of some types or over plain HTTP, and on its first run
+ * it offers notifications. */
+const AWAY = /^(Download|Download anyway|Keep|No thanks|Don.t allow|Not now|Got it)$/i;
 
 /** A node of uiautomator's dump: its text, its description and its bounds on the screen. */
 export interface Node {
@@ -53,21 +58,27 @@ export function nodes(xml: string): Node[] {
   return found;
 }
 
-/** The text of an attribute of XML, its entities read. */
-function entities(text: string): string {
-  return text
-    .replaceAll("&lt;", "<")
-    .replaceAll("&gt;", ">")
-    .replaceAll("&quot;", '"')
-    .replaceAll("&apos;", "'")
-    .replaceAll("&amp;", "&");
+/** The text of an attribute of XML, its entities read: the five named ones and the numeric ones
+ * uiautomator writes for a line break or a quote. */
+export function entities(text: string): string {
+  const named: Record<string, string> = { lt: "<", gt: ">", quot: '"', apos: "'", amp: "&" };
+  return text.replace(/&(#x[0-9a-f]+|#\d+|lt|gt|quot|apos|amp);/gi, (whole, name: string) => {
+    if (name[0] !== "#") return named[name.toLowerCase()] ?? whole;
+    const code =
+      name[1] === "x" || name[1] === "X"
+        ? Number.parseInt(name.slice(2), 16)
+        : Number(name.slice(1));
+    return String.fromCodePoint(code);
+  });
 }
 
-/** The first node whose text or description matches, and is not empty on the screen. */
-export function find(all: readonly Node[], pattern: RegExp): Node | undefined {
+/** The first node on the screen — not empty there — whose text or description matches: a pattern,
+ * or a text that must be whole. */
+export function find(all: readonly Node[], match: RegExp | string): Node | undefined {
+  const fits = (value: string) => (typeof match === "string" ? value === match : match.test(value));
   return all.find(
     ({ text, description, bounds: [x1, y1, x2, y2] }) =>
-      (pattern.test(text) || pattern.test(description)) && x2 > x1 && y2 > y1,
+      (fits(text) || fits(description)) && x2 > x1 && y2 > y1,
   );
 }
 
@@ -82,6 +93,13 @@ export function middle({ bounds: [x1, y1, x2, y2] }: Node): [number, number] {
   return [Math.round((x1 + x2) / 2), Math.round((y1 + y2) / 2)];
 }
 
+/** Whether the window that has the focus is Chrome's, as `dumpsys window` names it: a cold start
+ * of Chrome leaves the launcher on the screen for a while. */
+export function focusedOn(dump: string, app: string): boolean {
+  const focus = /mCurrentFocus=Window\{[^}]*\}/.exec(dump)?.[0] ?? "";
+  return focus.includes(`${app}/`);
+}
+
 /** What the run found, step by step: what it did, and what it could not. */
 interface Step {
   readonly step: string;
@@ -89,10 +107,21 @@ interface Step {
   readonly note: string;
 }
 
+/** A DevTools target of Chrome, as /json lists it. */
+interface Target {
+  readonly id: string;
+  readonly type: string;
+  readonly title: string;
+  readonly url: string;
+  readonly webSocketDebuggerUrl?: string;
+}
+
 const folder = process.argv[2] ?? "";
 const adbPath = process.env.ADB ?? "adb";
 const port = process.env.PORT ?? "8080";
 const steps: Step[] = [];
+/** The DevTools targets of the probe already found: a later step looks for a new one. */
+const seen = new Set<string>();
 let shots = 0;
 
 function log(line: string): void {
@@ -100,12 +129,8 @@ function log(line: string): void {
   appendFileSync(join(folder, "log.txt"), `${line}\n`);
 }
 
-function adb(...args: string[]): string {
-  return execFileSync(adbPath, args, { encoding: "utf8", maxBuffer: 1 << 26 });
-}
-
 function shell(command: string): string {
-  return adb("shell", command);
+  return execFileSync(adbPath, ["shell", command], { encoding: "utf8", maxBuffer: 1 << 26 });
 }
 
 function screenshot(name: string): void {
@@ -132,11 +157,9 @@ function words(all: readonly Node[]): string {
   );
 }
 
-/** Whether Chrome's window has the focus: a cold start of Chrome leaves the launcher on the screen
- * for a while. */
 function chromeFocused(): boolean {
   try {
-    return /mCurrentFocus=.*com\.android\.chrome/.test(shell("dumpsys window windows"));
+    return focusedOn(shell("dumpsys window"), CHROME);
   } catch {
     return false;
   }
@@ -152,20 +175,21 @@ async function settle(seconds: number): Promise<void> {
     }
     await sleep(1000);
   }
-  log("screen still without words");
+  log("screen: Chrome without the focus, or without words");
 }
 
+/** Tap a node in its middle, and say so in the log. */
 function tap(node: Node): void {
   const [x, y] = middle(node);
+  log(`tap ${JSON.stringify(node.text || node.description)}`);
   shell(`input tap ${x} ${y}`);
 }
 
 /** Tap the first node that matches within the time, and say whether there was one. */
-async function tapWhen(pattern: RegExp, seconds: number): Promise<boolean> {
+async function tapWhen(match: RegExp | string, seconds: number): Promise<boolean> {
   for (let i = 0; i < seconds; i++) {
-    const node = find(screen(), pattern);
+    const node = find(screen(), match);
     if (node) {
-      log(`tap ${JSON.stringify(node.text || node.description)}`);
       tap(node);
       await sleep(1000);
       return true;
@@ -173,14 +197,6 @@ async function tapWhen(pattern: RegExp, seconds: number): Promise<boolean> {
     await sleep(1000);
   }
   return false;
-}
-
-/** A DevTools target of Chrome, as /json lists it. */
-interface Target {
-  readonly type: string;
-  readonly title: string;
-  readonly url: string;
-  readonly webSocketDebuggerUrl?: string;
 }
 
 async function targets(): Promise<Target[]> {
@@ -192,44 +208,50 @@ async function targets(): Promise<Target[]> {
   }
 }
 
-/** The probe's page among Chrome's targets: the newest one of its title. */
+/** A page of the probe that no step has found before: the one the step just opened. */
 async function probePage(seconds: number): Promise<Target | undefined> {
   for (let i = 0; i < seconds; i++) {
     const page = (await targets()).find(
-      ({ type, title, webSocketDebuggerUrl }) =>
-        type === "page" && title === TITLE && webSocketDebuggerUrl,
+      ({ id, type, title, webSocketDebuggerUrl }) =>
+        type === "page" && title === TITLE && webSocketDebuggerUrl && !seen.has(id),
     );
-    if (page) return page;
+    if (page) {
+      seen.add(page.id);
+      return page;
+    }
     await sleep(1000);
   }
   return undefined;
 }
 
-/** Evaluate an expression in a page, by one message of the DevTools protocol. */
+/** Evaluate an expression in a page, by one message of the DevTools protocol, within ten seconds:
+ * a tab that closes or a socket that drops fails it rather than leaving it waiting. */
 async function evaluate(page: Target, expression: string): Promise<unknown> {
   const socket = new WebSocket(page.webSocketDebuggerUrl ?? "");
+  let timer: NodeJS.Timeout | undefined;
   try {
-    await new Promise((open, fail) => {
-      socket.onopen = open;
-      socket.onerror = fail;
-    });
-    const answer = new Promise<unknown>((done, fail) => {
+    return await new Promise<unknown>((done, fail) => {
+      timer = setTimeout(() => fail(new Error("no answer in 10 s")), 10_000);
+      socket.onerror = () => fail(new Error("the socket failed"));
+      socket.onclose = () => fail(new Error("the socket closed"));
+      socket.onopen = () =>
+        socket.send(
+          JSON.stringify({
+            id: 1,
+            method: "Runtime.evaluate",
+            params: { expression, returnByValue: true },
+          }),
+        );
       socket.onmessage = (event) => {
         const message = JSON.parse(String(event.data));
         if (message.id !== 1) return;
-        if (message.error || message.result?.exceptionDetails) fail(new Error(event.data));
+        if (message.error || message.result?.exceptionDetails) fail(new Error(String(event.data)));
         else done(message.result?.result?.value);
       };
     });
-    socket.send(
-      JSON.stringify({
-        id: 1,
-        method: "Runtime.evaluate",
-        params: { expression, returnByValue: true },
-      }),
-    );
-    return await answer;
   } finally {
+    clearTimeout(timer);
+    socket.onclose = null;
     socket.close();
   }
 }
@@ -245,7 +267,9 @@ async function report(page: Target, name: string): Promise<Record<string, unknow
         return parsed;
       }
     } catch (error) {
-      log(`report ${name}: ${String(error).slice(0, 200)}`);
+      log(
+        `report ${name}: ${error instanceof Error ? error.message : String(error)}`.slice(0, 200),
+      );
     }
     await sleep(1000);
   }
@@ -271,42 +295,31 @@ async function download(file: string): Promise<Target | undefined> {
   return page;
 }
 
-/** Answers that let a download go on or put Chrome's offers away, as a person would give them:
- * Chrome asks before it downloads a file of some types or over plain HTTP, and on its first run
- * it offers notifications. */
-const AWAY = /^(Download|Download anyway|Keep|No thanks|Don.t allow|Not now|Got it)$/i;
-
-/** Open a downloaded file the way a person would: by Open in Chrome's message of the download, or
- * else by its name in Chrome's list of downloads, which Chrome's menu opens when Chrome shows
- * neither by itself. Say which, or "" when none came. */
+/** Open a downloaded file the way a person would: by its name in Chrome's list of downloads, or
+ * else by Open in Chrome's message of the download, which names no file and so is the second
+ * choice; Chrome's menu opens the list when Chrome shows neither. Say which, or "" when none came. */
 async function openDownload(file: string): Promise<string> {
   for (let i = 0; i < 60; i++) {
     const all = screen();
-    if (i === 15 || i === 35) {
-      log("no message and no list of the download: Chrome's menu, then Downloads");
-      const menu = find(all, /^Customize and control Google Chrome$/);
-      if (menu) {
-        tap(menu);
-        await tapWhen(/^Downloads$/, 5);
-        continue;
-      }
-    }
-    const open = find(all, /^Open$/);
-    if (open) {
-      tap(open);
-      return "Open in the message of the download";
+    const named = find(all, file);
+    if (named) {
+      tap(named);
+      return "its name in Chrome's list of downloads";
     }
     const away = find(all, AWAY);
+    const open = find(all, /^Open$/);
     if (away) {
-      log(`tap ${JSON.stringify(away.text || away.description)}`);
       tap(away);
-    } else {
-      const named = all.find(
-        ({ text, bounds: [x1, y1, x2, y2] }) => text === file && x2 > x1 && y2 > y1,
-      );
-      if (named) {
-        tap(named);
-        return "its name in Chrome's list of downloads";
+    } else if (open) {
+      tap(open);
+      return "Open in the message of the download";
+    } else if (i === 15 || i === 35) {
+      const menu = find(all, "Customize and control Google Chrome");
+      if (menu) {
+        log("no message and no list of the download: Chrome's menu, then Downloads");
+        tap(menu);
+        await tapWhen("Downloads", 5);
+        continue;
       }
     }
     await sleep(1000);
@@ -324,7 +337,6 @@ async function warmUp(): Promise<void> {
   for (let i = 0; i < 30 && quiet < 3; i++) {
     const away = find(screen(), AWAY);
     if (away) {
-      log(`tap ${JSON.stringify(away.text || away.description)}`);
       tap(away);
       quiet = 0;
     } else {
@@ -333,6 +345,47 @@ async function warmUp(): Promise<void> {
     await sleep(1000);
   }
   screenshot("warm");
+}
+
+/** How many events of a pointer's type a report counted. */
+function events(seen: Record<string, unknown> | undefined, type: string): number {
+  const pointers = (seen?.pointers ?? {}) as Record<string, { events?: number }>;
+  return pointers[type]?.events ?? 0;
+}
+
+/** The file with the policy: its report, the storage, the pointers and the saved report. */
+async function withPolicy(page: Target): Promise<void> {
+  record("read the report of the file with the policy", Boolean(await report(page, "csp-opened")));
+  record("tap Write storage", await tapWhen("Write storage", 5));
+  const pad = find(screen(), /^Move a pen/);
+  if (!pad) {
+    record("find the pad on the screen", false);
+    return;
+  }
+  // Within the middle of the pad: a swipe that starts near the screen's edge is Android's gesture
+  // of going back, which closes the tab.
+  const [left, top, right, bottom] = inner(pad);
+  shell(`input touchscreen swipe ${left} ${top} ${right} ${bottom} 600`);
+  let stylus = true;
+  try {
+    shell(`input stylus swipe ${left} ${bottom} ${right} ${top} 600`);
+  } catch {
+    stylus = false;
+  }
+  await sleep(1000);
+  screenshot("csp-drawn");
+  const drawn = await report(page, "csp-drawn");
+  record("the page counted the touchscreen", events(drawn, "touch") > 0);
+  record(
+    "the page counted the stylus as a pen",
+    !stylus || events(drawn, "pen") > 0,
+    stylus ? "" : "the input tool has no stylus source",
+  );
+  const saved = await tapWhen("Save report", 5);
+  await tapWhen(AWAY, 5);
+  record("tap Save report", saved);
+  await sleep(2000);
+  screenshot("csp-saved");
 }
 
 async function main(): Promise<void> {
@@ -360,36 +413,7 @@ async function main(): Promise<void> {
   await warmUp();
 
   const csp = await download(FILES[0]);
-  let first = "";
-  if (csp) {
-    first = csp.url;
-    record("read the report of the file with the policy", Boolean(await report(csp, "csp-opened")));
-    await tapWhen(/^Write storage$/, 5);
-    const pad = find(screen(), /^Move a pen/);
-    if (pad) {
-      // Within the middle of the pad: a swipe that starts near the screen's edge is Android's
-      // gesture of going back, which closes the tab.
-      const [left, top, right, bottom] = inner(pad);
-      shell(`input touchscreen swipe ${left} ${top} ${right} ${bottom} 600`);
-      let stylus = true;
-      try {
-        shell(`input stylus swipe ${left} ${bottom} ${right} ${top} 600`);
-      } catch {
-        stylus = false;
-      }
-      record("draw with the touchscreen and the stylus", true, stylus ? "" : "no stylus source");
-    } else {
-      record("find the pad on the screen", false);
-    }
-    await sleep(1000);
-    screenshot("csp-drawn");
-    await report(csp, "csp-drawn");
-    const saved = await tapWhen(/^Save report$/, 5);
-    await tapWhen(AWAY, 5);
-    record("tap Save report", saved);
-    await sleep(2000);
-    screenshot("csp-saved");
-  }
+  if (csp) await withPolicy(csp);
 
   const open = await download(FILES[1]);
   if (open) {
@@ -401,8 +425,8 @@ async function main(): Promise<void> {
 
   shell(`am force-stop ${CHROME}`);
   await sleep(2000);
-  if (first) {
-    shell(`am start -a android.intent.action.VIEW -d '${first}' -t text/html -n ${MAIN}`);
+  if (csp) {
+    shell(`am start -a android.intent.action.VIEW -d '${csp.url}' -t text/html -n ${MAIN}`);
     await settle(60);
     screenshot("csp-after-restart");
     const again = await probePage(40);
@@ -415,21 +439,26 @@ async function main(): Promise<void> {
   const downloads = shell("ls -l /sdcard/Download");
   writeFileSync(join(folder, "downloads.txt"), downloads);
   log(`downloads:\n${downloads}`);
-  writeFileSync(join(folder, "steps.json"), `${JSON.stringify(steps, null, 2)}\n`);
-  if (!steps.some(({ step, ok }) => ok && step.startsWith("read the report"))) {
-    throw new Error("no report of the probe could be read");
+  const failed = steps.filter(({ ok }) => !ok);
+  if (failed.length > 0) {
+    throw new Error(
+      `${failed.length} step(s) failed: ${failed.map(({ step }) => step).join("; ")}`,
+    );
   }
 }
 
 if (import.meta.main) {
-  main().catch((error) => {
-    log(`error: ${String(error)}`);
-    try {
-      screenshot("error");
-    } catch {
-      // No screen to take: the error above says why.
-    }
-    writeFileSync(join(folder, "steps.json"), `${JSON.stringify(steps, null, 2)}\n`);
-    process.exit(1);
-  });
+  main()
+    .catch((error) => {
+      log(`error: ${String(error)}`);
+      try {
+        screenshot("error");
+      } catch {
+        // No screen to take: the error above says why.
+      }
+      process.exitCode = 1;
+    })
+    .finally(() => {
+      if (folder) writeFileSync(join(folder, "steps.json"), `${JSON.stringify(steps, null, 2)}\n`);
+    });
 }

@@ -11,6 +11,8 @@ on:
     paths:
       - "probe/**"
       - ".github/workflows/emulators.yml"
+      # The toolchain stage the job runs the probe in.
+      - ".devcontainer/Dockerfile"
   workflow_dispatch:
 
 permissions:

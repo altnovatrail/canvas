@@ -3,7 +3,7 @@
 // itself is the workflow's, on a runner with an emulator.
 
 import { expect, test } from "vitest";
-import { find, inner, middle, nodes } from "./android.ts";
+import { entities, find, focusedOn, inner, middle, nodes } from "./android.ts";
 
 const DUMP = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0">
 <node index="0" text="" resource-id="" class="android.widget.FrameLayout" content-desc="" bounds="[0,0][1600,2560]">
@@ -35,4 +35,28 @@ test("a swipe keeps to the middle half of a node, clear of the screen's edges", 
   expect(inner({ text: "", description: "", bounds: [32, 430, 2528, 950] })).toEqual([
     656, 560, 1904, 820,
   ]);
+});
+
+test("numeric entities are read too, as uiautomator writes a line break or a quote", () => {
+  expect(entities("a&#10;b&#x27;c&amp;&#39;&bogus;")).toBe("a\nb'c&'&bogus;");
+  expect(nodes('<node text="t29-probe-csp.html&#10;9.26 kB" bounds="[0,0][9,9]" />')[0]?.text).toBe(
+    "t29-probe-csp.html\n9.26 kB",
+  );
+});
+
+test("a text to find must be whole, where a pattern may match a part", () => {
+  const all = nodes(DUMP);
+  expect(find(all, "Write storage")?.bounds).toEqual([40, 900, 360, 1000]);
+  expect(find(all, "Write")).toBeUndefined();
+  expect(find(all, "Open")?.description).toBe("Open");
+});
+
+test("Chrome has the focus only when dumpsys window names its window as the current focus", () => {
+  const chrome =
+    "  mCurrentFocus=Window{9f2 u0 com.android.chrome/org.chromium.chrome.browser.ChromeTabbedActivity}\n  mFocusedApp=ActivityRecord{1 u0 com.android.chrome/.Main}";
+  const launcher =
+    "  mCurrentFocus=Window{3a1 u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}\n  mFocusedApp=ActivityRecord{2 u0 com.android.chrome/.Main}";
+  expect(focusedOn(chrome, "com.android.chrome")).toBe(true);
+  expect(focusedOn(launcher, "com.android.chrome")).toBe(false);
+  expect(focusedOn("", "com.android.chrome")).toBe(false);
 });
