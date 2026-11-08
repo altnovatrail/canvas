@@ -52,8 +52,12 @@ async function command(method: string, path: string, body?: unknown): Promise<un
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(60_000),
   });
-  const answer = (await response.json()) as { value?: unknown };
-  if (!response.ok) throw new Error(`${method} ${path}: ${response.status}`);
+  const answer = (await response.json()) as { value?: { error?: unknown } };
+  if (!response.ok) {
+    // WebDriver's name of the error, one of the standard's few words, not the message.
+    const name = typeof answer.value?.error === "string" ? answer.value.error : "";
+    throw new Error(`${method} ${path}: ${response.status} ${/^[a-z ]+$/.test(name) ? name : ""}`);
+  }
   return answer.value;
 }
 
@@ -69,9 +73,26 @@ async function stop(): Promise<void> {
   session = "";
 }
 
-async function go(url: string): Promise<void> {
-  await command("POST", `/session/${session}/url`, { url });
+let shots = 0;
+
+/** Go to an address, and leave a screenshot of what Safari shows and the scheme it shows it by. */
+async function go(url: string, name: string): Promise<void> {
+  try {
+    await command("POST", `/session/${session}/url`, { url });
+  } catch (error) {
+    record(`go to ${name}`, false, String(error));
+  }
   await sleep(3000);
+  shots += 1;
+  const png = (await command("GET", `/session/${session}/screenshot`)) as string;
+  writeFileSync(
+    join(folder, `${String(shots).padStart(2, "0")}-${name}.png`),
+    Buffer.from(png, "base64"),
+  );
+  const at = String(await command("GET", `/session/${session}/url`));
+  console.log(
+    `${name}: Safari shows ${at.startsWith("file:") ? "a file:// page" : at.startsWith("http:") ? "an http:// page" : "another page"}`,
+  );
 }
 
 async function run(script: string): Promise<unknown> {
@@ -112,7 +133,7 @@ async function report(name: string): Promise<Record<string, unknown> | undefined
 
 /** Safari downloads a file of the probe; say whether it came into the Downloads folder. */
 async function download(file: string): Promise<boolean> {
-  await go(`http://localhost:${port}/${file}`);
+  await go(`http://localhost:${port}/${file}`, `download-${file}`);
   for (let i = 0; i < 20; i++) {
     if (existsSync(join(downloads, file))) return true;
     await sleep(1000);
@@ -151,22 +172,26 @@ async function main(): Promise<void> {
   await start();
   for (const file of FILES) record(`Safari downloads ${file} into Downloads`, await download(file));
 
-  await go(fileAddress(downloads, FILES[0]));
+  await go(fileAddress(downloads, FILES[0]), "csp-opened");
   record("read the report of the file with the policy", Boolean(await report("csp-opened")));
   record("click Write storage", await click("store"));
-  await move();
+  try {
+    await move();
+  } catch (error) {
+    record("move the mouse over the pad", false, String(error));
+  }
   const drawn = await report("csp-drawn");
   const mouse = (drawn?.pointers as Record<string, { events?: number }> | undefined)?.mouse;
   record("the page counted the mouse", (mouse?.events ?? 0) > 0);
   record("click Save report", await click("save"));
   await sleep(3000);
 
-  await go(fileAddress(downloads, FILES[1]));
+  await go(fileAddress(downloads, FILES[1]), "open-opened");
   record("read the report of the file without the policy", Boolean(await report("open-opened")));
 
   await stop();
   await start();
-  await go(fileAddress(downloads, FILES[0]));
+  await go(fileAddress(downloads, FILES[0]), "csp-new-session");
   record("read the report in a new session", Boolean(await report("csp-new-session")));
   await stop();
 

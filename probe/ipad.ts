@@ -127,12 +127,25 @@ async function call(method: string, path: string, body?: unknown): Promise<unkno
   return answer.value;
 }
 
-/** A session on an app, which WebDriverAgent starts or brings to the front. */
+/** Bring an app to the front. The first call opens WebDriverAgent's one session; a later one
+ * activates the app in it. A new session would launch the app again, and a launch of Safari stops
+ * the download under way. */
 async function open(bundleId: string): Promise<void> {
-  await call("POST", "/session", {
-    capabilities: { alwaysMatch: { bundleId, shouldWaitForQuiescence: false } },
-  });
+  if (session) {
+    await call("POST", `/session/${session}/wda/apps/activate`, { bundleId });
+  } else {
+    await call("POST", "/session", {
+      capabilities: {
+        alwaysMatch: { bundleId, shouldWaitForQuiescence: false, forceAppLaunch: false },
+      },
+    });
+  }
   await sleep(3000);
+}
+
+/** Escape a name for a pattern. */
+function literal(name: string): string {
+  return name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 async function screen(): Promise<Element[]> {
@@ -204,15 +217,20 @@ async function download(file: string): Promise<void> {
         ? "Download"
         : "none";
   record(`download ${file} in Safari`, await tapWhen(/^Download$/, 10));
+  // Nine kilobytes from the runner take a moment, and Safari must not leave the page meanwhile.
+  await sleep(6000);
   await look(`downloaded-${file}`);
 }
 
 /** Open a downloaded file from Safari's list of downloads, and say what its page shows. */
 async function fromSafari(file: string, name: string): Promise<string> {
   await open(SAFARI);
-  const opened =
-    (await tapWhen(/^Downloads$/, 10)) &&
-    (await tapWhen(new RegExp(`^${file.replace(/\./g, "\\.")}`), 10));
+  const listed = await tapWhen("Downloads", 10);
+  const item = locate(await look(`${name}-list`), new RegExp(`^${literal(file)}, `));
+  if (item?.words.some((word) => word.includes("Progress"))) {
+    findings[`${file} in Safari's downloads`] = "not finished";
+  }
+  const opened = listed && (await tapWhen(file, 10));
   record(`open ${file} from Safari's downloads`, opened);
   const state = opened ? await pageState(20) : "unseen";
   await look(name);
@@ -224,9 +242,11 @@ async function fromSafari(file: string, name: string): Promise<string> {
 async function fromFiles(file: string, name: string): Promise<string> {
   await open(FILES_APP);
   await tapWhen(/^Browse$/, 10);
-  const place = (await tapWhen(/^On My iPad$/, 10)) && (await tapWhen(/^Downloads$/, 10));
-  const base = file.replace(/\.html$/, "");
-  const opened = place && (await tapWhen(new RegExp(`^${base.replace(/\./g, "\\.")}`), 10));
+  // The folder and the file by their cells: a tap on a name in the icons starts renaming it.
+  const place = (await tapWhen("On My iPad", 10)) && (await tapWhen("Downloads, Folder", 10));
+  await look(`${name}-folder`);
+  const base = literal(file.replace(/\.html$/, ""));
+  const opened = place && (await tapWhen(new RegExp(`^${base}(\\.html)?, `), 10));
   record(`open ${file} from the Files app`, opened);
   const state = opened ? await pageState(20) : "unseen";
   await look(name);
