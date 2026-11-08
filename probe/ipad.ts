@@ -265,9 +265,9 @@ async function fromFiles(file: string, name: string): Promise<string> {
   await open(FILES_APP);
   await press(labelled("Browse"), 10);
   // The folder and the file by their cells: a tap on a name in the icons starts renaming it.
-  const place =
-    (await press(labelled("On My iPad"), 10)) &&
-    (await press(labelled("Downloads", "BEGINSWITH", CELL), 10));
+  // The Files app may open where it was left, On My iPad already: then there is no place to press.
+  await press(labelled("On My iPad"), 3);
+  const place = await press(labelled("Downloads", "BEGINSWITH", CELL), 10);
   await look(`${name}-folder`);
   const base = file.replace(/\.html$/, "");
   const opened = place && (await press(labelled(base, "BEGINSWITH", CELL), 10));
