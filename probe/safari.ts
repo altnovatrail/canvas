@@ -10,8 +10,8 @@
 // shows what Safari makes of it; the same file opens once more from a folder of its own. The
 // page cannot be read or pressed: AppleScript, the one way into a Safari no WebDriver drives, asks
 // the runner's user for a consent nobody gives. What it found goes into build/probe-safari, which
-// the workflow keeps as its artifact. It needs safaridriver's address (SAFARIDRIVER) and the server's
-// port (PORT); it installs nothing.
+// the workflow keeps as its artifact. safaridriver answers on port 4444 and the server on 8080 of
+// the runner; it installs nothing.
 
 import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs";
@@ -25,13 +25,14 @@ const FILES = [CSP, OPEN] as const;
 
 /** The names among a folder's files that a saved report of the probe has. */
 export function reports(names: readonly string[]): string[] {
-  return names.filter((name) => /^report-.*\.json$/.test(name)).sort();
+  return names.filter((name) => /^report-.*\.json$/.test(name)).sort((a, b) => a.localeCompare(b));
 }
 
 /** Where the run leaves what it found: the folder the workflow keeps as its artifact. */
 const folder = "build/probe-safari";
-const driver = process.env.SAFARIDRIVER ?? "http://127.0.0.1:4444";
-const port = process.env.PORT ?? "8080";
+/** safaridriver's port on the runner, and the server's: the workflow starts both there. */
+const driver = "http://127.0.0.1:4444";
+const port = "8080";
 const downloads = join(homedir(), "Downloads");
 const steps: { step: string; ok: boolean; note: string }[] = [];
 const findings: Record<string, string> = {};
@@ -45,6 +46,8 @@ function record(step: string, ok: boolean, note = ""): void {
 
 /** One command of W3C WebDriver, its `value` back. */
 async function command(method: string, path: string, body?: unknown): Promise<unknown> {
+  // A path of WebDriver's own words and ids only: an id from an answer can lead nowhere else.
+  if (!/^\/[\w\-./]*$/.test(path)) throw new Error("not a path of WebDriver");
   const response = await fetch(`${driver}${path}`, {
     method,
     headers: { "Content-Type": "application/json" },
@@ -70,13 +73,13 @@ async function download(file: string): Promise<boolean> {
 function shot(name: string): void {
   shots += 1;
   const file = join(folder, `${String(shots).padStart(2, "0")}-${name}.png`);
-  execFileSync("screencapture", ["-x", file], { stdio: "ignore" });
+  execFileSync("/usr/sbin/screencapture", ["-x", file], { stdio: "ignore" });
 }
 
 /** Open a file as Finder opens it, and leave what Safari shows; say whether there was a file. */
 async function finder(path: string, name: string): Promise<boolean> {
   if (!existsSync(path)) return false;
-  execFileSync("open", ["-a", "Safari", path]);
+  execFileSync("/usr/bin/open", ["-a", "Safari", path]);
   await sleep(8000);
   shot(name);
   return true;
@@ -112,7 +115,7 @@ async function main(): Promise<void> {
     await finder(join(elsewhere, FILES[0]), "csp-from-another-folder"),
   );
 
-  const names = readdirSync(downloads).sort();
+  const names = readdirSync(downloads).sort((a, b) => a.localeCompare(b));
   writeFileSync(join(folder, "downloads.json"), `${JSON.stringify(names, null, 1)}\n`);
   findings["saved reports in Downloads"] = reports(names).join(", ") || "none";
   const empty = readdirSync(folder).filter(

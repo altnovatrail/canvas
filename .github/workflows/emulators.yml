@@ -172,9 +172,6 @@ jobs:
           { sw_vers; /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" /Applications/Safari.app/Contents/Info.plist; } > build/probe-safari/versions.txt
 
       - name: Probe
-        env:
-          SAFARIDRIVER: http://127.0.0.1:4444
-          PORT: "8080"
         run: node probe/safari.ts
 
       - name: Reports

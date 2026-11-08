@@ -13,7 +13,7 @@ mkdir -p "$out"
 wda_tag=v16.15.3
 wda_commit=02cb92f0e93c8b021443bcbb8eeb80932c113220
 git clone --quiet --depth 1 --branch "$wda_tag" https://github.com/appium/WebDriverAgent.git build/wda-src
-test "$(git -C build/wda-src rev-parse HEAD)" = "$wda_commit"
+[[ "$(git -C build/wda-src rev-parse HEAD)" == "$wda_commit" ]]
 
 # The newest runtime of the version, and the iPad on it (probe/simulator.ts).
 runtime=$(xcrun simctl list runtimes --json | node probe/simulator.ts runtime "$IOS")
@@ -35,7 +35,7 @@ for try in 1 2 3; do
       -destination "id=$udid" -derivedDataPath build/wda build-for-testing; then
     break
   fi
-  test "$try" -lt 3
+  [[ "$try" -lt 3 ]]
   sleep 30
 done
 xcodebuild -project build/wda-src/WebDriverAgent.xcodeproj -scheme WebDriverAgentRunner \
@@ -46,4 +46,4 @@ for _ in $(seq 1 120); do
 done
 curl --silent --fail http://127.0.0.1:8100/status > /dev/null
 
-UDID="$udid" WDA=http://127.0.0.1:8100 PORT=8080 node probe/ipad.ts
+UDID="$udid" node probe/ipad.ts

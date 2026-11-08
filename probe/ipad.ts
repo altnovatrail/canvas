@@ -12,8 +12,8 @@
 // frames WebDriverAgent gives each element of the accessibility tree, and reads the page's report
 // from that tree. Each step leaves a screenshot and its tree's words in build/probe-ipad, which the
 // workflow keeps as its artifact; a step the driver cannot do fails the run. It needs the
-// simulator's id (UDID, the booted one by default), WebDriverAgent's address (WDA) and the
-// server's port (PORT); it installs nothing.
+// simulator's id (UDID, the booted one by default); WebDriverAgent answers on port 8100 and the
+// server on 8080 of the runner. It installs nothing.
 
 import { execFileSync } from "node:child_process";
 import { appendFileSync, copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
@@ -23,6 +23,8 @@ import { CSP, OPEN } from "./build.ts";
 
 /** The probe's files, by probe/build.ts's own names. */
 const FILES = [CSP, OPEN] as const;
+/** The system's xcrun, by its path: no other on the PATH stands in for it. */
+const XCRUN = "/usr/bin/xcrun";
 const SAFARI = "com.apple.mobilesafari";
 const BUTTON = "XCUIElementTypeButton";
 const CELL = "XCUIElementTypeCell";
@@ -110,9 +112,10 @@ export function reportOf(all: readonly Element[]): Record<string, unknown> | und
 
 /** Where the run leaves what it found: the folder the workflow keeps as its artifact. */
 const folder = "build/probe-ipad";
-const agent = process.env.WDA ?? "http://127.0.0.1:8100";
+/** WebDriverAgent's port on the runner, and the server's: probe/ipad.sh starts both there. */
+const agent = "http://127.0.0.1:8100";
 const udid = process.env.UDID ?? "booted";
-const port = process.env.PORT ?? "8080";
+const port = "8080";
 const steps: { step: string; ok: boolean; note: string }[] = [];
 const findings: Record<string, string> = {};
 let session = "";
@@ -133,6 +136,8 @@ function record(step: string, ok: boolean, note = ""): void {
 /** One call of WebDriverAgent's HTTP, its `value` back. A session and an app's launch wait for the
  * app, which a cold simulator takes long to start; the rest answer within seconds. */
 async function call(method: string, path: string, body?: unknown): Promise<unknown> {
+  // A path of the API's own words and ids only: an id from an answer can lead nowhere else.
+  if (!/^\/[\w\-./?=]*$/.test(path)) throw new Error("not a path of WebDriverAgent");
   const slow = path === "/session" || path.includes("/wda/apps/");
   const response = await fetch(`${agent}${path}`, {
     method,
@@ -184,7 +189,7 @@ async function screen(): Promise<Element[]> {
 function shot(name: string): void {
   shots += 1;
   const file = join(folder, `${String(shots).padStart(2, "0")}-${name}.png`);
-  execFileSync("xcrun", ["simctl", "io", udid, "screenshot", file], { stdio: "ignore" });
+  execFileSync(XCRUN, ["simctl", "io", udid, "screenshot", file], { stdio: "ignore" });
 }
 
 /** Leave a screenshot and the words the screen shows, and give the screen's elements. */
@@ -271,7 +276,9 @@ async function fromSafari(file: string, name: string): Promise<string> {
   // Safari hides its buttons while the address field has the keyboard.
   await press(labelled("Hide keyboard"), 2);
   const listed = await press(`name == ${quoted("DownloadsButton")}`, 10);
-  const item = locate(await look(`${name}-list`), new RegExp(`^${file.replace(/\./g, "\\.")}, `));
+  const item = (await look(`${name}-list`)).find(({ words }) =>
+    words.some((word) => word.startsWith(`${file}, `)),
+  );
   if (item?.words.some((word) => word.includes("Progress"))) {
     findings[`${file} in Safari's downloads`] = "not finished";
   }
@@ -333,7 +340,7 @@ async function onPage(file: string): Promise<void> {
  * there as the folder of the Files app's local storage, so that the question of the Files app is
  * still asked, and say so. */
 async function placed(): Promise<readonly string[]> {
-  const groups = execFileSync("xcrun", ["simctl", "get_app_container", udid, FILES_APP, "groups"], {
+  const groups = execFileSync(XCRUN, ["simctl", "get_app_container", udid, FILES_APP, "groups"], {
     encoding: "utf8",
   });
   const local = /group\.com\.apple\.FileProvider\.LocalStorage\s+(\S.*)$/m.exec(groups)?.[1];
