@@ -23,6 +23,8 @@ import { setTimeout as sleep } from "node:timers/promises";
 /** The probe's files, as probe/build.ts names them. */
 const FILES = ["t29-probe-csp.html", "t29-probe-open.html"] as const;
 const SAFARI = "com.apple.mobilesafari";
+const BUTTON = "XCUIElementTypeButton";
+const CELL = "XCUIElementTypeCell";
 const FILES_APP = "com.apple.DocumentsApp";
 /** The words of the page's first line, which say whether its script ran. */
 const RAN = "The page's script ran";
@@ -143,9 +145,15 @@ async function open(bundleId: string): Promise<void> {
   await sleep(3000);
 }
 
-/** Escape a name for a pattern. */
-function literal(name: string): string {
-  return name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** A text in a predicate of NSPredicate, in single quotes. */
+export function quoted(text: string): string {
+  return `'${text.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+}
+
+/** The predicate of an element by its label, whole or by its start, and, if named, its type. */
+export function labelled(label: string, how: "==" | "BEGINSWITH" = "==", type = ""): string {
+  const own = `label ${how} ${quoted(label)}`;
+  return type ? `type == ${quoted(type)} AND ${own}` : own;
 }
 
 async function screen(): Promise<Element[]> {
@@ -174,23 +182,34 @@ async function look(name: string): Promise<Element[]> {
   return all;
 }
 
-async function tap(element: Element): Promise<void> {
-  const [x, y] = centre(element);
-  log(`tap ${JSON.stringify(element.words[0] ?? element.type)} at ${x},${y}`);
-  await call("POST", `/session/${session}/wda/tap`, { x, y });
-  await sleep(1500);
-}
-
-/** Tap the first element that matches within the time, and say whether there was one. */
-async function tapWhen(match: RegExp | string, seconds: number): Promise<boolean> {
+/** Click the first element a predicate of NSPredicate finds, within the time, and say whether
+ * one was clicked. WebDriverAgent clicks an element where it can be hit and waits for it to be
+ * hittable, which a tap at a frame's middle does not: a dialog in the tree may not yet be on the
+ * screen, and the tap lands on what is under it. */
+async function press(predicate: string, seconds: number): Promise<boolean> {
   for (let i = 0; i < seconds; i++) {
-    const element = locate(await screen(), match);
-    if (element) {
-      await tap(element);
-      return true;
+    let found: Record<string, string>[] = [];
+    try {
+      found = (await call("POST", `/session/${session}/elements`, {
+        using: "predicate string",
+        value: predicate,
+      })) as Record<string, string>[];
+    } catch {
+      found = [];
+    }
+    for (const element of found) {
+      try {
+        await call("POST", `/session/${session}/element/${Object.values(element)[0]}/click`, {});
+        log(`click ${predicate}`);
+        await sleep(1500);
+        return true;
+      } catch {
+        // Not hittable: the next one, or the next second.
+      }
     }
     await sleep(1000);
   }
+  log(`nothing to click: ${predicate}`);
   return false;
 }
 
@@ -216,7 +235,7 @@ async function download(file: string): Promise<void> {
       : locate(asked, /^Download$/)
         ? "Download"
         : "none";
-  record(`download ${file} in Safari`, await tapWhen(/^Download$/, 10));
+  record(`download ${file} in Safari`, await press(labelled("Download", "==", BUTTON), 10));
   // Nine kilobytes from the runner take a moment, and Safari must not leave the page meanwhile.
   await sleep(6000);
   await look(`downloaded-${file}`);
@@ -225,12 +244,12 @@ async function download(file: string): Promise<void> {
 /** Open a downloaded file from Safari's list of downloads, and say what its page shows. */
 async function fromSafari(file: string, name: string): Promise<string> {
   await open(SAFARI);
-  const listed = await tapWhen("Downloads", 10);
-  const item = locate(await look(`${name}-list`), new RegExp(`^${literal(file)}, `));
+  const listed = await press(`name == ${quoted("DownloadsButton")}`, 10);
+  const item = locate(await look(`${name}-list`), new RegExp(`^${file.replace(/\./g, "\\.")}, `));
   if (item?.words.some((word) => word.includes("Progress"))) {
     findings[`${file} in Safari's downloads`] = "not finished";
   }
-  const opened = listed && (await tapWhen(file, 10));
+  const opened = listed && (await press(labelled(`${file}, `, "BEGINSWITH"), 10));
   record(`open ${file} from Safari's downloads`, opened);
   const state = opened ? await pageState(20) : "unseen";
   await look(name);
@@ -241,12 +260,14 @@ async function fromSafari(file: string, name: string): Promise<string> {
 /** Open a downloaded file from the Files app: Browse, On My iPad, Downloads, the file. */
 async function fromFiles(file: string, name: string): Promise<string> {
   await open(FILES_APP);
-  await tapWhen(/^Browse$/, 10);
+  await press(labelled("Browse"), 10);
   // The folder and the file by their cells: a tap on a name in the icons starts renaming it.
-  const place = (await tapWhen("On My iPad", 10)) && (await tapWhen("Downloads, Folder", 10));
+  const place =
+    (await press(labelled("On My iPad"), 10)) &&
+    (await press(labelled("Downloads", "BEGINSWITH", CELL), 10));
   await look(`${name}-folder`);
-  const base = literal(file.replace(/\.html$/, ""));
-  const opened = place && (await tapWhen(new RegExp(`^${base}(\\.html)?, `), 10));
+  const base = file.replace(/\.html$/, "");
+  const opened = place && (await press(labelled(base, "BEGINSWITH", CELL), 10));
   record(`open ${file} from the Files app`, opened);
   const state = opened ? await pageState(20) : "unseen";
   await look(name);
@@ -260,7 +281,7 @@ async function onPage(file: string): Promise<void> {
   record(`read the report of ${file}`, Boolean(first));
   if (first)
     writeFileSync(join(folder, `report-${file}.json`), `${JSON.stringify(first, null, 2)}\n`);
-  record(`tap Write storage in ${file}`, await tapWhen("Write storage", 5));
+  record(`tap Write storage in ${file}`, await press(labelled("Write storage"), 5));
   const pad = locate(await screen(), /^Move a pen/);
   if (pad) {
     const [x, y, w, h] = pad.frame;
@@ -277,8 +298,8 @@ async function onPage(file: string): Promise<void> {
     writeFileSync(join(folder, `report-${file}-drawn.json`), `${JSON.stringify(drawn, null, 2)}\n`);
   const touch = (drawn?.pointers as Record<string, { events?: number }> | undefined)?.touch;
   record(`the page counted the touch in ${file}`, (touch?.events ?? 0) > 0);
-  record(`tap Save report in ${file}`, await tapWhen("Save report", 5));
-  await tapWhen(/^Download$/, 5);
+  record(`tap Save report in ${file}`, await press(labelled("Save report"), 5));
+  await press(labelled("Download", "==", BUTTON), 5);
   await look(`${file}-saved`);
 }
 

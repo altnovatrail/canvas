@@ -3,7 +3,7 @@
 // report. The run itself is the workflow's, on a runner of macOS.
 
 import { expect, test } from "vitest";
-import { centre, elements, locate, reportOf, scriptState } from "./ipad.ts";
+import { centre, elements, labelled, locate, quoted, reportOf, scriptState } from "./ipad.ts";
 
 const REPORT = JSON.stringify({ probe: "2", file: "t29-probe-csp.html", settled: true }, null, 2);
 
@@ -81,4 +81,12 @@ test("the page's first line says whether its script ran, and the report is read 
   expect(
     reportOf(elements({ type: "XCUIElementTypeStaticText", value: '{ "probe": ' })),
   ).toBeUndefined();
+});
+
+test("a predicate names a label whole or by its start, quoted, and a type when one is given", () => {
+  expect(labelled("Download")).toBe("label == 'Download'");
+  expect(labelled("t29-probe-csp", "BEGINSWITH", "XCUIElementTypeCell")).toBe(
+    "type == 'XCUIElementTypeCell' AND label BEGINSWITH 't29-probe-csp'",
+  );
+  expect(quoted("it's a\\b")).toBe("'it\\'s a\\\\b'");
 });
