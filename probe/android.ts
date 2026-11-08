@@ -126,10 +126,20 @@ function words(all: readonly Node[]): string {
   );
 }
 
-/** Wait until Chrome shows more than its splash: a screen with words on it. */
+/** Whether Chrome's window has the focus: a cold start of Chrome leaves the launcher on the screen
+ * for a while. */
+function chromeFocused(): boolean {
+  try {
+    return /mCurrentFocus=.*com\.android\.chrome/.test(shell("dumpsys window windows"));
+  } catch {
+    return false;
+  }
+}
+
+/** Wait until Chrome has the focus and shows more than its splash: a screen with words on it. */
 async function settle(seconds: number): Promise<void> {
   for (let i = 0; i < seconds; i++) {
-    const all = screen();
+    const all = chromeFocused() ? screen() : [];
     if (all.some(({ text, description }) => text || description)) {
       log(`screen ${words(all).slice(0, 600)}`);
       return;
@@ -250,7 +260,7 @@ async function download(file: string): Promise<Target | undefined> {
   record(`open ${file} from Chrome's downloads`, how !== "", how);
   await settle(30);
   screenshot(`opened-${file}`);
-  const page = await probePage(15);
+  const page = await probePage(40);
   record(`find ${file} among Chrome's pages`, Boolean(page), page?.url ?? "");
   return page;
 }
@@ -299,6 +309,26 @@ async function openDownload(file: string): Promise<string> {
   return "";
 }
 
+/** Start Chrome once on an empty page and put its first run's offers away, so that the probe's
+ * steps meet the browser a volunteer has used before. */
+async function warmUp(): Promise<void> {
+  shell(`am start -a android.intent.action.VIEW -d about:blank -n ${MAIN}`);
+  await settle(120);
+  let quiet = 0;
+  for (let i = 0; i < 30 && quiet < 3; i++) {
+    const away = find(screen(), AWAY);
+    if (away) {
+      log(`tap ${JSON.stringify(away.text || away.description)}`);
+      tap(away);
+      quiet = 0;
+    } else {
+      quiet += 1;
+    }
+    await sleep(1000);
+  }
+  screenshot("warm");
+}
+
 async function main(): Promise<void> {
   if (!folder) {
     console.error("usage: node probe/android.ts <folder>");
@@ -321,6 +351,7 @@ async function main(): Promise<void> {
   shell(`echo "${FLAGS}" > /data/local/tmp/chrome-command-line`);
   shell(`am set-debug-app --persistent ${CHROME}`);
   shell(`am force-stop ${CHROME}`);
+  await warmUp();
 
   const csp = await download(FILES[0]);
   let first = "";
@@ -366,7 +397,7 @@ async function main(): Promise<void> {
     shell(`am start -a android.intent.action.VIEW -d '${first}' -t text/html -n ${MAIN}`);
     await settle(60);
     screenshot("csp-after-restart");
-    const again = await probePage(15);
+    const again = await probePage(40);
     record(
       "read the report after Chrome stopped",
       Boolean(again && (await report(again, "csp-after-restart"))),
