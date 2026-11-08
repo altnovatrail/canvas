@@ -80,7 +80,7 @@ function storageEntries() {
       const key = localStorage.key(i);
       if (key?.startsWith(KEY)) names.push(key.slice(KEY.length));
     }
-    return names.sort();
+    return names.sort((a, b) => a.localeCompare(b));
   } catch {
     return "unavailable";
   }
@@ -143,7 +143,8 @@ function settle() {
     if (report.requests[name] === "pending") report.requests[name] = "timeout";
   }
 }
-Promise.all(asked.map((request) => Promise.race([request, timeout]))).then((ended) => {
+// No request rejects: each turns its failure into an outcome, so nothing is left to catch.
+void Promise.all(asked.map((request) => Promise.race([request, timeout]))).then((ended) => {
   // The policy's events come after the request has failed: give them a frame or two, and the
   // listener above corrects an outcome whose event comes later still.
   setTimeout(() => {
