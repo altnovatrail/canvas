@@ -1025,9 +1025,9 @@ sheet_box = [B.ymin − my/s, B.xmin − mx/s, B.ymin − my/s + h/s, B.xmin −
 | Что | Чем | Лицензия |
 |---|---|---|
 | типы | TypeScript 7.0.2 | Apache-2.0 |
-| формат и линт | Biome 2.6.4 | MIT OR Apache-2.0 |
-| тесты | Vitest 5.0.5, `@vitest/browser-playwright` 5.0.5, Playwright 1.64.1 | MIT, MIT, Apache-2.0 |
-| покрытие тестов | `@vitest/coverage-v8` 5.0.5 | MIT |
+| формат и линт | Biome 2.6.5 | MIT OR Apache-2.0 |
+| тесты | Vitest 5.1.0, `@vitest/browser-playwright` 5.1.0, Playwright 1.64.1 | MIT, MIT, Apache-2.0 |
+| покрытие тестов | `@vitest/coverage-v8` 5.1.0 | MIT |
 | страница для проб руками | Vite 8.3.5 | MIT |
 | иконки кнопок строки (R46) | `@iconify-json/material-symbols` 1.2.97 — данные набора, которые уходят в сборку; `@iconify/utils` 3.1.7 — его чтение в `scripts/icons.ts` | Apache-2.0, MIT |
 | типы Node и rbush | `@types/node` 24.19.2, `@types/rbush` 4.0.0 | MIT |
@@ -1815,3 +1815,4 @@ Vite 8.3.5 работает и под Vitest, и сервером `just demo`, �
 - **Формат модуля 0.3** (разделы 3.3 и 3.9; R32), прочитано 2026-11-08:
   - README формата на теге `spec` v0.9.8, §2: «A reader MUST refuse, with a reason, a module that names a version it does not read: one newer than the reader knows, or one outside the versions the platform reads (below)»; «While the format is v0 (0.y), nothing is promised beyond the places that this section keeps in every version: every change is the next 0.y, and the platform reads only the current version»; «A module of 0.2 moved to 0.3 gets the same verdicts, numbers and open view, unless a count of its steps reaches a limit exactly». Вектор `vectors/rules/manifest.format-version/previous-minor.yaml` — `module_format_version: "0.2"`;
   - [altnovatrail/modules](https://github.com/altnovatrail/modules/tree/v0.1.0), релиз v0.1.0 от 2026-11-07: `modules/english-essays/manifest.yaml`, `modules/grade-3-math/manifest.yaml` и `modules/olympiad-math/manifest.yaml` — все с `module_format_version: "0.3"`, и так же на `main` ae0bfe4.
+- **`.github` v0.1.15** (раздел 3.7; поправка 2026-11-08 к R12), прочитано 2026-11-08: релизы v0.1.14 и v0.1.15 вышли 2026-11-02, тег v0.1.15 — коммит 89d3cee. Между v0.1.13 и v0.1.15 из workflow изменился только `.github/workflows/release.yml` (`gh api repos/altnovatrail/.github/compare/v0.1.13...v0.1.15`): вход `previous-file` — «Empty gives the recipe the version alone», `required: false`, `default: ""`, — и проверка номера, который держал npm: «A version it held keeps its time even then, and the numbers it held last lie under time.unpublished.versions too».
