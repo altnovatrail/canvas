@@ -22,7 +22,9 @@ permissions:
   contents: read
 
 env:
-  RELEASE_LINE: "0.1"
+  # 0.2 since T77: the element reads the module format 0.3 and refuses a manifest of 0.2, which
+  # every release of 0.1 took (the amendment of 2026-11-08 to R08 in docs/decisions.md).
+  RELEASE_LINE: "0.2"
 
 jobs:
   release:

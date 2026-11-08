@@ -6,7 +6,7 @@
   "cases": [
     {
       "name": "workbook-page",
-      "about": "The format's example of a workbook page (spec/format/examples/task/valid/workbook-page.yaml at v0.6.2), copied: two short lines to a row, a short line before a long one alone, and a line of two boxes.",
+      "about": "The format's example of a workbook page (spec/format/examples/task/valid/workbook-page.yaml at v0.9.8), copied: two short lines to a row, a short line before a long one alone, and a line of two boxes.",
       "items": [
         {"line":[{"text":"7 ×"},{"binding":"box"},{"text":"= 56"}]},
         {"line":[{"binding":"box"},{"text":"÷ 8 = 4"}]},
@@ -25,7 +25,7 @@
     },
     {
       "name": "tables-page",
-      "about": "The format's example of a module's workbook task (spec/format/examples/module/valid/with-tasks/tasks/tables-page.yaml at v0.6.2), copied.",
+      "about": "The format's example of a module's workbook task (spec/format/examples/module/valid/with-tasks/tasks/tables-page.yaml at v0.9.8), copied.",
       "items": [
         {"line":[{"text":"7 ×"},{"binding":"box"},{"text":"= 56"}]},
         {"line":[{"text":"47 ÷ 6 ="},{"binding":"box"},{"text":"r"},{"binding":"box"}]}

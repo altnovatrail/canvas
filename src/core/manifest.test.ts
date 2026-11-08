@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import { type Manifest, NO_MANIFEST, settingsOf } from "./manifest.js";
 import { moduleManifest, pathOf, refusal, under } from "./tasks.fixture.js";
 
-// Copies of the manifest examples of the module format at spec v0.6.2, its version 0.2
+// Copies of the manifest examples of the module format at spec v0.9.8, its version 0.3
 // (spec/format/examples/manifest/), and of its vectors of a manifest — the open view
 // (spec/format/vectors/open-view/manifest/) and the rule manifest.format-version
 // (spec/format/vectors/rules/manifest.format-version/): code and tests read nothing of spec/, so a
@@ -15,7 +15,7 @@ const READ = ["#/module_format_version", "#/languages", "#/canvas"];
 
 /** What most examples share: the module of olympiad mathematics. */
 const OLYMPIAD = {
-  module_format_version: "0.2",
+  module_format_version: "0.3",
   id: "novatrail/olympiad-math",
   version: "0.1.0",
   title: "Olympiad mathematics, grades 1–6",
@@ -43,7 +43,7 @@ const BAND_3 = { id: "grade-3", title: "Grade 3", grades: [3] };
 
 /** A third party's module of physics for grade 8, in Russian. */
 const OPTICS = {
-  module_format_version: "0.2",
+  module_format_version: "0.3",
   id: "acme/optics-8",
   version: "1.2.0",
   title: "Оптика, 8 класс",
@@ -56,7 +56,7 @@ const OPTICS = {
 
 /** What the vectors share: the module of a test vector. */
 const VECTOR = {
-  module_format_version: "0.2",
+  module_format_version: "0.3",
   id: "example/vector",
   version: "0.1.0",
   title: "A test vector",
@@ -140,8 +140,8 @@ const VALID: readonly (readonly [string, Manifest, { digit: number; lang: string
  * format never had (README of the format, §2).
  */
 const VERSIONS: readonly (readonly [string, Manifest])[] = [
-  ["next-minor", { ...VECTOR, module_format_version: "0.3" }],
-  ["previous-minor", { ...VECTOR, module_format_version: "0.1" }],
+  ["next-minor", { ...VECTOR, module_format_version: "0.4" }],
+  ["previous-minor", { ...VECTOR, module_format_version: "0.2" }],
   ["unknown-version", { ...VECTOR, module_format_version: "0.0" }],
 ];
 
@@ -184,7 +184,7 @@ const INVALID: readonly (readonly [string, string, object])[] = [
   [
     "format-version-as-number",
     "#/module_format_version",
-    { ...OLYMPIAD, module_format_version: 0.2 },
+    { ...OLYMPIAD, module_format_version: 0.3 },
   ],
   [
     "grade-zero",
@@ -261,7 +261,7 @@ test("without a manifest the digits are 24 px, as without the field, and the sta
 });
 
 test("a manifest of a format version the element does not read is a TypeError, as R44 spec's window has it", () => {
-  // Each with the version as the reason names it: a string in quotes, so that the number 0.2 reads
+  // Each with the version as the reason names it: a string in quotes, so that the number 0.3 reads
   // apart from the version the element takes.
   const cases: readonly (readonly [string, unknown, string])[] = [
     ...VERSIONS.map(([name, manifest]): readonly [string, unknown, string] => [
@@ -270,8 +270,8 @@ test("a manifest of a format version the element does not read is a TypeError, a
       `"${manifest.module_format_version}"`,
     ]),
     ["1.0", { ...OLYMPIAD, module_format_version: "1.0" }, '"1.0"'],
-    ["0.2.0", { ...OLYMPIAD, module_format_version: "0.2.0" }, '"0.2.0"'],
-    ["the number 0.2", { ...OLYMPIAD, module_format_version: 0.2 }, "0.2"],
+    ["0.3.0", { ...OLYMPIAD, module_format_version: "0.3.0" }, '"0.3.0"'],
+    ["the number 0.3", { ...OLYMPIAD, module_format_version: 0.3 }, "0.3"],
     ["no version", { ...OLYMPIAD, module_format_version: undefined }, "undefined"],
   ];
   for (const [name, manifest, said] of cases) {
@@ -279,7 +279,7 @@ test("a manifest of a format version the element does not read is a TypeError, a
       refusal(() => settingsOf(manifest)),
       name,
     ).toBe(
-      `manifest.module_format_version: "0.2", the version of the module format the element reads, not ${said}`,
+      `manifest.module_format_version: "0.3", the version of the module format the element reads, not ${said}`,
     );
   }
 });
