@@ -36,16 +36,23 @@ export function pageFile(): string {
 /** The watch, as a script of its own: it runs once in a page. */
 export const WATCH = `(() => {
   if (window.__canvasWatch) return;
-  const watch = { reports: [], events: [], errors: 0, blobs: [], reporting: true };
+  const watch = { reports: [], events: [], blocked: [], errors: 0, blobs: [], reporting: true };
+  const blocked = (address) => watch.blocked.push(String(address ?? "").slice(0, 60));
   window.__canvasWatch = watch;
   try {
     new ReportingObserver((list) => {
-      for (const report of list) watch.reports.push(String(report.body?.effectiveDirective ?? report.type));
+      for (const report of list) {
+        watch.reports.push(String(report.body?.effectiveDirective ?? report.type));
+        blocked(report.body?.blockedURL);
+      }
     }, { types: ["csp-violation"], buffered: true }).observe();
   } catch {
     watch.reporting = false;
   }
-  document.addEventListener("securitypolicyviolation", (event) => watch.events.push(event.effectiveDirective), true);
+  document.addEventListener("securitypolicyviolation", (event) => {
+    watch.events.push(event.effectiveDirective);
+    blocked(event.blockedURI);
+  }, true);
   addEventListener("error", () => { watch.errors += 1; });
   addEventListener("unhandledrejection", () => { watch.errors += 1; });
   const create = URL.createObjectURL.bind(URL);
@@ -71,6 +78,7 @@ export const READ = `JSON.stringify((() => {
     resources: performance.getEntriesByType("resource").map((entry) => entry.name),
     reports: watch?.reports ?? [],
     events: watch?.events ?? [],
+    blocked: watch?.blocked ?? [],
     errors: watch?.errors ?? 0,
     reporting: watch?.reporting ?? false,
     blobs: watch?.blobs.length ?? 0,
@@ -108,6 +116,8 @@ export interface Seen {
   readonly resources: readonly string[];
   readonly reports: readonly string[];
   readonly events: readonly string[];
+  /** The start of each address the policy stopped, for the run's artifact. */
+  readonly blocked: readonly string[];
   readonly errors: number;
   readonly reporting: boolean;
   readonly blobs: number;

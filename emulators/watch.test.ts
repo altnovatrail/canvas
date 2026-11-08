@@ -37,6 +37,7 @@ const QUIET: Seen = {
   resources: [],
   reports: [],
   events: [],
+  blocked: [],
   errors: 0,
   reporting: true,
   blobs: 1,

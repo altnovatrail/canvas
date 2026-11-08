@@ -19,7 +19,16 @@ export async function command(method: string, path: string, body?: unknown): Pro
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(90_000),
   });
-  if (!response.ok) throw new Error(`${method} ${path}: ${response.status}`);
+  if (!response.ok) {
+    // WebDriver's own error and message, which say why: safaridriver's, on the runner.
+    const failure = (await response.json().catch(() => ({}))) as {
+      value?: { error?: string; message?: string };
+    };
+    const why = `${failure.value?.error ?? ""} ${failure.value?.message ?? ""}`
+      .trim()
+      .slice(0, 300);
+    throw new Error(`${method} ${path}: ${response.status}${why ? ` ${why}` : ""}`);
+  }
   const answer = (await response.json()) as { value?: unknown };
   return answer.value;
 }

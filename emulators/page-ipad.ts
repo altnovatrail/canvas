@@ -157,19 +157,10 @@ async function draw(name: string): Promise<{ strokes: number; by: string }> {
   return { strokes: (await read())?.strokes ?? -1, by: "neither touch nor mouse" };
 }
 
-/** Press the save button, and keep the text of the file the page hands to a download. */
-async function save(index: number, name: string): Promise<boolean> {
-  try {
-    const found = (await command("POST", `/session/${session}/element`, {
-      using: "css selector",
-      value: "#save",
-    })) as Record<string, string>;
-    await command("POST", `/session/${session}/element/${Object.values(found)[0]}/click`, {});
-  } catch (error) {
-    run.log(`save ${name}: ${String(error).slice(0, 200)}`);
-    return false;
-  }
-  for (let i = 0; i < 10; i++) {
+/** The text of the file the page handed out at an index, within the time, kept in the run's
+ * folder; whether there was one. */
+async function handed(index: number, name: string, seconds: number): Promise<boolean> {
+  for (let i = 0; i < seconds; i++) {
     const text = await execute(`return ${blobAt(index)};`).catch(() => null);
     if (typeof text === "string") {
       const into = join(run.folder, "saved");
@@ -181,6 +172,25 @@ async function save(index: number, name: string): Promise<boolean> {
     await sleep(1000);
   }
   return false;
+}
+
+/** Press the save button — by WebDriver's click, as a tap, or else by the button's own click()
+ * — and keep the text of the file the page hands to a download; say which pressed it. */
+async function save(index: number, name: string): Promise<{ ok: boolean; by: string }> {
+  try {
+    const found = (await command("POST", `/session/${session}/element`, {
+      using: "css selector",
+      value: "#save",
+    })) as Record<string, string>;
+    await command("POST", `/session/${session}/element/${Object.values(found)[0]}/click`, {});
+    if (await handed(index, name, 5)) return { ok: true, by: "a click of WebDriver" };
+  } catch (error) {
+    run.log(`save ${name}: ${String(error).slice(0, 200)}`);
+  }
+  shot(`${name}-not-saved`);
+  await execute('document.getElementById("save").click();').catch(() => {});
+  const ok = await handed(index, name, 10);
+  return { ok, by: ok ? "the button's click()" : "neither" };
 }
 
 /** Answer the page's confirm, if it asks, as a person would: yes. */
@@ -227,7 +237,8 @@ async function pass(file: string): Promise<void> {
       `${sheet.strokes}, by ${sheet.by}`,
       "page",
     );
-    run.record("the sheet's sample is handed to a download", await save(0, "sheet"), "", "page");
+    const first = await save(0, "sheet");
+    run.record("the sheet's sample is handed to a download", first.ok, `by ${first.by}`, "page");
 
     await execute(`${TO_WORKBOOK};`);
     await confirm();
@@ -245,10 +256,11 @@ async function pass(file: string): Promise<void> {
       `${page.strokes}, by ${page.by}`,
       "page",
     );
+    const second = await save(1, "workbook");
     run.record(
       "the workbook's sample is handed to a download",
-      await save(1, "workbook"),
-      "",
+      second.ok,
+      `by ${second.by}`,
       "page",
     );
 
