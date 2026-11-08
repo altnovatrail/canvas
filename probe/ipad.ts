@@ -309,14 +309,14 @@ async function onPage(file: string): Promise<void> {
 /** Whether the downloads came into On My iPad's Downloads folder; if they did not, put the files
  * there as the folder of the Files app's local storage, so that the question of the Files app is
  * still asked, and say so. */
-async function placed(): Promise<void> {
+async function placed(): Promise<readonly string[]> {
   const groups = execFileSync("xcrun", ["simctl", "get_app_container", udid, FILES_APP, "groups"], {
     encoding: "utf8",
   });
   const local = /group\.com\.apple\.FileProvider\.LocalStorage\s+(\S.*)$/m.exec(groups)?.[1];
   if (!local) {
     findings["Downloads of On My iPad"] = "no local storage found";
-    return;
+    return [];
   }
   const into = join(local, "File Provider Storage", "Downloads");
   const there = FILES.filter((file) => existsSync(join(into, file)));
@@ -328,6 +328,7 @@ async function placed(): Promise<void> {
   for (const file of FILES) {
     if (!there.includes(file)) copyFileSync(join("build/probe", file), join(into, file));
   }
+  return there;
 }
 
 async function main(): Promise<void> {
@@ -336,8 +337,13 @@ async function main(): Promise<void> {
   writeFileSync(join(folder, "agent.json"), `${JSON.stringify(status, null, 2)}\n`);
 
   for (const file of FILES) await download(file);
-  await placed();
-  const viaSafari = await fromSafari(FILES[0], "csp-from-safari");
+  const landed = await placed();
+  // Safari's list of downloads holds a file only where its download landed; where none did, the
+  // way is a finding, and the Files app, which has the files either way, answers the question.
+  const viaSafari = landed.includes(FILES[0])
+    ? await fromSafari(FILES[0], "csp-from-safari")
+    : "not tried: no download landed";
+  findings[`${FILES[0]} from Safari's downloads`] ??= viaSafari;
   if (viaSafari === "ran") await onPage(FILES[0]);
   const viaFiles = await fromFiles(FILES[0], "csp-from-files");
   if (viaFiles === "ran" && viaSafari !== "ran") await onPage(FILES[0]);
