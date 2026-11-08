@@ -16,8 +16,8 @@ git clone --quiet --depth 1 --branch "$wda_tag" https://github.com/appium/WebDri
 [[ "$(git -C build/wda-src rev-parse HEAD)" == "$wda_commit" ]]
 
 # The newest runtime of the version, and the iPad on it (probe/simulator.ts).
-runtime=$(xcrun simctl list runtimes --json | node probe/simulator.ts runtime "$IOS")
 device=$(xcrun simctl list devicetypes --json | node probe/simulator.ts device)
+runtime=$(xcrun simctl list runtimes --json | node probe/simulator.ts runtime "$IOS" "$device")
 udid=$(xcrun simctl create probe-ipad "$device" "$runtime")
 xcrun simctl boot "$udid"
 xcrun simctl bootstatus "$udid" -b > /dev/null
