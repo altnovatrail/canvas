@@ -1,9 +1,9 @@
-// The choice of the iPad simulator for the probe (T80 in RUN.md; R54 in docs/decisions.md): the
-// newest available iOS runtime of a version, and the iPad the run is on, from the lists
-// `xcrun simctl list --json` gives. probe/ipad.sh asks it:
+// The choice of the iPad simulator for the probe and the samples page (T80, T78 in RUN.md; R54 in
+// docs/decisions.md): the newest available iOS runtime of a version, and the iPad the run is on,
+// from the lists `xcrun simctl list --json` gives. emulators/simulator.sh asks it:
 //
-//   xcrun simctl list devicetypes --json | node probe/simulator.ts device
-//   xcrun simctl list runtimes --json | node probe/simulator.ts runtime <version> <device>
+//   xcrun simctl list devicetypes --json | node emulators/simulator.ts device
+//   xcrun simctl list runtimes --json | node emulators/simulator.ts runtime <version> <device>
 //
 // and it prints the identifier, or fails when the image has none.
 
@@ -64,7 +64,7 @@ if (import.meta.main) {
   } else if (what === "device" && !version) {
     console.log(deviceOf(list, IPAD));
   } else {
-    console.error("usage: node probe/simulator.ts device | runtime <version> <device>");
+    console.error("usage: node emulators/simulator.ts device | runtime <version> <device>");
     process.exit(2);
   }
 }

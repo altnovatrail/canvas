@@ -15,18 +15,9 @@ wda_commit=02cb92f0e93c8b021443bcbb8eeb80932c113220
 git clone --quiet --depth 1 --branch "$wda_tag" https://github.com/appium/WebDriverAgent.git build/wda-src
 [[ "$(git -C build/wda-src rev-parse HEAD)" == "$wda_commit" ]]
 
-# The newest runtime of the version, and the iPad on it (probe/simulator.ts).
-device=$(xcrun simctl list devicetypes --json | node probe/simulator.ts device)
-runtime=$(xcrun simctl list runtimes --json | node probe/simulator.ts runtime "$IOS" "$device")
-udid=$(xcrun simctl create probe-ipad "$device" "$runtime")
-xcrun simctl boot "$udid"
-xcrun simctl bootstatus "$udid" -b > /dev/null
-{
-  xcodebuild -version
-  echo "runtime $runtime"
-  echo "device $device"
-  echo "WebDriverAgent $wda_tag $wda_commit"
-} > "$out/versions.txt"
+# The newest runtime of the version, and the iPad on it (emulators/simulator.sh).
+udid=$(bash emulators/simulator.sh probe-ipad "$IOS" "$out")
+echo "WebDriverAgent $wda_tag $wda_commit" >> "$out/versions.txt"
 
 # xcodebuild may not yet see a simulator CoreSimulator has just booted ("Unable to find a device
 # matching the provided destination specifier"): it gets three tries, a while apart.

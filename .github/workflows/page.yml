@@ -1,0 +1,233 @@
+# The samples page in the emulators, on each pull request that changes what goes into it (T78 in
+# RUN.md; R54, R55 in docs/decisions.md): no tablets of the author's own, so the emulators stand in
+# for them, in the software they run. The page is built once, in the toolchain stage, as the
+# release will build it; Chrome in an Android emulator downloads it and opens it from the download,
+# and Safari in the iPad Simulator opens it from the runner — a page opened from a file does not
+# run on an iPad (В64 in RUN.md). In each the driver draws a stroke, saves the sheet's and the
+# workbook's samples, and sees that the page asked for nothing and broke no rule of its policy; the
+# saved files are then read as sample files. The strokes are the code's: no handwriting goes into a
+# run. The pen, the palm and iCloud need real tablets: debt Д7 in RUN.md.
+#
+# The workflow runs on every pull request, and its first job decides whether the emulators have
+# anything to check: a skipped job counts as a success, so the one check main requires, the last
+# job, stands on every pull request, and one of the documents alone waits for no emulator.
+name: Samples page
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels its older run, as in ci.yml.
+concurrency:
+  group: page-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # What goes into the page — the package's code, the page's own, its builder, the tasks, the
+  # packages and the toolchain stage — and what checks it: the drivers and this file.
+  changes:
+    name: Changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      page: ${{ steps.diff.outputs.page }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: What the pull request changes
+        id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [[ "$EVENT" != pull_request ]]; then
+            echo "page=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only "$BASE...$HEAD" -- src page scripts/page.ts scripts/csp.ts \
+              tasks package.json package-lock.json .devcontainer/Dockerfile emulators \
+              .github/workflows/page.yml)
+          echo "$changed"
+          echo "page=$([[ -n "$changed" ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+  # The page as the release builds it: scripts/page.ts in the toolchain stage, from the tree, with
+  # nothing but the packages the lock file pins. The version is none of a release.
+  build:
+    name: Build
+    needs: changes
+    if: needs.changes.outputs.page == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Toolchain image
+        run: docker build --target toolchain --tag toolchain - < .devcontainer/Dockerfile
+
+      - name: Page
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp \
+              --volume "$PWD:/work" --workdir /work \
+              toolchain bash -c "npm ci --no-audit --no-fund && node scripts/page.ts build/page 0.0.0"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: page-build
+          path: build/page
+          retention-days: 3
+          if-no-files-found: error
+
+  # The tablet of Android 16 of the probe (T74), the page downloaded from the runner's server as
+  # from a release of GitHub, where the emulator reaches it on its own localhost through adb
+  # reverse (emulators/android.sh).
+  android:
+    name: Android
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: page-build
+          path: build/page
+
+      - name: Toolchain image
+        run: docker build --target toolchain --tag toolchain - < .devcontainer/Dockerfile
+
+      - name: The page's server
+        run: |
+          mkdir -p build/page-android
+          docker run --detach --name page-server --network host --user "$(id -u):$(id -g)" \
+              --env HOME=/tmp --volume "$PWD:/work" --workdir /work \
+              toolchain sh -c "node emulators/serve.ts build/page 8080 > build/page-android/server.txt 2>&1"
+
+      # As the action's README asks, for the emulator to use KVM.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # The emulator of the probe, by the same versions (R54).
+      - name: Emulator and page
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_tablet
+          emulator-build: 16740729
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-boot-timeout: 900
+          disable-animations: true
+          script: bash emulators/android.sh emulators/page-android.ts build/page-android
+
+      - name: Screenshots, reports and saved files
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: page-android
+          path: build/page-android
+          retention-days: 7
+          if-no-files-found: error
+
+  # Safari in the iPad Simulator, iPadOS 26.5 on the stable image, with the image's own Xcode:
+  # safaridriver loses Simulator.app after a switch by xcode-select. Not iPadOS 27: on the image
+  # xcode-27 safaridriver finds no session host in the simulator (T78), and the probe alone runs
+  # there, through WebDriverAgent (T80).
+  ipad:
+    name: iPad 26.5
+    needs: build
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      IOS: "26.5"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The Node .devcontainer/Dockerfile pins, read from it: one version for every job.
+      - name: Node's version
+        id: node
+        run: echo "version=$(sed -n 's/^ARG NODE_VERSION=//p' .devcontainer/Dockerfile)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ steps.node.outputs.version }}
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: page-build
+          path: build/page
+
+      - name: Simulator, safaridriver and page
+        run: bash emulators/page-ipad.sh
+
+      - name: Screenshots, reports and saved files
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: page-ipad-26.5
+          path: build/page-ipad-26.5
+          retention-days: 7
+          if-no-files-found: error
+
+  # The files the page saved, read as sample files in the toolchain stage, where the protocol's
+  # reader is: the devices' artifacts, each with its folder saved/.
+  saved:
+    name: Saved files
+    needs: [android, ipad]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: page-*
+          path: build
+
+      - name: Toolchain image
+        run: docker build --target toolchain --tag toolchain - < .devcontainer/Dockerfile
+
+      - name: Sample files
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp \
+              --volume "$PWD:/work" --workdir /work \
+              toolchain bash -c "npm ci --no-audit --no-fund && node emulators/saved.ts 0.0.0 build/page-android build/page-ipad-26.5"
+
+  # The one check main requires: every job above went right, or was skipped because the pull
+  # request changes nothing they check.
+  result:
+    name: Samples page
+    needs: [changes, build, android, ipad, saved]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Result
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"' | tee -a "$GITHUB_STEP_SUMMARY"
+          bad=$(echo "$RESULTS" | jq -r '[to_entries[] | select(.value.result != "success" and .value.result != "skipped") | .key] | join(", ")')
+          if [[ -n "$bad" ]]; then
+            echo "not right: $bad — each job's summary says whether the page or the emulator failed" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi

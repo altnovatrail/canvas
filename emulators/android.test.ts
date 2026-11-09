@@ -1,9 +1,10 @@
-// What the driver of the Android emulator reads off the screen (T74 in RUN.md; R54 in
-// docs/decisions.md): the nodes of a dump of uiautomator and where a tap on one lands. The run
-// itself is the workflow's, on a runner with an emulator.
+// What the drivers of the Android emulator read off the screen (T74, T78 in RUN.md; R54 in
+// docs/decisions.md): the nodes of a dump of uiautomator, where a tap on one lands, and where a
+// point of the page lies on the screen. The run itself is the workflow's, on a runner with an
+// emulator.
 
 import { expect, test } from "vitest";
-import { entities, find, focusedOn, inner, middle, nodes } from "./android.ts";
+import { calibrate, entities, find, focusedOn, inner, middle, nodes } from "./android.ts";
 
 const DUMP = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0">
 <node index="0" text="" resource-id="" class="android.widget.FrameLayout" content-desc="" bounds="[0,0][1600,2560]">
@@ -59,4 +60,14 @@ test("Chrome has the focus only when dumpsys window names its window as the curr
   expect(focusedOn(chrome, "com.android.chrome")).toBe(true);
   expect(focusedOn(launcher, "com.android.chrome")).toBe(false);
   expect(focusedOn("", "com.android.chrome")).toBe(false);
+});
+
+test("a point of the page lies on the screen as one element seen both ways says", () => {
+  // A button of 100 CSS pixels at (20, 300) in the page, 200 pixels wide at (40, 840) on the screen.
+  const toScreen = calibrate(
+    { x: 20, y: 300, width: 100, height: 30 },
+    { text: "", description: "", bounds: [40, 840, 240, 900] },
+  );
+  expect(toScreen(20, 300)).toEqual([40, 840]);
+  expect(toScreen(70.4, 100)).toEqual([141, 440]);
 });

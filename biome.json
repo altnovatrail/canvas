@@ -5,6 +5,7 @@
       "src/**",
       "scripts/**",
       "probe/**",
+      "emulators/**",
       "demo/**/*.ts",
       "page/**/*.ts",
       "*.ts",

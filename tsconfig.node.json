@@ -10,6 +10,7 @@
   "include": [
     "scripts/**/*.ts",
     "probe/**/*.ts",
+    "emulators/**/*.ts",
     "src/**/*.test.ts",
     "vitest.config.ts",
     "demo/vite.config.ts"
