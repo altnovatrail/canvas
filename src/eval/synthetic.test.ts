@@ -7,13 +7,14 @@ import { beforeAll, describe, expect, test } from "vitest";
 import { Purpose, readSample, type Sample, sampleText, Writer } from "./sample.js";
 import {
   type Entry,
+  moduleSample,
   SCENARIOS,
   SET,
   type Synthetic,
   syntheticSample,
   syntheticSet,
 } from "./synthetic.js";
-import { type OpenTasks, openTasksOf, TUTOR_FILE } from "./tasks.js";
+import { moduleTasksOf, type OpenTask, type OpenTasks, openTasksOf, TUTOR_FILE } from "./tasks.js";
 
 // Every stroke of these samples the code draws from a seed: no hand wrote any (CLAUDE.md). Whether
 // a file keeps the protocol's rules is spec's sample-check's to say, which ci-licenses runs on the
@@ -209,4 +210,53 @@ test("a scenario of the other surface, or a bank with no task, is refused", () =
   expect(() => syntheticSample(entry({ scenario: "filled" }), tasks)).toThrow(TypeError);
   expect(() => syntheticSample(entry({ bank: "eval/workbook.json" }), tasks)).toThrow(TypeError);
   expect(() => syntheticSample(entry({ bank: "eval/none.json" }), tasks)).toThrow(RangeError);
+});
+
+test("a module's sample is one of its eval set by an adult, of the task given, its scenario the seed's (T86)", () => {
+  const folder = new URL(
+    "../../tasks/modules-v0.2.0/novatrail-grade-3-math-0.2.0/",
+    import.meta.url,
+  );
+  const module = moduleTasksOf(
+    readFileSync(new URL("inventory.json", folder), "utf8"),
+    readFileSync(new URL("server.json", folder), "utf8"),
+    "v0.2.0",
+    sha256,
+  );
+  const page = module.tasks.get("times-tables-d1");
+  const [sheet] = tasks.get("eval/bank.json") ?? [];
+  if (!page || !("reference" in page) || !sheet) throw new Error("no task to draw");
+  // A sheet of the module: tutor's task, named as a module's.
+  const named: OpenTask = { canvas: sheet.canvas, reference: page.reference };
+  const seeds = Array.from({ length: 12 }, (_, i) => 301 + i);
+  const drawn = [
+    ...seeds.map((seed) => moduleSample(page, seed)),
+    ...seeds.map((seed) => moduleSample(named, seed)),
+  ];
+  for (const { sample } of drawn) {
+    expect(sample.purpose).toBe(Purpose.EVAL_SET);
+    expect([Writer.ADULT, Writer.ADULT_AS_CHILD]).toContain(sample.writer);
+    expect(sample.writerCode).toBeUndefined();
+    expect(sample.license).toBe("Apache-2.0");
+    expect(sample.task?.source.case).toBe("modules");
+  }
+  const scenarios = drawn.map(({ scenario }) => scenario);
+  expect(new Set(scenarios.slice(0, 12)).size).toBeGreaterThan(1);
+  expect(
+    scenarios
+      .slice(0, 12)
+      .every((one) => ["filled", "gaps", "mirrored-box", "empty-page"].includes(one)),
+  ).toBe(true);
+  expect(
+    scenarios
+      .slice(12)
+      .some((one) => ["filled", "gaps", "mirrored-box", "empty-page"].includes(one)),
+  ).toBe(false);
+  expect(new Set(drawn.map(({ sample }) => sample.writer)).size).toBe(2);
+  expect(sampleText(moduleSample(page, 301).sample)).toBe(
+    sampleText(drawn[0]?.sample ?? readSample("{}")),
+  );
+  expect(() => moduleSample(page, -1)).toThrow("is no seed");
+  // Its generator takes 32 bits of a seed: one above would draw another seed's sample.
+  expect(() => moduleSample(page, 2 ** 32 + 301)).toThrow("from 0 to 4294967295");
 });

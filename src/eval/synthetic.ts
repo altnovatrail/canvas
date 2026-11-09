@@ -1,7 +1,8 @@
 // The synthetic samples (R49; R38 spec): sample files whose strokes code draws from a seed, with no
 // hand behind them (CLAUDE.md), each with the markup of what it drew, for tasks of tutor's file of
 // open tasks. tutor's CI checks that its eval runner reads them (T32 tutor); they measure nothing
-// of AI. A seed gives its sample byte for byte, and its ID (R09). The code knows no key and no
+// of AI. A module's eval set takes them too, on the tasks of the module's package (T86; R110 spec):
+// a sample of the eval set by an adult, of a task and a seed its caller names. A seed gives its sample byte for byte, and its ID (R09). The code knows no key and no
 // subject (R05, R25): the numbers it writes, a solution's first error among them, are the seed's,
 // and say nothing of whether the solution is right (the 2026-11-08 amendment to R95 spec).
 
@@ -113,6 +114,32 @@ export function syntheticSample(entry: Entry, tasks: OpenTasks): Synthetic {
   const bank = tasks.get(entry.bank);
   const task = bank?.[Math.floor(next() * bank.length)];
   if (task === undefined) throw new RangeError(`no task in the bank ${entry.bank}`);
+  return drawnSample(entry, task, next);
+}
+
+/**
+ * The sample of a module's eval set of a task and a seed (T86; R110 spec): a sample of the eval set
+ * by an adult, in their own hand or imitating a child's, which the seed chooses with the scenario,
+ * one of those of the task's canvas.
+ */
+export function moduleSample(task: OpenTask, seed: number): Synthetic {
+  // The seed's generator takes 32 bits of it: two seeds above would draw one sample twice.
+  if (!Number.isInteger(seed) || seed < 0 || seed > 0xffff_ffff) {
+    throw new RangeError(`${seed} is no seed, a whole number from 0 to 4294967295`);
+  }
+  const next = random(seed);
+  const workbook = "workbook" in task.canvas;
+  const scenarios = (Object.keys(SCENARIOS) as Scenario[]).filter(
+    (scenario) => WORKBOOK_SCENARIOS.has(scenario) === workbook,
+  );
+  const scenario = scenarios[Math.floor(next() * scenarios.length)] ?? "blank";
+  const writer = next() < 0.5 ? ADULT : ADULT_AS_CHILD;
+  return drawnSample({ seed, scenario, purpose: EVAL_SET, writer }, task, next);
+}
+
+/** The sample of an entry on its task: its strokes, which a hand draws as the scenario has it, on
+ * the seed's clock and wobble, and the markup of what it drew. */
+function drawnSample(entry: Omit<Entry, "bank">, task: OpenTask, next: () => number): Synthetic {
   const code = writerCode(Uint8Array.from({ length: 8 }, () => Math.floor(next() * 256)));
   const hand = new Hand({ step: 2, wobble: 0.4, seed: entry.seed });
   hand.wait(1500);

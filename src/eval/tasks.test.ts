@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
-import { canonicalText, type OpenTasks, openTasksOf, TUTOR_FILE } from "./tasks.js";
+import { INVENTORY, type Json, RELEASE, repackaged, SERVER, taskIn } from "./packages.fixture.js";
+import { canonicalText, moduleTasksOf, type OpenTasks, openTasksOf, TUTOR_FILE } from "./tasks.js";
 
 const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
 const bytes = readFileSync(new URL(`../../tasks/${TUTOR_FILE.name}`, import.meta.url));
@@ -137,4 +138,122 @@ test("the canonical text orders members by their names' code units, with no whit
   );
   expect(canonicalText('"\\\n\u0007/<')).toBe('"\\"\\\\\\n\\u0007/<"');
   expect(() => canonicalText(0.5)).toThrow(RangeError);
+});
+
+/** The digests of the open views of the package's tasks, as module-kit open v0.3.0 gave them. */
+const MODULE_KIT: Record<string, string> = {
+  "comparing-fractions-d1": "72a81f42412f44185cd9cd10bd7d58e6d963ddaed0c94380da4788ba823a276c",
+  "comparing-fractions-d3": "9e02e830e980e36060bf578c923a4b6195ac828e4c509ad9857dc14f14f38973",
+  "comparing-fractions-d5": "6f21730493bd2c0c08caa2022e518d9a45358d6d1074317b29a2c2778e7177e5",
+  "division-with-remainder-d1": "78cc6757e6014d698b86a5dbb1508454f69865e115684cfec9c9b201b7a57d0a",
+  "division-with-remainder-d3": "52fd63d57be0cdea19078b3c2e807f8d6de121019ec4e3e9446c938a7a1f7718",
+  "division-with-remainder-d5": "068018ebe0c6bf5d824708248d983518f9a9b5277b456b47b1a220358070f3bb",
+  "fractions-of-a-whole-d1": "7c9c12957f9f42ea54e291d9178eaff901e360de45507b2a47ee887217c3ca11",
+  "fractions-of-a-whole-d3": "51d00dbef8552b02688a9d3b788e00372d3d51f443c61830413eb75a1ee4094d",
+  "fractions-of-a-whole-d5": "fa9260fc2e067f5aa0183f63b25d8546062224f3924cb22671e8b7b5e1c61c6d",
+  "times-tables-d1": "fe02d3c41f49f2a4ffccc4b80fd385b6a2c492888f839c83154f8cb8ce0513fc",
+  "times-tables-d3": "933fe0f2538bc59fef56d23b220e6ab5297be67c469bb33d79b516b72db56fac",
+  "times-tables-d5": "e81bbfa41c551f462c4075ccf138bf76e41701c41a1c56510a80fb33ee84fe69",
+};
+
+test("a module's package gives each task the open view module-kit gives, by the chain from its release's index", () => {
+  const index = JSON.parse(readFileSync(new URL("module-index.json", RELEASE), "utf8"));
+  const entry = index.modules["novatrail/grade-3-math"]["0.2.0"];
+  expect(entry.package_digest).toBe(`sha256:${sha256(INVENTORY)}`);
+  const module = moduleTasksOf(INVENTORY, SERVER, "v0.2.0", sha256);
+  expect([module.module, module.version, module.packageDigest]).toEqual([
+    "novatrail/grade-3-math",
+    "0.2.0",
+    entry.package_digest,
+  ]);
+  const digests = Object.fromEntries(
+    [...module.tasks].map(([id, task]) => [
+      id,
+      "reference" in task ? task.reference.openViewDigest?.replace("sha256:", "") : task.refused,
+    ]),
+  );
+  expect(digests).toEqual(MODULE_KIT);
+  const task = module.tasks.get("times-tables-d1");
+  expect(task && "reference" in task && task.reference.source).toEqual({
+    case: "modules",
+    value: {
+      tag: "v0.2.0",
+      module: "novatrail/grade-3-math",
+      version: "0.2.0",
+      packageDigest: entry.package_digest,
+    },
+  });
+  expect(task && "canvas" in task && "workbook" in task.canvas).toBe(true);
+});
+
+// What the generator draws no sample of (T86; R63): each kept, with why.
+test.each([
+  ["a template", (task: Json) => (task.template = { parameters: {} }), "a template"],
+  [
+    "a choice",
+    (task: Json) => {
+      task.canvas = { kind: "handwriting_sheet" };
+      task.items = [{ answer_slots: [{ binding: "choice", options: ["1", "2"] }] }];
+    },
+    "a choice",
+  ],
+  [
+    "an essay",
+    (task: Json) => {
+      task.canvas = { kind: "handwriting_sheet", grid: "lines" };
+      task.items = [{ answer_slots: [{ binding: "sheet" }] }];
+    },
+    "an essay",
+  ],
+  [
+    "two answer slots",
+    (task: Json) => {
+      task.canvas = { kind: "handwriting_sheet" };
+      task.items = [
+        { answer_slots: [{ binding: "anywhere" }] },
+        { answer_slots: [{ binding: "anywhere" }] },
+      ];
+    },
+    "not one answer slot anywhere on the sheet",
+  ],
+  [
+    "a workbook of an answer slot outside its boxes",
+    (task: Json) => {
+      task.items = [...(task.items as Json[]), { answer_slots: [{ binding: "anywhere" }] }];
+    },
+    "a workbook with an answer slot outside its boxes",
+  ],
+])("a package's task that is %s is kept with why the generator draws none", (_, change, why) => {
+  const [inventory, server] = repackaged((view) => change(taskIn(view)));
+  expect(moduleTasksOf(inventory, server, "v0.2.0", sha256).tasks.get("times-tables-d1")).toEqual({
+    refused: expect.stringContaining(why),
+  });
+});
+
+test("a sheet of one answer slot anywhere drops its closed fields, and a package out of shape is refused", () => {
+  const [inventory, server] = repackaged((view) => {
+    const task = taskIn(view);
+    task.canvas = { kind: "handwriting_sheet" };
+    task.items = [{ answer_slots: [{ binding: "anywhere", check: { kind: "number", key: 7 } }] }];
+  });
+  const sheet = moduleTasksOf(inventory, server, "v0.2.0", sha256).tasks.get("times-tables-d1");
+  expect(sheet && "canvas" in sheet && sheet.canvas).toEqual({ sheet: true });
+  const of =
+    (texts: [string, string], tag = "v0.2.0") =>
+    () =>
+      moduleTasksOf(texts[0], texts[1], tag, sha256);
+  expect(of([INVENTORY, SERVER], "0.2.0")).toThrow("no tag of a release");
+  expect(of([INVENTORY, `${SERVER} `])).toThrow("not the server part its inventory names");
+  const moved = (change: Record<string, unknown>) =>
+    of([canonicalText({ ...JSON.parse(INVENTORY), ...change }), SERVER]);
+  expect(moved({ module_format_version: "0.3" })).toThrow("module format 0.4");
+  expect(moved({ id: "grade-3-math" })).toThrow("<publisher>/<name>");
+  expect(moved({ version: "0.2" })).toThrow("MAJOR.MINOR.PATCH");
+  expect(of(repackaged((view) => ((view.tasks as Json).other = taskIn(view))))).toThrow(
+    "is not under its own ID",
+  );
+  expect(of(repackaged((view) => delete view.tasks))).toThrow("has no tasks");
+  expect(of(repackaged((view) => ((view.tasks as Json).other = null)))).toThrow(
+    "the task other of novatrail/grade-3-math is no object",
+  );
 });
