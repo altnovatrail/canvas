@@ -1,6 +1,6 @@
 // The samples page in Safari in the iPad Simulator, on a pull request that changes what goes into
 // it (T78 in RUN.md; R54, R55 in docs/decisions.md). emulators/page-ipad.sh runs it on a runner of
-// macOS once the simulator is booted, safaridriver answers and emulators/serve.ts serves build/page
+// macOS once the simulator is booted, safaridriver answers and emulators/serve.ts serves the page
 // as pages:
 //
 //   node emulators/page-ipad.ts
@@ -8,22 +8,21 @@
 // A page opened from a file does not run on an iPad: the Files app shows it in Quick Look (T80;
 // В64 in RUN.md). So Safari opens it from the runner, the way a hosting would serve it, and the
 // question is the element in the WebKit of iPadOS. The page served is the build with the watch of
-// emulators/watch.ts written in before its own script; safaridriver drives Safari and reads it; the driver draws a stroke on the sheet by a touch of WebDriver's
-// actions, saves the sample, shows the workbook's page, draws and saves again. Each file the page
-// hands to a download is read from the watch's copy of its blob into build/page-ipad-<iOS>/saved,
-// for the workflow's job of the saved files; where Safari puts the download is T22's to see. Each
-// step is the device's or the page's: a failure of the device earns the run one more pass, with a
-// new session, a failure of the page fails it. The strokes are the code's. It needs the
-// simulator's id (UDID) and the version of its iOS (IOS).
+// emulators/watch.ts written in before its own script; safaridriver drives Safari and reads it on
+// the volunteer's way of emulators/volunteer.ts. A stroke is drawn by WebDriver's actions; each
+// file the page hands to a download is kept from the watch's copy of its text in
+// build/page-ipad-<iOS>/saved, for the workflow's job of the saved files, and where Safari puts the
+// download is T22's to see. The strokes are the code's. It needs the simulator's id (UDID) and the
+// version of its iOS (IOS).
 
 import { execFileSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { Run } from "./run.ts";
+import { type Device, passes, volunteer } from "./volunteer.ts";
 import {
   type Box,
-  blobAt,
   boxOf,
   outside,
   pageFile,
@@ -31,263 +30,197 @@ import {
   type Seen,
   served,
   strokeIn,
-  TASKS,
   TO_WORKBOOK,
-  verdicts,
-  WORKBOOK,
 } from "./watch.ts";
 import { command } from "./webdriver.ts";
 
 const XCRUN = "/usr/bin/xcrun";
+const SAFARI = "com.apple.mobilesafari";
 const ios = process.env.IOS ?? "";
 const udid = process.env.UDID ?? "booted";
 const run = new Run(`build/page-ipad-${ios}`);
 const port = "8080";
-let session = "";
 let shots = 0;
 
-/** A screenshot of the whole simulator, Safari's own sheets on it too. */
-function shot(name: string): void {
-  shots += 1;
-  const file = join(run.folder, `${String(shots).padStart(2, "0")}-${name}.png`);
-  try {
-    execFileSync(XCRUN, ["simctl", "io", udid, "screenshot", file], { stdio: "ignore" });
-  } catch {
-    run.log(`no screenshot ${name}`);
+/** Safari in the simulator, through one session of safaridriver. */
+class Safari implements Device {
+  private session = "";
+  private readonly file: string;
+
+  constructor(file: string) {
+    this.file = file;
   }
-}
 
-/** Run a script in the page, its value back. */
-async function execute(script: string): Promise<unknown> {
-  return command("POST", `/session/${session}/execute/sync`, { script, args: [] });
-}
-
-/** The value of READ, or undefined while the page cannot be read. */
-async function read(): Promise<Seen | undefined> {
-  try {
-    return JSON.parse(String(await execute(`return ${READ};`))) as Seen;
-  } catch {
-    return undefined;
-  }
-}
-
-async function box(selector: string): Promise<Box | undefined> {
-  return (
-    (JSON.parse(String(await execute(`return ${boxOf(selector)};`))) as Box | null) ?? undefined
-  );
-}
-
-/** A session of safaridriver with Safari in the simulator; a session not made yet is tried again
- * a while later, as the simulator may not be ready for it. */
-async function open(): Promise<boolean> {
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      const value = (await command("POST", "/session", {
-        capabilities: {
-          alwaysMatch: {
-            browserName: "safari",
-            platformName: "iOS",
-            "safari:useSimulator": true,
-            "safari:deviceUDID": udid,
+  /** A session of safaridriver with Safari in the simulator, tried again a while later while the
+   * simulator is not ready for it; a session not of iOS is closed and no session. */
+  private async connect(): Promise<boolean> {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const value = (await command("POST", "/session", {
+          capabilities: {
+            alwaysMatch: {
+              browserName: "safari",
+              platformName: "iOS",
+              "safari:useSimulator": true,
+              "safari:deviceUDID": udid,
+            },
           },
-        },
-      })) as { sessionId: string; capabilities?: Record<string, unknown> };
-      session = value.sessionId;
-      const { platformName, platformVersion, browserVersion } = value.capabilities ?? {};
-      writeFileSync(
-        join(run.folder, "session.json"),
-        `${JSON.stringify({ platformName, platformVersion, browserVersion }, null, 2)}\n`,
-      );
-      return String(platformName).toLowerCase() === "ios";
-    } catch (error) {
-      run.log(`session ${attempt} of 3: ${String(error).slice(0, 200)}`);
-      await sleep(20_000);
+        })) as { sessionId: string; capabilities?: Record<string, unknown> };
+        this.session = value.sessionId;
+        const { platformName, platformVersion, browserVersion } = value.capabilities ?? {};
+        writeFileSync(
+          join(run.folder, "session.json"),
+          `${JSON.stringify({ platformName, platformVersion, browserVersion }, null, 2)}\n`,
+        );
+        if (String(platformName).toLowerCase() === "ios") return true;
+        await this.close();
+        return false;
+      } catch (error) {
+        run.log(`session ${attempt} of 3: ${String(error).slice(0, 200)}`);
+        if (attempt < 3) await sleep(20_000);
+      }
     }
-  }
-  return false;
-}
-
-/** A stroke on the element by a touch of WebDriver's actions, in the page's own coordinates, or
- * by the mouse where the touch is refused; say which drew and how many strokes the element holds. */
-async function draw(name: string): Promise<{ strokes: number; by: string }> {
-  await execute('document.querySelector("novatrail-canvas").scrollIntoView({ block: "start" });');
-  await sleep(1000);
-  const sheet = await box("novatrail-canvas");
-  if (!sheet) return { strokes: -1, by: "no element" };
-  const [[x1, y1], [x2, y2]] = strokeIn(sheet);
-  const before = (await read())?.strokes ?? 0;
-  for (const pointerType of ["touch", "mouse"]) {
-    try {
-      await command("POST", `/session/${session}/actions`, {
-        actions: [
-          {
-            type: "pointer",
-            id: pointerType,
-            parameters: { pointerType },
-            actions: [
-              { type: "pointerMove", duration: 0, x: x1, y: y1, origin: "viewport" },
-              { type: "pointerDown", button: 0 },
-              {
-                type: "pointerMove",
-                duration: 300,
-                x: Math.round((x1 + x2) / 2),
-                y: y1,
-                origin: "viewport",
-              },
-              { type: "pointerMove", duration: 300, x: x2, y: y2, origin: "viewport" },
-              { type: "pointerUp", button: 0 },
-            ],
-          },
-        ],
-      });
-      await command("DELETE", `/session/${session}/actions`).catch(() => {});
-    } catch (error) {
-      run.log(`${pointerType} on ${name}: ${String(error).slice(0, 200)}`);
-      continue;
-    }
-    await sleep(1000);
-    const strokes = (await read())?.strokes ?? -1;
-    if (strokes > before) {
-      shot(`${name}-drawn`);
-      return { strokes, by: pointerType };
-    }
-  }
-  shot(`${name}-not-drawn`);
-  return { strokes: (await read())?.strokes ?? -1, by: "neither touch nor mouse" };
-}
-
-/** The text of the file the page handed out at an index, within the time, kept in the run's
- * folder; whether there was one. */
-async function handed(index: number, name: string, seconds: number): Promise<boolean> {
-  for (let i = 0; i < seconds; i++) {
-    const text = await execute(`return ${blobAt(index)};`).catch(() => null);
-    if (typeof text === "string") {
-      const into = join(run.folder, "saved");
-      mkdirSync(into, { recursive: true });
-      writeFileSync(join(into, `${name}.json`), text);
-      shot(`${name}-saved`);
-      return true;
-    }
-    await sleep(1000);
-  }
-  return false;
-}
-
-/** Press the save button by its own click(), and keep the text of the file the page hands to a
- * download. Not by WebDriver's click of the element: in Safari on the iPad Simulator it scrolled
- * the button into view and tapped the sheet below it, a dot of a stroke the run never meant
- * (run 42537461456). What is checked is the page's way of saving, not where a tap lands. */
-async function save(index: number, name: string): Promise<boolean> {
-  try {
-    await execute('document.getElementById("save").click();');
-  } catch (error) {
-    run.log(`save ${name}: ${String(error).slice(0, 200)}`);
     return false;
   }
-  return handed(index, name, 10);
-}
 
-/** Answer the page's confirm, if it asks, as a person would: yes. */
-async function confirm(): Promise<void> {
-  for (let i = 0; i < 5; i++) {
+  async open(): Promise<boolean> {
+    const connected = await this.connect();
+    run.record("a session of safaridriver with Safari in the simulator", connected);
+    if (!connected) return false;
+    await command("POST", `/session/${this.session}/url`, {
+      url: `http://localhost:${port}/${this.file}`,
+    });
+    run.record("Safari opens the page from the runner", true);
+    return true;
+  }
+
+  async evaluate(expression: string): Promise<unknown> {
+    return command("POST", `/session/${this.session}/execute/sync`, {
+      script: `return ${expression};`,
+      args: [],
+    });
+  }
+
+  async read(): Promise<Seen | undefined> {
     try {
-      await command("POST", `/session/${session}/alert/accept`, {});
-      run.log("the page asked, and the driver said yes");
-      return;
+      return JSON.parse(String(await this.evaluate(READ))) as Seen;
     } catch {
-      await sleep(500);
+      return undefined;
     }
   }
-}
 
-/** One pass: Safari opens the page from the runner, and the sheet and the workbook are saved. */
-async function pass(file: string): Promise<void> {
-  const opened = await open();
-  run.record("a session of safaridriver with Safari in the simulator", opened);
-  if (!opened) return;
-  try {
-    await command("POST", `/session/${session}/url`, { url: `http://localhost:${port}/${file}` });
-    run.record("Safari opens the page from the runner", true);
-    let shown: Seen | undefined;
-    for (let i = 0; i < 30 && !shown?.defined; i++) {
-      shown = await read();
-      if (!shown?.defined) await sleep(1000);
+  /** A stroke by a touch of WebDriver's actions, in the page's own coordinates, or by the mouse
+   * where the touch gave none: on the workbook's page the touch has given none at times. Actions
+   * that safaridriver refuses both ways are the device's failure. */
+  async draw(name: string): Promise<string | undefined> {
+    await this.evaluate(
+      '(document.querySelector("novatrail-canvas").scrollIntoView({ block: "start" }), 0)',
+    );
+    await sleep(1000);
+    const sheet = (JSON.parse(String(await this.evaluate(boxOf("novatrail-canvas")))) ??
+      undefined) as Box | undefined;
+    const stroke = sheet && strokeIn(sheet);
+    const before = (await this.read())?.strokes ?? 0;
+    let acted = false;
+    for (const pointerType of stroke ? ["touch", "mouse"] : []) {
+      const [[x1, y1], [x2, y2]] = stroke ?? [
+        [0, 0],
+        [0, 0],
+      ];
+      try {
+        await command("POST", `/session/${this.session}/actions`, {
+          actions: [
+            {
+              type: "pointer",
+              id: pointerType,
+              parameters: { pointerType },
+              actions: [
+                { type: "pointerMove", duration: 0, x: x1, y: y1, origin: "viewport" },
+                { type: "pointerDown", button: 0 },
+                { type: "pointerMove", duration: 300, x: x2, y: y1, origin: "viewport" },
+                { type: "pointerMove", duration: 300, x: x2, y: y2, origin: "viewport" },
+                { type: "pointerUp", button: 0 },
+              ],
+            },
+          ],
+        });
+        await command("DELETE", `/session/${this.session}/actions`).catch(() => {});
+        acted = true;
+      } catch (error) {
+        run.log(`${pointerType} on the ${name}: ${String(error).slice(0, 200)}`);
+        continue;
+      }
+      await sleep(1000);
+      if (((await this.read())?.strokes ?? 0) > before) {
+        this.shot(`${name}-drawn`);
+        return `by ${pointerType}`;
+      }
     }
-    shown = await read();
-    shot("opened");
-    run.record(
-      "the element stands and offers the build's tasks",
-      Boolean(shown?.defined && shown.tasks === TASKS),
-      `${shown?.tasks ?? 0} task(s)`,
-      "page",
-    );
-    if (!shown?.defined) return;
+    run.record(`draw on the ${name} by WebDriver's actions`, acted);
+    this.shot(`${name}-not-drawn`);
+    return acted ? "by neither touch nor mouse" : undefined;
+  }
 
-    const sheet = await draw("sheet");
-    run.record(
-      "the sheet holds the stroke drawn",
-      sheet.strokes > 0,
-      `${sheet.strokes}, by ${sheet.by}`,
-      "page",
-    );
-    run.record("the sheet's sample is handed to a download", await save(0, "sheet"), "", "page");
+  /** The save button pressed by its own click(): WebDriver's click of the element, in Safari on
+   * the iPad Simulator, scrolled the button into view and tapped the sheet below it, a dot of a
+   * stroke the run never meant (run 42537461456). What is checked is the page's way of saving,
+   * not where a tap lands. */
+  async press(name: string): Promise<boolean> {
+    try {
+      await this.evaluate('(document.getElementById("save").click(), 0)');
+      return true;
+    } catch (error) {
+      run.record(`press the save button, for the ${name}`, false, String(error).slice(0, 200));
+      return false;
+    }
+  }
 
-    await execute(`${TO_WORKBOOK};`);
-    await confirm();
+  async toWorkbook(): Promise<void> {
+    await this.evaluate(`(${TO_WORKBOOK}, 0)`);
+    // The page asks before strokes not saved are lost; the driver says yes, as a person would.
+    for (let i = 0; i < 5; i++) {
+      try {
+        await command("POST", `/session/${this.session}/alert/accept`, {});
+        break;
+      } catch {
+        await sleep(500);
+      }
+    }
     await sleep(1500);
-    run.record(
-      "the picker shows the workbook's page",
-      (await read())?.task === WORKBOOK,
-      "",
-      "page",
-    );
-    const page = await draw("workbook");
-    run.record(
-      "the workbook holds the stroke drawn",
-      page.strokes > 0,
-      `${page.strokes}, by ${page.by}`,
-      "page",
-    );
-    run.record(
-      "the workbook's sample is handed to a download",
-      await save(1, "workbook"),
-      "",
-      "page",
-    );
+  }
 
-    const last = await read();
-    const out = outside(last?.resources ?? []);
-    writeFileSync(
-      join(run.folder, "watch.json"),
-      `${JSON.stringify({ seen: last, requests: out }, null, 2)}\n`,
-    );
-    if (last)
-      for (const { step, ok, note } of verdicts(last, out)) run.record(step, ok, note, "page");
-    else run.record("read the page at the end", false);
-  } finally {
-    await command("DELETE", `/session/${session}`).catch(() => {});
-    session = "";
+  requests(seen: Seen): string[] {
+    return outside(seen.resources);
+  }
+
+  shot(name: string): void {
+    shots += 1;
+    const file = join(run.folder, `${String(shots).padStart(2, "0")}-${name}.png`);
+    try {
+      execFileSync(XCRUN, ["simctl", "io", udid, "screenshot", file], { stdio: "ignore" });
+    } catch {
+      run.log(`no screenshot ${name}`);
+    }
+  }
+
+  async close(): Promise<void> {
+    if (this.session) await command("DELETE", `/session/${this.session}`).catch(() => {});
+    this.session = "";
   }
 }
 
 async function main(): Promise<void> {
   const file = pageFile();
-  for (; run.pass <= 2; run.pass++) {
-    try {
-      await pass(file);
-    } catch (error) {
-      run.record("the pass went to its end", false, String(error).slice(0, 200));
-    }
-    if (run.verdict() !== "device") break;
-    run.log("the device failed: Safari launched anew, and one more pass");
-    execFileSync(XCRUN, ["simctl", "terminate", udid, "com.apple.mobilesafari"], {
-      stdio: "ignore",
-    });
-    await sleep(2000);
-    execFileSync(XCRUN, ["simctl", "launch", udid, "com.apple.mobilesafari"], { stdio: "ignore" });
-    await sleep(10_000);
-  }
-  run.pass = Math.min(run.pass, 2);
+  await passes(
+    run,
+    () => volunteer(run, new Safari(file), true),
+    async () => {
+      execFileSync(XCRUN, ["simctl", "terminate", udid, SAFARI], { stdio: "ignore" });
+      await sleep(2000);
+      execFileSync(XCRUN, ["simctl", "launch", udid, SAFARI], { stdio: "ignore" });
+      await sleep(10_000);
+    },
+  );
   if (run.verdict() === "ok") {
     const { step, ok, note } = served(run.folder, file);
     run.record(step, ok, note, "page");

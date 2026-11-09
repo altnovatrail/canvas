@@ -60,7 +60,12 @@ describe("the pure parts", () => {
       [20, 860],
       [40, 900],
     ]);
-    expect(strokeIn({ x: 0, y: -500, width: 100, height: 1000, view: 1000 })[0]).toEqual([20, 150]);
+    expect(strokeIn({ x: 0, y: -500, width: 100, height: 1000, view: 1000 })?.[0]).toEqual([
+      20, 150,
+    ]);
+    // Wholly above the window, or a strip of it too thin to draw in: no stroke.
+    expect(strokeIn({ x: 0, y: -900, width: 100, height: 800, view: 1000 })).toBeUndefined();
+    expect(strokeIn({ x: 0, y: 980, width: 100, height: 800, view: 1000 })).toBeUndefined();
   });
 
   test("a request is any address but the page's own blobs, data and file", () => {
@@ -72,10 +77,12 @@ describe("the pure parts", () => {
           "content://1",
           "https://a.invalid/",
           "http://localhost:8080/favicon.ico",
+          "http://10.0.2.2:8080/apple-touch-icon-precomposed.png",
+          "https://tracker.example/favicon.ico",
         ],
         ["content://1"],
       ),
-    ).toEqual(["https://a.invalid/"]);
+    ).toEqual(["https://a.invalid/", "https://tracker.example/favicon.ico"]);
     expect(noNetwork(QUIET.policy)).toBe(true);
     expect(noNetwork("default-src 'none'")).toBe(false);
     expect(noNetwork("")).toBe(false);
@@ -147,6 +154,9 @@ describe("the pure parts", () => {
       ok: true,
       note: "the browser's icon stopped",
     });
+    // The same path anywhere but the runner's own server is the page's own request.
+    const elsewhere = { directive: "img-src", blocked: "https://tracker.example/favicon.ico" };
+    expect(verdicts({ ...QUIET, violations: [elsewhere] }, [])[2]).toMatchObject({ ok: false });
   });
 });
 
@@ -191,9 +201,15 @@ describe("in the page's build", () => {
     const page = await opened(file);
     try {
       expect(await read(page)).toMatchObject({ watched: true, defined: true, tasks: TASKS });
+      // The spy on Blob keeps a blob the browser makes a Blob to the page, as the element asks.
+      expect(
+        await page.evaluate("(async () => (await new Response('a').blob()) instanceof Blob)()"),
+      ).toBe(true);
       const draw = async () => {
         const box = JSON.parse(String(await page.evaluate(boxOf("novatrail-canvas"))));
-        const [[x1, y1], [x2, y2]] = strokeIn(box);
+        const stroke = strokeIn(box);
+        if (!stroke) throw new Error("the element is not in the window");
+        const [[x1, y1], [x2, y2]] = stroke;
         await page.mouse.move(x1, y1);
         await page.mouse.down();
         await page.mouse.move(x2, y2, { steps: 8 });

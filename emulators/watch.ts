@@ -49,6 +49,10 @@ export const WATCH = `(() => {
   const texts = new WeakMap();
   const Native = Blob;
   window.Blob = class extends Native {
+    // A blob the browser makes — of a fetch, a canvas, a file — is still a Blob to the page.
+    static [Symbol.hasInstance](value) {
+      return value instanceof Native;
+    }
     constructor(parts, options) {
       super(parts, options);
       if (Array.isArray(parts) && parts.every((part) => typeof part === "string")) texts.set(this, parts.join(""));
@@ -127,19 +131,27 @@ export interface Box {
 }
 
 /** A stroke inside the part of an element the window shows: from a point a fifth into it to one
- * a little lower and to the right, as in the build's own test. */
-export function strokeIn(box: Box): [[number, number], [number, number]] {
+ * a little lower and to the right, as in the build's own test; none when the window shows less
+ * than a strip of it. */
+export function strokeIn(box: Box): [[number, number], [number, number]] | undefined {
   const top = Math.max(box.y, 0);
   const bottom = Math.min(box.y + box.height, box.view);
-  const from: [number, number] = [box.x + box.width * 0.2, top + (bottom - top) * 0.3];
-  const to: [number, number] = [box.x + box.width * 0.4, top + (bottom - top) * 0.5];
-  const round = ([x, y]: [number, number]): [number, number] => [Math.round(x), Math.round(y)];
-  return [round(from), round(to)];
+  if (bottom - top < 40) return undefined;
+  const round = (x: number, y: number): [number, number] => [Math.round(x), Math.round(y)];
+  return [
+    round(box.x + box.width * 0.2, top + (bottom - top) * 0.3),
+    round(box.x + box.width * 0.4, top + (bottom - top) * 0.5),
+  ];
 }
 
 /** A site's icon, which a browser asks for of itself: Safari asks for it of a page from a server,
  * and the page's policy stops it as any picture not of a blob. It says nothing of the page. */
-const ICON = /\/(favicon\.ico|apple-touch-icon[\w-]*\.png)$/;
+const ICON = String.raw`/(favicon\.ico|apple-touch-icon[\w-]*\.png)`;
+/** The icon at the address of the runner's own server, as the emulator or the simulator reaches
+ * it: the same path anywhere else is a request like any other. */
+const OWN_ICON = new RegExp(String.raw`^http://(localhost|127\.0\.0\.1|10\.0\.2\.2):\d+${ICON}$`);
+/** A line of the server's log for the icon. */
+const ICON_LINE = new RegExp(String.raw` ${ICON} \d{3}$`);
 
 /** A request the page made, among the addresses asked for: anything but its own blobs and data,
  * the file it came from and the browser's own icon of the site. */
@@ -149,7 +161,7 @@ export function outside(addresses: readonly string[], own: readonly string[] = [
       !address.startsWith("blob:") &&
       !address.startsWith("data:") &&
       !own.includes(address) &&
-      !ICON.test(address),
+      !OWN_ICON.test(address),
   );
 }
 
@@ -169,7 +181,7 @@ export function asked(
 ): { readonly others: string[]; readonly icons: string[] } {
   const requests = lines.filter((line) => /^[A-Z?]+ \S+ \d{3}$/.test(line));
   const others = requests.filter((line) => !line.startsWith(`GET /${file} `));
-  const icon = (line: string) => / \/(favicon\.ico|apple-touch-icon[\w-]*\.png) \d{3}$/.test(line);
+  const icon = (line: string) => ICON_LINE.test(line);
   return { others: others.filter((line) => !icon(line)), icons: others.filter(icon) };
 }
 
@@ -180,7 +192,7 @@ export function verdicts(
   seen: Seen,
   requests: readonly string[],
 ): { step: string; ok: boolean; note: string }[] {
-  const own = seen.violations.filter(({ blocked }) => !ICON.test(blocked));
+  const own = seen.violations.filter(({ blocked }) => !OWN_ICON.test(blocked));
   const icons = seen.violations.length - own.length;
   // A directive's name, in its own letters only: what the page reported goes to the log.
   const names = [...new Set(own.map(({ directive }) => directive.replace(/[^a-z-]/g, "")))];

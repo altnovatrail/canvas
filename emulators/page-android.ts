@@ -5,20 +5,20 @@
 //
 //   node emulators/page-android.ts
 //
-// It goes the volunteer's way, as the probe did (T74): Chrome downloads the page's file and opens
-// it from the download, by content://. Then DevTools puts the watch of emulators/watch.ts into the
-// page and loads it again under it, with the requests it makes recorded. The driver draws a stroke
-// on the sheet through the emulator's own touchscreen, saves the sample, shows the workbook's page,
-// draws and saves again; the two files come off the device into build/page-android/saved, for the
-// workflow's job of the saved files to read. Each step is the device's or the page's: a failure of
-// the device earns the run one more pass, a failure of the page fails it. The strokes are the
-// code's: no handwriting goes into a run. It needs adb (ADB) and the server's port (PORT).
+// It goes the volunteer's way of emulators/volunteer.ts, as the probe did (T74): Chrome downloads
+// the page's file and opens it from the download, by content://. Then DevTools puts the watch of
+// emulators/watch.ts into the page and loads it again under it, with the requests it makes
+// recorded. A stroke is drawn through the emulator's own touchscreen, and the save button pressed
+// by a tap; the files the page saved come off the device into build/page-android/saved, for the
+// workflow's job of the saved files to read. The strokes are the code's: no handwriting goes into
+// a run. It needs adb (ADB) and the server's port (PORT).
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
-import { Android, AWAY, calibrate, DevTools, find, HOST, newPage } from "./android.ts";
+import { Android, AWAY, calibrate, DevTools, find, HOST, newPage, type Target } from "./android.ts";
 import { Run } from "./run.ts";
+import { type Device, passes, volunteer } from "./volunteer.ts";
 import {
   type Box,
   boxOf,
@@ -29,113 +29,50 @@ import {
   type Seen,
   served,
   strokeIn,
-  TASKS,
   TITLE,
   TO_WORKBOOK,
-  verdicts,
   WATCH,
-  WORKBOOK,
 } from "./watch.ts";
 
 const run = new Run("build/page-android");
 const android = new Android(run);
 const port = process.env.PORT ?? "8080";
 const seen = new Set<string>();
-/** Where Chrome saves a download, and the files of the samples page's saving in it. */
+/** Where Chrome saves a download, and the files of the page's saving in it. */
 const DOWNLOADS = "/sdcard/Download";
 const SAVED = /^sample-[a-z2-7]+(?: \(\d+\))?\.json$/;
 
-/** The value of READ, or undefined while the page cannot be read. */
-async function read(tools: DevTools): Promise<Seen | undefined> {
-  try {
-    return JSON.parse(String(await tools.evaluate(READ))) as Seen;
-  } catch {
-    return undefined;
+/** Chrome on the emulator, with the page of a file opened from its download. */
+class Chrome implements Device {
+  private tools: DevTools | undefined;
+  private page: Target | undefined;
+  private readonly asked: string[] = [];
+  private readonly file: string;
+
+  constructor(file: string) {
+    this.file = file;
   }
-}
 
-/** Wait until the page has its element, and give what it shows. */
-async function ready(tools: DevTools, seconds: number): Promise<Seen | undefined> {
-  for (let i = 0; i < seconds; i++) {
-    const shown = await read(tools);
-    if (shown?.defined && shown.tasks > 0) return shown;
-    await sleep(1000);
-  }
-  return read(tools);
-}
-
-/** A box of the page, by a selector. */
-async function box(tools: DevTools, selector: string): Promise<Box | undefined> {
-  return (JSON.parse(String(await tools.evaluate(boxOf(selector)))) as Box | null) ?? undefined;
-}
-
-/** Draw a stroke on the element through the touchscreen, where the page's save button, seen in
- * the page and on the screen, says a point of the page lies; give how many strokes it holds then,
- * or undefined when the screen did not show the button: Chrome's own offers, such as one to
- * translate the page, may stand over it for a while, and that is the device's failure, not the
- * page's. */
-async function draw(tools: DevTools, name: string): Promise<number | undefined> {
-  await tools.evaluate('document.getElementById("save").scrollIntoView({ block: "end" })');
-  let node: ReturnType<typeof find>;
-  for (let i = 0; i < 10 && !node; i++) {
-    await sleep(1000);
-    node = find(android.screen(), SAVE);
-  }
-  const button = await box(tools, "#save");
-  const sheet = await box(tools, "novatrail-canvas");
-  run.record(
-    `find the save button on the screen, for the ${name}`,
-    Boolean(node && button && sheet),
-  );
-  if (!node || !button || !sheet) {
-    android.screenshot(`${name}-no-button`);
-    return undefined;
-  }
-  const toScreen = calibrate(button, node);
-  const [from, to] = strokeIn(sheet);
-  const [x1, y1] = toScreen(...from);
-  const [x2, y2] = toScreen(...to);
-  android.shell(`input touchscreen swipe ${x1} ${y1} ${x2} ${y2} 600`);
-  await sleep(1500);
-  android.screenshot(`${name}-drawn`);
-  return (await read(tools))?.strokes ?? -1;
-}
-
-/** Press the save button as a person would, and wait for the page to hand a file over. */
-async function save(tools: DevTools, before: number, name: string): Promise<boolean> {
-  const pressed = await android.tapWhen(SAVE, 5);
-  await android.tapWhen(AWAY, 3);
-  for (let i = 0; pressed && i < 10; i++) {
-    if (((await read(tools))?.blobs ?? 0) > before) {
-      android.screenshot(`${name}-saved`);
-      return true;
-    }
-    await sleep(1000);
-  }
-  return false;
-}
-
-/** One pass of the volunteer's way, from the download to the files saved. */
-async function pass(file: string): Promise<void> {
-  android.view(`http://${HOST}:${port}/${file}`);
-  await android.settle(60);
-  android.screenshot("download");
-  const how = await android.openDownload(file);
-  run.record("open the page from Chrome's downloads", how !== "", how);
-  await android.settle(30);
-  const page = await newPage(TITLE, seen, 40);
-  run.record(
-    "find the page among Chrome's pages, opened by content://",
-    Boolean(page?.url.startsWith("content://")),
-  );
-  if (!page) return;
-
-  const tools = await DevTools.open(page);
-  try {
-    const requests: string[] = [];
+  async open(): Promise<boolean> {
+    // The files of an earlier pass, which would be another opening's, with another writer's code.
+    android.shell(`rm -f ${DOWNLOADS}/sample-*.json`);
+    android.view(`http://${HOST}:${port}/${this.file}`);
+    await android.settle(60);
+    android.screenshot("download");
+    const how = await android.openDownload(this.file);
+    run.record("open the page from Chrome's downloads", how !== "", how);
+    await android.settle(30);
+    this.page = await newPage(TITLE, seen, 40);
+    run.record(
+      "find the page among Chrome's pages, opened by content://",
+      Boolean(this.page?.url.startsWith("content://")),
+    );
+    if (!this.page) return false;
+    const tools = await DevTools.open(this.page);
+    this.tools = tools;
     tools.on((method, params) => {
       if (method === "Network.requestWillBeSent") {
-        requests.push(String((params.request as { url?: string } | undefined)?.url ?? ""));
+        this.asked.push(String((params.request as { url?: string } | undefined)?.url ?? ""));
       } else if (method === "Page.javascriptDialogOpening") {
         // The page asks before strokes not saved are lost; the driver says yes, as a person would.
         void tools.send("Page.handleJavaScriptDialog", { accept: true }).catch(() => {});
@@ -145,65 +82,82 @@ async function pass(file: string): Promise<void> {
     await tools.send("Network.enable");
     await tools.send("Page.addScriptToEvaluateOnNewDocument", { source: WATCH });
     await tools.send("Page.reload");
-    const shown = await ready(tools, 30);
-    android.screenshot("opened");
-    run.record(
-      "the element stands and offers the build's tasks",
-      Boolean(shown?.defined && shown.tasks === TASKS),
-      `${shown?.tasks ?? 0} task(s)`,
-      "page",
-    );
-    if (!shown?.defined) return;
+    return true;
+  }
 
-    const strokes = await draw(tools, "sheet");
-    if (strokes === undefined) return;
-    run.record(
-      "the sheet holds the stroke drawn",
-      strokes > 0,
-      `${strokes} in its history`,
-      "page",
-    );
-    run.record(
-      "the sheet's sample is handed to a download",
-      await save(tools, 0, "sheet"),
-      "",
-      "page",
-    );
+  async read(): Promise<Seen | undefined> {
+    try {
+      return JSON.parse(String(await this.evaluate(READ))) as Seen;
+    } catch {
+      return undefined;
+    }
+  }
 
-    await tools.evaluate(TO_WORKBOOK);
+  async evaluate(expression: string): Promise<unknown> {
+    if (!this.tools) throw new Error("no page");
+    return this.tools.evaluate(expression);
+  }
+
+  private async box(selector: string): Promise<Box | undefined> {
+    return (JSON.parse(String(await this.evaluate(boxOf(selector)))) as Box | null) ?? undefined;
+  }
+
+  /** A stroke through the touchscreen, where the page's save button, seen in the page and on the
+   * screen, says a point of the page lies. Chrome's own offers, such as one to translate the
+   * page, may stand over the button a while: then it is the device's failure, not the page's. */
+  async draw(name: string): Promise<string | undefined> {
+    await this.evaluate('document.getElementById("save").scrollIntoView({ block: "end" })');
+    let node: ReturnType<typeof find>;
+    for (let i = 0; i < 10 && !node; i++) {
+      await sleep(1000);
+      node = find(android.screen(), SAVE);
+    }
+    const button = await this.box("#save");
+    const sheet = await this.box("novatrail-canvas");
+    const stroke = sheet && strokeIn(sheet);
+    run.record(
+      `find the save button and the ${name} on the screen`,
+      Boolean(node && button && stroke),
+    );
+    if (!node || !button || !stroke) {
+      android.screenshot(`${name}-not-found`);
+      return undefined;
+    }
+    const toScreen = calibrate(button, node);
+    const [x1, y1] = toScreen(...stroke[0]);
+    const [x2, y2] = toScreen(...stroke[1]);
+    android.shell(`input touchscreen swipe ${x1} ${y1} ${x2} ${y2} 600`);
+    await sleep(1500);
+    android.screenshot(`${name}-drawn`);
+    return "by the touchscreen";
+  }
+
+  async press(name: string): Promise<boolean> {
+    const pressed = await android.tapWhen(SAVE, 5);
+    await android.tapWhen(AWAY, 3);
+    run.record(`tap the save button, for the ${name}`, pressed);
+    return pressed;
+  }
+
+  async toWorkbook(): Promise<void> {
+    await this.evaluate(TO_WORKBOOK);
     await sleep(2000);
-    run.record(
-      "the picker shows the workbook's page",
-      (await read(tools))?.task === WORKBOOK,
-      "",
-      "page",
-    );
-    const cells = await draw(tools, "workbook");
-    if (cells === undefined) return;
-    run.record("the workbook holds the stroke drawn", cells > 0, `${cells} in its history`, "page");
-    run.record(
-      "the workbook's sample is handed to a download",
-      await save(tools, 1, "workbook"),
-      "",
-      "page",
-    );
+  }
 
-    const last = await read(tools);
-    const out = outside(requests, [page.url]);
-    writeFileSync(
-      join(run.folder, "watch.json"),
-      `${JSON.stringify({ seen: last, requests: out }, null, 2)}\n`,
-    );
-    if (last)
-      for (const { step, ok, note } of verdicts(last, out)) run.record(step, ok, note, "page");
-    else run.record("read the page at the end", false);
-  } finally {
-    tools.close();
+  requests(): string[] {
+    return outside(this.asked, this.page ? [this.page.url] : []);
+  }
+
+  shot(name: string): void {
+    android.screenshot(name);
+  }
+
+  async close(): Promise<void> {
+    this.tools?.close();
   }
 }
 
-/** The requests the server answered beyond the page's own download, and the saved files pulled
- * off the device. */
+/** The server asked for nothing but the page, and the files the page saved, off the device. */
 function after(file: string): void {
   const { step, ok, note } = served(run.folder, file);
   run.record(step, ok, note, "page");
@@ -216,8 +170,8 @@ function after(file: string): void {
   mkdirSync(into, { recursive: true });
   for (const name of names) android.pull(`${DOWNLOADS}/${name}`, join(into, name));
   run.record(
-    "the samples saved are in Chrome's downloads",
-    names.length >= 2,
+    "the files saved are in Chrome's downloads",
+    names.length === 2,
     `${names.length}`,
     "page",
   );
@@ -229,18 +183,14 @@ async function main(): Promise<void> {
     run.record("Chrome is on the image", false);
     throw new Error("the image has no Chrome");
   }
-  for (; run.pass <= 2; run.pass++) {
-    try {
-      await pass(file);
-    } catch (error) {
-      run.record("the pass went to its end", false, String(error).slice(0, 200));
-    }
-    if (run.verdict() !== "device") break;
-    run.log("the device failed: Chrome stopped, and one more pass");
-    android.stopChrome();
-    await sleep(3000);
-  }
-  run.pass = Math.min(run.pass, 2);
+  await passes(
+    run,
+    () => volunteer(run, new Chrome(file), false),
+    async () => {
+      android.stopChrome();
+      await sleep(3000);
+    },
+  );
   if (run.verdict() === "ok") after(file);
   run.check();
 }

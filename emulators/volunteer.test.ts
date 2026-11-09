@@ -1,0 +1,162 @@
+// The volunteer's way through the samples page (T78 in RUN.md; R54 in docs/decisions.md), on a
+// device of the test's own: the steps the page owns and those the device owns, the files kept,
+// and a second pass only after the device failed.
+
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, expect, test } from "vitest";
+import { Run } from "./run.ts";
+import { type Device, passes, volunteer } from "./volunteer.ts";
+import type { Seen } from "./watch.ts";
+
+let folder: string;
+let run: Run;
+
+beforeEach(() => {
+  folder = mkdtempSync(join(tmpdir(), "canvas-volunteer-"));
+  run = new Run(folder);
+});
+
+afterEach(() => {
+  rmSync(folder, { recursive: true, force: true });
+});
+
+/** A page that does what it should, on a device that can do all it is asked, unless told not to;
+ * what it cannot do it records in the journal of its run. */
+function device(
+  journal: Run,
+  fails: { draw?: boolean; press?: boolean; save?: boolean } = {},
+): Device & { closed: number } {
+  const page = { strokes: 0, task: "0", blobs: [] as string[] };
+  const seen = (): Seen => ({
+    watched: true,
+    defined: true,
+    tasks: 3,
+    task: page.task,
+    strokes: page.strokes,
+    policy: "default-src 'none'; connect-src 'none'",
+    resources: [],
+    violations: [],
+    errors: [],
+    blobs: page.blobs.length,
+  });
+  const own = {
+    closed: 0,
+    open: async () => true,
+    read: async () => seen(),
+    evaluate: async (expression: string) => {
+      const at = /blobs\[(\d+)\]/.exec(expression)?.[1];
+      return page.blobs[Number(at)] ?? null;
+    },
+    draw: async (name: string) => {
+      if (fails.draw) {
+        journal.record(`draw on the ${name}`, false);
+        return undefined;
+      }
+      page.strokes += 1;
+      return "by the test";
+    },
+    press: async (name: string) => {
+      if (fails.press) {
+        journal.record(`press for the ${name}`, false);
+        return false;
+      }
+      if (!fails.save) page.blobs.push(`{"surface":"${page.task}"}`);
+      return true;
+    },
+    toWorkbook: async () => {
+      page.task = "2";
+      page.strokes = 0;
+    },
+    requests: () => [],
+    shot: () => {},
+    close: async () => {
+      own.closed += 1;
+    },
+  };
+  return own;
+}
+
+test("a page that does what it should passes each step, and its files are kept when asked", async () => {
+  const quiet = device(run);
+  await volunteer(run, quiet, true);
+  expect(run.verdict()).toBe("ok");
+  expect(quiet.closed).toBe(1);
+  expect(run.steps.map(({ step }) => step)).toEqual([
+    "the element stands and offers the build's tasks",
+    "the sheet holds the stroke drawn",
+    "the sheet's sample is handed to a download",
+    "the picker shows the workbook's page",
+    "the workbook holds the stroke drawn",
+    "the workbook's sample is handed to a download",
+    "the watch saw the page from its start",
+    "the page carries its policy of no network",
+    "the policy saw no violation",
+    "the page threw no error",
+    "the page asked for nothing outside its file",
+  ]);
+  expect(readdirSync(join(folder, "saved")).sort((a, b) => a.localeCompare(b))).toEqual([
+    "sheet.json",
+    "workbook.json",
+  ]);
+  expect(readFileSync(join(folder, "saved", "workbook.json"), "utf8")).toBe('{"surface":"2"}');
+  expect(JSON.parse(readFileSync(join(folder, "watch.json"), "utf8")).requests).toEqual([]);
+});
+
+test("a device that cannot draw or press is the device's failure, and the pass stops there", async () => {
+  await volunteer(run, device(run, { draw: true }), false);
+  expect(run.verdict()).toBe("device");
+  const other = new Run(mkdtempSync(join(folder, "press-")));
+  await volunteer(other, device(other, { press: true }), false);
+  expect(other.verdict()).toBe("device");
+  expect(other.steps.at(-1)?.step).toBe("press for the sheet");
+});
+
+test("a page that hands no file over is the page's failure", { timeout: 40_000 }, async () => {
+  await volunteer(run, device(run, { save: true }), false);
+  expect(run.verdict()).toBe("page");
+});
+
+test("one more pass follows a device's failure only, and none follows the last", async () => {
+  const recovered: number[] = [];
+  let tries = 0;
+  await passes(
+    run,
+    async () => {
+      tries += 1;
+      run.record("open", false);
+    },
+    async () => {
+      recovered.push(run.pass);
+    },
+  );
+  expect(tries).toBe(2);
+  expect(recovered).toEqual([1]);
+  expect(run.pass).toBe(2);
+
+  const page = new Run(mkdtempSync(join(folder, "page-")));
+  let pageTries = 0;
+  await passes(
+    page,
+    async () => {
+      pageTries += 1;
+      page.record("draw", false, "", "page");
+    },
+    async () => {},
+  );
+  expect(pageTries).toBe(1);
+
+  const thrown = new Run(mkdtempSync(join(folder, "thrown-")));
+  await passes(
+    thrown,
+    async () => {
+      throw new Error("the socket closed");
+    },
+    async () => {},
+  );
+  expect(thrown.steps.map(({ step, pass }) => `${pass} ${step}`)).toEqual([
+    "1 the pass went to its end",
+    "2 the pass went to its end",
+  ]);
+});
