@@ -211,12 +211,13 @@ export function served(folder: string, file: string): { step: string; ok: boolea
  * report from before it came (T78). */
 export function watched(page: string): string {
   const at = page.indexOf("<script>");
+  if (at < 0 || page.indexOf("<script>", at + 1) >= 0)
+    throw new Error("the page has not one script");
+  // A page without a policy of scripts — a build gone wrong — takes the watch as it is.
   const policy = page.indexOf("script-src ");
-  if (at < 0 || policy < 0 || page.indexOf("<script>", at + 1) >= 0) {
-    throw new Error("the page has not one script and a policy of scripts");
-  }
   const allowed = policy + "script-src ".length;
-  const withHash = `${page.slice(0, allowed)}${hash(WATCH)} ${page.slice(allowed)}`;
+  const withHash =
+    policy < 0 ? page : `${page.slice(0, allowed)}${hash(WATCH)} ${page.slice(allowed)}`;
   const shifted = withHash.indexOf("<script>");
   return `${withHash.slice(0, shifted)}<script>${WATCH}</script>${withHash.slice(shifted)}`;
 }

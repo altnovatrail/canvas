@@ -99,10 +99,12 @@ describe("the pure parts", () => {
     const copy = watched(page);
     expect(copy.indexOf(WATCH)).toBeLessThan(copy.indexOf("own()"));
     expect(copy).toContain(`script-src ${hash(WATCH)} 'sha256-A';`);
-    expect(() => watched("<script>a</script><script>b</script>script-src ")).toThrow(
-      "not one script",
-    );
+    expect(() => watched("<script>a</script><script>b</script>")).toThrow("not one script");
     expect(() => watched("<p>no script</p>")).toThrow("not one script");
+    // A build without its policy still takes the watch, for the run to see what goes out.
+    expect(watched("<script>own()</script>")).toBe(
+      `<script>${WATCH}</script><script>own()</script>`,
+    );
   });
 
   test("a quiet page passes each check, and a violation, an error or a request fails its own", () => {
