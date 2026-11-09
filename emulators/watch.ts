@@ -110,6 +110,31 @@ export function blobAt(index: number): string {
   return `window.__canvasWatch?.blobs[${index}] ?? null`;
 }
 
+/** A script that draws a stroke on the element by pointer events of the page's own, from one point
+ * of the window to another, of a pointer's type: what the iPad's driver draws with, for WebDriver's
+ * actions in Safari of the simulator reached a window other than the session's, or hung (T81). The
+ * element takes them as it takes a finger's; what a real pen or palm does is the hardware's to
+ * show (Д7 in RUN.md). It gives the strokes the sheet holds then. */
+export function strokeBy(
+  [x1, y1]: readonly [number, number],
+  [x2, y2]: readonly [number, number],
+  type: "touch" | "pen" | "mouse",
+): string {
+  return `(() => {
+  const host = document.querySelector("novatrail-canvas");
+  const target = host.shadowRoot.elementFromPoint(${x1}, ${y1}) ?? host;
+  const at = (kind, x, y) => target.dispatchEvent(new PointerEvent(kind, {
+    pointerId: 7, pointerType: ${JSON.stringify(type)}, isPrimary: true, bubbles: true, composed: true,
+    cancelable: true, clientX: x, clientY: y, buttons: kind === "pointerup" ? 0 : 1,
+    pressure: kind === "pointerup" ? 0 : 0.5,
+  }));
+  at("pointerdown", ${x1}, ${y1});
+  for (let i = 1; i <= 12; i++) at("pointermove", ${x1} + (${x2 - x1} * i) / 12, ${y1} + (${y2 - y1} * i) / 12);
+  at("pointerup", ${x2}, ${y2});
+  return host.history.length;
+})()`;
+}
+
 /** A script that asks the page for the markup, as the writer presses its button: the form comes
  * once the element has given its work. */
 export const MARKUP = `(document.getElementById("markup").click(), 0)`;

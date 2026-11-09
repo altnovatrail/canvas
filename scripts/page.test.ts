@@ -109,7 +109,9 @@ describe("the file", () => {
   test("is one file whose policy allows its own style and script by their hashes, with nothing outside it", () => {
     const page = readFileSync(built.path, "utf8");
     expect(built.path.endsWith("samples-page_v0.0.0.html")).toBe(true);
-    expect(page).toMatch(/^<!doctype html>\n<html lang="ru">\n<meta charset="utf-8">\n/);
+    expect(page).toMatch(
+      /^<!doctype html>\n<html lang="ru" translate="no">\n<meta charset="utf-8">\n/,
+    );
     // The one inline script, by where its tags stand: the builder writes them as they are.
     const open = page.indexOf("<script>") + "<script>".length;
     const script = page.slice(open, page.lastIndexOf("</script>"));

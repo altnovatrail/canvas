@@ -24,6 +24,7 @@ import {
   READ,
   type Seen,
   served,
+  strokeBy,
   strokeIn,
   TASKS,
   TO_WORKBOOK,
@@ -230,7 +231,11 @@ describe("in the page's build", () => {
         expect(await page.evaluate(MARK)).toBe(true);
       };
       await draw();
-      expect((await read(page)).strokes).toBeGreaterThan(0);
+      expect((await read(page)).strokes).toBe(1);
+      // The iPad's way: a stroke of the page's own touch events, which the element takes too.
+      const sheet = strokeIn(JSON.parse(String(await page.evaluate(boxOf("novatrail-canvas")))));
+      if (!sheet) throw new Error("the element is not in the window");
+      expect(await page.evaluate(strokeBy(sheet[0], sheet[1], "touch"))).toBe(2);
       await markUp();
       await page.click("#save");
       await until(page, blobAt(0));

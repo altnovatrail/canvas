@@ -29,6 +29,7 @@ import {
   READ,
   type Seen,
   served,
+  strokeBy,
   strokeIn,
   TO_WORKBOOK,
 } from "./watch.ts";
@@ -109,58 +110,21 @@ class Safari implements Device {
     }
   }
 
-  /** A stroke by a touch of WebDriver's actions, in the page's own coordinates, or by the mouse
-   * where the touch came down and drew none: on the workbook's page the touch has given none at
-   * times. A touch that never reaches the page is the device's failure, and no mouse follows it:
-   * a window of Safari's own beside the session's took the touch once, and the mouse after it
-   * hung (T81). */
+  /** A stroke on the element by the page's own pointer events of a touch (strokeBy): WebDriver's
+   * actions in Safari of the simulator took a window other than the session's, and the mouse after
+   * them hung (T81). */
   async draw(name: string): Promise<string | undefined> {
     await this.evaluate(
       '(document.querySelector("novatrail-canvas").scrollIntoView({ block: "start" }), 0)',
     );
-    await sleep(500);
     const sheet = (JSON.parse(String(await this.evaluate(boxOf("novatrail-canvas")))) ??
       undefined) as Box | undefined;
     const stroke = sheet && strokeIn(sheet);
     run.record(`find the ${name} in Safari's window`, Boolean(stroke));
     if (!stroke) return undefined;
-    const [[x1, y1], [x2, y2]] = stroke;
-    const seen = await this.read();
-    const before = seen?.strokes ?? 0;
-    const downs = seen?.pointers.length ?? 0;
-    for (const pointerType of ["touch", "mouse"]) {
-      await command("POST", `/session/${this.session}/actions`, {
-        actions: [
-          {
-            type: "pointer",
-            id: pointerType,
-            parameters: { pointerType },
-            actions: [
-              { type: "pointerMove", duration: 0, x: x1, y: y1, origin: "viewport" },
-              { type: "pointerDown", button: 0 },
-              { type: "pointerMove", duration: 300, x: x2, y: y1, origin: "viewport" },
-              { type: "pointerMove", duration: 300, x: x2, y: y2, origin: "viewport" },
-              { type: "pointerUp", button: 0 },
-            ],
-          },
-        ],
-      });
-      await command("DELETE", `/session/${this.session}/actions`).catch(() => {});
-      await sleep(500);
-      const after = await this.read();
-      if ((after?.strokes ?? 0) > before) {
-        this.shot(`${name}-drawn`);
-        return `by ${pointerType}`;
-      }
-      const came = (after?.pointers.length ?? 0) > downs;
-      if (!came) {
-        this.shot(`${name}-not-reached`);
-        run.record(`the ${pointerType} of WebDriver's actions reaches the page`, false);
-        return undefined;
-      }
-    }
-    this.shot(`${name}-not-drawn`);
-    return "by neither touch nor mouse";
+    await this.evaluate(strokeBy(stroke[0], stroke[1], "touch"));
+    this.shot(`${name}-drawn`);
+    return "by the page's own touch events";
   }
 
   /** The save button pressed by its own click(): WebDriver's click of the element, in Safari on
