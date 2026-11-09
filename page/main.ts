@@ -112,17 +112,13 @@ let work: ExportedWork | null = null;
 /** The blobs of the crops shown, let go when the form goes. */
 let crops: string[] = [];
 
-/** The page's texts, put in. */
+/** The page's texts that change, put in: the template holds the few that never do. */
 function words(): void {
-  document.title = `NovaTrail — ${TEXTS.title.toLowerCase()}`;
-  byId("title").textContent = TEXTS.title;
   byId("version").textContent = TEXTS.version(data.version);
   byId("code-label").textContent = TEXTS.code;
   byId("code").textContent = CODE;
   byId("code-after").textContent = TEXTS.codeAfter;
   byId("offline").textContent = TEXTS.offline;
-  byId("task-label").textContent = TEXTS.task;
-  byId("personal-label").textContent = TEXTS.personal;
   markupButton.textContent = TEXTS.markup;
   saveButton.textContent = TEXTS.save;
   const writers = byId("writer");

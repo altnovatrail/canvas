@@ -1,6 +1,8 @@
-// Every text of the samples page, in one place (T81 in RUN.md; R56 in docs/decisions.md): the
-// screens are in Russian alone, and a translation by the rules of UI packages' translations (R91
-// spec; epic E10 in RUN.md) goes here. The texts are for now: those of the notices and the consent
+// Every text the samples page's script writes, in one place (T81 in RUN.md; R56 in
+// docs/decisions.md); the template, page/index.html, holds the few words that never change — the
+// heading and two labels — so that a reader of the template sees them. The screens are in Russian
+// alone, and a translation by the rules of UI packages' translations (R91 spec; epic E10 in RUN.md)
+// goes here and there. The texts are for now: those of the notices and the consent
 // are the lawyer's to read (R11; epic E4 in RUN.md of spec), and T20 brings the set of texts.
 
 /** What a form of markup still lacks, said to the writer, before the sample can be saved. */
@@ -20,13 +22,11 @@ export const LACKS = {
 
 /** The words of the page's screen. */
 export const TEXTS = {
-  title: "Страница образцов",
   version: (version: string) => `Версия страницы: ${version}.`,
   code: "Код писавшего на это открытие страницы:",
   codeAfter: "Запишите его: по нему отзывают согласие.",
   offline:
     "Страница работает без сети: всё, что ей нужно, — в этом файле. Образец сохраняется файлом на этом устройстве.",
-  task: "Задача:",
   sheetTask: "Лист",
   workbookTask: "Тетрадь",
   writer: "Кто писал:",
@@ -64,7 +64,6 @@ export const TEXTS = {
   readIllegible: "неразборчиво",
   readAmbiguous: "можно прочесть по-разному",
   value: "Значение, как написано:",
-  personal: "На листе нет ничего личного: имени, подписи, школы, контактов.",
   save: "Сохранить образец",
   saved: (id: string) => `Образец ${id} сохранён в загрузки.`,
   lacks: "Чтобы сохранить, осталось:",
