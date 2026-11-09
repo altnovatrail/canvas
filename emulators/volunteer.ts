@@ -114,7 +114,12 @@ export async function volunteer(run: Run, device: Device, keep: boolean): Promis
       }
       const how = await device.draw(name);
       if (how === undefined) return;
-      const strokes = (await device.read())?.strokes ?? -1;
+      // A page that no longer answers is the driver's way into it gone, not the page's failure:
+      // safaridriver has hung on an action once, and every command after it timed out (T81).
+      const after = await device.read();
+      run.record(`read the page after the stroke on the ${name}`, after !== undefined);
+      if (!after) return;
+      const strokes = after.strokes;
       run.record(`the ${name} holds the stroke drawn`, strokes > 0, `${strokes}, ${how}`, "page");
       run.record(
         `the ${name} is marked up, and the page will save it`,

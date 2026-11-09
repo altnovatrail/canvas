@@ -88,10 +88,12 @@ test("a page that does what it should passes each step, and its files are kept w
   expect(quiet.closed).toBe(1);
   expect(run.steps.map(({ step }) => step)).toEqual([
     "the element stands and offers the build's tasks",
+    "read the page after the stroke on the sheet",
     "the sheet holds the stroke drawn",
     "the sheet is marked up, and the page will save it",
     "the sheet's sample is handed to a download",
     "the picker shows the workbook's page",
+    "read the page after the stroke on the workbook",
     "the workbook holds the stroke drawn",
     "the workbook is marked up, and the page will save it",
     "the workbook's sample is handed to a download",
@@ -116,6 +118,17 @@ test("a device that cannot draw or press is the device's failure, and the pass s
   await volunteer(other, device(other, { press: true }), false);
   expect(other.verdict()).toBe("device");
   expect(other.steps.at(-1)?.step).toBe("press for the sheet");
+});
+
+test("a page that no longer answers after the stroke is the device's failure", async () => {
+  const hung = device(run);
+  let reads = 0;
+  const read = hung.read;
+  // The first read finds the page ready; the one after the stroke finds no answer.
+  hung.read = async () => (++reads > 1 ? undefined : read());
+  await volunteer(run, hung, false);
+  expect(run.verdict()).toBe("device");
+  expect(run.steps.at(-1)?.step).toBe("read the page after the stroke on the sheet");
 });
 
 test("a page whose markup does not let it save is the page's failure", {
