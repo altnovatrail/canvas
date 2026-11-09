@@ -265,6 +265,16 @@ export class Android {
     }
   }
 
+  /** Wait until Chrome has the focus, and say whether it came. */
+  async focused(seconds: number): Promise<boolean> {
+    for (let i = 0; i < seconds; i++) {
+      if (this.chromeFocused()) return true;
+      await sleep(1000);
+    }
+    this.run.log("Chrome without the focus");
+    return false;
+  }
+
   /** Wait until Chrome has the focus and shows more than its splash: a screen with words on it. */
   async settle(seconds: number): Promise<void> {
     for (let i = 0; i < seconds; i++) {
@@ -328,7 +338,9 @@ export class Android {
     this.shell(`am set-debug-app --persistent ${CHROME}`);
     this.stopChrome();
     this.view("about:blank");
-    await this.settle(120);
+    // Chrome in front is enough: an empty page shows no words to wait for, and a wait for words
+    // took the whole two minutes of every run (T81).
+    await this.focused(120);
     let quiet = 0;
     for (let i = 0; i < 30 && quiet < 3; i++) {
       const away = find(this.screen(), AWAY);

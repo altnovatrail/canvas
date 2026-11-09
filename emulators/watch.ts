@@ -14,7 +14,7 @@ import { hash } from "../scripts/csp.ts";
 /** The page's title, by which its DevTools target is found. */
 export const TITLE = "NovaTrail — страница образцов";
 /** The save button's text, as the screen shows it. */
-export const SAVE = "Сохранить образец (без разметки)";
+export const SAVE = "Сохранить образец";
 /** The tasks the build offers, and the one of the workbook among them (scripts/page.ts). */
 export const TASKS = 3;
 export const WORKBOOK = "2";
@@ -37,7 +37,18 @@ export function pageFile(): string {
 /** The watch, as a script of its own: it runs once in a page, before the page's own. */
 export const WATCH = `(() => {
   if (window.__canvasWatch) return;
-  const watch = { violations: [], errors: [], blobs: [] };
+  const watch = { violations: [], errors: [], blobs: [], pointers: [] };
+  // Where each pointer came down, and on what: a driver's tap that misses its place shows here.
+  document.addEventListener("pointerdown", (event) => {
+    const on = event.composedPath()[0];
+    watch.pointers.push({
+      type: event.pointerType,
+      x: Math.round(event.clientX),
+      y: Math.round(event.clientY),
+      on: on instanceof Element ? on.tagName.toLowerCase() + (on.id ? "#" + on.id : "") : "",
+    });
+    if (watch.pointers.length > 10) watch.pointers.shift();
+  }, true);
   window.__canvasWatch = watch;
   document.addEventListener("securitypolicyviolation", (event) => {
     watch.violations.push({ directive: event.effectiveDirective, blocked: String(event.blockedURI).slice(0, 80) });
@@ -59,8 +70,10 @@ export const WATCH = `(() => {
     }
   };
   const create = URL.createObjectURL.bind(URL);
+  // Only a blob of text is a file the page saves: a crop it shows is a picture, made by a canvas.
   URL.createObjectURL = (blob) => {
-    if (blob instanceof Native) watch.blobs.push(texts.get(blob) ?? null);
+    const text = blob instanceof Native ? texts.get(blob) : undefined;
+    if (text !== undefined) watch.blobs.push(text);
     return create(blob);
   };
 })();`;
@@ -80,6 +93,7 @@ export const READ = `JSON.stringify((() => {
     violations: watch?.violations ?? [],
     errors: watch?.errors ?? [],
     blobs: watch?.blobs.length ?? 0,
+    pointers: watch?.pointers ?? [],
   };
 })())`;
 
@@ -95,6 +109,61 @@ export function boxOf(selector: string): string {
 export function blobAt(index: number): string {
   return `window.__canvasWatch?.blobs[${index}] ?? null`;
 }
+
+/** A script that draws a stroke on the element by pointer events of the page's own, from one point
+ * of the window to another, of a pointer's type: what the iPad's driver draws with, for WebDriver's
+ * actions in Safari of the simulator reached a window other than the session's, or hung (T81). The
+ * element takes them as it takes a finger's; what a real pen or palm does is the hardware's to
+ * show (Д7 in RUN.md). It gives the strokes the sheet holds then. */
+export function strokeBy(
+  [x1, y1]: readonly [number, number],
+  [x2, y2]: readonly [number, number],
+  type: "touch" | "pen" | "mouse",
+): string {
+  return `(() => {
+  const host = document.querySelector("novatrail-canvas");
+  const target = host.shadowRoot.elementFromPoint(${x1}, ${y1}) ?? host;
+  const at = (kind, x, y) => target.dispatchEvent(new PointerEvent(kind, {
+    pointerId: 7, pointerType: ${JSON.stringify(type)}, isPrimary: true, bubbles: true, composed: true,
+    cancelable: true, clientX: x, clientY: y, buttons: kind === "pointerup" ? 0 : 1,
+    pressure: kind === "pointerup" ? 0 : 0.5,
+  }));
+  at("pointerdown", ${x1}, ${y1});
+  for (let i = 1; i <= 12; i++) at("pointermove", ${x1} + (${x2 - x1} * i) / 12, ${y1} + (${y2 - y1} * i) / 12);
+  at("pointerup", ${x2}, ${y2});
+  return host.history.length;
+})()`;
+}
+
+/** A script that asks the page for the markup, as the writer presses its button: the form comes
+ * once the element has given its work. */
+export const MARKUP = `(document.getElementById("markup").click(), 0)`;
+
+/** Whether the form of the markup is shown. */
+export const MARKING = `document.getElementById("form").hidden === false`;
+
+/** A script that marks the writing up as a writer would, through the page's own form, and says
+ * whether the page will save it then. On a sheet the parts join into one, the final answer, «2»;
+ * on a workbook each filled box is «5». The nothing personal on the sheet is said too. */
+export const MARK = `(() => {
+  const input = (field, value) => {
+    field.value = value;
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+  const join = () => document.querySelector('[data-part="0"] [data-act="join"]');
+  for (let button = join(); button && !button.disabled; button = join()) button.click();
+  const text = document.querySelector('[data-part="0"] textarea');
+  if (text) {
+    input(text, "x = 2");
+    const final = document.querySelector('[data-part="0"] input[data-flag="finalAnswer"]');
+    if (!final.checked) final.click();
+    input(document.getElementById("answer"), "2");
+  }
+  for (const value of document.querySelectorAll('[data-box] input[data-field="value"]')) input(value, "5");
+  const personal = document.getElementById("personal");
+  if (!personal.checked) personal.click();
+  return !document.getElementById("save").disabled;
+})()`;
 
 /** A script that shows the workbook's page: the picker's choice, as a person makes it. It waits
  * a moment, for the page's confirm stops the script that calls it until it is answered. */
@@ -119,6 +188,8 @@ export interface Seen {
   /** The message of each error, for the run's artifact. */
   readonly errors: readonly string[];
   readonly blobs: number;
+  /** The last pointers that came down, where and on what. */
+  readonly pointers: readonly { type: string; x: number; y: number; on: string }[];
 }
 
 /** A box in CSS pixels, and the height of the window it is seen in. */

@@ -133,6 +133,9 @@ class Chrome implements Device {
   }
 
   async press(name: string): Promise<boolean> {
+    // The form of the markup stands above the button: it comes into view first.
+    await this.evaluate('document.getElementById("save").scrollIntoView({ block: "center" })');
+    await sleep(1000);
     const pressed = await android.tapWhen(SAVE, 5);
     await android.tapWhen(AWAY, 3);
     run.record(`tap the save button, for the ${name}`, pressed);

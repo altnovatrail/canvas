@@ -109,7 +109,9 @@ describe("the file", () => {
   test("is one file whose policy allows its own style and script by their hashes, with nothing outside it", () => {
     const page = readFileSync(built.path, "utf8");
     expect(built.path.endsWith("samples-page_v0.0.0.html")).toBe(true);
-    expect(page).toMatch(/^<!doctype html>\n<html lang="ru">\n<meta charset="utf-8">\n/);
+    expect(page).toMatch(
+      /^<!doctype html>\n<html lang="ru" translate="no">\n<meta charset="utf-8">\n/,
+    );
     // The one inline script, by where its tags stand: the builder writes them as they are.
     const open = page.indexOf("<script>") + "<script>".length;
     const script = page.slice(open, page.lastIndexOf("</script>"));
@@ -176,6 +178,31 @@ describe("opened from a file", () => {
       // The code of this opening is shown, for the adult to write down.
       const code = (await page.textContent("#code")) ?? "";
       expect(code).toMatch(/^[0-9A-Z]{8}$/);
+      // Nothing is saved before the markup is whole (T81): the stroke is one part, its text the
+      // final answer, and the answer as written.
+      expect(await page.isDisabled("#save")).toBe(true);
+      // A second stroke far off, a group of its own: two parts, which the writer joins after
+      // typing the second's text, and the text stays.
+      await page.mouse.move(box.x + 600, box.y + 220);
+      await page.mouse.down();
+      await page.mouse.move(box.x + 640, box.y + 260, { steps: 4 });
+      await page.mouse.up();
+      await page.click("#markup");
+      expect(await page.locator("#form li[data-part]").count()).toBe(2);
+      await page.locator('#form li[data-part="1"] textarea').fill("x = 2");
+      await page.click('#form li[data-part="0"] [data-act="join"]');
+      await expect.poll(() => page.locator("#form li[data-part]").count()).toBe(1);
+      expect(await page.inputValue('#form li[data-part="0"] textarea')).toBe("x = 2");
+      await page.check('#form li[data-part="0"] input[data-flag="finalAnswer"]');
+      expect(await page.inputValue("#answer")).toBe("x = 2");
+      await page.fill("#answer", "2");
+      expect(await page.isDisabled("#save")).toBe(true);
+      await page.check("#personal");
+      // The part's frames on the sheet, one for each of its two groups, as the element shows marks.
+      await page.click('#form li[data-part="0"] [data-act="show"]');
+      expect(
+        await page.evaluate(() => document.querySelector("novatrail-canvas")?.marks?.marks.length),
+      ).toBe(2);
       const [download] = await Promise.all([page.waitForEvent("download"), page.click("#save")]);
       expect(download.suggestedFilename()).toMatch(/^sample-[a-z2-7]{12}\.json$/);
       const sample = readSample(readFileSync(await download.path(), "utf8"));
@@ -185,7 +212,16 @@ describe("opened from a file", () => {
       expect(sample.task?.task).toBe("equation-1");
       expect(sample.textSetVersion).toBe("draft-0");
       expect(sample.writerCode).toBe(code);
-      // A stroke not saved is lost only when the person says so: a refusal keeps the task.
+      const read = sample.markup?.truth?.answerSlots[0]?.read;
+      expect(read?.case === "value" && read.value).toBe("2");
+      const writing = sample.markup?.writing;
+      expect(
+        writing?.case === "parts" &&
+          writing.value.parts.map((part) => [part.text, part.finalAnswer]),
+      ).toEqual([["x = 2", true]]);
+      // A stroke not saved is lost only when the person says so: a refusal keeps the task. The
+      // form made the page longer and the clicks scrolled it: the element is where it began.
+      await page.evaluate(() => window.scrollTo(0, 0));
       await page.mouse.move(box.x + 300, box.y + 220);
       await page.mouse.down();
       await page.mouse.move(box.x + 360, box.y + 260, { steps: 4 });
@@ -197,16 +233,37 @@ describe("opened from a file", () => {
       await page.selectOption("#task", "2");
       expect(await page.inputValue("#task")).toBe("2");
       // The page of the workbook: a stroke in its first box, and a sample of its surface.
+      await page.evaluate(() => window.scrollTo(0, 0));
       const workbook = await page.locator("novatrail-canvas").boundingBox();
       if (!workbook) throw new Error("the workbook is not shown");
-      await page.mouse.move(workbook.x + 200, workbook.y + 200);
-      await page.mouse.down();
-      await page.mouse.move(workbook.x + 230, workbook.y + 230, { steps: 4 });
-      await page.mouse.up();
+      const stroke = async (dx: number) => {
+        await page.mouse.move(workbook.x + 200 + dx, workbook.y + 200);
+        await page.mouse.down();
+        await page.mouse.move(workbook.x + 230 + dx, workbook.y + 230, { steps: 4 });
+        await page.mouse.up();
+      };
+      await stroke(0);
+      await page.click("#markup");
+      expect(await page.locator("[data-box]").count()).toBeGreaterThan(1);
+      // A stroke after the markup was asked for: the form goes, and is asked for again.
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await stroke(4);
+      expect(await page.isHidden("#form")).toBe(true);
+      expect(await page.textContent("#changed")).not.toBe("");
+      await page.click("#markup");
+      const values = page.locator('[data-box] input[data-field="value"]');
+      expect(await values.count()).toBe(1);
+      await values.fill("5");
+      await page.check('input[name="writer"][value="child"]');
+      await page.check("#personal");
       const [again] = await Promise.all([page.waitForEvent("download"), page.click("#save")]);
       const page2 = readSample(readFileSync(await again.path(), "utf8"));
       expect(page2.task?.task).toBe("workbook-01");
       expect(page2.writerCode).toBe(code);
+      expect(page2.writer).toBe(Writer.ADULT_AS_CHILD);
+      const reads = page2.markup?.truth?.answerSlots.map(({ read }) => read.value) ?? [];
+      expect(reads.filter((value) => value === "5")).toHaveLength(1);
+      expect(reads.length).toBeGreaterThan(1);
       expect(outside).toEqual([]);
       expect(errors).toEqual([]);
       expect(

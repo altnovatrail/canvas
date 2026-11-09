@@ -1,16 +1,16 @@
 // The volunteer's way through the samples page, the same on every device (T78 in RUN.md; R54 in
 // docs/decisions.md): the page opened with the watch of emulators/watch.ts in it, a stroke on the
-// sheet and its sample saved, the workbook's page, a stroke there and its sample saved, and what
-// the page did all along. A device — emulators/page-android.ts, emulators/page-ipad.ts — gives the
-// ways of its own: how the page opens, how a stroke is drawn, how the save button is pressed. Its
-// own steps are the device's, which earn the run one more pass when they fail; the steps here are
-// the page's, which fail it.
+// sheet, its markup and its sample saved, the workbook's page, a stroke there, its markup and its
+// sample saved, and what the page did all along (T81). A device — emulators/page-android.ts,
+// emulators/page-ipad.ts — gives the ways of its own: how the page opens, how a stroke is drawn,
+// how the save button is pressed. Its own steps are the device's, which earn the run one more pass
+// when they fail; the steps here are the page's, which fail it.
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import type { Run } from "./run.ts";
-import { blobAt, type Seen, TASKS, verdicts, WORKBOOK } from "./watch.ts";
+import { blobAt, MARK, MARKING, MARKUP, type Seen, TASKS, verdicts, WORKBOOK } from "./watch.ts";
 
 /** What a device does on the volunteer's way. A step it cannot do it records as the device's and
  * says so by its answer. */
@@ -73,6 +73,28 @@ async function handed(
   return false;
 }
 
+/** Mark the writing up through the page's form, as the writer would after writing (T81): the
+ * markup asked for, its form filled in. Whether the page will save the sample then; or undefined
+ * when the driver could not reach the form — a page that no longer answers is the device's
+ * failure, which this records. */
+async function markUp(run: Run, device: Device, name: string): Promise<boolean | undefined> {
+  try {
+    await device.evaluate(MARKUP);
+    for (let i = 0; i < 10; i++) {
+      if ((await device.evaluate(MARKING)) === true) {
+        const ready = (await device.evaluate(MARK)) === true;
+        device.shot(`${name}-marked`);
+        return ready;
+      }
+      await sleep(1000);
+    }
+    return false;
+  } catch (error) {
+    run.record(`reach the form of the markup of the ${name}`, false, String(error).slice(0, 200));
+    return undefined;
+  }
+}
+
 /** One pass of the volunteer's way. The files the page saves are kept from the watch's copies
  * when keep is set; a device that takes them off itself leaves it unset. */
 export async function volunteer(run: Run, device: Device, keep: boolean): Promise<void> {
@@ -99,8 +121,16 @@ export async function volunteer(run: Run, device: Device, keep: boolean): Promis
       }
       const how = await device.draw(name);
       if (how === undefined) return;
-      const strokes = (await device.read())?.strokes ?? -1;
+      // A page that no longer answers is the driver's way into it gone, not the page's failure:
+      // safaridriver has hung on an action once, and every command after it timed out (T81).
+      const after = await device.read();
+      run.record(`read the page after the stroke on the ${name}`, after !== undefined);
+      if (!after) return;
+      const strokes = after.strokes;
       run.record(`the ${name} holds the stroke drawn`, strokes > 0, `${strokes}, ${how}`, "page");
+      const marked = await markUp(run, device, name);
+      if (marked === undefined) return;
+      run.record(`the ${name} is marked up, and the page will save it`, marked, "", "page");
       if (!(await device.press(name))) return;
       run.record(
         `the ${name}'s sample is handed to a download`,

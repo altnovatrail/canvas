@@ -29,6 +29,7 @@ import {
   READ,
   type Seen,
   served,
+  strokeBy,
   strokeIn,
   TO_WORKBOOK,
 } from "./watch.ts";
@@ -109,56 +110,21 @@ class Safari implements Device {
     }
   }
 
-  /** A stroke by a touch of WebDriver's actions, in the page's own coordinates, or by the mouse
-   * where the touch gave none: on the workbook's page the touch has given none at times. Actions
-   * that safaridriver refuses both ways are the device's failure. */
+  /** A stroke on the element by the page's own pointer events of a touch (strokeBy): WebDriver's
+   * actions in Safari of the simulator took a window other than the session's, and the mouse after
+   * them hung (T81). */
   async draw(name: string): Promise<string | undefined> {
     await this.evaluate(
       '(document.querySelector("novatrail-canvas").scrollIntoView({ block: "start" }), 0)',
     );
-    await sleep(1000);
     const sheet = (JSON.parse(String(await this.evaluate(boxOf("novatrail-canvas")))) ??
       undefined) as Box | undefined;
     const stroke = sheet && strokeIn(sheet);
-    const before = (await this.read())?.strokes ?? 0;
-    let acted = false;
-    for (const pointerType of stroke ? ["touch", "mouse"] : []) {
-      const [[x1, y1], [x2, y2]] = stroke ?? [
-        [0, 0],
-        [0, 0],
-      ];
-      try {
-        await command("POST", `/session/${this.session}/actions`, {
-          actions: [
-            {
-              type: "pointer",
-              id: pointerType,
-              parameters: { pointerType },
-              actions: [
-                { type: "pointerMove", duration: 0, x: x1, y: y1, origin: "viewport" },
-                { type: "pointerDown", button: 0 },
-                { type: "pointerMove", duration: 300, x: x2, y: y1, origin: "viewport" },
-                { type: "pointerMove", duration: 300, x: x2, y: y2, origin: "viewport" },
-                { type: "pointerUp", button: 0 },
-              ],
-            },
-          ],
-        });
-        await command("DELETE", `/session/${this.session}/actions`).catch(() => {});
-        acted = true;
-      } catch (error) {
-        run.log(`${pointerType} on the ${name}: ${String(error).slice(0, 200)}`);
-        continue;
-      }
-      await sleep(1000);
-      if (((await this.read())?.strokes ?? 0) > before) {
-        this.shot(`${name}-drawn`);
-        return `by ${pointerType}`;
-      }
-    }
-    run.record(`draw on the ${name} by WebDriver's actions`, acted);
-    this.shot(`${name}-not-drawn`);
-    return acted ? "by neither touch nor mouse" : undefined;
+    run.record(`find the ${name} in Safari's window`, Boolean(stroke));
+    if (!stroke) return undefined;
+    await this.evaluate(strokeBy(stroke[0], stroke[1], "touch"));
+    this.shot(`${name}-drawn`);
+    return "by the page's own touch events";
   }
 
   /** The save button pressed by its own click(): WebDriver's click of the element, in Safari on
@@ -214,11 +180,12 @@ async function main(): Promise<void> {
   await passes(
     run,
     () => volunteer(run, new Safari(file), true),
+    // Safari closed and launched anew, for the next session to connect to.
     async () => {
       execFileSync(XCRUN, ["simctl", "terminate", udid, SAFARI], { stdio: "ignore" });
       await sleep(2000);
       execFileSync(XCRUN, ["simctl", "launch", udid, SAFARI], { stdio: "ignore" });
-      await sleep(10_000);
+      await sleep(5000);
     },
   );
   if (run.verdict() === "ok") {
