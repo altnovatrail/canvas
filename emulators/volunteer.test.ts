@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { Run } from "./run.ts";
 import { type Device, passes, volunteer } from "./volunteer.ts";
-import type { Seen } from "./watch.ts";
+import { MARK, MARKING, MARKUP, type Seen } from "./watch.ts";
 
 let folder: string;
 let run: Run;
@@ -26,7 +26,7 @@ afterEach(() => {
  * what it cannot do it records in the journal of its run. */
 function device(
   journal: Run,
-  fails: { draw?: boolean; press?: boolean; save?: boolean } = {},
+  fails: { draw?: boolean; press?: boolean; save?: boolean; mark?: boolean } = {},
 ): Device & { closed: number } {
   const page = { strokes: 0, task: "0", blobs: [] as string[] };
   const seen = (): Seen => ({
@@ -46,6 +46,9 @@ function device(
     open: async () => true,
     read: async () => seen(),
     evaluate: async (expression: string) => {
+      // The page's markup: its form comes, and the writer's markup lets it save.
+      if (expression === MARKUP) return 0;
+      if (expression === MARKING || expression === MARK) return !fails.mark;
       const at = /blobs\[(\d+)\]/.exec(expression)?.[1];
       return page.blobs[Number(at)] ?? null;
     },
@@ -86,9 +89,11 @@ test("a page that does what it should passes each step, and its files are kept w
   expect(run.steps.map(({ step }) => step)).toEqual([
     "the element stands and offers the build's tasks",
     "the sheet holds the stroke drawn",
+    "the sheet is marked up, and the page will save it",
     "the sheet's sample is handed to a download",
     "the picker shows the workbook's page",
     "the workbook holds the stroke drawn",
+    "the workbook is marked up, and the page will save it",
     "the workbook's sample is handed to a download",
     "the watch saw the page from its start",
     "the page carries its policy of no network",
@@ -111,6 +116,16 @@ test("a device that cannot draw or press is the device's failure, and the pass s
   await volunteer(other, device(other, { press: true }), false);
   expect(other.verdict()).toBe("device");
   expect(other.steps.at(-1)?.step).toBe("press for the sheet");
+});
+
+test("a page whose markup does not let it save is the page's failure", {
+  timeout: 40_000,
+}, async () => {
+  await volunteer(run, device(run, { mark: true }), false);
+  expect(run.verdict()).toBe("page");
+  expect(
+    run.steps.find(({ step }) => step.endsWith("marked up, and the page will save it"))?.ok,
+  ).toBe(false);
 });
 
 test("a page that hands no file over is the page's failure", { timeout: 40_000 }, async () => {

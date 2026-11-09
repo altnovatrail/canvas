@@ -14,7 +14,7 @@ import { hash } from "../scripts/csp.ts";
 /** The page's title, by which its DevTools target is found. */
 export const TITLE = "NovaTrail — страница образцов";
 /** The save button's text, as the screen shows it. */
-export const SAVE = "Сохранить образец (без разметки)";
+export const SAVE = "Сохранить образец";
 /** The tasks the build offers, and the one of the workbook among them (scripts/page.ts). */
 export const TASKS = 3;
 export const WORKBOOK = "2";
@@ -59,8 +59,10 @@ export const WATCH = `(() => {
     }
   };
   const create = URL.createObjectURL.bind(URL);
+  // Only a blob of text is a file the page saves: a crop it shows is a picture, made by a canvas.
   URL.createObjectURL = (blob) => {
-    if (blob instanceof Native) watch.blobs.push(texts.get(blob) ?? null);
+    const text = blob instanceof Native ? texts.get(blob) : undefined;
+    if (text !== undefined) watch.blobs.push(text);
     return create(blob);
   };
 })();`;
@@ -98,6 +100,36 @@ export function blobAt(index: number): string {
 
 /** A script that shows the workbook's page: the picker's choice, as a person makes it. It waits
  * a moment, for the page's confirm stops the script that calls it until it is answered. */
+/** A script that asks the page for the markup, as the writer presses its button: the form comes
+ * once the element has given its work. */
+export const MARKUP = `(document.getElementById("markup").click(), 0)`;
+
+/** Whether the form of the markup is shown. */
+export const MARKING = `document.getElementById("form").hidden === false`;
+
+/** A script that marks the writing up as a writer would, through the page's own form, and says
+ * whether the page will save it then. On a sheet the parts join into one, the final answer, «2»;
+ * on a workbook each filled box is «5». The nothing personal on the sheet is said too. */
+export const MARK = `(() => {
+  const input = (field, value) => {
+    field.value = value;
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+  const join = () => document.querySelector('[data-part="0"] [data-act="join"]');
+  for (let button = join(); button && !button.disabled; button = join()) button.click();
+  const text = document.querySelector('[data-part="0"] textarea');
+  if (text) {
+    input(text, "x = 2");
+    const final = document.querySelector('[data-part="0"] input[data-flag="finalAnswer"]');
+    if (!final.checked) final.click();
+    input(document.getElementById("answer"), "2");
+  }
+  for (const value of document.querySelectorAll('[data-box] input[data-field="value"]')) input(value, "5");
+  const personal = document.getElementById("personal");
+  if (!personal.checked) personal.click();
+  return !document.getElementById("save").disabled;
+})()`;
+
 export const TO_WORKBOOK = `setTimeout(() => {
   const picker = document.getElementById("task");
   picker.value = ${JSON.stringify(WORKBOOK)};

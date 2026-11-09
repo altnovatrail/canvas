@@ -15,6 +15,9 @@ import {
   asked,
   blobAt,
   boxOf,
+  MARK,
+  MARKING,
+  MARKUP,
   noNetwork,
   outside,
   pageIn,
@@ -206,6 +209,10 @@ describe("in the page's build", () => {
         await page.evaluate("(async () => (await new Response('a').blob()) instanceof Blob)()"),
       ).toBe(true);
       const draw = async () => {
+        // As the drivers do: the element in the window first, for the save scrolled the page.
+        await page.evaluate(
+          'document.querySelector("novatrail-canvas").scrollIntoView({ block: "start" })',
+        );
         const box = JSON.parse(String(await page.evaluate(boxOf("novatrail-canvas"))));
         const stroke = strokeIn(box);
         if (!stroke) throw new Error("the element is not in the window");
@@ -215,8 +222,15 @@ describe("in the page's build", () => {
         await page.mouse.move(x2, y2, { steps: 8 });
         await page.mouse.up();
       };
+      // The markup the drivers make, through the page's form: then the page saves (T81).
+      const markUp = async () => {
+        await page.evaluate(MARKUP);
+        await until(page, MARKING);
+        expect(await page.evaluate(MARK)).toBe(true);
+      };
       await draw();
       expect((await read(page)).strokes).toBeGreaterThan(0);
+      await markUp();
       await page.click("#save");
       await until(page, blobAt(0));
       expect(JSON.parse(String(await page.evaluate(blobAt(0)))).purpose).toBe(
@@ -228,6 +242,7 @@ describe("in the page's build", () => {
       await page.evaluate(TO_WORKBOOK);
       await until(page, `document.getElementById("task").value === "${WORKBOOK}"`);
       await draw();
+      await markUp();
       await page.click("#save");
       await until(page, blobAt(1));
       const seen = await read(page);
