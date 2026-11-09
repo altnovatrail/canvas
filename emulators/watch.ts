@@ -106,6 +106,14 @@ export function boxOf(selector: string): string {
 })())`;
 }
 
+/** A script that asks the page for two frames of its rendering and marks when the second has come,
+ * and one that says whether it has: the element the picker gave lays itself out only in a frame,
+ * and Safari of the iPad Simulator has drawn none for seconds after the picker changed, so that a
+ * stroke drawn then found no element laid out to take it (run 42704340066, T21). */
+export const PAINT =
+  "(window.__canvasPainted = false, requestAnimationFrame(() => requestAnimationFrame(() => { window.__canvasPainted = true; })), 0)";
+export const PAINTED = "window.__canvasPainted === true";
+
 /** The text of the blob the page handed out at an index; null when there is none. */
 export function blobAt(index: number): string {
   return `window.__canvasWatch?.blobs[${index}] ?? null`;
