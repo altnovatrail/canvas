@@ -1,5 +1,6 @@
-// A set of the samples page's texts (T20 in RUN.md; R11, R58 in docs/decisions.md): the notice of
-// each purpose, the statements the adult makes before writing, and where the file goes after. Its
+// A set of the samples page's texts (T20, T84 in RUN.md; R11, R58, R59 in docs/decisions.md): the
+// notice of each purpose and of a child's session, the statements the adult makes before writing,
+// and where the file goes after. Its
 // version goes into every sample the page saves, and its status — a draft, or approved by the
 // lawyer — says which purposes are open (docs/architecture.md, section 3.6). The build carries one
 // set: the draft, page/sets/draft-0.json, or, given --texts, another; a test set, whose version
@@ -25,8 +26,12 @@ export interface TextSet {
   /** The statement of age every purpose asks for (П-6). */
   readonly adult: string;
   readonly measurement: PurposeTexts;
-  /** The eval set's texts: an approved set has them; a draft keeps the eval set closed. */
+  /** The eval set's texts: an approved set may have them; a draft keeps the eval set closed. */
   readonly evalSet?: PurposeTexts;
+  /** The texts of a child's session: an approved set may have them; a draft keeps it closed. The
+   * lawyer reads the adults' consent (П-16) and a child's (П-10) apart, so a set approved for one
+   * may come before the other. */
+  readonly child?: PurposeTexts;
 }
 
 /** The versions the sample file allows (contracts/README.md of spec, «The sample file»). */
@@ -56,7 +61,8 @@ function purposeOf(value: unknown, where: string): PurposeTexts {
 }
 
 /** A set of texts from its JSON, checked: a TypeError says what is wrong. An approved set opens
- * the eval set and so has its texts; a draft has none, for the eval set is closed while it is. */
+ * the eval set and a child's session where it has their texts; a draft has neither, for both are
+ * closed while it is. */
 export function textSetOf(json: unknown): TextSet {
   const raw = (json ?? {}) as Record<string, unknown>;
   const version = raw.version;
@@ -67,8 +73,8 @@ export function textSetOf(json: unknown): TextSet {
   if (status !== "draft" && status !== "approved") {
     throw new TypeError("the set's status is draft or approved");
   }
-  if ((status === "approved") !== (raw.evalSet !== undefined)) {
-    throw new TypeError("an approved set has the eval set's texts, and a draft has none");
+  if (status === "draft" && (raw.evalSet !== undefined || raw.child !== undefined)) {
+    throw new TypeError("a draft has no texts of the eval set or of a child's session");
   }
   return {
     version,
@@ -76,5 +82,6 @@ export function textSetOf(json: unknown): TextSet {
     adult: text(raw.adult, "adult"),
     measurement: purposeOf(raw.measurement, "measurement"),
     ...(raw.evalSet === undefined ? {} : { evalSet: purposeOf(raw.evalSet, "evalSet") }),
+    ...(raw.child === undefined ? {} : { child: purposeOf(raw.child, "child") }),
   };
 }

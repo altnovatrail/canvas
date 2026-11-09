@@ -8,14 +8,17 @@
 // First the start (T20; R58): the purpose — the measurement, or a module's eval set — as the set
 // of texts the build carries opens them (R11), the writer's code for the measurement, typed or new
 // and never remembered, the purpose's notice and the statements without which the person goes no
-// further. Once begun, they hold for this opening alone: another needs the page opened anew.
+// further. Below the purposes, a child's session (T84; R59): the adult who leads it types the
+// child's code from the form accepted, or asks a new one for a form, without the child. Once begun,
+// they hold for this opening alone: another needs the page opened anew.
 //
 // The writer writes, then marks the writing up (T81): on a sheet, the parts of the solution — the
 // element's groups of strokes, which the writer joins — with their texts and flags, the final
 // answer and the first error; on a workbook, every box. The element frames on the sheet what is
 // being marked, and the page shows the crops the model would see. A sample is saved only once its
-// markup is whole (page/markup.ts). The page remembers nothing: not a sheet half written either.
-// A child's session is T84's; every text is page/texts.ts's or the set's.
+// markup is whole (page/markup.ts). In a child's session the child writes and the adult marks up,
+// from what the child says. The page remembers nothing: not a sheet half written either. Every
+// text is page/texts.ts's or the set's.
 
 import { Purpose, Writer } from "@altnovatrail/contracts/novatrail/eval/v1/sample_pb.js";
 import { cellsOf } from "../src/core/boxes.js";
@@ -45,7 +48,7 @@ import {
   workbookMarkup,
 } from "./markup.js";
 import type { TextSet } from "./sets.js";
-import { codeOf, lacks, type PurposeKey, purposes, statements, textsOf } from "./steps.js";
+import { codeOf, hasCode, lacks, type PurposeKey, purposes, statements, textsOf } from "./steps.js";
 import { TEXTS } from "./texts.js";
 
 /** A task the build put in: what the picker calls it, its open view, and the sample's view of it. */
@@ -103,8 +106,11 @@ const typed = byId<HTMLInputElement>("typed");
 /** What the start settled: the purpose, and the writer's code where it has one. It holds for this
  * opening alone, and the page keeps it nowhere else (R11). */
 let begun: { readonly purpose: PurposeKey; readonly code?: string } | undefined;
-/** The new writer's code of this opening, made when the person first asks for one. */
-let newCode: string | undefined;
+/** The new codes of this opening, made when the person first asks for one: an adult's and a
+ * child's apart, for they are two people's. */
+const newCodes: { measurement?: string; child?: string } = {};
+/** The purpose the code's step was last shown for: another clears what it holds. */
+let codeFor: "measurement" | "child" | undefined;
 
 let sheet: NovatrailCanvas | undefined;
 let shown = 0;
@@ -136,6 +142,8 @@ function words(): void {
   byId("github").textContent = TEXTS.github;
   markupButton.textContent = TEXTS.markup;
   saveButton.textContent = TEXTS.save;
+  byId("child-writes").textContent = TEXTS.childWrites;
+  byId("ipad-note").textContent = TEXTS.ipadDownloads;
   const writers = byId("writer");
   byId("writer-label").textContent = TEXTS.writer;
   for (const [value, text] of [
@@ -349,7 +357,13 @@ function sheetForm(mark: Extract<Marking, { kind: "sheet" }>, focus?: number): v
     const flags = make("div", "", { class: "flags" });
     flags.append(
       checkbox(TEXTS.crossedOut, part.crossedOut, (on) => update({ crossedOut: on }), "crossedOut"),
-      checkbox(TEXTS.illegible, part.illegible, (on) => update({ illegible: on }), "illegible"),
+      // On purpose is the writer's to say: the adult marking a child's sheet up says it unread.
+      checkbox(
+        begun?.purpose === "child" ? TEXTS.illegibleChild : TEXTS.illegible,
+        part.illegible,
+        (on) => update({ illegible: on }),
+        "illegible",
+      ),
       checkbox(
         TEXTS.finalAnswer,
         part.finalAnswer,
@@ -526,8 +540,9 @@ function random(count: number): Uint8Array {
   return crypto.getRandomValues(new Uint8Array(count));
 }
 
-/** Who wrote, as the page asks it of each sample. */
+/** Who wrote: in a child's session the child, else as the page asks it of each sample. */
 function writer(): Writer {
+  if (begun?.purpose === "child") return Writer.CHILD;
   const checked = document.querySelector<HTMLInputElement>('input[name="writer"]:checked');
   return checked?.value === "child" ? Writer.ADULT_AS_CHILD : Writer.ADULT;
 }
@@ -536,7 +551,8 @@ function writer(): Writer {
 function current(): { id: string; text: string } | undefined {
   const now = made();
   if (!now || !("markup" in now) || !begun) return undefined;
-  const measurement = begun.purpose === "measurement";
+  // A child's sample is of the measurement too; begin() kept a code where the purpose has one.
+  const evalSet = begun.purpose === "evalSet";
   const { open } = chosen();
   const history = sheet?.history ?? [];
   const digit = NO_MANIFEST.digit;
@@ -546,10 +562,10 @@ function current(): { id: string; text: string } | undefined {
       : { sheet: { history, digit } };
   const sample = sampleOf({
     id: personId(random(12)),
-    purpose: measurement ? Purpose.MEASUREMENT : Purpose.EVAL_SET,
+    purpose: evalSet ? Purpose.EVAL_SET : Purpose.MEASUREMENT,
     writer: writer(),
     origin: { person: { textSetVersion: set.version, canvasVersion: data.version } },
-    ...(measurement && begun.code ? { writerCode: begun.code } : {}),
+    ...(begun.code ? { writerCode: begun.code } : {}),
     task: open.reference,
     surface,
     markup: now.markup,
@@ -580,32 +596,50 @@ function save(): void {
 /** The purpose chosen at the start, if one is. */
 function purposeChosen(): PurposeKey | undefined {
   const checked = document.querySelector<HTMLInputElement>('input[name="purpose"]:checked');
-  return checked?.value === "measurement" || checked?.value === "evalSet"
-    ? checked.value
-    : undefined;
+  const value = checked?.value;
+  return value === "measurement" || value === "evalSet" || value === "child" ? value : undefined;
+}
+
+/** How the code is given, once the person has chosen. */
+function wayChosen(): "own" | "new" | undefined {
+  const way = document.querySelector<HTMLInputElement>('input[name="code"]:checked')?.value;
+  return way === "own" || way === "new" ? way : undefined;
 }
 
 /** The writer's code the start has now: the new one, or the one typed when it is in shape. */
-function codeChosen(): { code?: string; typed: boolean } {
-  const way = document.querySelector<HTMLInputElement>('input[name="code"]:checked')?.value;
-  if (way === "new") return newCode ? { code: newCode, typed: false } : { typed: false };
-  if (way !== "own" || typed.value.trim() === "") return { typed: false };
+function codeChosen(purpose: PurposeKey | undefined): {
+  way?: "own" | "new";
+  code?: string;
+  typed: boolean;
+} {
+  const way = wayChosen();
+  if (way === "new") {
+    const made = purpose === "child" ? newCodes.child : newCodes.measurement;
+    return made ? { way, code: made, typed: false } : { way, typed: false };
+  }
+  if (way !== "own" || typed.value.trim() === "")
+    return way ? { way, typed: false } : { typed: false };
   const code = codeOf(typed.value);
-  return code ? { code, typed: true } : { typed: true };
+  return code ? { way, code, typed: true } : { way, typed: true };
 }
 
-/** The purposes the set opens, each a choice; a closed one shown with why, and not to be chosen. */
+/** The purposes the set opens, each a choice, a child's session in its own group below the others;
+ * a closed one shown with why, and not to be chosen. */
 function purposeChoices(): void {
-  const fieldset = byId("purpose");
+  const session = byId("session");
   for (const { key, open, note } of purposes(set, moduleTasks)) {
+    const fieldset = key === "child" ? session : byId("purpose");
     const label = make("label");
     const radio = make("input", "", { type: "radio", name: "purpose", value: key });
     radio.disabled = !open;
     label.append(radio, ` ${TEXTS.purpose[key]}`);
-    fieldset.append(label);
+    // The adults' purposes go before the session's group, which stays last.
+    const place = (node: Node) =>
+      key === "child" ? fieldset.append(node) : fieldset.insertBefore(node, session);
+    place(label);
     if (note) {
       const id = `purpose-note-${key}`;
-      fieldset.append(make("small", note, { id, class: "note" }));
+      place(make("small", note, { id, class: "note" }));
       radio.setAttribute("aria-describedby", id);
     }
   }
@@ -635,17 +669,26 @@ function startLacks(missing: readonly string[]): void {
   lacking.append(make("p", TEXTS.startLacks), list);
 }
 
-/** The start shown as it now stands: the code's step for the measurement, the purpose's notice and
- * statements, what still lacks, and the button that begins. */
+/** The start shown as it now stands: the code's step for the measurement or a child's session, in
+ * its words and cleared between the two people's codes, the purpose's notice and statements, what
+ * still lacks, and the button that begins. */
 function startShown(changedPurpose: boolean): void {
   const purpose = purposeChosen();
-  byId("code-step").hidden = purpose !== "measurement";
-  const way = document.querySelector<HTMLInputElement>('input[name="code"]:checked')?.value;
+  const coded = purpose && hasCode(purpose) ? purpose : undefined;
+  byId("code-step").hidden = coded === undefined;
+  if (coded && coded !== codeFor) codeStep(coded);
+  const way = wayChosen();
   byId("own-code").hidden = way !== "own";
-  if (way === "new" && !newCode) newCode = writerCode(random(8));
   const shownCode = byId("new-code");
   shownCode.hidden = way !== "new";
-  shownCode.textContent = newCode ? TEXTS.newCode(newCode) : "";
+  shownCode.textContent = "";
+  if (way === "new" && coded === "child") {
+    newCodes.child ??= writerCode(random(8));
+    shownCode.textContent = TEXTS.newChildCode(newCodes.child, set.version);
+  } else if (way === "new" && coded === "measurement") {
+    newCodes.measurement ??= writerCode(random(8));
+    shownCode.textContent = TEXTS.newCode(newCodes.measurement);
+  }
   const texts = purpose ? textsOf(set, purpose) : undefined;
   byId("notice").hidden = !texts;
   byId("statements").hidden = !texts;
@@ -659,21 +702,46 @@ function startShown(changedPurpose: boolean): void {
   ].map((tick) => tick.checked);
   const missing = lacks(set, moduleTasks, {
     ...(purpose ? { purpose } : {}),
-    ...codeChosen(),
+    ...codeChosen(purpose),
     agreed,
   });
   beginButton.disabled = missing.length > 0;
   startLacks(missing);
 }
 
+/** The code's step for an adult's own code or a child's: its words, and nothing kept of the other's,
+ * for the two codes are two people's. */
+function codeStep(purpose: "measurement" | "child"): void {
+  codeFor = purpose;
+  const words = TEXTS.code[purpose];
+  byId("code-legend").textContent = words.legend;
+  byId("code-own").textContent = words.own;
+  byId("code-new").textContent = words.new;
+  byId("typed-label").textContent = words.typed;
+  for (const radio of document.querySelectorAll<HTMLInputElement>('input[name="code"]')) {
+    radio.checked = false;
+  }
+  typed.value = "";
+}
+
 /** Begin writing for the purpose settled: the start folds into a line, and the sheet is mounted. */
 function begin(): void {
   const purpose = purposeChosen();
   if (!purpose || beginButton.disabled) return;
-  const { code } = codeChosen();
-  begun = purpose === "measurement" && code ? { purpose, code } : { purpose };
+  const { code } = codeChosen(purpose);
+  begun = hasCode(purpose) && code ? { purpose, code } : { purpose };
+  const child = purpose === "child";
   byId("start").hidden = true;
-  byId("summary-text").textContent = TEXTS.summary(TEXTS.purpose[purpose], begun.code, set.version);
+  byId("summary-text").textContent = TEXTS.summary(
+    TEXTS.purpose[purpose],
+    begun.code,
+    set.version,
+    child,
+  );
+  // In a child's session the child writes: no adult's hand to ask of each sample.
+  byId("writer").hidden = child;
+  byId("child-writes").hidden = !child;
+  byId("ipad-note").hidden = !child;
   byId("summary").hidden = false;
   byId("work").hidden = false;
   // An eval set takes its own module's tasks alone: the others leave the picker.

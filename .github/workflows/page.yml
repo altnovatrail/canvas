@@ -82,7 +82,8 @@ jobs:
   # file pins, its version none of a release. It is downloaded from the runner's server as from a
   # release of GitHub, where the emulator reaches it on its own localhost through adb reverse
   # (emulators/android.sh). The files it saved are read and held to the protocol here too, in the
-  # same stage.
+  # same stage. After them the job builds the test build for T22, with the test set of texts approved
+  # for tests alone, and keeps it as an artifact of its own (T84; R58, R59): no release carries it.
   android:
     name: Android
     needs: changes
@@ -170,6 +171,26 @@ jobs:
           path: build/page-android
           retention-days: 7
           if-no-files-found: error
+
+      # The test build, whose screens of the eval set and of a child's session the release keeps
+      # closed, built after the release build's checks so that its failure skips none of them. Its
+      # file has the release build's name, samples-page_v0.0.0.html, so the artifact's name tells
+      # them apart.
+      - name: Test build
+        if: always()
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp \
+              --volume "$PWD:/work" --workdir /work \
+              toolchain node scripts/page.ts build/page-test 0.0.0 --texts page/sets/test-approved-0.json
+
+      - name: Test build kept
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: samples-page-test
+          path: build/page-test
+          retention-days: 7
+          if-no-files-found: warn
 
   # Safari in the iPad Simulator, iPadOS 26.5 on the stable image, with the image's own Xcode:
   # safaridriver loses Simulator.app after a switch by xcode-select. Not iPadOS 27: on the image

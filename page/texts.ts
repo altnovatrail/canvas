@@ -20,11 +20,15 @@ export const LACKS = {
   boxValue: (box: string) => `Впишите значение окошка ${box} так, как оно написано.`,
 } as const;
 
-/** What the start still lacks before writing (T20): the purpose, the code, the statements. */
+/** What the start still lacks before writing (T20, T84): the purpose, the code, the statements. */
 export const START_LACKS = {
   purpose: "Выберите, для чего образец.",
   code: "Введите свой код писавшего или попросите новый.",
+  childCode: "Введите код ребёнка — тот, что вписан в его форму согласия.",
+  childNew:
+    "Сеанс начинается с кодом из принятой формы: впишите новый код в форму, а когда организатор её примет, откройте страницу заново и введите код.",
   codeShape: "Код писавшего — от 6 до 16 цифр и заглавных латинских букв.",
+  childCodeShape: "Код ребёнка — от 6 до 16 цифр и заглавных латинских букв.",
   statements: "Отметьте все заявления: без них дальше нельзя.",
 } as const;
 
@@ -35,6 +39,9 @@ export const PURPOSE_NOTES = {
     "Закрыт, пока тексты черновые: pull request публикует образец сразу, и согласие на него должно быть по утверждённым текстам.",
   evalSetNoModule:
     "Закрыт: в этой сборке нет задач модулей, а в eval-набор модуля идут образцы только его задач.",
+  childDraft:
+    "Закрыт, пока тексты черновые: образец ребёнка делается только по утверждённой форме родителя или опекуна.",
+  noTexts: "Закрыт: в наборе текстов этой сборки для него нет текстов.",
 } as const;
 
 /** The words of the page's screen. */
@@ -43,12 +50,36 @@ export const TEXTS = {
     "Здесь взрослый пишет от руки решение задачи, а страница сохраняет образец файлом на этом устройстве.",
   version: (version: string) => `Версия страницы: ${version}.`,
   github: "Страницу скачивают с GitHub, и GitHub видел IP-адрес того, кто её скачал.",
-  purpose: { measurement: "замер", evalSet: "eval-набор модуля" },
+  purpose: { measurement: "замер", evalSet: "eval-набор модуля", child: "сеанс образца ребёнка" },
+  /** The step of the code, for an adult's own code and for a child's (T84). */
+  code: {
+    measurement: {
+      legend: "Код писавшего",
+      own: "ввести свой код",
+      new: "новый писавший",
+      typed: "Ваш код:",
+    },
+    child: {
+      legend: "Код ребёнка",
+      own: "ввести код из формы согласия",
+      new: "новый код для формы — без ребёнка",
+      typed: "Код из формы:",
+    },
+  },
   newCode: (code: string) =>
     `Ваш новый код: ${code}. Запишите его: по нему отзывают согласие на образцы замера, а страница его не запомнит.`,
+  newChildCode: (code: string, version: string) =>
+    `Новый код ребёнка: ${code}. Впишите его в форму согласия родителя или опекуна версии ${version}: по нему отзывают согласие и удаляют образцы ребёнка. Страница его не запомнит.`,
   notice: (purpose: string, version: string) => `Уведомление: ${purpose}, тексты версии ${version}`,
-  summary: (purpose: string, code: string | undefined, version: string) =>
-    `${purpose}${code ? `, код писавшего ${code}` : ""}, тексты версии ${version}.`,
+  summary: (purpose: string, code: string | undefined, version: string, child = false) =>
+    `${purpose}${code ? `, ${child ? "код ребёнка" : "код писавшего"} ${code}` : ""}, тексты версии ${version}.`,
+  /** Who writes and who marks up in a child's session (docs/architecture.md, 3.6). */
+  childWrites: "Пишет ребёнок. Размечаете вы — со слов ребёнка, после письма.",
+  /** Where Safari on an iPad puts a download, which the page cannot see (В30; the 2026-10-22
+   * addition to П-10): Apple's guide to iPadOS 27, «Customize your Safari settings on iPad», read
+   * 2026-11-09, in English: its Russian page did not show the passage. */
+  ipadDownloads:
+    "На iPad проверьте до сохранения, куда Safari кладёт загрузки: «Настройки» → «Приложения» → Safari → «Загрузки» (Settings → Apps → Safari → Downloads). Нужно «На iPad» (On My iPad), а не iCloud Drive: иначе файл ребёнка уйдёт в облако Apple.",
   restart:
     "Назначение, код и заявления можно сменить только новым открытием страницы, а написанное не сохранено. Начать заново?",
   offline:
@@ -77,6 +108,8 @@ export const TEXTS = {
   partText: "Что написано (рисунок — словами, со всеми числами и подписями):",
   crossedOut: "зачёркнута",
   illegible: "написана неразборчиво нарочно",
+  /** The same flag in a child's session: whether on purpose, the adult marking it up cannot know. */
+  illegibleChild: "написана неразборчиво — не прочесть и со слов ребёнка",
   finalAnswer: "итоговый ответ задачи",
   firstError: "Первая ошибка в решении:",
   noError: "ошибки нет",

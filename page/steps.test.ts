@@ -1,6 +1,6 @@
-// The adult's steps before writing (T20 in RUN.md; R58 in docs/decisions.md): the purposes each
-// set of texts opens, the statements asked, the writer's code typed, and what the start lacks; and
-// the sets of page/sets/ held to the rules of page/sets.ts.
+// The steps before writing (T20, T84 in RUN.md; R58, R59 in docs/decisions.md): the purposes each
+// set of texts opens, a child's session among them, the statements asked, the writer's code typed,
+// and what the start lacks; and the sets of page/sets/ held to the rules of page/sets.ts.
 
 import { expect, test } from "vitest";
 import draftJson from "./sets/draft-0.json" with { type: "json" };
@@ -30,22 +30,34 @@ test("a set is refused for a version out of shape, none, a status unknown or tex
   expect(bad({ status: "final" })).toThrow(TypeError);
   expect(bad({ adult: " " })).toThrow(TypeError);
   expect(bad({ measurement: { notice: [], statement: "s", handOver: "h" } })).toThrow(TypeError);
-  // A draft with the eval set's texts, and an approved set without them.
+  // A draft with the eval set's texts, or a child's session's.
   expect(bad({ evalSet: draftJson.measurement })).toThrow(TypeError);
-  expect(bad({ status: "approved" })).toThrow(TypeError);
+  expect(bad({ child: draftJson.measurement })).toThrow(TypeError);
+  expect(bad({ status: "approved", child: { notice: ["n"], statement: "s" } })).toThrow(TypeError);
+  // An approved set may come for the adults' measurement alone: the lawyer reads each consent apart.
+  const { evalSet: _evalSet, child: _child, ...adults } = approvedJson;
+  expect(textSetOf(adults)).toEqual({ ...approved, evalSet: undefined, child: undefined });
 });
 
-test("a draft opens the measurement to the author alone and keeps the eval set closed, with why", () => {
+test("a draft opens the measurement to the author alone and keeps the eval set and a child's session closed, with why", () => {
   expect(purposes(draft, true)).toEqual([
     { key: "measurement", open: true, note: PURPOSE_NOTES.measurementDraft },
     { key: "evalSet", open: false, note: PURPOSE_NOTES.evalSetDraft },
+    { key: "child", open: false, note: PURPOSE_NOTES.childDraft },
   ]);
 });
 
-test("an approved set opens the eval set only in a build with tasks of modules", () => {
+test("an approved set opens the eval set only in a build with tasks of modules, and each of the eval set and the session only with its texts", () => {
   expect(purposes(approved, true)).toEqual([
     { key: "measurement", open: true },
     { key: "evalSet", open: true },
+    { key: "child", open: true },
+  ]);
+  // The lawyer may approve the adults' texts before a child's, or the other way round.
+  const { evalSet: _evalSet, child: _child, ...adults } = approved;
+  expect(purposes(adults, true).slice(1)).toEqual([
+    { key: "evalSet", open: false, note: PURPOSE_NOTES.noTexts },
+    { key: "child", open: false, note: PURPOSE_NOTES.noTexts },
   ]);
   // A sample of a task of tutor would be refused by a module's eval set.
   expect(purposes(approved, false)[1]).toEqual({
@@ -61,6 +73,7 @@ test("each purpose asks the age and its own statement: the author's samples, or 
     "Я автор проекта и пишу свои образцы.",
   ]);
   expect(statements(approved, "evalSet")[1]).toMatch(/Форма согласия версии test-approved-0/);
+  expect(statements(approved, "child")[1]).toMatch(/родителя или опекуна этого ребёнка/);
 });
 
 test("a typed code is forgiven its case and spaces, and kept to the protocol's shape", () => {
@@ -97,3 +110,20 @@ test("an eval set's start asks no code: its sample has none", () => {
     [],
   );
 });
+
+test.each([
+  ["no way chosen", {}, [START_LACKS.childCode]],
+  [
+    "a new code, which goes into a form first",
+    { way: "new", code: "AB12CD34" },
+    [START_LACKS.childNew],
+  ],
+  ["a code out of shape", { way: "own", typed: true }, [START_LACKS.childCodeShape]],
+  ["the code of the form", { way: "own", code: "AB12CD34", typed: true }, []],
+] as const)(
+  "a child's session begins only with the code of the form typed: %s",
+  (_, given, want) => {
+    const start = { purpose: "child" as const, typed: false, agreed: [true, true], ...given };
+    expect(lacks(approved, false, start)).toEqual(want);
+  },
+);
