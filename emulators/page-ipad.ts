@@ -174,23 +174,18 @@ async function handed(index: number, name: string, seconds: number): Promise<boo
   return false;
 }
 
-/** Press the save button — by WebDriver's click, as a tap, or else by the button's own click()
- * — and keep the text of the file the page hands to a download; say which pressed it. */
-async function save(index: number, name: string): Promise<{ ok: boolean; by: string }> {
+/** Press the save button by its own click(), and keep the text of the file the page hands to a
+ * download. Not by WebDriver's click of the element: in Safari on the iPad Simulator it scrolled
+ * the button into view and tapped the sheet below it, a dot of a stroke the run never meant
+ * (run 42537461456). What is checked is the page's way of saving, not where a tap lands. */
+async function save(index: number, name: string): Promise<boolean> {
   try {
-    const found = (await command("POST", `/session/${session}/element`, {
-      using: "css selector",
-      value: "#save",
-    })) as Record<string, string>;
-    await command("POST", `/session/${session}/element/${Object.values(found)[0]}/click`, {});
-    if (await handed(index, name, 5)) return { ok: true, by: "a click of WebDriver" };
+    await execute('document.getElementById("save").click();');
   } catch (error) {
     run.log(`save ${name}: ${String(error).slice(0, 200)}`);
+    return false;
   }
-  shot(`${name}-not-saved`);
-  await execute('document.getElementById("save").click();').catch(() => {});
-  const ok = await handed(index, name, 10);
-  return { ok, by: ok ? "the button's click()" : "neither" };
+  return handed(index, name, 10);
 }
 
 /** Answer the page's confirm, if it asks, as a person would: yes. */
@@ -237,8 +232,7 @@ async function pass(file: string): Promise<void> {
       `${sheet.strokes}, by ${sheet.by}`,
       "page",
     );
-    const first = await save(0, "sheet");
-    run.record("the sheet's sample is handed to a download", first.ok, `by ${first.by}`, "page");
+    run.record("the sheet's sample is handed to a download", await save(0, "sheet"), "", "page");
 
     await execute(`${TO_WORKBOOK};`);
     await confirm();
@@ -256,11 +250,10 @@ async function pass(file: string): Promise<void> {
       `${page.strokes}, by ${page.by}`,
       "page",
     );
-    const second = await save(1, "workbook");
     run.record(
       "the workbook's sample is handed to a download",
-      second.ok,
-      `by ${second.by}`,
+      await save(1, "workbook"),
+      "",
       "page",
     );
 

@@ -131,10 +131,14 @@ export class DevTools {
     this.socket = socket;
     socket.onmessage = (event) => {
       const message = JSON.parse(String(event.data)) as Record<string, unknown>;
-      if (typeof message.id === "number") this.waiting.get(message.id)?.(message);
-      else
+      if (typeof message.id === "number") {
+        // The command it answers, matched among those waiting: an id from the socket picks
+        // nothing to call by itself.
+        for (const [id, answer] of this.waiting) if (id === message.id) answer(message);
+      } else {
         for (const listen of this.listeners)
           listen(String(message.method), message.params as Record<string, unknown>);
+      }
     };
     const fail = (why: string) => () => {
       this.broken = why;
