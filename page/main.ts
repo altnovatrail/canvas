@@ -101,6 +101,8 @@ type Marking =
       readonly kind: "sheet";
       readonly at: number;
       readonly groups: readonly Group[];
+      /** The crop the model would see, one picture for every drawing of the form. */
+      readonly crop?: HTMLImageElement;
       form: SheetForm;
     }
   | { readonly kind: "workbook"; readonly at: number; boxes: BoxForm[] };
@@ -137,6 +139,14 @@ function words(): void {
   }
 }
 
+/** What the writer says of each sample asked again: their own hand, and nothing personal not yet
+ * said. */
+function fresh(): void {
+  personal.checked = false;
+  const own = document.querySelector<HTMLInputElement>('input[name="writer"][value="adult"]');
+  if (own) own.checked = true;
+}
+
 /** The task the picker shows. */
 function chosen(): PageTask {
   const task = data.tasks[Number(picker.value)];
@@ -166,8 +176,8 @@ function mount(): void {
   }
   shown = Number(picker.value);
   savedAt = 0;
-  // The writer says it of each sample: nothing personal on this sheet.
-  personal.checked = false;
+  // The writer says it of each sample: who wrote, and nothing personal on this sheet.
+  fresh();
   unmark();
   sheet?.remove();
   const element = document.createElement(TAG) as NovatrailCanvas;
@@ -215,13 +225,17 @@ function made(): Made | undefined {
 function refresh(): void {
   const now = made();
   const lacks = now && "lacks" in now ? now.lacks : [];
+  saveButton.disabled = !(now && "markup" in now && personal.checked);
+  // The live region speaks only when what lacks changes, not at each key.
+  const said = lacks.join("\n");
+  if (said === lacksShown.dataset.said) return;
+  lacksShown.dataset.said = said;
   lacksShown.replaceChildren();
   if (lacks.length > 0) {
     const list = make("ul");
     for (const lack of lacks) list.append(make("li", lack));
     lacksShown.append(make("p", TEXTS.lacks), list);
   }
-  saveButton.disabled = !(now && "markup" in now && personal.checked);
 }
 
 /** A checkbox with its label, and what it changes. */
@@ -260,8 +274,7 @@ function choice(
  * fieldset at `focus` takes the focus, so that the keyboard stays where it was. */
 function sheetForm(mark: Extract<Marking, { kind: "sheet" }>, focus?: number): void {
   form.replaceChildren();
-  const exported = work && "png" in work ? work : undefined;
-  if (exported) form.append(make("p", TEXTS.crop), picture(exported.png, TEXTS.crop));
+  if (mark.crop) form.append(make("p", TEXTS.crop), mark.crop);
   if (mark.groups.length === 0) form.append(make("p", TEXTS.noStrokes));
   const { parts } = mark.form;
   const restructure = (next: Part[], at: number) => {
@@ -290,10 +303,12 @@ function sheetForm(mark: Extract<Marking, { kind: "sheet" }>, focus?: number): v
         })),
       ),
     );
-    act(TEXTS.join, "join", at + 1 < parts.length, () => restructure(joined(parts, at), at));
-    act(TEXTS.part_, "part", part.groups.length > 1, () => restructure(parted(parts, at), at));
-    act(TEXTS.up, "up", at > 0, () => restructure(moved(parts, at, -1), at - 1));
-    act(TEXTS.down, "down", at + 1 < parts.length, () => restructure(moved(parts, at, 1), at + 1));
+    // From the parts as they are when pressed: what was typed since the form was drawn stays.
+    const now = () => mark.form.parts;
+    act(TEXTS.join, "join", at + 1 < parts.length, () => restructure(joined(now(), at), at));
+    act(TEXTS.part_, "part", part.groups.length > 1, () => restructure(parted(now(), at), at));
+    act(TEXTS.up, "up", at > 0, () => restructure(moved(now(), at, -1), at - 1));
+    act(TEXTS.down, "down", at + 1 < parts.length, () => restructure(moved(now(), at, 1), at + 1));
     const update = (change: Partial<Part>) => {
       mark.form = { ...mark.form, parts: changed(mark.form.parts, at, change) };
     };
@@ -447,8 +462,16 @@ async function markUp(): Promise<void> {
   if (!sheet) return;
   unmark();
   changedNote.textContent = "";
-  const at = sheet.history.length;
-  work = await sheet.exportWork();
+  const element = sheet;
+  const task = picker.value;
+  const at = element.history.length;
+  const given = await element.exportWork();
+  // A stroke, or another task, while the element gave its work: the work is of what is gone.
+  if (sheet !== element || picker.value !== task || element.history.length !== at) {
+    changedNote.textContent = TEXTS.changed;
+    return;
+  }
+  work = given;
   const { open } = chosen();
   if ("workbook" in open.canvas) {
     const filled = new Set(
@@ -474,6 +497,7 @@ async function markUp(): Promise<void> {
       kind: "sheet",
       at,
       groups,
+      ...(work && "png" in work ? { crop: picture(work.png, TEXTS.crop) } : {}),
       form: { parts: partsOf(groups), answer: "", mirrored: false, rewritten: false },
     };
     marking = mark;
@@ -532,7 +556,7 @@ function save(): void {
   // The download has its own copy once it has begun.
   setTimeout(() => URL.revokeObjectURL(link.href), 60_000);
   status.textContent = TEXTS.saved(sample.id);
-  personal.checked = false;
+  fresh();
   refresh();
 }
 

@@ -7,8 +7,8 @@
 // Each file must be a sample file the protocol reads (readSample): of the author's own
 // measurement, written by an adult, by a person, of the page's version and its draft of texts,
 // with a task and with strokes. Each folder — a device — must hold a sheet's and a workbook's, of
-// one writer's code, the code of the page's one opening. spec's sample-check joins when the page
-// writes its markup (T20). The strokes are the code's, drawn by the drivers. The code of src/
+// one writer's code, the code of the page's one opening. spec's sample-check holds the same files
+// to the protocol after it, markup and all (T81). The strokes are the code's, drawn by the drivers. The code of src/
 // imports its modules by the names of their builds, so the reader comes through Vite's loader, as
 // scripts/page.ts takes the tasks.
 

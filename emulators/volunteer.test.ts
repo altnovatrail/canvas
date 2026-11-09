@@ -131,6 +131,18 @@ test("a page that no longer answers after the stroke is the device's failure", a
   expect(run.steps.at(-1)?.step).toBe("read the page after the stroke on the sheet");
 });
 
+test("a form of the markup the driver cannot reach is the device's failure", async () => {
+  const hung = device(run);
+  const evaluate = hung.evaluate;
+  hung.evaluate = async (expression: string) => {
+    if (expression === MARKING) throw new Error("POST /execute/sync: TimeoutError");
+    return evaluate(expression);
+  };
+  await volunteer(run, hung, false);
+  expect(run.verdict()).toBe("device");
+  expect(run.steps.at(-1)?.step).toBe("reach the form of the markup of the sheet");
+});
+
 test("a page whose markup does not let it save is the page's failure", {
   timeout: 40_000,
 }, async () => {

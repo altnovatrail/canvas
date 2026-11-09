@@ -62,6 +62,15 @@ describe("a sheet", () => {
       [["B"], ""],
       [["C"], ""],
     ]);
+    // Parted again, only the first keeps its flags: a final answer copied would make several.
+    const final = changed(one, 0, { finalAnswer: true, crossedOut: true });
+    expect(
+      parted(final, 0).map(({ finalAnswer, crossedOut }) => [finalAnswer, crossedOut]),
+    ).toEqual([
+      [true, true],
+      [false, false],
+      [false, false],
+    ]);
     expect(moved(one, 1, -1).map(({ groups }) => groups)).toEqual([["C"], ["A", "B"]]);
     expect(() => joined(one, 1)).toThrow(RangeError);
     expect(() => moved(one, 0, -1)).toThrow(RangeError);

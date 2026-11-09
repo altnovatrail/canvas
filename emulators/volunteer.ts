@@ -74,18 +74,25 @@ async function handed(
 }
 
 /** Mark the writing up through the page's form, as the writer would after writing (T81): the
- * markup asked for, its form filled in; whether the page will save the sample then. */
-async function markUp(device: Device, name: string): Promise<boolean> {
-  await device.evaluate(MARKUP);
-  for (let i = 0; i < 10; i++) {
-    if ((await device.evaluate(MARKING).catch(() => false)) === true) {
-      const ready = (await device.evaluate(MARK).catch(() => false)) === true;
-      device.shot(`${name}-marked`);
-      return ready;
+ * markup asked for, its form filled in. Whether the page will save the sample then; or undefined
+ * when the driver could not reach the form — a page that no longer answers is the device's
+ * failure, which this records. */
+async function markUp(run: Run, device: Device, name: string): Promise<boolean | undefined> {
+  try {
+    await device.evaluate(MARKUP);
+    for (let i = 0; i < 10; i++) {
+      if ((await device.evaluate(MARKING)) === true) {
+        const ready = (await device.evaluate(MARK)) === true;
+        device.shot(`${name}-marked`);
+        return ready;
+      }
+      await sleep(1000);
     }
-    await sleep(1000);
+    return false;
+  } catch (error) {
+    run.record(`reach the form of the markup of the ${name}`, false, String(error).slice(0, 200));
+    return undefined;
   }
-  return false;
 }
 
 /** One pass of the volunteer's way. The files the page saves are kept from the watch's copies
@@ -121,12 +128,9 @@ export async function volunteer(run: Run, device: Device, keep: boolean): Promis
       if (!after) return;
       const strokes = after.strokes;
       run.record(`the ${name} holds the stroke drawn`, strokes > 0, `${strokes}, ${how}`, "page");
-      run.record(
-        `the ${name} is marked up, and the page will save it`,
-        await markUp(device, name),
-        "",
-        "page",
-      );
+      const marked = await markUp(run, device, name);
+      if (marked === undefined) return;
+      run.record(`the ${name} is marked up, and the page will save it`, marked, "", "page");
       if (!(await device.press(name))) return;
       run.record(
         `the ${name}'s sample is handed to a download`,

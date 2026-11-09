@@ -100,16 +100,19 @@ export function joined(parts: readonly Part[], at: number): Part[] {
   ];
 }
 
-/** The part at a place parted again into its groups, each a part with the part's flags. */
+/** The part at a place parted again into its groups: the first keeps its kind, text and flags,
+ * and the others start plain — a final answer copied to each would make several. */
 export function parted(parts: readonly Part[], at: number): Part[] {
   const part = parts[at];
   if (!part) throw new RangeError(`no part ${at + 1}`);
-  const each = part.groups.map((label, i) => ({
-    ...part,
-    groups: [label],
-    text: i ? "" : part.text,
-  }));
-  return [...parts.slice(0, at), ...each, ...parts.slice(at + 1)];
+  const [first, ...rest] = part.groups;
+  const plain = partsOf(rest.map((label) => ({ label, ids: [] })));
+  return [
+    ...parts.slice(0, at),
+    { ...part, groups: [first ?? ""] },
+    ...plain,
+    ...parts.slice(at + 1),
+  ];
 }
 
 /** The parts with the part at a place moved one up or one down: the order the solution reads. */

@@ -179,18 +179,28 @@ describe("opened from a file", () => {
       // Nothing is saved before the markup is whole (T81): the stroke is one part, its text the
       // final answer, and the answer as written.
       expect(await page.isDisabled("#save")).toBe(true);
+      // A second stroke far off, a group of its own: two parts, which the writer joins after
+      // typing the second's text, and the text stays.
+      await page.mouse.move(box.x + 600, box.y + 220);
+      await page.mouse.down();
+      await page.mouse.move(box.x + 640, box.y + 260, { steps: 4 });
+      await page.mouse.up();
       await page.click("#markup");
-      await page.locator('[data-part="0"] textarea').fill("x = 2");
-      await page.check('[data-part="0"] input[data-flag="finalAnswer"]');
+      expect(await page.locator("#form li[data-part]").count()).toBe(2);
+      await page.locator('#form li[data-part="1"] textarea').fill("x = 2");
+      await page.click('#form li[data-part="0"] [data-act="join"]');
+      await expect.poll(() => page.locator("#form li[data-part]").count()).toBe(1);
+      expect(await page.inputValue('#form li[data-part="0"] textarea')).toBe("x = 2");
+      await page.check('#form li[data-part="0"] input[data-flag="finalAnswer"]');
       expect(await page.inputValue("#answer")).toBe("x = 2");
       await page.fill("#answer", "2");
       expect(await page.isDisabled("#save")).toBe(true);
       await page.check("#personal");
-      // The part's frame on the sheet, as the element shows a mark.
-      await page.click('[data-part="0"] [data-act="show"]');
+      // The part's frames on the sheet, one for each of its two groups, as the element shows marks.
+      await page.click('#form li[data-part="0"] [data-act="show"]');
       expect(
         await page.evaluate(() => document.querySelector("novatrail-canvas")?.marks?.marks.length),
-      ).toBe(1);
+      ).toBe(2);
       const [download] = await Promise.all([page.waitForEvent("download"), page.click("#save")]);
       expect(download.suggestedFilename()).toMatch(/^sample-[a-z2-7]{12}\.json$/);
       const sample = readSample(readFileSync(await download.path(), "utf8"));

@@ -98,8 +98,6 @@ export function blobAt(index: number): string {
   return `window.__canvasWatch?.blobs[${index}] ?? null`;
 }
 
-/** A script that shows the workbook's page: the picker's choice, as a person makes it. It waits
- * a moment, for the page's confirm stops the script that calls it until it is answered. */
 /** A script that asks the page for the markup, as the writer presses its button: the form comes
  * once the element has given its work. */
 export const MARKUP = `(document.getElementById("markup").click(), 0)`;
@@ -130,6 +128,8 @@ export const MARK = `(() => {
   return !document.getElementById("save").disabled;
 })()`;
 
+/** A script that shows the workbook's page: the picker's choice, as a person makes it. It waits
+ * a moment, for the page's confirm stops the script that calls it until it is answered. */
 export const TO_WORKBOOK = `setTimeout(() => {
   const picker = document.getElementById("task");
   picker.value = ${JSON.stringify(WORKBOOK)};
