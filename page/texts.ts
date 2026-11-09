@@ -5,6 +5,10 @@
 // goes here and there. The texts are for now: those of the notices and the consent
 // are the lawyer's to read (R11; epic E4 in RUN.md of spec), and T20 brings the set of texts.
 
+/** The kinds of task the samples page offers (T21): a sheet, an essay — a sheet whose answer is the
+ * whole sheet — and a workbook's page. */
+export type TaskKind = "sheet" | "essay" | "workbook";
+
 /** What a form of markup still lacks, said to the writer, before the sample can be saved. */
 export const LACKS = {
   groups: "Каждая группа штрихов должна быть ровно в одной части. Начните разметку заново.",
@@ -18,6 +22,11 @@ export const LACKS = {
   rewrittenBlank: "На пустом листе нечего отмечать как зачёркнутое.",
   emptyNote: (box: string) => `Окошко ${box} пустое: отмечать в нём нечего.`,
   boxValue: (box: string) => `Впишите значение окошка ${box} так, как оно написано.`,
+  essayText: "Впишите текст сочинения так, как он написан, или отметьте, что его не прочесть.",
+  illegibleBlank: "На пустом листе нечего отмечать как неразборчивое.",
+  textBlank: "На листе нет штрихов, а текст сочинения вписан: уберите его.",
+  textIllegible:
+    "Сочинение отмечено как непрочитываемое, а текст вписан: уберите текст или отметку.",
 } as const;
 
 /** What the start still lacks before writing (T20, T84): the purpose, the code, the statements. */
@@ -85,8 +94,14 @@ export const TEXTS = {
     "Назначение, код и заявления можно сменить только новым открытием страницы, а написанное не сохранено. Начать заново?",
   offline:
     "Страница работает без сети: всё, что ей нужно, — в этом файле. Образец сохраняется файлом на этом устройстве.",
-  sheetTask: "Лист",
-  workbookTask: "Тетрадь",
+  /** What the picker calls a task, by its kind (T21): a sheet whose answer is the whole sheet is an
+   * essay. */
+  taskKind: { sheet: "Лист", essay: "Сочинение", workbook: "Тетрадь" } satisfies Record<
+    TaskKind,
+    string
+  >,
+  task: (kind: string, id: string) => `${kind}: ${id}`,
+  bank: (path: string) => `Банк ${path}`,
   writer: "Кто писал:",
   writerOwn: "взрослый, своим почерком",
   writerChild: "взрослый, подражая детскому почерку",
@@ -129,6 +144,12 @@ export const TEXTS = {
   lacks: "Чтобы сохранить, осталось:",
   startLacks: "Чтобы начать, осталось:",
   leave: "Написанное не сохранено. Перейти к другой задаче?",
+  /** An essay's markup (T21): its text as written, the writer's mistakes kept, or that it cannot be
+   * read as a whole; the marks of its criteria are the organizer's, after the writing (spec's
+   * contracts/README.md, «The markup»). */
+  essayText: "Текст сочинения, как написан, — с ошибками, с переносами строк:",
+  essayIllegible: "сочинение не прочесть целиком",
+  essayMarks: "Оценки критериев ставит организатор после письма — страница их не ставит.",
   frame: (part: number, of: number) => `Часть ${part} из ${of}`,
   boxFrame: (box: string) => `Окошко ${box}`,
 } as const;

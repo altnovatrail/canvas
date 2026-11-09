@@ -7,7 +7,10 @@
 // On a sheet the parts of the solution are the device's groups of strokes (R06), each part one or
 // more neighbouring groups that the writer joins: every stroke the sheet shows is in one part. The
 // truth of the task's one answer slot, bound `anywhere`, follows from the parts that hold the final
-// answer. On a workbook the truth is every box of the page, by its place: an empty one is blank.
+// answer. An essay, whose one answer slot is the whole sheet, has no parts: its truth is its text as
+// written, or blank, or illegible as a whole, and the marks of its criteria the organizer adds after
+// the writing, so the page writes none (T21). On a workbook the truth is every box of the page, by
+// its place: an empty one is blank.
 
 import { PartKind } from "@altnovatrail/contracts/novatrail/eval/v1/sample_pb.js";
 import { Unreadable } from "@altnovatrail/contracts/novatrail/observation/v1/observation_pb.js";
@@ -46,6 +49,12 @@ export interface SheetForm {
   readonly rewritten: boolean;
 }
 
+/** What the writer marks on an essay: its text as written, or that it cannot be read as a whole. */
+export interface EssayForm {
+  readonly illegible: boolean;
+  readonly text: string;
+}
+
 /** What the writer marks on a box of a workbook. */
 export interface BoxForm {
   readonly item: number;
@@ -61,8 +70,8 @@ export interface BoxForm {
 /** A markup made of a form, or what the form still lacks, in the page's words. */
 export type Made = { readonly markup: MarkupInput } | { readonly lacks: readonly string[] };
 
-/** The task's one answer slot on a sheet, bound `anywhere`. */
-const ANYWHERE = { item: 1, slot: 1 };
+/** The task's one answer slot on a sheet, bound `anywhere` or, on an essay, `sheet`. */
+const ONE_SLOT = { item: 1, slot: 1 };
 
 /** Nothing but white space: no value and no text. */
 function blank(text: string): boolean {
@@ -149,7 +158,7 @@ function sheetRead(
     if (form.mirrored) return { case: "unreadable", value: Unreadable.AMBIGUOUS } as const;
     return { case: "value", value: form.answer.trim() } as const;
   })();
-  return [{ answerSlot: ANYWHERE, read }];
+  return [{ answerSlot: ONE_SLOT, read }];
 }
 
 /** What a sheet's form lacks, or its markup: the parts with the strokes of their groups, the
@@ -183,7 +192,7 @@ export function sheetMarkup(groups: readonly Group[], form: SheetForm): Made {
   if (lacks.length > 0) return { lacks };
   const notes =
     form.mirrored || form.rewritten
-      ? [{ answerSlot: ANYWHERE, mirrored: form.mirrored, crossedOut: form.rewritten }]
+      ? [{ answerSlot: ONE_SLOT, mirrored: form.mirrored, crossedOut: form.rewritten }]
       : [];
   return {
     markup: {
@@ -203,6 +212,28 @@ export function sheetMarkup(groups: readonly Group[], form: SheetForm): Made {
           ...(form.firstError === undefined ? {} : { firstError: form.firstError }),
         },
       },
+    },
+  };
+}
+
+/** What an essay's form lacks, or its markup, of a sheet that shows strokes or none: the truth of
+ * its one answer slot and no mark of a criterion (spec's contracts/README.md, «The markup»). */
+export function essayMarkup(shows: boolean, form: EssayForm): Made {
+  if (!shows && form.illegible) return { lacks: [LACKS.illegibleBlank] };
+  // A text typed where the truth holds none would be lost on saving: the writer says which holds.
+  if (!shows && !blank(form.text)) return { lacks: [LACKS.textBlank] };
+  if (form.illegible && !blank(form.text)) return { lacks: [LACKS.textIllegible] };
+  if (shows && !form.illegible && blank(form.text)) return { lacks: [LACKS.essayText] };
+  const read = (() => {
+    if (!shows) return { case: "unreadable", value: Unreadable.BLANK } as const;
+    if (form.illegible) return { case: "unreadable", value: Unreadable.ILLEGIBLE } as const;
+    return { case: "value", value: form.text.trim() } as const;
+  })();
+  return {
+    markup: {
+      truth: { answerSlots: [{ answerSlot: ONE_SLOT, read }] },
+      notes: [],
+      writing: { case: "marks", value: { marks: [] } },
     },
   };
 }

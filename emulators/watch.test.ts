@@ -38,7 +38,7 @@ import {
 const QUIET: Seen = {
   watched: true,
   defined: true,
-  tasks: 3,
+  tasks: TASKS,
   task: "0",
   strokes: 1,
   policy: "default-src 'none'; script-src 'sha256-A'; connect-src 'none'",
