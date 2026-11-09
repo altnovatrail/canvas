@@ -64,6 +64,7 @@ export const READ = `JSON.stringify((() => {
     tasks: document.querySelectorAll("#task option").length,
     task: document.getElementById("task")?.value ?? "",
     strokes: sheet && Array.isArray(sheet.history) ? sheet.history.length : -1,
+    policy: document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.content ?? "",
     resources: performance.getEntriesByType("resource").map((entry) => entry.name),
     violations: watch?.violations ?? [],
     errors: watch?.errors ?? [],
@@ -99,6 +100,8 @@ export interface Seen {
   readonly tasks: number;
   readonly task: string;
   readonly strokes: number;
+  /** The policy the page's <meta> gives, or "" when it has none. */
+  readonly policy: string;
   readonly resources: readonly string[];
   /** Each violation of the policy: its directive, and the start of the address it stopped. */
   readonly violations: readonly { readonly directive: string; readonly blocked: string }[];
@@ -127,13 +130,28 @@ export function strokeIn(box: Box): [[number, number], [number, number]] {
   return [round(from), round(to)];
 }
 
-/** A request the page made, among the addresses it asked for: anything but its own blobs and
- * data, and the file it came from. */
+/** A site's icon, which a browser asks for of itself: Safari asks for it of a page from a server,
+ * and the page's policy stops it as any picture not of a blob. It says nothing of the page. */
+const ICON = /\/(favicon\.ico|apple-touch-icon[\w-]*\.png)$/;
+
+/** A request the page made, among the addresses asked for: anything but its own blobs and data,
+ * the file it came from and the browser's own icon of the site. */
 export function outside(addresses: readonly string[], own: readonly string[] = []): string[] {
   return addresses.filter(
     (address) =>
-      !address.startsWith("blob:") && !address.startsWith("data:") && !own.includes(address),
+      !address.startsWith("blob:") &&
+      !address.startsWith("data:") &&
+      !own.includes(address) &&
+      !ICON.test(address),
   );
+}
+
+/** Whether a policy lets the page ask for nothing: none by default, and no connection. A request
+ * the page makes under it is a violation; without it, the request may go out where no watch of
+ * Safari sees it, for a request that fails is no resource it lists. */
+export function noNetwork(policy: string): boolean {
+  const directives = policy.split(";").map((directive) => directive.trim());
+  return directives.includes("default-src 'none'") && directives.includes("connect-src 'none'");
 }
 
 /** Of the server's log, the requests other than the download of the page itself: the page's, or
@@ -147,10 +165,6 @@ export function asked(
   const icon = (line: string) => / \/(favicon\.ico|apple-touch-icon[\w-]*\.png) \d{3}$/.test(line);
   return { others: others.filter((line) => !icon(line)), icons: others.filter(icon) };
 }
-
-/** A site's icon, which a browser asks for of itself: Safari asks for it of a page from a server,
- * and the page's policy stops it as any picture not of a blob. It says nothing of the page. */
-const ICON = /\/(favicon\.ico|apple-touch-icon[\w-]*\.png)$/;
 
 /** The checks of what the page did over the whole run, each a step of the page's own: no
  * violation of its policy but the browser's own icon, no error, no request, and a watch that saw
@@ -169,6 +183,7 @@ export function verdicts(
   ];
   return [
     { step: "the watch saw the page from its start", ok: seen.watched, note: "" },
+    { step: "the page carries its policy of no network", ok: noNetwork(seen.policy), note: "" },
     {
       step: "the policy saw no violation",
       ok: own.length === 0,

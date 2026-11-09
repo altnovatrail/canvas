@@ -15,6 +15,7 @@ import {
   asked,
   blobAt,
   boxOf,
+  noNetwork,
   outside,
   pageIn,
   READ,
@@ -35,6 +36,7 @@ const QUIET: Seen = {
   tasks: 3,
   task: "0",
   strokes: 1,
+  policy: "default-src 'none'; script-src 'sha256-A'; connect-src 'none'",
   resources: [],
   violations: [],
   errors: [],
@@ -63,8 +65,20 @@ describe("the pure parts", () => {
 
   test("a request is any address but the page's own blobs, data and file", () => {
     expect(
-      outside(["blob:x", "data:,a", "content://1", "https://a.invalid/"], ["content://1"]),
+      outside(
+        [
+          "blob:x",
+          "data:,a",
+          "content://1",
+          "https://a.invalid/",
+          "http://localhost:8080/favicon.ico",
+        ],
+        ["content://1"],
+      ),
     ).toEqual(["https://a.invalid/"]);
+    expect(noNetwork(QUIET.policy)).toBe(true);
+    expect(noNetwork("default-src 'none'")).toBe(false);
+    expect(noNetwork("")).toBe(false);
   });
 
   test("the server's log names the requests beyond the page's download, the browser's icon apart", () => {
@@ -120,14 +134,15 @@ describe("the pure parts", () => {
       },
       ["https://a.invalid/"],
     );
-    expect(loud.map(({ ok }) => ok)).toEqual([true, false, false, false]);
-    expect(loud[1]?.note).toBe("2: connect-src, img-src");
+    expect(loud.map(({ ok }) => ok)).toEqual([true, true, false, false, false]);
+    expect(loud[2]?.note).toBe("2: connect-src, img-src");
+    expect(verdicts({ ...QUIET, policy: "" }, [])[1]).toMatchObject({ ok: false });
     expect(verdicts({ ...QUIET, watched: false }, [])[0]).toMatchObject({ ok: false });
   });
 
   test("the browser's own icon, which the policy stops, is no violation of the page's", () => {
     const icon = { directive: "img-src", blocked: "http://localhost:8080/favicon.ico" };
-    expect(verdicts({ ...QUIET, violations: [icon] }, [])[1]).toEqual({
+    expect(verdicts({ ...QUIET, violations: [icon] }, [])[2]).toEqual({
       step: "the policy saw no violation",
       ok: true,
       note: "the browser's icon stopped",
@@ -230,7 +245,7 @@ describe("in the page's build", () => {
         directive: "connect-src",
         blocked: "https://probe.invalid/leak",
       });
-      expect(verdicts(seen, outside(seen.resources))[1]).toMatchObject({ ok: false });
+      expect(verdicts(seen, outside(seen.resources))[2]).toMatchObject({ ok: false });
     } finally {
       await page.close();
     }
