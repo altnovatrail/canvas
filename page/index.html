@@ -7,22 +7,33 @@
 <style>
 body { font: 16px/1.4 system-ui, sans-serif; margin: 16px; max-width: 960px; }
 header p { margin: 4px 0; }
-label, button, select { font: inherit; }
-button, select { padding: 8px 12px; margin: 8px 8px 8px 0; }
+label, button, select, input, textarea { font: inherit; }
+button, select { padding: 8px 12px; margin: 4px 8px 4px 0; }
+textarea { width: 100%; box-sizing: border-box; min-height: 3em; }
+fieldset { margin: 8px 0; }
 #holder { margin: 8px 0; }
 novatrail-canvas { display: block; }
+.crop { max-width: 100%; border: 1px solid GrayText; }
+.parts, .boxes { padding-left: 0; list-style: none; }
+.flags label { display: block; }
+#lacks ul { margin: 4px 0; }
 details pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
 </style>
 <header>
-  <h1>Страница образцов</h1>
+  <h1 id="title"></h1>
   <p id="version"></p>
-  <p>Код писавшего на это открытие страницы: <strong id="code"></strong>. Запишите его: по нему отзывают согласие.</p>
-  <p>Страница работает без сети: всё, что ей нужно, — в этом файле. Образец сохраняется файлом на этом устройстве.</p>
+  <p><span id="code-label"></span> <strong id="code"></strong>. <span id="code-after"></span></p>
+  <p id="offline"></p>
 </header>
 <main>
-  <p><label>Задача: <select id="task"></select></label></p>
+  <p><label for="task" id="task-label"></label> <select id="task"></select></p>
+  <fieldset id="writer"><legend id="writer-label"></legend></fieldset>
   <div id="holder"></div>
-  <p><button id="save" type="button">Сохранить образец (без разметки)</button> <span id="saved" role="status"></span></p>
+  <p><button id="markup" type="button"></button> <span id="changed" role="status"></span></p>
+  <section id="form" hidden></section>
+  <p><label><input type="checkbox" id="personal"> <span id="personal-label"></span></label></p>
+  <div id="lacks" role="status"></div>
+  <p><button id="save" type="button" disabled></button> <span id="saved" role="status"></span></p>
 </main>
 <!-- notices -->
 <script src="main.ts"></script>

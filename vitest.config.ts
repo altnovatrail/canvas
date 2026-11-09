@@ -34,6 +34,7 @@ export default defineConfig({
             "scripts/**/*.test.ts",
             "probe/**/*.test.ts",
             "emulators/**/*.test.ts",
+            "page/**/*.test.ts",
           ],
           environment: "node",
         },
