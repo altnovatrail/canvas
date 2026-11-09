@@ -40,6 +40,7 @@ function device(
     violations: [],
     errors: [],
     blobs: page.blobs.length,
+    pointers: [],
   });
   const own = {
     closed: 0,

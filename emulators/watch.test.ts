@@ -44,6 +44,7 @@ const QUIET: Seen = {
   violations: [],
   errors: [],
   blobs: 1,
+  pointers: [],
 };
 
 describe("the pure parts", () => {

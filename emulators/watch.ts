@@ -37,7 +37,18 @@ export function pageFile(): string {
 /** The watch, as a script of its own: it runs once in a page, before the page's own. */
 export const WATCH = `(() => {
   if (window.__canvasWatch) return;
-  const watch = { violations: [], errors: [], blobs: [] };
+  const watch = { violations: [], errors: [], blobs: [], pointers: [] };
+  // Where each pointer came down, and on what: a driver's tap that misses its place shows here.
+  document.addEventListener("pointerdown", (event) => {
+    const on = event.composedPath()[0];
+    watch.pointers.push({
+      type: event.pointerType,
+      x: Math.round(event.clientX),
+      y: Math.round(event.clientY),
+      on: on instanceof Element ? on.tagName.toLowerCase() + (on.id ? "#" + on.id : "") : "",
+    });
+    if (watch.pointers.length > 10) watch.pointers.shift();
+  }, true);
   window.__canvasWatch = watch;
   document.addEventListener("securitypolicyviolation", (event) => {
     watch.violations.push({ directive: event.effectiveDirective, blocked: String(event.blockedURI).slice(0, 80) });
@@ -82,6 +93,7 @@ export const READ = `JSON.stringify((() => {
     violations: watch?.violations ?? [],
     errors: watch?.errors ?? [],
     blobs: watch?.blobs.length ?? 0,
+    pointers: watch?.pointers ?? [],
   };
 })())`;
 
@@ -151,6 +163,8 @@ export interface Seen {
   /** The message of each error, for the run's artifact. */
   readonly errors: readonly string[];
   readonly blobs: number;
+  /** The last pointers that came down, where and on what. */
+  readonly pointers: readonly { type: string; x: number; y: number; on: string }[];
 }
 
 /** A box in CSS pixels, and the height of the window it is seen in. */

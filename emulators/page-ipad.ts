@@ -146,6 +146,12 @@ class Safari implements Device {
         });
         await command("DELETE", `/session/${this.session}/actions`).catch(() => {});
         acted = true;
+        this.shot(`${name}-${pointerType}`);
+        const came = (await this.read().catch(() => undefined))?.pointers ?? [];
+        // Where the driver aimed, in the page's pixels, and where the page saw pointers come down.
+        run.log(
+          `${pointerType} on the ${name}: aimed at ${x1},${y1} in ${JSON.stringify(sheet)}; came ${JSON.stringify(came.slice(-3)).replace(/[^ -~]/g, "?")}`,
+        );
       } catch (error) {
         run.log(`${pointerType} on the ${name}: ${String(error).slice(0, 200)}`);
         continue;
