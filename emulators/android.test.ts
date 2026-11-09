@@ -4,7 +4,18 @@
 // emulator.
 
 import { expect, test } from "vitest";
-import { calibrate, entities, find, focusedOn, inner, middle, nodes } from "./android.ts";
+import {
+  calibrate,
+  entities,
+  find,
+  focusedOn,
+  inner,
+  middle,
+  nodes,
+  PAGE_VIEW,
+  pageView,
+  placed,
+} from "./android.ts";
 
 const DUMP = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0">
 <node index="0" text="" resource-id="" class="android.widget.FrameLayout" content-desc="" bounds="[0,0][1600,2560]">
@@ -17,7 +28,12 @@ const DUMP = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy
 test("a dump gives each node with bounds its text, its description and its bounds, entities read", () => {
   const all = nodes(DUMP);
   expect(all.map(({ text }) => text)).toEqual(["", "Write storage", "", 'Tom & "Jerry"']);
-  expect(all[2]).toEqual({ text: "", description: "Open", bounds: [1200, 2300, 1500, 2400] });
+  expect(all[2]).toEqual({
+    text: "",
+    description: "Open",
+    bounds: [1200, 2300, 1500, 2400],
+    className: "android.widget.Button",
+  });
 });
 
 test("a node is found by its text or its description, and one with no area is never found", () => {
@@ -70,4 +86,25 @@ test("a point of the page lies on the screen as one element seen both ways says"
   );
   expect(toScreen(20, 300)).toEqual([40, 840]);
   expect(toScreen(70.4, 100)).toEqual([141, 440]);
+});
+
+test("the page's own view is found by its class, and a point of the page lies from its corner by the ratio", () => {
+  // Chrome's toolbar above, the page's view below it, and in it the page's nodes, which may lag.
+  const all = nodes(`<hierarchy>
+<node text="" class="android.widget.FrameLayout" content-desc="" bounds="[0,0][2560,1600]">
+<node text="" class="android.widget.ImageButton" content-desc="Close tab" bounds="[0,60][110,170]" />
+<node text="" class="${PAGE_VIEW}" content-desc="" bounds="[0,180][2560,1550]">
+<node text="Страница образцов" class="android.view.View" content-desc="" bounds="[30,200][900,260]" />
+</node></node></hierarchy>`);
+  const view = pageView(all);
+  expect(view?.bounds).toEqual([0, 180, 2560, 1550]);
+  if (!view) throw new Error("no view");
+  // A ratio of 2: the page's (100, 50) is 200 and 100 device pixels from the view's corner.
+  expect(placed(view, 2)(100, 50)).toEqual([200, 280]);
+  expect(placed(view, 1.5)(10.3, 0)).toEqual([15, 180]);
+  // A view with no area, or none at all, is no view.
+  expect(
+    pageView(nodes(`<node text="" class="${PAGE_VIEW}" content-desc="" bounds="[0,0][0,0]" />`)),
+  ).toBeUndefined();
+  expect(pageView([])).toBeUndefined();
 });

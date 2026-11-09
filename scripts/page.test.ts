@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { Purpose, Writer } from "@altnovatrail/contracts/novatrail/eval/v1/sample_pb.js";
-import { type Browser, chromium } from "playwright";
+import { type Browser, chromium, type Page } from "playwright";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { readSample } from "../src/eval/sample.ts";
 import { policy, styleOf } from "./csp.ts";
@@ -22,17 +22,67 @@ import {
   packagesOf,
   pageOf,
   TEMPLATE,
+  textsFor,
 } from "./page.ts";
+
+/** The test set of texts, approved for tests alone (T20; R58). */
+const TEST_SET = "page/sets/test-approved-0.json";
 
 let folder: string;
 let built: { path: string; packages: readonly Carried[] };
+/** The page built with the test set of texts, approved for tests alone. */
+let tested: { path: string };
 let browser: Browser;
 
 beforeAll(async () => {
   folder = mkdtempSync(join(tmpdir(), "canvas-page-"));
   built = await buildPage(folder, "0.0.0");
+  tested = await buildPage(join(folder, "test"), "0.0.0", TEST_SET);
   browser = await chromium.launch();
 }, 120_000);
+
+/** The start gone through on a page (T20): a purpose, for the measurement a new writer's code or
+ * one typed, and every statement ticked; the writer's code it began with, if any. */
+async function begin(
+  page: Page,
+  purpose: "measurement" | "evalSet",
+  typed?: string,
+): Promise<string | undefined> {
+  await page.check(`input[name="purpose"][value="${purpose}"]`);
+  let code: string | undefined;
+  if (purpose === "measurement") {
+    if (typed === undefined) {
+      await page.check('input[name="code"][value="new"]');
+      code = /[0-9A-Z]{6,16}/.exec((await page.textContent("#new-code")) ?? "")?.[0];
+    } else {
+      await page.check('input[name="code"][value="own"]');
+      await page.fill("#typed", typed);
+    }
+  }
+  expect(await page.isDisabled("#begin")).toBe(true);
+  for (const tick of await page.locator("#statements input[data-statement]").all()) {
+    await tick.check();
+  }
+  await page.click("#begin");
+  await expect.poll(() => page.locator("novatrail-canvas").count()).toBe(1);
+  // The focus moved to the picker of tasks, which may scroll: the tests draw from the top.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  return code;
+}
+
+/** A stroke of the mouse on the element, between two points of its box. */
+async function stroke(
+  page: Page,
+  box: { x: number; y: number },
+  [x1, y1]: readonly [number, number],
+  [x2, y2]: readonly [number, number],
+  steps = 8,
+): Promise<void> {
+  await page.mouse.move(box.x + x1, box.y + y1);
+  await page.mouse.down();
+  await page.mouse.move(box.x + x2, box.y + y2, { steps });
+  await page.mouse.up();
+}
 
 afterAll(async () => {
   await browser?.close();
@@ -103,6 +153,12 @@ describe("the builder", () => {
     );
     expect(notices("own", [], "icons")).toContain("NovaTrail canvas — Apache-2.0");
   });
+
+  test("takes the draft of texts into any version, and the test set into none but 0.0.0", () => {
+    expect(textsFor("page/sets/draft-0.json", "1.0.0").version).toBe("draft-0");
+    expect(textsFor(TEST_SET, "0.0.0").version).toBe("test-approved-0");
+    expect(() => textsFor(TEST_SET, "1.0.0")).toThrow("goes into no page but 0.0.0");
+  });
 });
 
 describe("the file", () => {
@@ -169,24 +225,23 @@ describe("opened from a file", () => {
         "Тетрадь: workbook-01",
       ]);
       expect(await page.textContent("#version")).toBe("Версия страницы: 0.0.0.");
+      // The start (T20): under the draft the eval set is closed, with why, and nothing is written
+      // before the purpose, a new writer's code shown to be written down, and both statements.
+      expect(await page.isDisabled('input[name="purpose"][value="evalSet"]')).toBe(true);
+      expect(await page.textContent("#purpose-note-evalSet")).toContain("черновые");
+      expect(await page.isHidden("#work")).toBe(true);
+      const code = (await begin(page, "measurement")) ?? "";
+      expect(code).toMatch(/^[0-9A-Z]{6,16}$/);
+      expect(await page.textContent("#summary-text")).toContain(code);
       const box = await page.locator("novatrail-canvas").boundingBox();
       if (!box) throw new Error("the element is not shown");
-      await page.mouse.move(box.x + 120, box.y + 220);
-      await page.mouse.down();
-      await page.mouse.move(box.x + 220, box.y + 280, { steps: 8 });
-      await page.mouse.up();
-      // The code of this opening is shown, for the adult to write down.
-      const code = (await page.textContent("#code")) ?? "";
-      expect(code).toMatch(/^[0-9A-Z]{8}$/);
+      await stroke(page, box, [120, 220], [220, 280]);
       // Nothing is saved before the markup is whole (T81): the stroke is one part, its text the
       // final answer, and the answer as written.
       expect(await page.isDisabled("#save")).toBe(true);
       // A second stroke far off, a group of its own: two parts, which the writer joins after
       // typing the second's text, and the text stays.
-      await page.mouse.move(box.x + 600, box.y + 220);
-      await page.mouse.down();
-      await page.mouse.move(box.x + 640, box.y + 260, { steps: 4 });
-      await page.mouse.up();
+      await stroke(page, box, [600, 220], [640, 260], 4);
       await page.click("#markup");
       expect(await page.locator("#form li[data-part]").count()).toBe(2);
       await page.locator('#form li[data-part="1"] textarea').fill("x = 2");
@@ -219,13 +274,12 @@ describe("opened from a file", () => {
         writing?.case === "parts" &&
           writing.value.parts.map((part) => [part.text, part.finalAnswer]),
       ).toEqual([["x = 2", true]]);
+      // Where the file goes, by the set of texts.
+      expect(await page.textContent("#hand-over")).toContain("организатору замера");
       // A stroke not saved is lost only when the person says so: a refusal keeps the task. The
       // form made the page longer and the clicks scrolled it: the element is where it began.
       await page.evaluate(() => window.scrollTo(0, 0));
-      await page.mouse.move(box.x + 300, box.y + 220);
-      await page.mouse.down();
-      await page.mouse.move(box.x + 360, box.y + 260, { steps: 4 });
-      await page.mouse.up();
+      await stroke(page, box, [300, 220], [360, 260], 4);
       page.once("dialog", (dialog) => dialog.dismiss());
       await page.selectOption("#task", "2");
       expect(await page.inputValue("#task")).toBe("0");
@@ -236,18 +290,18 @@ describe("opened from a file", () => {
       await page.evaluate(() => window.scrollTo(0, 0));
       const workbook = await page.locator("novatrail-canvas").boundingBox();
       if (!workbook) throw new Error("the workbook is not shown");
-      const stroke = async (dx: number) => {
+      const inBox = async (dx: number) => {
         await page.mouse.move(workbook.x + 200 + dx, workbook.y + 200);
         await page.mouse.down();
         await page.mouse.move(workbook.x + 230 + dx, workbook.y + 230, { steps: 4 });
         await page.mouse.up();
       };
-      await stroke(0);
+      await inBox(0);
       await page.click("#markup");
       expect(await page.locator("[data-box]").count()).toBeGreaterThan(1);
       // A stroke after the markup was asked for: the form goes, and is asked for again.
       await page.evaluate(() => window.scrollTo(0, 0));
-      await stroke(4);
+      await inBox(4);
       expect(await page.isHidden("#form")).toBe(true);
       expect(await page.textContent("#changed")).not.toBe("");
       await page.click("#markup");
@@ -269,6 +323,72 @@ describe("opened from a file", () => {
       expect(
         await page.evaluate(() => (window as unknown as { violations: string[] }).violations),
       ).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  }, 60_000);
+
+  test("remembers nothing of the start when opened anew: no purpose, no code, no statement, and no storage used (R11)", async () => {
+    const context = await browser.newContext();
+    try {
+      const page = await context.newPage();
+      await page.goto(pathToFileURL(built.path).href);
+      // A code typed is forgiven its case and spaces; one out of shape is named, and holds.
+      await page.check('input[name="purpose"][value="measurement"]');
+      await page.check('input[name="code"][value="own"]');
+      await page.fill("#typed", "ab1");
+      expect(await page.textContent("#start-lacks")).toContain("от 6 до 16");
+      await page.fill("#typed", "");
+      expect(await begin(page, "measurement", "ab12 cd34")).toBeUndefined();
+      expect(await page.textContent("#summary-text")).toContain("AB12CD34");
+      const storage = () =>
+        page.evaluate(() => [localStorage.length, sessionStorage.length, document.cookie]);
+      expect(await storage()).toEqual([0, 0, ""]);
+      await page.reload();
+      expect(await page.isVisible("#start")).toBe(true);
+      expect(await page.isHidden("#work")).toBe(true);
+      expect(await page.locator('input[name="purpose"]:checked').count()).toBe(0);
+      expect(await page.locator('input[name="code"]:checked').count()).toBe(0);
+      expect(await page.inputValue("#typed")).toBe("");
+      expect(await page.locator("#statements input[data-statement]").count()).toBe(0);
+      expect(await storage()).toEqual([0, 0, ""]);
+    } finally {
+      await context.close();
+    }
+  }, 60_000);
+
+  test("with the test set of texts asks the form of the measurement, and keeps the eval set closed in a build of tutor's tasks (T20)", async () => {
+    const context = await browser.newContext({ acceptDownloads: true });
+    try {
+      const page = await context.newPage();
+      await page.goto(pathToFileURL(tested.path).href);
+      // A module's eval set takes its own module's tasks alone, and this build has tutor's.
+      expect(await page.isDisabled('input[name="purpose"][value="evalSet"]')).toBe(true);
+      expect(await page.textContent("#purpose-note-evalSet")).toContain("нет задач модулей");
+      expect(await page.locator("#purpose-note-measurement").count()).toBe(0);
+      await page.check('input[name="purpose"][value="measurement"]');
+      expect(await page.textContent("#notice-title")).toContain("test-approved-0");
+      const ticks = page.locator("#statements label");
+      expect(await ticks.count()).toBe(2);
+      expect(await ticks.nth(1).textContent()).toContain("Форма согласия версии test-approved-0");
+      await begin(page, "measurement", "ab12 cd34");
+      const box = await page.locator("novatrail-canvas").boundingBox();
+      if (!box) throw new Error("the element is not shown");
+      await stroke(page, box, [120, 220], [220, 280]);
+      await page.click("#markup");
+      await page.locator('#form li[data-part="0"] textarea').fill("x = 2");
+      await page.check('#form li[data-part="0"] input[data-flag="finalAnswer"]');
+      await page.check("#personal");
+      const [download] = await Promise.all([page.waitForEvent("download"), page.click("#save")]);
+      const sample = readSample(readFileSync(await download.path(), "utf8"));
+      expect(sample.purpose).toBe(Purpose.MEASUREMENT);
+      expect(sample.writerCode).toBe("AB12CD34");
+      expect(sample.textSetVersion).toBe("test-approved-0");
+      // Where the file goes is shown for the one saved, and goes with the next stroke.
+      expect(await page.isVisible("#hand-over")).toBe(true);
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await stroke(page, box, [300, 220], [360, 260]);
+      expect(await page.isHidden("#hand-over")).toBe(true);
     } finally {
       await context.close();
     }

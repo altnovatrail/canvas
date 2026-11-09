@@ -10,7 +10,17 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Run } from "./run.ts";
 import { type Clock, REAL, until } from "./wait.ts";
-import { blobAt, MARK, MARKING, MARKUP, type Seen, TASKS, verdicts, WORKBOOK } from "./watch.ts";
+import {
+  blobAt,
+  MARK,
+  MARKING,
+  MARKUP,
+  type Seen,
+  START,
+  TASKS,
+  verdicts,
+  WORKBOOK,
+} from "./watch.ts";
 
 /** What a device does on the volunteer's way. A step it cannot do it records as the device's and
  * says so by its answer. */
@@ -130,6 +140,10 @@ export async function volunteer(
       "page",
     );
     if (!shown?.defined) return;
+    // The start, before the sheet is there: the purpose, the code and the statements (T20).
+    const started = (await device.evaluate(START)) === true;
+    run.record("the start lets the author begin the measurement", started, "", "page");
+    if (!started) return;
     for (const [index, name] of SURFACES.entries()) {
       if (name === "workbook") {
         await device.toWorkbook();

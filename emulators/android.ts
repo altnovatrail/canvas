@@ -30,11 +30,13 @@ export const AWAY = /^(Download|Download anyway|Keep|No thanks|Don.t allow|Not n
  * hands over to the runner's by `adb reverse`. */
 export const HOST = "localhost";
 
-/** A node of uiautomator's dump: its text, its description and its bounds on the screen. */
+/** A node of uiautomator's dump: its text, its description, its bounds on the screen and, where
+ * the dump names it, its class. */
 export interface Node {
   readonly text: string;
   readonly description: string;
   readonly bounds: readonly [number, number, number, number];
+  readonly className?: string;
 }
 
 /** The nodes of a dump of uiautomator, in its order. */
@@ -49,6 +51,7 @@ export function nodes(xml: string): Node[] {
       text: entities(attribute("text")),
       description: entities(attribute("content-desc")),
       bounds: [x1 ?? 0, y1 ?? 0, x2 ?? 0, y2 ?? 0],
+      ...(attribute("class") ? { className: attribute("class") } : {}),
     });
   }
   return found;
@@ -112,6 +115,25 @@ export function calibrate(
 ): (x: number, y: number) => [number, number] {
   const scale = (x2 - x1) / box.width;
   return (x, y) => [Math.round(x1 + (x - box.x) * scale), Math.round(y1 + (y - box.y) * scale)];
+}
+
+/** The class Chrome gives the node of a page's own view in the tree of accessibility. */
+export const PAGE_VIEW = "android.webkit.WebView";
+
+/** The node of the page's own view: a node of Chrome itself, whose bounds hold even while the tree
+ * of the page inside it lags behind a scroll — on a first pass it still showed the top of the page
+ * when the page had scrolled to its foot (T20). */
+export function pageView(all: readonly Node[]): Node | undefined {
+  return all.find(
+    ({ className, bounds: [x1, y1, x2, y2] }) => className === PAGE_VIEW && x2 > x1 && y2 > y1,
+  );
+}
+
+/** How the page's CSS pixels lie on the screen, from its view's bounds and the page's ratio of
+ * device pixels: a box the page gives is from the corner of its view, as getBoundingClientRect has it. */
+export function placed(view: Node, ratio: number): (x: number, y: number) => [number, number] {
+  const [x1, y1] = view.bounds;
+  return (x, y) => [Math.round(x1 + x * ratio), Math.round(y1 + y * ratio)];
 }
 
 /** A DevTools target of Chrome, as /json lists it. */
@@ -236,6 +258,19 @@ export class Android {
   /** Copy a file off the device. */
   pull(from: string, to: string): void {
     execFileSync(this.adb, ["pull", from, to], { stdio: "ignore" });
+  }
+
+  /** The last dump of the screen, kept in the run's folder: what uiautomator read when a step
+   * failed, for the next look at why. */
+  keepDump(name: string): void {
+    try {
+      writeFileSync(
+        join(this.run.folder, `${name}-ui.xml`),
+        this.shell("cat /sdcard/ui.xml 2>/dev/null"),
+      );
+    } catch {
+      this.run.log(`no dump ${name}`);
+    }
   }
 
   screenshot(name: string): void {

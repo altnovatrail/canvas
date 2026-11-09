@@ -23,6 +23,7 @@ import {
   pageIn,
   READ,
   type Seen,
+  START,
   served,
   strokeBy,
   strokeIn,
@@ -206,6 +207,8 @@ describe("in the page's build", () => {
     const page = await opened(file);
     try {
       expect(await read(page)).toMatchObject({ watched: true, defined: true, tasks: TASKS });
+      // The start, as the drivers go through it (T20): then the sheet is there.
+      expect(await page.evaluate(START)).toBe(true);
       // The spy on Blob keeps a blob the browser makes a Blob to the page, as the element asks.
       expect(
         await page.evaluate("(async () => (await new Response('a').blob()) instanceof Blob)()"),

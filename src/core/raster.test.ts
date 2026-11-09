@@ -124,7 +124,11 @@ describe("the pixels", () => {
     }
   });
 
-  test("of each group lie within its frame, every pixel its ink shades", () => {
+  // Every pixel of every sheet at three sizes: 2.5 s alone, and past the default 5 s while the
+  // browser tests of the page build and run beside it (T20).
+  test("of each group lie within its frame, every pixel its ink shades", {
+    timeout: 20_000,
+  }, () => {
     for (const make of [...SHEETS, ...CROP_SHEETS]) {
       const { name, work } = make();
       const groups = groupsOf(work.strokes);

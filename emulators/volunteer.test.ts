@@ -9,7 +9,7 @@ import { afterEach, beforeEach, expect, test } from "vitest";
 import { Run } from "./run.ts";
 import { type Device, passes, volunteer } from "./volunteer.ts";
 import type { Clock } from "./wait.ts";
-import { MARK, MARKING, MARKUP, type Seen } from "./watch.ts";
+import { MARK, MARKING, MARKUP, type Seen, START } from "./watch.ts";
 
 /** A clock that moves only by the waits' own pauses: a wait of thirty seconds takes none. */
 function clock(): Clock {
@@ -38,7 +38,7 @@ afterEach(() => {
  * what it cannot do it records in the journal of its run. */
 function device(
   journal: Run,
-  fails: { draw?: boolean; press?: boolean; save?: boolean; mark?: boolean } = {},
+  fails: { draw?: boolean; press?: boolean; save?: boolean; mark?: boolean; start?: boolean } = {},
 ): Device & { closed: number } {
   const page = { strokes: 0, task: "0", blobs: [] as string[] };
   const seen = (): Seen => ({
@@ -60,6 +60,7 @@ function device(
     read: async () => seen(),
     evaluate: async (expression: string) => {
       // The page's markup: its form comes, and the writer's markup lets it save.
+      if (expression === START) return !fails.start;
       if (expression === MARKUP) return 0;
       if (expression === MARKING || expression === MARK) return !fails.mark;
       const at = /blobs\[(\d+)\]/.exec(expression)?.[1];
@@ -101,6 +102,7 @@ test("a page that does what it should passes each step, and its files are kept w
   expect(quiet.closed).toBe(1);
   expect(run.steps.map(({ step }) => step)).toEqual([
     "the element stands and offers the build's tasks",
+    "the start lets the author begin the measurement",
     "read the page after the stroke on the sheet",
     "the sheet holds the stroke drawn",
     "the sheet is marked up, and the page will save it",
@@ -154,6 +156,14 @@ test("a form of the markup the driver cannot reach is the device's failure", asy
   await volunteer(run, hung, false, clock());
   expect(run.verdict()).toBe("device");
   expect(run.steps.at(-1)?.step).toBe("reach the form of the markup of the sheet");
+});
+
+test("a page whose start does not let the author begin is the page's failure, and nothing is drawn", async () => {
+  const page = device(run, { start: true });
+  await volunteer(run, page, false, clock());
+  expect(run.verdict()).toBe("page");
+  expect(run.steps.at(-1)?.step).toBe("the start lets the author begin the measurement");
+  expect(page.closed).toBe(1);
 });
 
 test("a page whose markup does not let it save is the page's failure", {

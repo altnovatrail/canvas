@@ -18,23 +18,45 @@ novatrail-canvas { display: block; }
 .parts, .boxes { padding-left: 0; list-style: none; }
 .flags label { display: block; }
 #lacks ul { margin: 4px 0; }
+.note { color: GrayText; margin-left: 1.6em; display: block; }
+#notice p { margin: 4px 0; }
 details pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
 </style>
 <header>
   <h1>Страница образцов</h1>
+  <p id="about"></p>
   <p id="version"></p>
-  <p><span id="code-label"></span> <strong id="code"></strong>. <span id="code-after"></span></p>
   <p id="offline"></p>
+  <p id="github"></p>
 </header>
 <main>
-  <p><label for="task">Задача:</label> <select id="task"></select></p>
-  <fieldset id="writer"><legend id="writer-label"></legend></fieldset>
-  <div id="holder"></div>
-  <p><button id="markup" type="button"></button> <span id="changed" role="status"></span></p>
-  <section id="form" hidden></section>
-  <p><label><input type="checkbox" id="personal"> На листе нет ничего личного: имени, подписи, школы, контактов.</label></p>
-  <div id="lacks" role="status"></div>
-  <p><button id="save" type="button" disabled></button> <span id="saved" role="status"></span></p>
+  <section id="start" aria-labelledby="start-title">
+    <h2 id="start-title">Начало</h2>
+    <fieldset id="purpose"><legend>Для чего этот образец</legend></fieldset>
+    <fieldset id="code-step" hidden>
+      <legend>Код писавшего</legend>
+      <label><input type="radio" name="code" value="own"> ввести свой код</label>
+      <label><input type="radio" name="code" value="new"> новый писавший</label>
+      <p id="own-code" hidden><label for="typed">Ваш код:</label> <input id="typed" autocomplete="off" autocapitalize="characters" spellcheck="false"></p>
+      <p id="new-code" hidden></p>
+    </fieldset>
+    <section id="notice" aria-labelledby="notice-title" hidden><h3 id="notice-title">Уведомление</h3><div id="notice-text"></div></section>
+    <fieldset id="statements" hidden><legend>Заявления</legend></fieldset>
+    <div id="start-lacks" role="status"></div>
+    <p><button id="begin" type="button" disabled>Начать</button></p>
+  </section>
+  <p id="summary" hidden><span id="summary-text"></span> <button id="restart" type="button">Начать заново</button></p>
+  <section id="work" aria-label="Письмо и разметка" hidden>
+    <p><label for="task">Задача:</label> <select id="task"></select></p>
+    <fieldset id="writer"><legend id="writer-label"></legend></fieldset>
+    <div id="holder"></div>
+    <p><button id="markup" type="button"></button> <span id="changed" role="status"></span></p>
+    <section id="form" hidden></section>
+    <p><label><input type="checkbox" id="personal"> На листе нет ничего личного: имени, подписи, школы, контактов.</label></p>
+    <div id="lacks" role="status"></div>
+    <p><button id="save" type="button" disabled></button> <span id="saved" role="status"></span></p>
+    <p id="hand-over" hidden></p>
+  </section>
 </main>
 <!-- notices -->
 <script src="main.ts"></script>
