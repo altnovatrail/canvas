@@ -20,11 +20,37 @@ export const LACKS = {
   boxValue: (box: string) => `Впишите значение окошка ${box} так, как оно написано.`,
 } as const;
 
+/** What the start still lacks before writing (T20): the purpose, the code, the statements. */
+export const START_LACKS = {
+  purpose: "Выберите, для чего образец.",
+  code: "Введите свой код писавшего или попросите новый.",
+  codeShape: "Код писавшего — от 6 до 16 цифр и заглавных латинских букв.",
+  statements: "Отметьте все заявления: без них дальше нельзя.",
+} as const;
+
+/** Why a purpose is closed, or what an open one is limited to (T20; docs/architecture.md, 3.6). */
+export const PURPOSE_NOTES = {
+  measurementDraft: "Пока тексты черновые — только образцы автора проекта.",
+  evalSetDraft:
+    "Закрыт, пока тексты черновые: pull request публикует образец сразу, и согласие на него должно быть по утверждённым текстам.",
+  evalSetNoModule:
+    "Закрыт: в этой сборке нет задач модулей, а в eval-набор модуля идут образцы только его задач.",
+} as const;
+
 /** The words of the page's screen. */
 export const TEXTS = {
+  about:
+    "Здесь взрослый пишет от руки решение задачи, а страница сохраняет образец файлом на этом устройстве.",
   version: (version: string) => `Версия страницы: ${version}.`,
-  code: "Код писавшего на это открытие страницы:",
-  codeAfter: "Запишите его: по нему отзывают согласие.",
+  github: "Страницу скачивают с GitHub, и GitHub видел IP-адрес того, кто её скачал.",
+  purpose: { measurement: "замер", evalSet: "eval-набор модуля" },
+  newCode: (code: string) =>
+    `Ваш новый код: ${code}. Запишите его: по нему отзывают согласие на образцы замера, а страница его не запомнит.`,
+  notice: (purpose: string, version: string) => `Уведомление: ${purpose}, тексты версии ${version}`,
+  summary: (purpose: string, code: string | undefined, version: string) =>
+    `${purpose}${code ? `, код писавшего ${code}` : ""}, тексты версии ${version}.`,
+  restart:
+    "Назначение, код и заявления можно сменить только новым открытием страницы, а написанное не сохранено. Начать заново?",
   offline:
     "Страница работает без сети: всё, что ей нужно, — в этом файле. Образец сохраняется файлом на этом устройстве.",
   sheetTask: "Лист",
@@ -67,6 +93,7 @@ export const TEXTS = {
   save: "Сохранить образец",
   saved: (id: string) => `Образец ${id} сохранён в загрузки.`,
   lacks: "Чтобы сохранить, осталось:",
+  startLacks: "Чтобы начать, осталось:",
   leave: "Написанное не сохранено. Перейти к другой задаче?",
   frame: (part: number, of: number) => `Часть ${part} из ${of}`,
   boxFrame: (box: string) => `Окошко ${box}`,

@@ -3,15 +3,19 @@
 // network (R25 spec; R07, R11). scripts/page.ts builds it and puts the tasks in: their open views
 // and the sample's reference to each, worked out at the build from tutor's file of open tasks in
 // tasks/ (R49). The page takes the element as a consumer does, through its properties and events
-// (the 2026-11-02 amendment to R07), and saves a sample of the author's own measurement, the one
-// purpose open while the texts are a draft (R11), as a file on the device.
+// (the 2026-11-02 amendment to R07), and saves a sample as a file on the device.
+//
+// First the start (T20; R58): the purpose — the measurement, or a module's eval set — as the set
+// of texts the build carries opens them (R11), the writer's code for the measurement, typed or new
+// and never remembered, the purpose's notice and the statements without which the person goes no
+// further. Once begun, they hold for this opening alone: another needs the page opened anew.
 //
 // The writer writes, then marks the writing up (T81): on a sheet, the parts of the solution — the
 // element's groups of strokes, which the writer joins — with their texts and flags, the final
 // answer and the first error; on a workbook, every box. The element frames on the sheet what is
 // being marked, and the page shows the crops the model would see. A sample is saved only once its
 // markup is whole (page/markup.ts). The page remembers nothing: not a sheet half written either.
-// The steps of the page — purpose, codes, notices — are T20's; every text is page/texts.ts's.
+// A child's session is T84's; every text is page/texts.ts's or the set's.
 
 import { Purpose, Writer } from "@altnovatrail/contracts/novatrail/eval/v1/sample_pb.js";
 import { cellsOf } from "../src/core/boxes.js";
@@ -40,6 +44,8 @@ import {
   sheetMarkup,
   workbookMarkup,
 } from "./markup.js";
+import type { TextSet } from "./sets.js";
+import { codeOf, lacks, type PurposeKey, purposes, statements, textsOf } from "./steps.js";
 import { TEXTS } from "./texts.js";
 
 /** A task the build put in: what the picker calls it, its open view, and the sample's view of it. */
@@ -50,9 +56,17 @@ interface PageTask {
 }
 
 /** What scripts/page.ts puts into the build. */
-declare const SAMPLES_PAGE: { readonly version: string; readonly tasks: readonly PageTask[] };
+declare const SAMPLES_PAGE: {
+  readonly version: string;
+  readonly texts: TextSet;
+  readonly tasks: readonly PageTask[];
+};
 
 const data = SAMPLES_PAGE;
+const set = data.texts;
+/** Whether a task of the build is a module's: only such a task's sample goes into an eval set. */
+const ofModule = ({ open }: PageTask) => open.reference.source?.case === "modules";
+const moduleTasks = data.tasks.some(ofModule);
 
 /** An element of the page's template, by its ID. */
 function byId<T extends HTMLElement>(id: string): T {
@@ -82,13 +96,15 @@ const lacksShown = byId("lacks");
 const personal = byId<HTMLInputElement>("personal");
 const saveButton = byId<HTMLButtonElement>("save");
 const markupButton = byId<HTMLButtonElement>("markup");
+const beginButton = byId<HTMLButtonElement>("begin");
+const handOver = byId("hand-over");
+const typed = byId<HTMLInputElement>("typed");
 
-/** The version of the page's texts: a draft until the lawyer has read them (R11), and never
- * `none`, which spec keeps for files no samples page wrote. T20 brings the set of texts. */
-const TEXT_SET = "draft-0";
-/** The writer's code of this opening: one for every sample saved until the page is closed, shown
- * so that the adult writes it down (R09, R11). The page remembers it nowhere. T20 asks for it. */
-const CODE = writerCode(crypto.getRandomValues(new Uint8Array(8)));
+/** What the start settled: the purpose, and the writer's code where it has one. It holds for this
+ * opening alone, and the page keeps it nowhere else (R11). */
+let begun: { readonly purpose: PurposeKey; readonly code?: string } | undefined;
+/** The new writer's code of this opening, made when the person first asks for one. */
+let newCode: string | undefined;
 
 let sheet: NovatrailCanvas | undefined;
 let shown = 0;
@@ -114,11 +130,10 @@ let crops: string[] = [];
 
 /** The page's texts that change, put in: the template holds the few that never do. */
 function words(): void {
+  byId("about").textContent = TEXTS.about;
   byId("version").textContent = TEXTS.version(data.version);
-  byId("code-label").textContent = TEXTS.code;
-  byId("code").textContent = CODE;
-  byId("code-after").textContent = TEXTS.codeAfter;
   byId("offline").textContent = TEXTS.offline;
+  byId("github").textContent = TEXTS.github;
   markupButton.textContent = TEXTS.markup;
   saveButton.textContent = TEXTS.save;
   const writers = byId("writer");
@@ -189,11 +204,14 @@ function mount(): void {
       unmark();
       changedNote.textContent = TEXTS.changed;
     }
+    // Where to hand a file over belongs to the one saved, not to writing not saved yet.
+    if (element.history.length > savedAt) handOver.hidden = true;
   });
   holder.append(element);
   sheet = element;
   status.textContent = "";
   changedNote.textContent = "";
+  handOver.hidden = true;
 }
 
 /** A crop's PNG as a picture of the page, by a blob URL, as its policy allows (R23). */
@@ -514,10 +532,11 @@ function writer(): Writer {
   return checked?.value === "child" ? Writer.ADULT_AS_CHILD : Writer.ADULT;
 }
 
-/** The sample of what is on the sheet, with its markup: the author's own measurement (R09). */
+/** The sample of what is on the sheet, with its markup, for the purpose begun (R09). */
 function current(): { id: string; text: string } | undefined {
   const now = made();
-  if (!now || !("markup" in now)) return undefined;
+  if (!now || !("markup" in now) || !begun) return undefined;
+  const measurement = begun.purpose === "measurement";
   const { open } = chosen();
   const history = sheet?.history ?? [];
   const digit = NO_MANIFEST.digit;
@@ -527,10 +546,10 @@ function current(): { id: string; text: string } | undefined {
       : { sheet: { history, digit } };
   const sample = sampleOf({
     id: personId(random(12)),
-    purpose: Purpose.MEASUREMENT,
+    purpose: measurement ? Purpose.MEASUREMENT : Purpose.EVAL_SET,
     writer: writer(),
-    origin: { person: { textSetVersion: TEXT_SET, canvasVersion: data.version } },
-    writerCode: CODE,
+    origin: { person: { textSetVersion: set.version, canvasVersion: data.version } },
+    ...(measurement && begun.code ? { writerCode: begun.code } : {}),
     task: open.reference,
     surface,
     markup: now.markup,
@@ -552,8 +571,127 @@ function save(): void {
   // The download has its own copy once it has begun.
   setTimeout(() => URL.revokeObjectURL(link.href), 60_000);
   status.textContent = TEXTS.saved(sample.id);
+  handOver.textContent = (begun && textsOf(set, begun.purpose)?.handOver) ?? "";
+  handOver.hidden = handOver.textContent === "";
   fresh();
   refresh();
+}
+
+/** The purpose chosen at the start, if one is. */
+function purposeChosen(): PurposeKey | undefined {
+  const checked = document.querySelector<HTMLInputElement>('input[name="purpose"]:checked');
+  return checked?.value === "measurement" || checked?.value === "evalSet"
+    ? checked.value
+    : undefined;
+}
+
+/** The writer's code the start has now: the new one, or the one typed when it is in shape. */
+function codeChosen(): { code?: string; typed: boolean } {
+  const way = document.querySelector<HTMLInputElement>('input[name="code"]:checked')?.value;
+  if (way === "new") return newCode ? { code: newCode, typed: false } : { typed: false };
+  if (way !== "own" || typed.value.trim() === "") return { typed: false };
+  const code = codeOf(typed.value);
+  return code ? { code, typed: true } : { typed: true };
+}
+
+/** The purposes the set opens, each a choice; a closed one shown with why, and not to be chosen. */
+function purposeChoices(): void {
+  const fieldset = byId("purpose");
+  for (const { key, open, note } of purposes(set, moduleTasks)) {
+    const label = make("label");
+    const radio = make("input", "", { type: "radio", name: "purpose", value: key });
+    radio.disabled = !open;
+    label.append(radio, ` ${TEXTS.purpose[key]}`);
+    fieldset.append(label);
+    if (note) {
+      const id = `purpose-note-${key}`;
+      fieldset.append(make("small", note, { id, class: "note" }));
+      radio.setAttribute("aria-describedby", id);
+    }
+  }
+}
+
+/** The statements of a purpose, asked anew: ticked for another purpose, they say nothing here. */
+function statementsAsked(purpose: PurposeKey): void {
+  const box = byId("statements");
+  for (const label of box.querySelectorAll("label")) label.remove();
+  for (const statement of statements(set, purpose)) {
+    const label = make("label");
+    label.append(make("input", "", { type: "checkbox", "data-statement": "" }), ` ${statement}`);
+    box.append(label);
+  }
+}
+
+/** What the start still lacks, said in its live region only when that changes. */
+function startLacks(missing: readonly string[]): void {
+  const lacking = byId("start-lacks");
+  const said = missing.join("\n");
+  if (said === lacking.dataset.said) return;
+  lacking.dataset.said = said;
+  lacking.replaceChildren();
+  if (missing.length === 0) return;
+  const list = make("ul");
+  for (const lack of missing) list.append(make("li", lack));
+  lacking.append(make("p", TEXTS.startLacks), list);
+}
+
+/** The start shown as it now stands: the code's step for the measurement, the purpose's notice and
+ * statements, what still lacks, and the button that begins. */
+function startShown(changedPurpose: boolean): void {
+  const purpose = purposeChosen();
+  byId("code-step").hidden = purpose !== "measurement";
+  const way = document.querySelector<HTMLInputElement>('input[name="code"]:checked')?.value;
+  byId("own-code").hidden = way !== "own";
+  if (way === "new" && !newCode) newCode = writerCode(random(8));
+  const shownCode = byId("new-code");
+  shownCode.hidden = way !== "new";
+  shownCode.textContent = newCode ? TEXTS.newCode(newCode) : "";
+  const texts = purpose ? textsOf(set, purpose) : undefined;
+  byId("notice").hidden = !texts;
+  byId("statements").hidden = !texts;
+  if (changedPurpose && purpose && texts) {
+    byId("notice-title").textContent = TEXTS.notice(TEXTS.purpose[purpose], set.version);
+    byId("notice-text").replaceChildren(...texts.notice.map((paragraph) => make("p", paragraph)));
+    statementsAsked(purpose);
+  }
+  const agreed = [
+    ...byId("statements").querySelectorAll<HTMLInputElement>("input[data-statement]"),
+  ].map((tick) => tick.checked);
+  const missing = lacks(set, moduleTasks, {
+    ...(purpose ? { purpose } : {}),
+    ...codeChosen(),
+    agreed,
+  });
+  beginButton.disabled = missing.length > 0;
+  startLacks(missing);
+}
+
+/** Begin writing for the purpose settled: the start folds into a line, and the sheet is mounted. */
+function begin(): void {
+  const purpose = purposeChosen();
+  if (!purpose || beginButton.disabled) return;
+  const { code } = codeChosen();
+  begun = purpose === "measurement" && code ? { purpose, code } : { purpose };
+  byId("start").hidden = true;
+  byId("summary-text").textContent = TEXTS.summary(TEXTS.purpose[purpose], begun.code, set.version);
+  byId("summary").hidden = false;
+  byId("work").hidden = false;
+  // An eval set takes its own module's tasks alone: the others leave the picker.
+  if (purpose === "evalSet") {
+    for (const option of [...picker.options]) {
+      const task = data.tasks[Number(option.value)];
+      if (!task || !ofModule(task)) option.remove();
+    }
+  }
+  mount();
+  picker.focus();
+}
+
+/** Another purpose, code or statement needs the page opened anew: it keeps none of them. Strokes
+ * not saved are lost only after the person says so. */
+function restart(): void {
+  if (sheet && sheet.history.length > savedAt && !confirm(TEXTS.restart)) return;
+  location.reload();
 }
 
 words();
@@ -564,4 +702,11 @@ picker.addEventListener("change", mount);
 markupButton.addEventListener("click", () => void markUp());
 personal.addEventListener("change", refresh);
 saveButton.addEventListener("click", save);
-mount();
+purposeChoices();
+byId("start").addEventListener("change", (event) =>
+  startShown((event.target as HTMLInputElement | null)?.name === "purpose"),
+);
+typed.addEventListener("input", () => startShown(false));
+beginButton.addEventListener("click", begin);
+byId("restart").addEventListener("click", restart);
+startShown(false);

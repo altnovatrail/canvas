@@ -2,9 +2,11 @@
 // from a file on the device and goes to no network (R25 spec; R08, R11), of page/index.html and
 // page/main.ts with the element and all they take inline:
 //
-//   node scripts/page.ts <folder> <version>
+//   node scripts/page.ts <folder> <version> [--texts <set>]
 //
-// writes <folder>/samples-page_v<version>.html. It builds from the tree alone — no spec/, no git, no
+// writes <folder>/samples-page_v<version>.html, with the set of texts of page/sets/draft-0.json or
+// the one --texts names (T20; R58): a set for tests only into a page of version 0.0.0, which no
+// release has. It builds from the tree alone — no spec/, no git, no
 // token, no network — in the toolchain stage, as release-files will take it (T75). Vite's API
 // bundles page/main.ts into one script; the page's own style stays as it is. The policy of
 // scripts/csp.ts goes into a <meta> element with the hashes of both. The tasks are worked out here,
@@ -17,6 +19,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { build, createServer } from "vite";
+import { isTestSet, type TextSet, textSetOf } from "../page/sets.ts";
 import { policy, styleOf } from "./csp.ts";
 
 /** Where the page's source is, from the repository's root. */
@@ -26,6 +29,19 @@ export const ENTRY = "page/main.ts";
 const POLICY_HOLE = "<!-- policy -->";
 const SCRIPT_HOLE = '<script src="main.ts"></script>';
 const NOTICES_HOLE = "<!-- notices -->";
+
+/** The set of texts a build carries unless it is given another: the draft (R11). */
+export const DRAFT = "page/sets/draft-0.json";
+
+/** The set of texts of a file, checked, for a page of a version: a set for tests goes only into a
+ * page of version 0.0.0, which no release of canvas has (contracts/README.md of spec). */
+export function textsFor(path: string, version: string): TextSet {
+  const set = textSetOf(JSON.parse(readFileSync(path, "utf8")));
+  if (isTestSet(set) && version !== "0.0.0") {
+    throw new Error(`the set ${set.version} is for tests: it goes into no page but 0.0.0`);
+  }
+  return set;
+}
 
 /** The licenses a package the file carries may have: the list's, as the lock file writes them. */
 export const LICENSES: ReadonlySet<string> = new Set([
@@ -187,9 +203,10 @@ async function tasksOf(): Promise<unknown[]> {
 export async function buildPage(
   folder: string,
   version: string,
+  texts = DRAFT,
 ): Promise<{ path: string; packages: readonly Carried[] }> {
   const name = fileName(version);
-  const data = { version, tasks: await tasksOf() };
+  const data = { version, texts: textsFor(texts, version), tasks: await tasksOf() };
   const outputs = await build({
     configFile: false,
     logLevel: "silent",
@@ -221,12 +238,17 @@ export async function buildPage(
 }
 
 if (import.meta.main) {
-  const [folder, version, ...rest] = process.argv.slice(2);
-  if (!folder || !version || rest.length > 0) {
-    console.error("usage: node scripts/page.ts <folder> <version>");
+  const [folder, version, flag, texts, ...rest] = process.argv.slice(2);
+  if (
+    !folder ||
+    !version ||
+    (flag !== undefined && (flag !== "--texts" || !texts)) ||
+    rest.length > 0
+  ) {
+    console.error("usage: node scripts/page.ts <folder> <version> [--texts <set>]");
     process.exit(2);
   }
-  const { path, packages } = await buildPage(folder, version);
+  const { path, packages } = await buildPage(folder, version, texts ?? DRAFT);
   console.log(path);
   for (const { name, version: v, license } of packages) console.log(`  ${name} ${v} ${license}`);
 }

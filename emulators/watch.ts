@@ -135,6 +135,21 @@ export function strokeBy(
 })()`;
 }
 
+/** A script that goes through the page's start as the author would under the draft of texts (T20):
+ * the measurement, a new writer's code, every statement ticked, and «Начать». Whether the sheet is
+ * there then: false while the start lacks something. */
+export const START = `(() => {
+  document.querySelector('input[name="purpose"][value="measurement"]').click();
+  document.querySelector('input[name="code"][value="new"]').click();
+  for (const tick of document.querySelectorAll("#statements input[data-statement]")) {
+    if (!tick.checked) tick.click();
+  }
+  const begin = document.getElementById("begin");
+  if (begin.disabled) return false;
+  begin.click();
+  return document.querySelector("novatrail-canvas") !== null;
+})()`;
+
 /** A script that asks the page for the markup, as the writer presses its button: the form comes
  * once the element has given its work. */
 export const MARKUP = `(document.getElementById("markup").click(), 0)`;

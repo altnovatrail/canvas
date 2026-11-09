@@ -3,17 +3,19 @@
 # for them, in the software they run. Each device's job builds the page itself, so that none waits
 # for another (T81); Chrome in an Android emulator downloads it and opens it from the download,
 # and Safari in the iPad Simulator opens it from the runner — a page opened from a file does not
-# run on an iPad (В64 in RUN.md). In each the driver draws a stroke, marks it up through the page's
-# form, saves the sheet's and the workbook's samples, and sees that the page asked for nothing and
-# broke no rule of its policy; the saved files are then read as sample files and held to the
-# protocol by spec's sample-check (T81). The strokes are the code's: no handwriting goes into a
-# run. The pen, the palm and iCloud need real tablets: debt Д7 in RUN.md.
+# run on an iPad (В64 in RUN.md). In each the driver goes through the page's start (T20), draws a
+# stroke, marks it up through the page's form, saves the sheet's and the workbook's samples, and
+# sees that the page asked for nothing and broke no rule of its policy; the saved files are then
+# read as sample files and held to the protocol by spec's sample-check (T81). The strokes are the
+# code's: no handwriting goes into a run. The pen, the palm and iCloud need real tablets: debt Д7
+# in RUN.md.
 #
-# The workflow runs on every pull request, and its first job decides whether the emulators have
-# anything to check: a skipped job counts as a success, so the one check main requires, the last
-# job, stands on every pull request, and one of the documents alone waits for no emulator. It runs
-# on a push to main too, of the same paths, so that main holds the cache of the toolchain stage
-# every pull request reads (R57).
+# The workflow runs on every pull request, with Android alone, and with the iPad too on a push to
+# main, of the same paths, and by hand (T20): main holds the cache of the toolchain stage every pull
+# request reads (R57), and its run checks the iPad before a release. Its first job decides whether
+# the emulators have anything to check: a skipped job counts as a success, so the one check main
+# requires, the last job, stands on every pull request, and one of the documents alone waits for
+# no emulator.
 name: Samples page
 
 on:
@@ -174,10 +176,14 @@ jobs:
   # xcode-27 safaridriver finds no session host in the simulator (T78), and the probe alone runs
   # there, through WebDriverAgent (T80). The runners of macOS have no Docker, so the page is built
   # with the Dockerfile's Node through setup-node, from the same tree and lock file.
+  #
+  # Not on a pull request (В66 in RUN.md, answered by the author at T20's planning): the job takes
+  # 7 to 10 minutes and as many again waiting for a runner of macOS, while its driver works two; a
+  # pull request waits for Android alone, and a fault only Safari sees shows on main before a release.
   ipad:
     name: iPad 26.5
     needs: changes
-    if: needs.changes.outputs.page == 'true'
+    if: needs.changes.outputs.page == 'true' && github.event_name != 'pull_request'
     runs-on: macos-26
     timeout-minutes: 30
     env:
@@ -216,7 +222,8 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-  # The files the iPad saved, held to the protocol by spec's sample-check in the toolchain stage.
+  # The files the iPad saved, held to the protocol by spec's sample-check in the toolchain stage;
+  # skipped with the iPad's job.
   ipad-check:
     name: iPad's files
     needs: ipad

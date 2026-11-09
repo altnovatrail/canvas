@@ -16,7 +16,19 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
-import { Android, AWAY, calibrate, DevTools, find, HOST, newPage, type Target } from "./android.ts";
+import {
+  Android,
+  AWAY,
+  calibrate,
+  DevTools,
+  find,
+  HOST,
+  type Node,
+  newPage,
+  pageView,
+  placed,
+  type Target,
+} from "./android.ts";
 import { Run } from "./run.ts";
 import { type Device, passes, volunteer } from "./volunteer.ts";
 import { until } from "./wait.ts";
@@ -103,14 +115,29 @@ class Chrome implements Device {
     return (JSON.parse(String(await this.evaluate(boxOf(selector)))) as Box | null) ?? undefined;
   }
 
-  /** A stroke through the touchscreen, where the page's save button, seen in the page and on the
-   * screen, says a point of the page lies. Chrome's own offers, such as one to translate the
-   * page, may stand over the button a while: then it is the device's failure, not the page's. */
-  async draw(name: string): Promise<string | undefined> {
-    // The button scrolled into view on each look: Chrome's tree of accessibility, which
-    // uiautomator reads, lagged behind one scroll on the first pass and still showed the top of
-    // the page (T83), and a scroll is what makes Chrome bring it up to date.
-    let shown: ReturnType<Android["screen"]> = [];
+  /** Where the page's CSS pixels lie on the screen, and how that was found: from the page's own
+   * view, a node of Chrome whose bounds hold while the tree of the page inside it lags behind a
+   * scroll (T20); or, without it, from the save button seen both in the page and on the screen,
+   * scrolled to on each look, which brings that tree up to date (T83). Chrome's own offers, such
+   * as one to translate the page, may stand over the page a while: then it is the device's
+   * failure, not the page's, and the dump is kept. */
+  private async placing(
+    name: string,
+  ): Promise<{ toScreen: (x: number, y: number) => [number, number]; how: string } | undefined> {
+    let shown: Node[] = [];
+    const ratio = Number(await this.evaluate("devicePixelRatio"));
+    const view = await until(10, () => {
+      shown = android.screen();
+      // An offer of Chrome's over the page is put away first, as a person would: the view under it
+      // is there, but a tap there would land on the offer.
+      const away = find(shown, AWAY);
+      if (away) {
+        android.tap(away);
+        return undefined;
+      }
+      return pageView(shown);
+    });
+    if (view && ratio > 0) return { toScreen: placed(view, ratio), how: "by the page's view" };
     const node = await until(15, async () => {
       // A pixel up first, so that the page does scroll even when the button is in view already.
       await this.evaluate(
@@ -121,35 +148,50 @@ class Chrome implements Device {
       return find(shown, SAVE);
     });
     const button = await this.box("#save");
+    if (node && button) return { toScreen: calibrate(button, node), how: "by the save button" };
+    // What stood on the screen instead: an offer of Chrome's, or a window the dump read alone.
+    run.log(`screen ${Android.words(shown).slice(0, 600)}`);
+    android.keepDump(`${name}-not-placed`);
+    return undefined;
+  }
+
+  /** A stroke through the touchscreen, on the element brought into the window. */
+  async draw(name: string): Promise<string | undefined> {
+    await this.evaluate(
+      'document.querySelector("novatrail-canvas").scrollIntoView({ block: "start" })',
+    );
+    await sleep(500);
+    const placing = await this.placing(name);
     const sheet = await this.box("novatrail-canvas");
     const stroke = sheet && strokeIn(sheet);
-    run.record(
-      `find the save button and the ${name} on the screen`,
-      Boolean(node && button && stroke),
-    );
-    if (!node || !button || !stroke) {
-      // What stood on the screen instead: an offer of Chrome's, or a window the dump read alone.
-      run.log(`screen ${Android.words(shown).slice(0, 600)}`);
+    run.record(`find the ${name} on the screen`, Boolean(placing && stroke), placing?.how ?? "");
+    if (!placing || !stroke) {
       android.screenshot(`${name}-not-found`);
       return undefined;
     }
-    const toScreen = calibrate(button, node);
-    const [x1, y1] = toScreen(...stroke[0]);
-    const [x2, y2] = toScreen(...stroke[1]);
+    const [x1, y1] = placing.toScreen(...stroke[0]);
+    const [x2, y2] = placing.toScreen(...stroke[1]);
     android.shell(`input touchscreen swipe ${x1} ${y1} ${x2} ${y2} 600`);
     await sleep(1500);
     android.screenshot(`${name}-drawn`);
     return "by the touchscreen";
   }
 
+  /** The save button tapped through the touchscreen, in its middle, where the page places it. */
   async press(name: string): Promise<boolean> {
     // The form of the markup stands above the button: it comes into view first.
     await this.evaluate('document.getElementById("save").scrollIntoView({ block: "center" })');
     await sleep(1000);
     const before = saved().length;
-    const pressed = await android.tapWhen(SAVE, 10);
-    run.record(`tap the save button, for the ${name}`, pressed);
-    if (!pressed) return false;
+    const made = await this.blobs();
+    const placing = await this.placing(name);
+    const button = await this.box("#save");
+    if (!placing || !button) {
+      run.record(`tap the save button, for the ${name}`, false);
+      return false;
+    }
+    const [x, y] = placing.toScreen(button.x + button.width / 2, button.y + button.height / 2);
+    android.shell(`input tap ${x} ${y}`);
     // The file in Chrome's downloads, with Chrome's question answered if it asks one before it
     // downloads: the file comes in a second or two, and a wait on its question alone took ten.
     await until(10, () => {
@@ -158,7 +200,17 @@ class Chrome implements Device {
       if (away) android.tap(away);
       return undefined;
     });
-    return true;
+    // The tap reached the button when the page made the file's blob: a tap that missed it is the
+    // device's failure, not the page's.
+    const reached = (await this.blobs()) > made;
+    run.record(`tap the save button, for the ${name}`, reached, placing.how);
+    if (!reached) android.keepDump(`${name}-tap-missed`);
+    return reached;
+  }
+
+  /** How many blobs the page has made, as the watch counts them. */
+  private async blobs(): Promise<number> {
+    return Number(await this.evaluate("window.__canvasWatch?.blobs.length ?? 0"));
   }
 
   async toWorkbook(): Promise<void> {
