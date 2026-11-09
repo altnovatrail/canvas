@@ -12,14 +12,16 @@ out=build/page-ipad-$IOS
 mkdir -p "$out"
 
 # The keys of the settings Safari's Develop pane writes, remote inspection and remote automation,
-# set before the simulator's one boot. Safari is not launched before safaridriver: the session
-# opens Safari itself, in its one window — a window of Safari's own beside it took the taps of
-# WebDriver's actions while the session's page stayed hidden (T81).
+# set before the simulator's one boot; then Safari, launched before safaridriver connects: without
+# it, sessions time out "connecting to a Safari instance". Its own window beside the session's
+# takes no stroke of the run, which the page's own events draw (emulators/page-ipad.ts; T81).
 udid=$(SETTINGS="com.apple.webinspectord:RemoteInspectorEnabled \
     com.apple.webinspectord:RemoteAutomationEnabled \
     com.apple.mobilesafari:WebKitDeveloperExtrasEnabledPreferenceKey \
     com.apple.mobilesafari:RemoteAutomationEnabled" \
   bash emulators/simulator.sh page-ipad "$IOS" "$out")
+xcrun simctl launch "$udid" com.apple.mobilesafari > /dev/null
+sleep 5
 
 page=$(basename build/page/samples-page_v*.html)
 # The page with the watch in it before its own script (emulators/watch.ts), served as pages.

@@ -180,10 +180,12 @@ async function main(): Promise<void> {
   await passes(
     run,
     () => volunteer(run, new Safari(file), true),
-    // Safari closed, and opened again by the next session alone, in its one window.
+    // Safari closed and launched anew, for the next session to connect to.
     async () => {
       execFileSync(XCRUN, ["simctl", "terminate", udid, SAFARI], { stdio: "ignore" });
       await sleep(2000);
+      execFileSync(XCRUN, ["simctl", "launch", udid, SAFARI], { stdio: "ignore" });
+      await sleep(5000);
     },
   );
   if (run.verdict() === "ok") {
