@@ -18,6 +18,15 @@ bin := "node_modules/.bin"
 # TUTOR_FILE in src/eval/tasks.ts, which scripts/synthetic.test.ts holds this to (R49).
 tutor_tag := "v0.1.10"
 
+# The release of modules whose package of grade-3-math, in tasks/modules-<tag>/, ci-licenses writes
+# synthetic samples of a module's eval set on (T86; R63): ci-licenses verifies the index, and holds
+# the package's inventory to the index's digest of it, as moduleTasksOf holds server.json to the
+# inventory.
+modules_tag := "v0.2.0"
+module_id := "novatrail/grade-3-math"
+module_version := "0.2.0"
+module_package := "tasks/modules-" + modules_tag + "/novatrail-grade-3-math-" + module_version
+
 # Run the four checks CI runs, before a pull request.
 ci: ci-lint ci-test ci-vuln ci-licenses
 
@@ -63,8 +72,11 @@ ci-vuln:
 # eval protocol forbids a check of canvas's own, and this job alone has spec/ (R93 spec; R48). The
 # synthetic set too, which no tree holds: tutor's file of open tasks that it answers is verified
 # first, as a file of a release enters NovaTrail, then the set is written into build/synthetic and
-# each of its files checked (R77 spec; R49). sample-check runs buf from the toolchain stage on the
-# contracts of spec/. spec's recipes run under this same just.
+# each of its files checked (R77 spec; R49). The samples of a module's eval set too: the index of
+# the release of modules whose package of grade-3-math the tree holds is verified, a sample is
+# written of each of its tasks into build/synthetic-module, and sample-check holds them, and the
+# example of a module's sheet, as an eval set of their module (T86; R63). sample-check runs buf
+# from the toolchain stage on the contracts of spec/. spec's recipes run under this same just.
 ci-licenses:
     {{ quote(just_executable()) }} -f spec/justfile licenses-check-repo package-lock.json licenses.json
     {{ quote(just_executable()) }} -f spec/justfile release-verify-npm package-lock.json
@@ -72,6 +84,12 @@ ci-licenses:
     {{ quote(just_executable()) }} -f spec/justfile sample-check examples/*.json
     {{ quote(just_executable()) }} synthetic build/synthetic > /dev/null
     {{ quote(just_executable()) }} -f spec/justfile sample-check build/synthetic/*.json
+    {{ quote(just_executable()) }} -f spec/justfile release-verify modules {{ modules_tag }} tasks/modules-{{ modules_tag }}/module-index.json
+    test "sha256:$(sha256sum < {{ module_package }}/inventory.json | cut -d ' ' -f 1)" = "$(node -p 'require("./tasks/modules-{{ modules_tag }}/module-index.json").modules["{{ module_id }}"]["{{ module_version }}"].package_digest')"
+    rm -rf build/synthetic-module
+    node build/scripts/synthetic.js --module {{ module_package }} {{ modules_tag }} build/synthetic-module comparing-fractions-d1:201 comparing-fractions-d3:202 comparing-fractions-d5:203 division-with-remainder-d1:204 division-with-remainder-d3:205 division-with-remainder-d5:206 fractions-of-a-whole-d1:207 fractions-of-a-whole-d3:208 fractions-of-a-whole-d5:209 times-tables-d1:210 times-tables-d3:211 times-tables-d5:212 > /dev/null
+    {{ quote(just_executable()) }} -f spec/justfile sample-check --eval-set {{ module_id }} build/synthetic-module/*.json
+    {{ quote(just_executable()) }} -f spec/justfile sample-check --eval-set example/sheets examples/module-sheet-eval-set.json
 
 # Build the package into lib/: JavaScript and its declarations. lib/ is emptied first, so that no
 # file of an older build ships.
@@ -123,10 +141,24 @@ release-files version: build
 # build/ first, and Node runs that. It reads tutor's file of open tasks from tasks/, which
 # ci-licenses verifies, and needs neither spec/ nor git; the network only as npm ci does, when the
 # packages are not installed yet.
-synthetic folder list="": _install
+synthetic folder list="": _synthetic-build
+    cd {{ quote(invocation_directory()) }} && node {{ quote(justfile_directory() / "build/scripts/synthetic.js") }} {{ quote(folder) }} {{ if list == "" { "" } else { quote(list) } }}
+
+# Write the synthetic samples of a module's eval set into a folder — the module's eval/ — one of each
+# <task>:<seed> called, on the package that module-kit build wrote of the module at the commit the
+# samples go into, naming the newest release of modules by its tag (T86; R110 spec, R63). A file of
+# the same seed is written anew only when it is a sample of the same task; a template, a choice, an
+# essay or a zone is refused. Every path is the caller's, from where just was run. It needs neither
+# spec/ nor git nor module-kit: the package's own files, inventory.json and server.json, are enough.
+# Its arguments reach Node as they are, each a word of its own: none goes through the shell's text.
+[positional-arguments]
+synthetic-module package tag folder +calls: _synthetic-build
+    cd {{ quote(invocation_directory()) }} && node {{ quote(justfile_directory() / "build/scripts/synthetic.js") }} --module "$@"
+
+# The generator, built by tsc into build/: the code of src/ names its modules by .js.
+_synthetic-build: _install
     rm -rf build/scripts build/src
     {{ bin }}/tsc -p tsconfig.synthetic.json
-    cd {{ quote(invocation_directory()) }} && node {{ quote(justfile_directory() / "build/scripts/synthetic.js") }} {{ quote(folder) }} {{ if list == "" { "" } else { quote(list) } }}
 
 # Write the icons of the row's buttons, src/element/icons.ts, and NOTICE anew, from the set of icons
 # package-lock.json pins: after a new version of the set, or of the table in scripts/icons.ts (R46).

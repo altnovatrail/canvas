@@ -85,7 +85,7 @@ export function openTasksOf(
       given.map(
         (task: { readonly id?: unknown; readonly canvas?: { readonly kind?: unknown } }) => {
           if (typeof task.id !== "string") throw new TypeError(`a task of ${bank} has no ID`);
-          checkOpen(task, TASK, `${bank} ${task.id}:`);
+          openOf(task, TASK, `${bank} ${task.id}:`, "refuse");
           return {
             reference: {
               source: { case: "tutor", value: source },
@@ -99,6 +99,134 @@ export function openTasksOf(
     );
   }
   return tasks;
+}
+
+/** A module's ID, as the format writes it: `<publisher>/<name>` (schemas/common.schema.json). */
+const MODULE_ID = /^[a-z][a-z0-9]*(-[a-z0-9]+)*\/[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
+/** A version, MAJOR.MINOR.PATCH, and a tag of a release, v and a version. */
+const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+const TAG = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+
+/** The tasks of a module's package, as the synthetic samples of its eval set take them (T86). */
+export interface ModuleTasks {
+  /** The module's ID, its version and the digest of its package. */
+  readonly module: string;
+  readonly version: string;
+  readonly packageDigest: string;
+  /** Every task of the package by its ID: the open task, or why the generator draws none. */
+  readonly tasks: ReadonlyMap<string, OpenTask | { readonly refused: string }>;
+}
+
+/**
+ * The tasks of a module's package as `module-kit build` writes it, given the texts of its
+ * inventory.json and server.json, for samples that name the release of modules `tag` (R110 spec;
+ * section 25 of the module format). The inventory is of the module format the element reads, and
+ * names server.json by its digest and size; the package's digest is that of the inventory's text.
+ * Of the canonical view the samples take each task's open view alone, which the walk of the open
+ * view projects from it, as the server does (section 6). The generator draws a sheet whose one
+ * answer slot is anywhere on it and a page of a workbook: a template, whose instance by a seed is
+ * module-kit's, and a choice, an essay or a zone are refused, each with why. `sha256` gives the
+ * SHA-256 of a text's UTF-8 bytes in hexadecimal. A package out of shape is a TypeError.
+ */
+export function moduleTasksOf(
+  inventoryText: string,
+  serverText: string,
+  tag: string,
+  sha256: (text: string) => string,
+): ModuleTasks {
+  if (!TAG.test(tag)) throw new TypeError(`${tag} is no tag of a release, vX.Y.Z`);
+  const inventory = JSON.parse(inventoryText) as {
+    readonly module_format_version?: unknown;
+    readonly id?: unknown;
+    readonly version?: unknown;
+    readonly server_part?: { readonly digest?: unknown; readonly size?: unknown };
+  };
+  const { id: module, version } = inventory;
+  if (inventory.module_format_version !== FORMAT) {
+    throw new TypeError(`a package is of the module format ${FORMAT}, the element's`);
+  }
+  if (typeof module !== "string" || !MODULE_ID.test(module)) {
+    throw new TypeError("a package's inventory names a module's ID, <publisher>/<name>");
+  }
+  if (typeof version !== "string" || !VERSION.test(version)) {
+    throw new TypeError("a package's inventory names the module's version, MAJOR.MINOR.PATCH");
+  }
+  const size = utf8Size(serverText);
+  if (
+    inventory.server_part?.digest !== `sha256:${sha256(serverText)}` ||
+    inventory.server_part.size !== size
+  ) {
+    throw new TypeError("server.json is not the server part its inventory names");
+  }
+  const { tasks: given } = JSON.parse(serverText) as { readonly tasks?: unknown };
+  if (given === null || typeof given !== "object" || Array.isArray(given)) {
+    throw new TypeError("the package's canonical view has no tasks");
+  }
+  const packageDigest = `sha256:${sha256(inventoryText)}`;
+  const source = { tag, module, version, packageDigest };
+  const tasks = new Map<string, OpenTask | { readonly refused: string }>();
+  for (const [id, task] of Object.entries(given)) {
+    if (task === null || typeof task !== "object" || Array.isArray(task)) {
+      throw new TypeError(`the task ${id} of ${module} is no object`);
+    }
+    if ((task as { readonly id?: unknown }).id !== id) {
+      throw new TypeError(`the task ${id} of ${module} is not under its own ID`);
+    }
+    if (Object.hasOwn(task, "template")) {
+      tasks.set(id, { refused: "a template: its instance by a seed is module-kit's" });
+      continue;
+    }
+    const view = openOf(task, TASK, `${module} ${id}:`, "drop");
+    const refused = undrawn(view);
+    tasks.set(
+      id,
+      refused === undefined
+        ? {
+            reference: {
+              source: { case: "modules", value: source },
+              task: id,
+              openViewDigest: `sha256:${sha256(canonicalText(view))}`,
+            },
+            canvas: canvasOf(view, `${module} ${id}`),
+          }
+        : { refused },
+    );
+  }
+  return { module, version, packageDigest, tasks };
+}
+
+/** The number of bytes a text takes in UTF-8: the DOM-free part has no encoder of its own. */
+function utf8Size(text: string): number {
+  let size = 0;
+  for (const character of text) {
+    const code = character.codePointAt(0) ?? 0;
+    size += code < 0x80 ? 1 : code < 0x800 ? 2 : code < 0x10000 ? 3 : 4;
+  }
+  return size;
+}
+
+/** Why the generator draws no sample of a task's open view, if it draws none: it draws a sheet of
+ * one answer slot anywhere on it, and a page of a workbook. */
+function undrawn(view: Record<string, unknown>): string | undefined {
+  const { canvas, items } = view as {
+    readonly canvas?: { readonly kind?: unknown };
+    readonly items?: readonly {
+      readonly answer_slots?: readonly { readonly binding?: unknown }[];
+      readonly line?: unknown;
+    }[];
+  };
+  if (canvas?.kind === "workbook") {
+    // A page's answers are its boxes: an item of an answer slot beside them the page does not draw.
+    const boxed = (items ?? []).every((item) => Array.isArray(item.line) && !item.answer_slots);
+    return boxed ? undefined : "a workbook with an answer slot outside its boxes";
+  }
+  const slots = (items ?? []).flatMap((item) => item.answer_slots ?? []);
+  const binding = items?.length === 1 && slots.length === 1 ? slots[0]?.binding : undefined;
+  if (binding === "anywhere") return undefined;
+  if (binding === "choice") return "a choice";
+  if (binding === "sheet") return "an essay";
+  if (binding === "zone") return "an answer slot in a zone";
+  return "not one answer slot anywhere on the sheet";
 }
 
 /**
@@ -160,34 +288,48 @@ function isLeaf(value: unknown): boolean {
   return typeof value === "string" || typeof value === "number" || typeof value === "boolean";
 }
 
+/** What the walk of the open view does with a field outside it: refuses it, or leaves it out. */
+type Closed = "refuse" | "drop";
+
 /**
- * Check that an object holds the fields of its shape alone, at every depth: a field of another name
- * is closed, or no field of the format, and either is a TypeError that names where it is. A field
- * of the shape that holds what the shape does not say — an object for a leaf — is one too, since a
+ * The open view of an object, by its shape, at every depth. A field of another name is closed, or no
+ * field of the format: a walk that refuses names where it is in a TypeError, and one that drops
+ * leaves it out, as the open view does (section 6 of the module format). A field of the shape that
+ * holds what the shape does not say — an object for a leaf — is a TypeError either way, since a
  * closed field could hide in it.
  */
-function checkOpen(value: unknown, shape: Shape, path: string): void {
+function openOf(
+  value: unknown,
+  shape: Shape,
+  path: string,
+  closed: Closed,
+): Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     throw new TypeError(`${path} is no object of the open view`);
   }
+  const view: Record<string, unknown> = {};
   for (const [name, given] of Object.entries(value)) {
     const at = `${path} ${name}`;
     // Own names alone: `constructor` of an object is no field.
     const field = Object.hasOwn(shape, name) ? shape[name] : undefined;
-    if (field === undefined) throw new TypeError(`${at} is no field of the open view`);
-    if (field === "leaf") {
+    if (field === undefined) {
+      if (closed === "refuse") throw new TypeError(`${at} is no field of the open view`);
+    } else if (field === "leaf") {
       if (!isLeaf(given)) throw new TypeError(`${at} is no text, number or truth value`);
+      view[name] = given;
     } else if (field === "leaves") {
       if (!Array.isArray(given) || !given.every((one) => typeof one === "string")) {
         throw new TypeError(`${at} is no list of texts`);
       }
+      view[name] = [...given];
     } else if ("one" in field) {
-      checkOpen(given, field.one, at);
+      view[name] = openOf(given, field.one, at, closed);
     } else {
       if (!Array.isArray(given)) throw new TypeError(`${at} is no list`);
-      for (const [index, each] of given.entries()) checkOpen(each, field.each, `${at}[${index}]`);
+      view[name] = given.map((each, index) => openOf(each, field.each, `${at}[${index}]`, closed));
     }
   }
+  return view;
 }
 
 /** The kind of canvas of a task, and a workbook's items. */
