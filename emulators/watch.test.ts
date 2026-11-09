@@ -20,6 +20,8 @@ import {
   MARKUP,
   noNetwork,
   outside,
+  PAINT,
+  PAINTED,
   pageIn,
   READ,
   type Seen,
@@ -250,6 +252,9 @@ describe("in the page's build", () => {
       page.once("dialog", (dialog) => dialog.accept());
       await page.evaluate(TO_WORKBOOK);
       await until(page, `document.getElementById("task").value === "${WORKBOOK}"`);
+      // A frame rendered after the picker changed: the driver waits for one before the stroke.
+      expect(await page.evaluate(PAINT)).toBe(0);
+      await until(page, PAINTED);
       await draw();
       await markUp();
       await page.click("#save");

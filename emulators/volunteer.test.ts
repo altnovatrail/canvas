@@ -9,7 +9,17 @@ import { afterEach, beforeEach, expect, test } from "vitest";
 import { Run } from "./run.ts";
 import { type Device, passes, volunteer } from "./volunteer.ts";
 import type { Clock } from "./wait.ts";
-import { MARK, MARKING, MARKUP, type Seen, START, TASKS, WORKBOOK } from "./watch.ts";
+import {
+  MARK,
+  MARKING,
+  MARKUP,
+  PAINT,
+  PAINTED,
+  type Seen,
+  START,
+  TASKS,
+  WORKBOOK,
+} from "./watch.ts";
 
 /** A clock that moves only by the waits' own pauses: a wait of thirty seconds takes none. */
 function clock(): Clock {
@@ -38,7 +48,15 @@ afterEach(() => {
  * what it cannot do it records in the journal of its run. */
 function device(
   journal: Run,
-  fails: { draw?: boolean; press?: boolean; save?: boolean; mark?: boolean; start?: boolean } = {},
+  fails: {
+    draw?: boolean;
+    press?: boolean;
+    save?: boolean;
+    mark?: boolean;
+    start?: boolean;
+    paint?: boolean;
+    answer?: boolean;
+  } = {},
 ): Device & { closed: number } {
   const page = { strokes: 0, task: "0", blobs: [] as string[] };
   const seen = (): Seen => ({
@@ -63,6 +81,10 @@ function device(
       if (expression === START) return !fails.start;
       if (expression === MARKUP) return 0;
       if (expression === MARKING || expression === MARK) return !fails.mark;
+      // A frame comes at once, or never on a device that renders none.
+      if (expression === PAINT) return 0;
+      if (expression === PAINTED) return !fails.paint;
+      if (fails.answer) throw new TypeError("execute/sync: TimeoutError");
       const at = /blobs\[(\d+)\]/.exec(expression)?.[1];
       return page.blobs[Number(at)] ?? null;
     },
@@ -126,6 +148,16 @@ test("a page that does what it should passes each step, and its files are kept w
     `{"surface":"${WORKBOOK}"}`,
   );
   expect(JSON.parse(readFileSync(join(folder, "watch.json"), "utf8")).requests).toEqual([]);
+});
+
+test("a device that renders no frame before the stroke, or stops answering while a file is handed, fails, not the page (T21)", async () => {
+  await volunteer(run, device(run, { paint: true }), false, clock());
+  expect(run.verdict()).toBe("device");
+  expect(run.steps.at(-1)?.step).toBe("the page renders the sheet before the stroke");
+  const other = new Run(mkdtempSync(join(folder, "answer-")));
+  await volunteer(other, device(other, { answer: true }), false, clock());
+  expect(other.verdict()).toBe("device");
+  expect(other.steps.at(-1)?.step).toBe("read the page while the sheet's sample is handed");
 });
 
 test("a device that cannot draw or press is the device's failure, and the pass stops there", async () => {

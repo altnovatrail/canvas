@@ -15,6 +15,8 @@ import {
   MARK,
   MARKING,
   MARKUP,
+  PAINT,
+  PAINTED,
   type Seen,
   START,
   TASKS,
@@ -63,8 +65,26 @@ async function ready(device: Device, seconds: number, clock: Clock): Promise<See
   return shown ?? device.read();
 }
 
+/** Wait for the page to render a frame: whether it did. A device that renders none is failing, not
+ * the page: the element it was given is laid out only in a frame (PAINT). */
+async function painted(device: Device, clock: Clock): Promise<boolean> {
+  const asked = await device.evaluate(PAINT).then(
+    () => true,
+    () => false,
+  );
+  if (!asked) return false;
+  const done = await until(
+    20,
+    async () => ((await device.evaluate(PAINTED).catch(() => false)) === true ? true : undefined),
+    500,
+    clock,
+  );
+  return done === true;
+}
+
 /** Wait for the page to hand the file at an index to a download, and keep its text, when asked to,
- * in the run's folder saved/; whether it came. */
+ * in the run's folder saved/; whether it came, or undefined when the page stopped answering the
+ * driver — the device's failure, which this records, not the page's. */
 async function handed(
   run: Run,
   device: Device,
@@ -72,16 +92,32 @@ async function handed(
   name: string,
   keep: boolean,
   clock: Clock,
-): Promise<boolean> {
+): Promise<boolean | undefined> {
+  // What the last read of the page threw, if it threw: then the page did not answer at all.
+  let lost: unknown;
   const text = await until(
     30,
     async () => {
-      const value = await device.evaluate(blobAt(index)).catch(() => null);
-      return typeof value === "string" ? value : undefined;
+      try {
+        const value = await device.evaluate(blobAt(index));
+        lost = undefined;
+        return typeof value === "string" ? value : undefined;
+      } catch (error) {
+        lost = error;
+        return undefined;
+      }
     },
     1000,
     clock,
   );
+  if (text === undefined && lost !== undefined) {
+    run.record(
+      `read the page while the ${name}'s sample is handed`,
+      false,
+      String(lost).slice(0, 200),
+    );
+    return undefined;
+  }
   if (text === undefined) return false;
   if (keep) {
     mkdirSync(join(run.folder, "saved"), { recursive: true });
@@ -154,6 +190,10 @@ export async function volunteer(
           "page",
         );
       }
+      if (!(await painted(device, clock))) {
+        run.record(`the page renders the ${name} before the stroke`, false, "no frame in 20 s");
+        return;
+      }
       const how = await device.draw(name);
       if (how === undefined) return;
       // A page that no longer answers is the driver's way into it gone, not the page's failure:
@@ -167,12 +207,9 @@ export async function volunteer(
       if (marked === undefined) return;
       run.record(`the ${name} is marked up, and the page will save it`, marked, "", "page");
       if (!(await device.press(name))) return;
-      run.record(
-        `the ${name}'s sample is handed to a download`,
-        await handed(run, device, index, name, keep, clock),
-        "",
-        "page",
-      );
+      const came = await handed(run, device, index, name, keep, clock);
+      if (came === undefined) return;
+      run.record(`the ${name}'s sample is handed to a download`, came, "", "page");
     }
     const last = await device.read();
     const requests = last ? device.requests(last) : [];
