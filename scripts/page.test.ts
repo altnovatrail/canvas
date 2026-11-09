@@ -10,7 +10,7 @@ import { pathToFileURL } from "node:url";
 import { Purpose, Writer } from "@altnovatrail/contracts/novatrail/eval/v1/sample_pb.js";
 import { type Browser, chromium, type Page } from "playwright";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { readSample } from "../src/eval/sample.ts";
+import { readSample, type Sample } from "../src/eval/sample.ts";
 import { policy, styleOf } from "./csp.ts";
 import {
   buildPage,
@@ -41,16 +41,17 @@ beforeAll(async () => {
   browser = await chromium.launch();
 }, 120_000);
 
-/** The start gone through on a page (T20): a purpose, for the measurement a new writer's code or
- * one typed, and every statement ticked; the writer's code it began with, if any. */
+/** The start gone through on a page (T20, T84): a purpose, for the measurement a new writer's code
+ * or one typed, for a child's session the code typed, and every statement ticked; the writer's
+ * code it began with, if any. */
 async function begin(
   page: Page,
-  purpose: "measurement" | "evalSet",
+  purpose: "measurement" | "evalSet" | "child",
   typed?: string,
 ): Promise<string | undefined> {
   await page.check(`input[name="purpose"][value="${purpose}"]`);
   let code: string | undefined;
-  if (purpose === "measurement") {
+  if (purpose !== "evalSet") {
     if (typed === undefined) {
       await page.check('input[name="code"][value="new"]');
       code = /[0-9A-Z]{6,16}/.exec((await page.textContent("#new-code")) ?? "")?.[0];
@@ -82,6 +83,17 @@ async function stroke(
   await page.mouse.down();
   await page.mouse.move(box.x + x2, box.y + y2, { steps });
   await page.mouse.up();
+}
+
+/** The sheet's one stroke marked up as one part, its text the final answer, nothing personal said,
+ * and saved: the sample the download holds. */
+async function markAndSave(page: Page, text: string): Promise<Sample> {
+  await page.click("#markup");
+  await page.locator('#form li[data-part="0"] textarea').fill(text);
+  await page.check('#form li[data-part="0"] input[data-flag="finalAnswer"]');
+  await page.check("#personal");
+  const [download] = await Promise.all([page.waitForEvent("download"), page.click("#save")]);
+  return readSample(readFileSync(await download.path(), "utf8"));
 }
 
 afterAll(async () => {
@@ -229,6 +241,8 @@ describe("opened from a file", () => {
       // before the purpose, a new writer's code shown to be written down, and both statements.
       expect(await page.isDisabled('input[name="purpose"][value="evalSet"]')).toBe(true);
       expect(await page.textContent("#purpose-note-evalSet")).toContain("черновые");
+      expect(await page.isDisabled('input[name="purpose"][value="child"]')).toBe(true);
+      expect(await page.textContent("#purpose-note-child")).toContain("черновые");
       expect(await page.isHidden("#work")).toBe(true);
       const code = (await begin(page, "measurement")) ?? "";
       expect(code).toMatch(/^[0-9A-Z]{6,16}$/);
@@ -375,12 +389,7 @@ describe("opened from a file", () => {
       const box = await page.locator("novatrail-canvas").boundingBox();
       if (!box) throw new Error("the element is not shown");
       await stroke(page, box, [120, 220], [220, 280]);
-      await page.click("#markup");
-      await page.locator('#form li[data-part="0"] textarea').fill("x = 2");
-      await page.check('#form li[data-part="0"] input[data-flag="finalAnswer"]');
-      await page.check("#personal");
-      const [download] = await Promise.all([page.waitForEvent("download"), page.click("#save")]);
-      const sample = readSample(readFileSync(await download.path(), "utf8"));
+      const sample = await markAndSave(page, "x = 2");
       expect(sample.purpose).toBe(Purpose.MEASUREMENT);
       expect(sample.writerCode).toBe("AB12CD34");
       expect(sample.textSetVersion).toBe("test-approved-0");
@@ -389,6 +398,51 @@ describe("opened from a file", () => {
       await page.evaluate(() => window.scrollTo(0, 0));
       await stroke(page, box, [300, 220], [360, 260]);
       expect(await page.isHidden("#hand-over")).toBe(true);
+    } finally {
+      await context.close();
+    }
+  }, 60_000);
+
+  test("with the test set of texts leads a child's session: the code of the form typed, the child writing, a sample of measurement by a child (T84)", async () => {
+    const context = await browser.newContext({ acceptDownloads: true });
+    try {
+      const page = await context.newPage();
+      await page.goto(pathToFileURL(tested.path).href);
+      // An adult's own code typed does not stay for the child: they are two people's.
+      await page.check('input[name="purpose"][value="measurement"]');
+      await page.check('input[name="code"][value="own"]');
+      await page.fill("#typed", "ab12cd34");
+      await page.check('input[name="purpose"][value="child"]');
+      expect(await page.textContent("#code-legend")).toBe("Код ребёнка");
+      expect(await page.locator('input[name="code"]:checked').count()).toBe(0);
+      expect(await page.inputValue("#typed")).toBe("");
+      // A new code is for the form, made without the child: no session begins with it.
+      await page.check('input[name="code"][value="new"]');
+      expect(await page.textContent("#new-code")).toMatch(/[0-9A-Z]{6,16}.*test-approved-0/);
+      expect(await page.textContent("#start-lacks")).toContain("принятой формы");
+      expect(await page.locator("#statements label").nth(1).textContent()).toContain(
+        "родителя или опекуна этого ребёнка",
+      );
+      await begin(page, "child", "kid 12345");
+      expect(await page.textContent("#summary-text")).toContain("код ребёнка KID12345");
+      expect(await page.isHidden("#writer")).toBe(true);
+      expect(await page.isVisible("#child-writes")).toBe(true);
+      expect(await page.textContent("#ipad-note")).toContain("On My iPad");
+      const box = await page.locator("novatrail-canvas").boundingBox();
+      if (!box) throw new Error("the element is not shown");
+      await stroke(page, box, [120, 220], [220, 280]);
+      const sample = await markAndSave(page, "7");
+      // Illegible on purpose is the writer's to say: the adult marking a child's sheet says it unread.
+      expect(
+        await page.locator('#form label:has(input[data-flag="illegible"])').textContent(),
+      ).toContain("со слов ребёнка");
+      expect(sample.purpose).toBe(Purpose.MEASUREMENT);
+      expect(sample.writer).toBe(Writer.CHILD);
+      expect(sample.ink.case).toBe("geometry");
+      expect(sample.writerCode).toBe("KID12345");
+      expect(sample.textSetVersion).toBe("test-approved-0");
+      expect(sample.license).toBeUndefined();
+      expect(await page.textContent("#hand-over")).toContain("не pull request");
     } finally {
       await context.close();
     }

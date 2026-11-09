@@ -20,6 +20,7 @@ novatrail-canvas { display: block; }
 #lacks ul { margin: 4px 0; }
 .note { color: GrayText; margin-left: 1.6em; display: block; }
 #notice p { margin: 4px 0; }
+#session { margin-top: 16px; }
 details pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
 </style>
 <header>
@@ -32,12 +33,14 @@ details pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
 <main>
   <section id="start" aria-labelledby="start-title">
     <h2 id="start-title">Начало</h2>
-    <fieldset id="purpose"><legend>Для чего этот образец</legend></fieldset>
+    <fieldset id="purpose"><legend>Для чего этот образец</legend>
+      <fieldset id="session"><legend>Сеанс образца ребёнка</legend></fieldset>
+    </fieldset>
     <fieldset id="code-step" hidden>
-      <legend>Код писавшего</legend>
-      <label><input type="radio" name="code" value="own"> ввести свой код</label>
-      <label><input type="radio" name="code" value="new"> новый писавший</label>
-      <p id="own-code" hidden><label for="typed">Ваш код:</label> <input id="typed" autocomplete="off" autocapitalize="characters" spellcheck="false"></p>
+      <legend id="code-legend"></legend>
+      <label><input type="radio" name="code" value="own"> <span id="code-own"></span></label>
+      <label><input type="radio" name="code" value="new"> <span id="code-new"></span></label>
+      <p id="own-code" hidden><label for="typed" id="typed-label"></label> <input id="typed" autocomplete="off" autocapitalize="characters" spellcheck="false"></p>
       <p id="new-code" hidden></p>
     </fieldset>
     <section id="notice" aria-labelledby="notice-title" hidden><h3 id="notice-title">Уведомление</h3><div id="notice-text"></div></section>
@@ -49,10 +52,12 @@ details pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
   <section id="work" aria-label="Письмо и разметка" hidden>
     <p><label for="task">Задача:</label> <select id="task"></select></p>
     <fieldset id="writer"><legend id="writer-label"></legend></fieldset>
+    <p id="child-writes" hidden></p>
     <div id="holder"></div>
     <p><button id="markup" type="button"></button> <span id="changed" role="status"></span></p>
     <section id="form" hidden></section>
     <p><label><input type="checkbox" id="personal"> На листе нет ничего личного: имени, подписи, школы, контактов.</label></p>
+    <p id="ipad-note" hidden></p>
     <div id="lacks" role="status"></div>
     <p><button id="save" type="button" disabled></button> <span id="saved" role="status"></span></p>
     <p id="hand-over" hidden></p>
