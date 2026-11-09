@@ -4,7 +4,7 @@
 // the tests alone: the build leaves it out, as it leaves out the tests (tsconfig.build.json), and
 // the package check holds to that (scripts/package.ts).
 
-import type { CheckedExample, ExamplePart } from "./example.js";
+import type { CheckedExample, ExamplePart, WorkedExample } from "./example.js";
 import type { GridKind } from "./grid.js";
 import { FORMAT, type Manifest } from "./manifest.js";
 import type {
@@ -133,3 +133,28 @@ export function workedExample(change: ExampleChange = {}): CheckedExample {
   } = change;
   return { statement, canvas: { kind: "handwriting_sheet", ...canvas }, demo };
 }
+
+/**
+ * The worked example on a workbook of the format's lesson of remainders (spec/format/examples/lesson/
+ * valid/remainders-on-a-workbook.yaml at v0.12.0): 23 ÷ 4 = [5] r [3], its demo a paragraph and the
+ * two boxes filled.
+ */
+export const REMAINDERS = {
+  statement: [{ text: "Share the apples into equal heaps, and say how many are left over." }],
+  canvas: { kind: "workbook" },
+  lines: [
+    {
+      line: [
+        { text: "23 ÷ 4 =" },
+        { binding: "box", value: "5" },
+        { text: "r" },
+        { binding: "box", value: "3" },
+      ],
+    },
+  ],
+  demo: [
+    { text: "Take the largest number of heaps that fit, then count what is left." },
+    { fill: { line: 1, box: 1 } },
+    { fill: { line: 1, box: 2 } },
+  ],
+} as const satisfies WorkedExample;

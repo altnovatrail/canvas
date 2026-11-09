@@ -3,6 +3,7 @@ import { page, userEvent } from "vitest/browser";
 import {
   type ExampleChange,
   moduleManifest,
+  REMAINDERS,
   sheetTask,
   workedExample,
 } from "../core/tasks.fixture.js";
@@ -734,25 +735,7 @@ test("Next brings a picture on an area taller than what is in sight into sight b
 test("on a workbook the demo fills the example's boxes with their values as its parts open: a value in the middle of its box, at the width of its text, its box named with it, the item of the list the box and its value; hidden with a hidden demo, gone when the consumer gives fewer (T85)", async () => {
   const { element, root } = await placed(made, 400);
   element.lang = "ru";
-  element.workedExample = {
-    statement: [{ text: "Share the apples into equal heaps, and say how many are left over." }],
-    canvas: { kind: "workbook" },
-    lines: [
-      {
-        line: [
-          { text: "23 ÷ 4 =" },
-          { binding: "box", value: "5" },
-          { text: "r" },
-          { binding: "box", value: "3" },
-        ],
-      },
-    ],
-    demo: [
-      { text: "Take the largest number of heaps that fit, then count what is left." },
-      { fill: { line: 1, box: 1 } },
-      { fill: { line: 1, box: 2 } },
-    ],
-  };
+  element.workedExample = REMAINDERS;
   await settle();
   const boxes = () => [...root.querySelectorAll<SVGRectElement>(".print rect")];
   const values = () => [...root.querySelectorAll<SVGTextElement>(".print text[aria-hidden]")];

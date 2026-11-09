@@ -15,7 +15,7 @@ import {
 } from "./example.js";
 import { pageOf } from "./page.js";
 import type { PicturePart } from "./task.js";
-import { DEMO, pathOf, refusal, under, workedExample } from "./tasks.fixture.js";
+import { DEMO, pathOf, REMAINDERS, refusal, under, workedExample } from "./tasks.fixture.js";
 
 // Copies of the worked examples of the lesson examples and vectors of the module format at spec
 // v0.12.0 (spec/format/examples/lesson/, spec/format/vectors/open-view/lesson/ and
@@ -39,27 +39,6 @@ const PATH = {
   alt: "A line for the path, cut into 4 equal gaps of 5 m, with a lamp at every mark.",
   area: { left: 100, top: 150, width: 800, height: 200 },
 };
-
-/** The worked example on a workbook of the lesson of remainders: 23 ÷ 4 = [5] r [3]. */
-const REMAINDERS = {
-  statement: [{ text: "Share the apples into equal heaps, and say how many are left over." }],
-  canvas: { kind: "workbook" },
-  lines: [
-    {
-      line: [
-        { text: "23 ÷ 4 =" },
-        { binding: "box", value: "5" },
-        { text: "r" },
-        { binding: "box", value: "3" },
-      ],
-    },
-  ],
-  demo: [
-    { text: "Take the largest number of heaps that fit, then count what is left." },
-    { fill: { line: 1, box: 1 } },
-    { fill: { line: 1, box: 2 } },
-  ],
-} as const satisfies WorkedExample;
 
 /** The remainders' demo, its fills changed as a vector of lesson.example-fills changes them. */
 const fills = (...boxes: readonly (readonly [number, number])[]) => ({
