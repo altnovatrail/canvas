@@ -11,6 +11,10 @@ set -euo pipefail
 out=build/page-ipad-$IOS
 mkdir -p "$out"
 
+# Each phase of the run with the time it began, in UTC, into the job's log and phases.txt of the
+# run's folder: where the minutes before the first session go (T82).
+phase() { echo "$(date -u +%H:%M:%S) $*" | tee -a "$out/phases.txt" >&2; }
+
 # The keys of the settings Safari's Develop pane writes, remote inspection and remote automation,
 # set before the simulator's one boot; then Safari, launched before safaridriver connects: without
 # it, sessions time out "connecting to a Safari instance". Its own window beside the session's
@@ -20,8 +24,11 @@ udid=$(SETTINGS="com.apple.webinspectord:RemoteInspectorEnabled \
     com.apple.mobilesafari:WebKitDeveloperExtrasEnabledPreferenceKey \
     com.apple.mobilesafari:RemoteAutomationEnabled" \
   bash emulators/simulator.sh page-ipad "$IOS" "$out")
+phase "Safari is launched"
 xcrun simctl launch "$udid" com.apple.mobilesafari > /dev/null
 sleep 5
+
+phase "the server and safaridriver start"
 
 page=$(basename build/page/samples-page_v*.html)
 # The page with the watch in it before its own script (emulators/watch.ts), served as pages.
@@ -39,4 +46,8 @@ for _ in $(seq 1 30); do
 done
 curl --silent --fail --max-time 5 http://127.0.0.1:4444/status > /dev/null
 
-UDID="$udid" node emulators/page-ipad.ts
+phase "the driver runs"
+# Each line of the driver, its session's tries and steps among them, with the time it came.
+UDID="$udid" node emulators/page-ipad.ts 2>&1 | while IFS= read -r line; do
+  echo "$(date -u +%H:%M:%S) $line" | tee -a "$out/phases.txt"
+done

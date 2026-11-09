@@ -11,11 +11,27 @@
 #
 # The workflow runs on every pull request, and its first job decides whether the emulators have
 # anything to check: a skipped job counts as a success, so the one check main requires, the last
-# job, stands on every pull request, and one of the documents alone waits for no emulator.
+# job, stands on every pull request, and one of the documents alone waits for no emulator. It runs
+# on a push to main too, of the same paths, so that main holds the cache of the toolchain stage
+# every pull request reads (R57).
 name: Samples page
 
 on:
   pull_request:
+  # The paths the job changes looks at, in the syntax of a filter: a path added there goes here too.
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "page/**"
+      - "scripts/page.ts"
+      - "scripts/csp.ts"
+      - "tasks/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".devcontainer/Dockerfile"
+      - "emulators/**"
+      - ".github/workflows/page.yml"
   workflow_dispatch:
 
 permissions:
@@ -29,6 +45,7 @@ concurrency:
 jobs:
   # What goes into the page — the package's code, the page's own, its builder, the tasks, the
   # packages and the toolchain stage — and what checks it: the drivers and this file.
+  # The same list is on.push's paths above: a path added here goes there too.
   changes:
     name: Changes
     runs-on: ubuntu-24.04
@@ -77,8 +94,31 @@ jobs:
           persist-credentials: false
           submodules: true
 
+      # The toolchain stage from the cache, by the Dockerfile's sha256 (R57): the Dockerfile pins
+      # everything it installs by exact version, digest, sha256 and snapshot, so the image the cache
+      # holds is the one it builds. A pull request's cache is its own, and only a push to main writes
+      # the one every pull request reads. Saved as soon as it is built, so that a run whose emulator
+      # fails later still fills it.
+      - name: Toolchain image from the cache
+        id: toolchain
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/toolchain.tar
+          key: toolchain-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.devcontainer/Dockerfile') }}
+
       - name: Toolchain image
-        run: docker build --target toolchain --tag toolchain - < .devcontainer/Dockerfile
+        run: bash emulators/toolchain.sh
+
+      - name: Toolchain image into the cache
+        if: steps.toolchain.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/toolchain.tar
+          key: ${{ steps.toolchain.outputs.cache-primary-key }}
+
+      # The image is in Docker, and the emulator wants the disk.
+      - name: Toolchain image's file removed
+        run: rm -f build/toolchain.tar
 
       - name: Page and its server
         run: |
@@ -193,8 +233,27 @@ jobs:
           name: page-ipad-26.5
           path: build/page-ipad-26.5
 
+      # The toolchain stage from the cache, as in the job android.
+      - name: Toolchain image from the cache
+        id: toolchain
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/toolchain.tar
+          key: toolchain-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.devcontainer/Dockerfile') }}
+
       - name: Toolchain image
-        run: docker build --target toolchain --tag toolchain - < .devcontainer/Dockerfile
+        run: bash emulators/toolchain.sh
+
+      - name: Toolchain image into the cache
+        if: steps.toolchain.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/toolchain.tar
+          key: ${{ steps.toolchain.outputs.cache-primary-key }}
+
+      # The image is in Docker, and the emulator wants the disk.
+      - name: Toolchain image's file removed
+        run: rm -f build/toolchain.tar
 
       - name: Sample files
         run: |
