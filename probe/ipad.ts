@@ -147,7 +147,18 @@ async function call(method: string, path: string, body?: unknown): Promise<unkno
  * the download under way. */
 async function open(bundleId: string): Promise<void> {
   if (session) {
-    await call("POST", `/session/${session}/wda/apps/activate`, { bundleId });
+    // WebDriverAgent has refused an activation once, 400, while Safari had a download under way
+    // (T78): it gets three tries, a while apart.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await call("POST", `/session/${session}/wda/apps/activate`, { bundleId });
+        break;
+      } catch (error) {
+        if (attempt === 3) throw error;
+        log(`activate ${bundleId}, try ${attempt}: ${String(error).slice(0, 120)}`);
+        await sleep(5000);
+      }
+    }
   } else {
     await call("POST", "/session", {
       capabilities: {
@@ -291,7 +302,22 @@ async function fromFiles(file: string, name: string): Promise<string> {
   const place = await press(labelled("Downloads", "BEGINSWITH", CELL), 10);
   await look(`${name}-folder`);
   const base = file.replace(/\.html$/, "");
-  const opened = place && (await press(labelled(base, "BEGINSWITH", CELL), 10));
+  let opened = place && (await press(labelled(base, "BEGINSWITH", CELL), 10));
+  if (place && !opened) {
+    // WebDriverAgent has once found no hittable cell while the folder showed the file (T78): then
+    // a tap on the file's icon, the upper part of its cell — no dialog stands over the folder,
+    // and a tap on the name below would start renaming it.
+    const cell = (await screen()).find(
+      ({ words, frame: [, , w, h] }) =>
+        w > 0 && h > 0 && words.some((word) => word.startsWith(`${base}, `)),
+    );
+    if (cell) {
+      const [x, y, w, h] = cell.frame;
+      await call("POST", `/session/${session}/wda/tap`, { x: x + w / 2, y: y + h * 0.3 });
+      log(`tap the icon of ${file}`);
+      opened = true;
+    }
+  }
   record(`open ${file} from the Files app`, opened);
   const state = opened ? await pageState(20) : "unseen";
   await look(name);
