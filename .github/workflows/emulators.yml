@@ -191,7 +191,7 @@ jobs:
             sleep 1
           done
           curl --silent --fail http://127.0.0.1:4444/status > /dev/null
-          { sw_vers; /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" /Applications/Safari.app/Contents/Info.plist; } > build/probe-safari/versions.txt
+          { echo "image ${ImageOS:-unknown} ${ImageVersion:-unknown}"; sw_vers; /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" /Applications/Safari.app/Contents/Info.plist; } > build/probe-safari/versions.txt
 
       - name: Probe
         run: node probe/safari.ts

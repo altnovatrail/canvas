@@ -3,9 +3,11 @@
 // the sheet's, 1000 × 1400 units (R06), and the boxes stay where the layout puts them on any
 // device: the widths of the text come from the canvas's own table (widths.ts), and SVG fits the
 // text to them. Short lines stand two to a row, in the task's order; a long line takes the page's
-// width and wraps. A task whose lines do not fit is a TypeError: nothing shrinks. The core's entry
-// point does not give the layout, and vectors/pages.json pins its numbers: once released, they
-// change only by a decision, for histories know neither the task nor the layout (R34).
+// width and wraps. A task whose lines do not fit is a TypeError: nothing shrinks. The numbers and
+// the rule are the format's since 0.4, its page.yaml and its test vectors, which the npm package
+// @altnovatrail/spec carries and the tests hold the layout to (README of the format, §14; R60):
+// they change only with the format, for histories know neither the task nor the layout (R34). The
+// core's entry point does not give the layout.
 
 import { SHEET } from "./sheet.js";
 import type { WorkbookItem } from "./task.js";
@@ -149,6 +151,18 @@ function measuresOf(layout: Layout): Measures {
     second: layout.margin + column + layout.gutter,
     floor: SHEET.height - layout.margin,
   };
+}
+
+/**
+ * The width of a text as one piece on one line, in whole units: its words and the spaces between
+ * them, as the layout measures a fragment of a piece (R35). A worked example's value is held to its
+ * box's width by it (README of the format, §21: lesson.workbook-page; R60), and drawn at it.
+ */
+export function pieceWidth(text: string, layout: Layout = LAYOUT): number {
+  const words = wordsOf(text);
+  if (words.length === 0) return 0;
+  const hundredths = words.reduce((sum, word) => sum + wordWidth(word), 0);
+  return textWidth(layout, hundredths + SPACE * (words.length - 1));
 }
 
 /** The width of a text of `hundredths` of the size, in whole units, rounded up. */

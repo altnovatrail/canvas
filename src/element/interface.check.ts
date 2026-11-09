@@ -71,7 +71,7 @@ declare const manifest: Manifest;
 declare const given: open.Task;
 declare const lesson: open.WorkedExample;
 
-/** A task's open view on a handwriting sheet, as the module format 0.3 has it (R32). */
+/** A task's open view on a handwriting sheet, as the module format 0.4 has it (R32). */
 const posts = {
   id: "posts-1",
   statement: [{ text: "How many posts are there?" }],

@@ -25,6 +25,7 @@ details pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
 </style>
 <header>
   <h1>Страница образцов</h1>
+  <p id="no-script">Если на странице только этот текст, она здесь не работает: её скрипт не выполняется. На iPad сборку, открытую из файла, «Файлы» показывают без скриптов, и сохранить на ней нельзя ничего. Откройте её на компьютере или на планшете Android.</p>
   <p id="about"></p>
   <p id="version"></p>
   <p id="offline"></p>
@@ -37,10 +38,10 @@ details pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
       <fieldset id="session"><legend>Сеанс образца ребёнка</legend></fieldset>
     </fieldset>
     <fieldset id="code-step" hidden>
-      <legend id="code-legend"></legend>
-      <label><input type="radio" name="code" value="own"> <span id="code-own"></span></label>
-      <label><input type="radio" name="code" value="new"> <span id="code-new"></span></label>
-      <p id="own-code" hidden><label for="typed" id="typed-label"></label> <input id="typed" autocomplete="off" autocapitalize="characters" spellcheck="false"></p>
+      <legend id="code-legend">Код писавшего</legend>
+      <label><input type="radio" name="code" value="own"> <span id="code-own">ввести свой код</span></label>
+      <label><input type="radio" name="code" value="new"> <span id="code-new">новый писавший</span></label>
+      <p id="own-code" hidden><label for="typed" id="typed-label">Ваш код:</label> <input id="typed" autocomplete="off" autocapitalize="characters" spellcheck="false"></p>
       <p id="new-code" hidden></p>
     </fieldset>
     <section id="notice" aria-labelledby="notice-title" hidden><h3 id="notice-title">Уведомление</h3><div id="notice-text"></div></section>

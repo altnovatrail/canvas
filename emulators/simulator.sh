@@ -34,12 +34,15 @@ xcrun simctl boot "$udid"
 phase "the simulator's boot status"
 xcrun simctl bootstatus "$udid" -b > /dev/null
 phase "the simulator is booted"
-# The Xcode's version as `xcodebuild -version` words it, read from the Xcode's own version.plist:
+# The runner's image as GitHub names it — a label alone pins no runner (R54) — macOS's version, and
+# the Xcode's as `xcodebuild -version` words it, read from the Xcode's own version.plist:
 # xcodebuild took 57 s of the job for these two lines (T82).
 xcode_plist="$(xcode-select -p)/../version.plist"
 xcode_version=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$xcode_plist")
 xcode_build=$(/usr/libexec/PlistBuddy -c "Print :ProductBuildVersion" "$xcode_plist")
 {
+  echo "image ${ImageOS:-unknown} ${ImageVersion:-unknown}"
+  echo "macOS $(sw_vers -productVersion)"
   echo "Xcode $xcode_version"
   echo "Build version $xcode_build"
   echo "runtime $runtime"

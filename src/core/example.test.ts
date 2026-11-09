@@ -7,16 +7,19 @@ import {
   type ExamplePart,
   exampleOf,
   exampleTemplate,
+  filledBy,
+  isFill,
   onSheet,
   sameExample,
   type WorkedExample,
 } from "./example.js";
+import { pageOf } from "./page.js";
 import type { PicturePart } from "./task.js";
-import { DEMO, pathOf, refusal, under, workedExample } from "./tasks.fixture.js";
+import { DEMO, pathOf, REMAINDERS, refusal, under, workedExample } from "./tasks.fixture.js";
 
 // Copies of the worked examples of the lesson examples and vectors of the module format at spec
-// v0.9.8 (spec/format/examples/lesson/, spec/format/vectors/open-view/lesson/ and
-// spec/format/vectors/rules/lesson.areas/): code and tests read nothing of spec/, so a move to a
+// v0.12.0 (spec/format/examples/lesson/, spec/format/vectors/open-view/lesson/ and
+// spec/format/vectors/rules/: lesson.areas/, lesson.example-fills/ and lesson.workbook-page/): code and tests read nothing of spec/, so a move to a
 // new tag compares them with `git -C spec diff <old> <new> -- format/` (R32). The element takes one
 // segment of a lesson, its worked example (R42): the rest of a lesson is app's, and so are the
 // faults of the invalid examples that lie outside a worked example.
@@ -37,7 +40,21 @@ const PATH = {
   area: { left: 100, top: 150, width: 800, height: 200 },
 };
 
-/** The worked examples of the valid lesson examples and of the open-view vector, by name. */
+/** The remainders' demo, its fills changed as a vector of lesson.example-fills changes them. */
+const fills = (...boxes: readonly (readonly [number, number])[]) => ({
+  ...REMAINDERS,
+  demo: [REMAINDERS.demo[0], ...boxes.map(([line, box]) => ({ fill: { line, box } }))],
+});
+
+/** The line of a vector of lesson.workbook-page: n apples into heaps of four, what is left over. */
+const share = (n: number) => ({
+  line: [
+    { text: `Share ${n} apples into heaps of four; the apples left over are` },
+    { binding: "box", value: String(n % 4) },
+  ],
+});
+
+/** The worked examples of the valid lesson examples and of the open-view vectors, by name. */
 const VALID: Readonly<Record<string, WorkedExample>> = {
   "gaps-and-posts": {
     ...LAMPS,
@@ -50,6 +67,8 @@ const VALID: Readonly<Record<string, WorkedExample>> = {
       },
     ],
   },
+  "remainders-on-a-workbook": REMAINDERS,
+  "workbook-example-open": REMAINDERS,
   "worked-example-open": {
     ...LAMPS,
     canvas: { kind: "handwriting_sheet", grid: "lines", grid_step: 40 },
@@ -58,7 +77,13 @@ const VALID: Readonly<Record<string, WorkedExample>> = {
 };
 
 /** The valid lesson examples with no worked example: an explanation and a task are app's. */
-const PLAIN = ["essays-for-adults", "first-sentences", "reading-model-essays", "table-of-seven"];
+const PLAIN = [
+  "essays-for-adults",
+  "first-sentences",
+  "reading-model-essays",
+  "table-of-seven",
+  "the-worst-luck",
+];
 
 /** A picture of the path, the second part of the demo, changed as an invalid example changes it. */
 const path = (change: object) => ({ ...LAMPS, demo: [DRAW, { ...PATH, ...change }] });
@@ -87,9 +112,38 @@ const INVALID: readonly (readonly [string, string, object])[] = [
     path({ alt: "A line for the path, cut into 4 equal gaps of 5 m.", area: undefined }),
   ],
   [
-    "worked-example-on-a-workbook",
-    "#/canvas/kind",
-    { ...LAMPS, canvas: { kind: "workbook" }, demo: [DRAW] },
+    "fill-on-a-handwriting-sheet",
+    "#/demo/1",
+    {
+      statement: [{ text: "Share the apples into equal heaps." }],
+      canvas: { kind: "handwriting_sheet" },
+      demo: [{ text: "Take the largest number of heaps that fit." }, { fill: { line: 1, box: 1 } }],
+    },
+  ],
+  [
+    "picture-on-a-workbook",
+    "#/demo/1",
+    {
+      ...REMAINDERS,
+      demo: [
+        REMAINDERS.demo[0],
+        {
+          picture: "pictures/apples.png",
+          alt: "Apples in heaps of four.",
+          area: { left: 100, top: 100, width: 400, height: 200 },
+        },
+        ...REMAINDERS.demo.slice(1),
+      ],
+    },
+  ],
+  [
+    "workbook-example-without-lines",
+    "#",
+    {
+      statement: [{ text: "Share the apples into equal heaps." }],
+      canvas: { kind: "workbook" },
+      demo: [{ text: "Take the largest number of heaps that fit." }],
+    },
   ],
 ];
 
@@ -99,6 +153,10 @@ const LESSONS = [
   "empty-segment",
   "no-segments",
   "no-skills",
+  "numbered-list-of-one",
+  "numbered-list-with-a-paragraph",
+  "numbered-list-with-its-own-number",
+  "placeholder-in-a-picture-path",
   "task-twice",
   "two-kinds-in-a-segment",
   "unknown-segment-kind",
@@ -114,21 +172,45 @@ const AREAS: readonly (readonly [string, string, object])[] = [
   ["area-past-the-right-edge", "#/demo/1/area", path({ area: { ...PATH.area, left: 300 } })],
 ];
 
+/**
+ * The vectors of the rules of a worked example on a workbook (lesson.example-fills and
+ * lesson.workbook-page): a box filled twice, a box never filled, a fill of no box, and eleven long
+ * lines, of which the eleventh has no room, as on a task's page.
+ */
+const WORKBOOK_RULES: readonly (readonly [string, string, object])[] = [
+  ["box-filled-twice", "#/demo/2/fill", fills([1, 1], [1, 1], [1, 2])],
+  ["box-never-filled", "#/demo", fills([1, 1])],
+  ["fill-of-no-box", "#/demo/3/fill", fills([1, 1], [1, 2], [1, 3])],
+  [
+    "eleven-long-lines",
+    "#/lines/10",
+    {
+      ...REMAINDERS,
+      lines: Array.from({ length: 11 }, (_, n) => share(23 + n)),
+      demo: [
+        REMAINDERS.demo[0],
+        ...Array.from({ length: 11 }, (_, n) => ({ fill: { line: n + 1, box: 1 } })),
+      ],
+    },
+  ],
+];
+
 test("the worked example of every valid lesson example and open-view vector of the format is a worked example: a copy of it", () => {
   for (const [name, example] of Object.entries(VALID)) {
     expect(exampleOf(example), name).toStrictEqual(example);
     expect(exampleOf(example), name).not.toBe(example);
   }
-  // gaps-and-posts and four lessons without a worked example: five valid lesson examples.
-  expect(1 + PLAIN.length).toBe(5);
+  // gaps-and-posts, remainders-on-a-workbook and five lessons without a worked example: seven valid
+  // lesson examples.
+  expect(2 + PLAIN.length).toBe(7);
 });
 
 test("an invalid lesson example whose fault is in its worked example is a TypeError at its place, or under it, and the rest are the lesson's", () => {
-  for (const [name, place, example] of [...INVALID, ...AREAS]) {
+  for (const [name, place, example] of [...INVALID, ...AREAS, ...WORKBOOK_RULES]) {
     const message = refusal(() => exampleOf(example));
     expect(under(message, pathOf(place, "workedExample")), `${name}: ${message}`).toBe(true);
   }
-  expect(INVALID.length + LESSONS.length).toBe(11);
+  expect(INVALID.length + LESSONS.length).toBe(17);
 });
 
 test("a value that is no worked example is a TypeError that names its field", () => {
@@ -146,8 +228,8 @@ test("a value that is no worked example is a TypeError that names its field", ()
     [at({ id: "lamps-1" }), /^workedExample\.id: no field of a worked example$/],
     [at({ canvas: undefined }), /^workedExample\.canvas: an object, not undefined$/],
     [
-      at({ canvas: { kind: "workbook" } }),
-      /^workedExample\.canvas\.kind: "handwriting_sheet", for a worked example is shown on a handwriting sheet, not "workbook"$/,
+      at({ canvas: { kind: "text" } }),
+      /^workedExample\.canvas\.kind: "handwriting_sheet" or "workbook", what a worked example is shown on, not "text"$/,
     ],
     // The learner does not write on the sheet of a worked example: it has no tools.
     [
@@ -268,7 +350,90 @@ test("the sheet makes a template of a worked example as of a task: its grid, its
     tools: ["pen"],
   });
   expect(Object.isFrozen(template.tools)).toBe(true);
-  expect(exampleTemplate(exampleOf(workedExample())).grid).toEqual({ kind: "squares", step: 50 });
+  expect(exampleTemplate(exampleOf(workedExample()))).toMatchObject({
+    grid: { kind: "squares", step: 50 },
+  });
+});
+
+test("the workbook makes a template of a worked example as of a task: its lines on the page, their boxes empty, and the pen alone (T85)", () => {
+  const example = exampleOf(REMAINDERS);
+  const task = pageOf([
+    { line: [{ text: "23 ÷ 4 =" }, { binding: "box" }, { text: "r" }, { binding: "box" }] },
+  ]);
+  expect(exampleTemplate(example)).toEqual({
+    page: task,
+    statement: example.statement,
+    tools: ["pen"],
+  });
+  // The boxes the open parts have filled, with their values, and none while the demo is hidden.
+  expect([...filledBy(example, { opened: 2, hidden: false })]).toEqual([["1.1", "5"]]);
+  expect([...filledBy(example, { opened: 3, hidden: false })]).toEqual([
+    ["1.1", "5"],
+    ["1.2", "3"],
+  ]);
+  expect(filledBy(example, { opened: 3, hidden: true }).size).toBe(0);
+  expect(example.demo.map(isFill)).toEqual([false, true, true]);
+});
+
+test("a worked example on a workbook is refused for lines on a sheet, a value wider than its box, a box without one, and a fill out of shape", () => {
+  const box = (value: unknown) => ({
+    ...REMAINDERS,
+    lines: [{ line: [{ text: "23 ÷ 4 =" }, { binding: "box", value }] }],
+    demo: [{ fill: { line: 1, box: 1 } }],
+  });
+  const wrong: [unknown, RegExp][] = [
+    [
+      { ...LAMPS, canvas: { kind: "handwriting_sheet" }, lines: REMAINDERS.lines, demo: [DRAW] },
+      /^workedExample\.lines: no lines on a handwriting sheet/,
+    ],
+    [
+      box("1234567"),
+      /^workedExample\.lines\[0\]\.line\[1\]\.value: no wider than its box, 100 units, not /,
+    ],
+    [box(""), /^workedExample\.lines\[0\]\.line\[1\]\.value:/],
+    [
+      { ...REMAINDERS, lines: [{ line: [{ text: "23 ÷ 4" }] }] },
+      /^workedExample\.lines\[0\]\.line: at least one box/,
+    ],
+    [
+      { ...REMAINDERS, canvas: { kind: "workbook", grid: "lines" } },
+      /^workedExample\.canvas\.grid: no field of a worked example's workbook$/,
+    ],
+    [
+      { ...REMAINDERS, demo: [{ fill: { line: 0, box: 1 } }] },
+      /^workedExample\.demo\[0\]\.fill\.line:/,
+    ],
+    [
+      { ...REMAINDERS, demo: [{ fill: { line: 1, box: 1 }, text: "and" }] },
+      /^workedExample\.demo\[0\]\.text: no field of a box the demo fills$/,
+    ],
+  ];
+  for (const [value, message] of wrong) expect(() => exampleOf(value)).toThrow(message);
+  // A value two digits wide fits a box: 2 × 53 hundredths of 30 units is 32.
+  expect(exampleOf(box("12")).lines?.[0]?.line[1]).toEqual({ binding: "box", value: "12" });
+});
+
+test("two worked examples on a workbook are the same when they have the same lines and the same fills", () => {
+  const one = exampleOf(REMAINDERS);
+  expect(sameExample(one, exampleOf(structuredClone(REMAINDERS)))).toBe(true);
+  const others = [
+    {
+      ...REMAINDERS,
+      lines: [
+        {
+          line: [
+            { text: "23 ÷ 4 =" },
+            { binding: "box", value: "5" },
+            { text: "r" },
+            { binding: "box", value: "4" },
+          ],
+        },
+      ],
+    },
+    fills([1, 2], [1, 1]),
+    exampleOf(workedExample()),
+  ];
+  for (const other of others) expect(sameExample(one, exampleOf(other))).toBe(false);
 });
 
 test("the state of a demo is how many of its parts are open and whether it is hidden, a frozen copy of its own, and anything else is a TypeError that names its field", () => {

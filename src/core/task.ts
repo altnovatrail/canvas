@@ -1,4 +1,4 @@
-// The open view of a task of the module format 0.3 (R51 spec). What a consumer gives is of spec's
+// The open view of a task of the module format 0.4 (R51 spec). What a consumer gives is of spec's
 // type, from its npm package at the version of the spec/ submodule (R73 spec; R41), with one field
 // of the element's own, `canvas.tools`, until the format has one (R28). The element checks a task as
 // the schema does, every object closed: a field the open view has not — an old name, a closed field

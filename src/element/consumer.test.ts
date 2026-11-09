@@ -69,7 +69,7 @@ const TASK: open.Task = {
  * sees the manifest's — and its explanation language, English, and passes over the rest.
  */
 const MODULE: open.Manifest = {
-  module_format_version: "0.3",
+  module_format_version: "0.4",
   id: "novatrail/olympiad-math",
   version: "0.1.0",
   title: "Olympiad mathematics, grades 1–6",

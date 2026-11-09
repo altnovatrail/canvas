@@ -51,7 +51,8 @@ export const TEXTS = {
   version: (version: string) => `Версия страницы: ${version}.`,
   github: "Страницу скачивают с GitHub, и GitHub видел IP-адрес того, кто её скачал.",
   purpose: { measurement: "замер", evalSet: "eval-набор модуля", child: "сеанс образца ребёнка" },
-  /** The step of the code, for an adult's own code and for a child's (T84). */
+  /** The step of the code, for an adult's own code and for a child's (T84). The template holds the
+   * adult's words too, so that every label has its text before the script runs. */
   code: {
     measurement: {
       legend: "Код писавшего",

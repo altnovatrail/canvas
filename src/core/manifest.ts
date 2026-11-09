@@ -16,7 +16,7 @@ import { closed, record, shown, whole } from "./fields.js";
  * spec; README of the format, §2). The format's rules of a module's versions are module-kit's and
  * api's: the element compares none (R32).
  */
-export const FORMAT = "0.3";
+export const FORMAT = "0.4";
 
 /** The open view of a module's manifest, whole: spec's type (R73 spec). */
 export type { Manifest } from "@altnovatrail/spec/formatv0/open";

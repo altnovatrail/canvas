@@ -86,7 +86,7 @@ export const example = core.exampleOf;
 export const demoState = core.demoStateOf;
 // @ts-expect-error Nor its reading of a manifest.
 export const settings = core.settingsOf;
-// @ts-expect-error Nor the layout of a workbook's page, which vectors/pages.json pins (R34, R35).
+// @ts-expect-error Nor the layout of a workbook's page, which spec's page and its vectors pin (R60).
 export const page = core.pageOf;
 // @ts-expect-error Nor the rule of its boxes, which spec's test vectors pin (R37; R94 spec).
 export const box = core.cellOf;

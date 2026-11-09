@@ -12,7 +12,7 @@
 // clearing — labelled in the element's `lang` (T41; R28). On a tablet a pen's touch puts the page
 // in pen mode, where a finger writes nothing and a button lets it write again, a palm writes
 // nothing, and two fingers scroll (T35; R29). The task comes in the names of the module format
-// 0.3, checked as its schema checks it, and the module's manifest gives the height of a digit and
+// 0.4, checked as its schema checks it, and the module's manifest gives the height of a digit and
 // the statement's language (T44; R32). Up and Down in the row scroll what two fingers would, with
 // a single pointer (T45; R33). The workbook's lines, laid out on its page, stand on the template in
 // place of the grid — numbers, text and boxes, which a screen reader reads in the task's order (T51;
@@ -28,8 +28,9 @@
 // the demo come from the consumer's media, one file for each reference, all of them as the task or
 // the example comes: a part opened shows its picture at once (T64; R42). A picture on an area of
 // the sheet stands on the layer of the author's demo, over its area, and the sheet scrolls to the
-// area as the part opens (T61; R42). The types of its contract with app are spec's, of
-// @altnovatrail/spec/canvas: the element implements its CanvasElement, and the package puts the
+// area as the part opens (T61; R42). A worked example on a workbook lays its lines out as a task's,
+// and a part of its demo that fills a box writes the box's value in it (T85; R61). The types of
+// its contract with app are spec's, of @altnovatrail/spec/canvas: the element implements its CanvasElement, and the package puts the
 // element and its events in the DOM's maps (T69; R07).
 
 import type {
@@ -52,6 +53,8 @@ import {
   type ExamplePart,
   exampleOf,
   exampleTemplate,
+  filledBy,
+  fillValue,
   sameExample,
   type WorkedExample,
 } from "../core/example.js";
@@ -71,6 +74,7 @@ import {
   type PageBox,
   type PageItem,
   type PageText,
+  pieceWidth,
 } from "../core/page.js";
 import { type PointerSample, Recorder } from "../core/recorder.js";
 import { fitScale, K_MAX, scaleFor, toSheet, type View } from "../core/screen.js";
@@ -534,6 +538,12 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   #laid: Page | undefined;
   #cells: readonly Cell[] = [];
   #rects: readonly SVGRectElement[] = [];
+  /**
+   * The values a worked example's demo has written in its boxes, by line and box from 1, and their
+   * texts on the page, one for each frame that has had one (T85; R60).
+   */
+  #fills: ReadonlyMap<string, string> = new Map();
+  #values: (SVGTextElement | undefined)[] = [];
   #taken = new WeakMap<Stroke, number>();
   /** Which answer slots are filled, the same array until one changes, or null (R37, R42). */
   #filled: Filled | null = null;
@@ -602,6 +612,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#stage.className = "stage";
     this.#grid.setAttribute("class", "grid");
     this.#print.setAttribute("class", "print");
+    // The constructor reads no attribute: the labels of a demo's boxes are English till `lang` comes.
+    this.#nameBoxes(null);
     this.#lines.setAttribute("role", "list");
     this.#print.append(this.#lines);
     this.#template.append(this.#grid, this.#print);
@@ -696,7 +708,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The open view of the task, of the module format 0.3 (R32): its ID, its statement, which the
+   * The open view of the task, of the module format 0.4 (R32): its ID, its statement, which the
    * element shows above the page (R23), what the statement gives and asks, which app shows (R57
    * spec), its canvas — the kind, the sheet's grid and the tools the task allows (R28) — and its
    * items. A workbook's items are its lines, which the template shows, laid out on the page (R35,
@@ -729,8 +741,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * A lesson's worked example (R42; R58 spec): the open view of a segment `worked_example` of the
-   * module format 0.3 — its statement, which the element shows above the sheet as a task's (R23),
-   * the grid of its sheet, and the parts of the author's demo. The type is spec's (R73 spec; R41).
+   * module format 0.4 — its statement, which the element shows above the sheet as a task's (R23),
+   * the grid of its sheet or the lines of its workbook, and the parts of the author's demo, which
+   * on a workbook fill the lines' boxes with their values (T85). The type is spec's (R73 spec; R41).
    * The element shows a task or a worked example, not both: an example while a task is given, while
    * the sheet has a history of writing, or while a stroke or an erasing is under way, is a
    * TypeError, and so is one the schema refuses, at its field. `undefined` takes the example off,
@@ -764,6 +777,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       this.#sheet.classList.remove("example");
       this.#demoState = undefined;
       this.#parts.clear();
+      this.#showFills(new Map());
       this.#present(NO_TASK);
     } else if (shown === undefined || !sameExample(checked, shown)) {
       // No mark stands on its sheet: its history is empty, and every submission has strokes. What
@@ -773,6 +787,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       this.#sheet.classList.add("example");
       this.#demoState = DEMO_START;
       this.#parts.clear();
+      // The last example's values leave its boxes: another may keep the same page.
+      this.#showFills(new Map());
       this.#present(exampleTemplate(checked));
     }
   }
@@ -810,7 +826,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * The open view of the module's manifest (R32), of which the element reads the version of the
-   * module format — "0.3", or the manifest is a TypeError (R44 spec) — the height of a digit on the
+   * module format — "0.4", or the manifest is a TypeError (R44 spec) — the height of a digit on the
    * crop for checking, `canvas.digit_height`, 24 px unless given, and the explanation language, the
    * statement's and a workbook's lines'. Without a manifest the digits are 24 px, and the statement
    * and the lines are in the element's own `lang`. The rest of it the element passes over, but for
@@ -1012,7 +1028,21 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    */
   attributeChangedCallback(): void {
     this.#tools.label(this.getAttribute("lang"));
+    this.#nameBoxes();
     this.#markBoxes();
+  }
+
+  /**
+   * The demo's list says a box it fills in the labels' language, and its value: «Окошко 1.2: 5»;
+   * its open items too, anew. Without `lang` the labels are English, as the element's own.
+   */
+  #nameBoxes(tag: string | null = this.getAttribute("lang")): void {
+    const { lang, labels } = labelsFor(tag);
+    this.#parts.fillWords = (part) => {
+      const name = `${labels.box} ${part.fill.line}.${part.fill.box}`;
+      const value = this.#example === undefined ? "" : fillValue(this.#example, part);
+      return { number: value === "" ? name : `${name}: ${value}`, lang };
+    };
   }
 
   /**
@@ -1190,6 +1220,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#cells = workbook ? cellsOf(template.page) : [];
     // The frames in the order of the lines, the task's: item by item, slot by slot.
     this.#rects = [...this.#lines.querySelectorAll("rect")];
+    this.#values = [];
     this.#taken = new WeakMap();
     // New frames: marked by the filling if it changed, or else here.
     if (!this.#fill()) this.#markBoxes();
@@ -1240,8 +1271,12 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       const several = (this.#laid?.items[cell.item - 1]?.boxes.length ?? 0) > 1;
       const filled = this.#filled?.[cell.item - 1]?.[cell.slot - 1] === true;
       const name = several ? `${labels.box} ${cell.slot}` : labels.box;
+      // A worked example's box says what its demo wrote in it: the text itself says nothing.
+      const value = this.#fills.get(`${cell.item}.${cell.slot}`);
       rect.classList.toggle("filled", filled);
-      write(rect, "aria-label", filled ? `${name}, ${labels.filled}` : name);
+      let label = filled ? `${name}, ${labels.filled}` : name;
+      if (value !== undefined) label = `${name}: ${value}`;
+      write(rect, "aria-label", label);
       write(rect, "lang", lang);
     }
   }
@@ -1731,8 +1766,51 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   #showDemo(example: CheckedExample, state: DemoState): void {
     this.#demoState = state;
     this.#parts.show(example.demo, state);
+    this.#showFills(filledBy(example, state));
     this.#layout();
     this.#refresh();
+  }
+
+  /**
+   * The values a worked example's demo has written in the boxes of its workbook (T85; R60): each in
+   * the middle of its box, on the line's baseline, at the width the layout gives its text, as the
+   * lines' texts are; none while the demo is hidden. Only what changed is written.
+   */
+  #showFills(fills: ReadonlyMap<string, string>): void {
+    this.#fills = fills;
+    const page = this.#laid;
+    if (page === undefined) return;
+    let changed = false;
+    for (const [c, cell] of this.#cells.entries()) {
+      const value = fills.get(`${cell.item}.${cell.slot}`);
+      let text = this.#values[c];
+      if (value === (text?.textContent ?? undefined)) continue;
+      changed = true;
+      if (value === undefined) {
+        text?.remove();
+        this.#values[c] = undefined;
+        continue;
+      }
+      const box = page.items[cell.item - 1]?.boxes[cell.slot - 1];
+      const rect = this.#rects[c];
+      if (box === undefined || rect === undefined) continue;
+      if (text === undefined) {
+        text = document.createElementNS(SVG, "text");
+        text.setAttribute("aria-hidden", "true");
+        text.setAttribute("lengthAdjust", "spacingAndGlyphs");
+        rect.after(text);
+        this.#values[c] = text;
+      }
+      const width = pieceWidth(value);
+      text.setAttribute("x", String(box.left + Math.floor((box.width - width) / 2)));
+      text.setAttribute(
+        "y",
+        String(box.top + Math.floor(box.height / 2) + Math.floor(LAYOUT.size / 3)),
+      );
+      text.setAttribute("textLength", String(width));
+      text.textContent = value;
+    }
+    if (changed) this.#markBoxes();
   }
 
   /** Whoever listens hears of the demo's new state, which the learner chose (R42). */

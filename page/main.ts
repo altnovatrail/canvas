@@ -762,6 +762,9 @@ function restart(): void {
   location.reload();
 }
 
+// The page's script runs: the words for where it does not — an iPad's Files, which shows the page
+// without its script (В64; the 2026-11-08 amendment to R25 spec; T85) — go.
+byId("no-script").remove();
 words();
 for (const [index, { title }] of data.tasks.entries()) {
   picker.append(new Option(title, String(index)));
