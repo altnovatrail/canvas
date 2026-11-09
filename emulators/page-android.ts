@@ -107,10 +107,16 @@ class Chrome implements Device {
    * screen, says a point of the page lies. Chrome's own offers, such as one to translate the
    * page, may stand over the button a while: then it is the device's failure, not the page's. */
   async draw(name: string): Promise<string | undefined> {
-    await this.evaluate('document.getElementById("save").scrollIntoView({ block: "end" })');
-    await sleep(1000);
+    // The button scrolled into view on each look: Chrome's tree of accessibility, which
+    // uiautomator reads, lagged behind one scroll on the first pass and still showed the top of
+    // the page (T83), and a scroll is what makes Chrome bring it up to date.
     let shown: ReturnType<Android["screen"]> = [];
-    const node = await until(15, () => {
+    const node = await until(15, async () => {
+      // A pixel up first, so that the page does scroll even when the button is in view already.
+      await this.evaluate(
+        '(window.scrollBy(0, -1), document.getElementById("save").scrollIntoView({ block: "end" }))',
+      );
+      await sleep(500);
       shown = android.screen();
       return find(shown, SAVE);
     });
