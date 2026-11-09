@@ -3,8 +3,9 @@
 # docs/decisions.md), with the image's own Xcode: a switch by xcode-select, even to the same
 # version, leaves safaridriver without Simulator.app. A fresh iPad simulator of the iOS runtime IOS
 # names (emulators/simulator.sh), Safari's remote automation switched on inside it and read by a
-# boot once more, Safari launched before safaridriver connects; then the server of build/page as
-# pages and emulators/page-ipad.ts. What the run ran on goes into its folder beside what it found.
+# boot once more, Safari launched before safaridriver connects; then the server of the page, with
+# the watch in it, as pages, and emulators/page-ipad.ts. What the run ran on goes into its folder
+# beside what it found.
 set -euo pipefail
 
 : "${IOS:?IOS names the version of the iOS runtime, such as 26.5 or 27}"
@@ -27,7 +28,9 @@ xcrun simctl launch "$udid" com.apple.mobilesafari > /dev/null
 sleep 5
 
 page=$(basename build/page/samples-page_v*.html)
-nohup node emulators/serve.ts build/page 8080 --inline > "$out/server.txt" 2>&1 &
+# The page with the watch in it before its own script (emulators/watch.ts), served as pages.
+node emulators/watch.ts build/page build/page-watched > /dev/null
+nohup node emulators/serve.ts build/page-watched 8080 --inline > "$out/server.txt" 2>&1 &
 sudo safaridriver --enable
 nohup safaridriver --port 4444 > "$out/safaridriver.txt" 2>&1 &
 # Both answer within seconds; the page asked of the server here is the one the driver opens too.

@@ -1,14 +1,15 @@
 // What the drivers of the samples page watch in it (T78 in RUN.md; R54 in docs/decisions.md), in
 // Chrome on Android and in Safari in the iPad Simulator alike: the policy's violations, the page's
-// errors, the requests it made and the files it handed to a download. The watch is a script the
-// driver puts into the page — before its own on Android, through DevTools, and once it has loaded
-// in Safari, through WebDriver — and a driver's script runs outside the page's policy. Violations
-// from before it came are the buffered reports of a ReportingObserver, which Chrome and WebKit keep
-// for a page from its start. Nothing of the page's own changes: the spy on URL.createObjectURL
-// only keeps a copy of the text of each blob it is given.
+// errors, the requests it made and the files it handed to a download. The watch is a script that
+// runs before the page's own: on Android DevTools puts it into the page, and for Safari, which no
+// WebDriver lets a script into before the page's own, it is written into a copy of the page,
+// its hash beside the script's in the policy (watched()). A driver's own scripts run outside the
+// page's policy. Nothing of the page's own changes: the spy on URL.createObjectURL only keeps a
+// copy of the text of each blob it is given.
 
-import { readdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { hash } from "../scripts/csp.ts";
 
 /** The page's title, by which its DevTools target is found. */
 export const TITLE = "NovaTrail — страница образцов";
@@ -213,4 +214,33 @@ export function served(folder: string, file: string): { step: string; ok: boolea
     ok: others.length === 0,
     note: notes.filter(Boolean).join("; "),
   };
+}
+
+/** The page with the watch in it before the page's own script, and the watch's hash beside the
+ * script's in its policy: nothing else of it changes. Safari in the simulator opens this copy,
+ * since no WebDriver of it can put a script into a page before the page's own runs, and a
+ * violation of the page's first moment would go unseen: Safari's ReportingObserver gives no
+ * report from before it came (T78). */
+export function watched(page: string): string {
+  const at = page.indexOf("<script>");
+  const policy = page.indexOf("script-src ");
+  if (at < 0 || policy < 0 || page.indexOf("<script>", at + 1) >= 0) {
+    throw new Error("the page has not one script and a policy of scripts");
+  }
+  const allowed = policy + "script-src ".length;
+  const withHash = `${page.slice(0, allowed)}${hash(WATCH)} ${page.slice(allowed)}`;
+  const shifted = withHash.indexOf("<script>");
+  return `${withHash.slice(0, shifted)}<script>${WATCH}</script>${withHash.slice(shifted)}`;
+}
+
+if (import.meta.main) {
+  const [from, to, ...rest] = process.argv.slice(2);
+  if (!from || !to || rest.length > 0) {
+    console.error("usage: node emulators/watch.ts <build> <folder>");
+    process.exit(2);
+  }
+  const file = pageIn(readdirSync(from));
+  mkdirSync(to, { recursive: true });
+  writeFileSync(join(to, file), watched(readFileSync(join(from, file), "utf8")));
+  console.log(join(to, file));
 }

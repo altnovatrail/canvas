@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { type Browser, chromium, type Page } from "playwright";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { policy, styleOf } from "../scripts/csp.ts";
+import { hash, policy, styleOf } from "../scripts/csp.ts";
 import { buildPage } from "../scripts/page.ts";
 import {
   asked,
@@ -26,6 +26,7 @@ import {
   verdicts,
   WATCH,
   WORKBOOK,
+  watched,
 } from "./watch.ts";
 
 const QUIET: Seen = {
@@ -93,6 +94,18 @@ describe("the pure parts", () => {
     } finally {
       rmSync(folder, { recursive: true, force: true });
     }
+  });
+
+  test("the watch goes in before the page's script, and its hash beside the script's", () => {
+    const page =
+      "<meta content=\"script-src 'sha256-A'; style-src 'sha256-B'\"><script>own()</script>";
+    const copy = watched(page);
+    expect(copy.indexOf(WATCH)).toBeLessThan(copy.indexOf("own()"));
+    expect(copy).toContain(`script-src ${hash(WATCH)} 'sha256-A';`);
+    expect(() => watched("<script>a</script><script>b</script>script-src ")).toThrow(
+      "not one script",
+    );
+    expect(() => watched("<p>no script</p>")).toThrow("not one script");
   });
 
   test("a quiet page passes each check, and a violation, an error or a request fails its own", () => {
@@ -179,32 +192,29 @@ describe("in the page's build", () => {
     }
   }, 60_000);
 
-  test("sees a request the policy stopped as a violation, from before the watch came too", async () => {
-    // The page's own script asks for the network first thing: the failure T78 must catch.
-    const broken = join(folder, "broken.html");
-    // Its policy is worked out again, as the builder does, so that the script still runs.
+  test("written into a copy of the page, sees a request its own script makes first thing", async () => {
+    // The page's own script asks for the network first thing: the failure T78 must catch. Its
+    // policy is worked out again, as the builder does, so that the script still runs.
     const built = readFileSync(file, "utf8");
     const start = built.indexOf("<script>") + "<script>".length;
     const script = built.slice(start, built.lastIndexOf("</script>"));
     const leaking = `fetch("https://probe.invalid/leak").catch(() => {});${script}`;
-    writeFileSync(
-      broken,
-      built
-        .replace(policy(styleOf(built), script), () => policy(styleOf(built), leaking))
-        .replace(script, () => leaking),
-    );
-    // Opened with the watch put in only once it has loaded, as in Safari: the reports buffered.
-    const late = await browser.newPage();
+    const broken = built
+      .replace(policy(styleOf(built), script), () => policy(styleOf(built), leaking))
+      .replace(script, () => leaking);
+    // Opened as Safari opens it: the copy with the watch, and no script put in by the driver.
+    const path = join(folder, "watched.html");
+    writeFileSync(path, watched(broken));
+    const page = await browser.newPage();
     try {
-      await late.goto(pathToFileURL(broken).href);
-      await late.waitForTimeout(500);
-      await late.evaluate(WATCH);
-      await until(late, `${READ}.includes("connect-src")`);
-      const seen = await read(late);
-      expect(seen.reports).toContain("connect-src");
+      await page.goto(pathToFileURL(path).href);
+      await until(page, `${READ}.includes("connect-src")`);
+      const seen = await read(page);
+      expect(seen).toMatchObject({ watched: true, defined: true, errors: 0 });
+      expect(seen.blocked).toContain("https://probe.invalid/leak");
       expect(verdicts(seen, outside(seen.resources))[1]).toMatchObject({ ok: false });
     } finally {
-      await late.close();
+      await page.close();
     }
   }, 60_000);
 });

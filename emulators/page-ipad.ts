@@ -7,8 +7,8 @@
 //
 // A page opened from a file does not run on an iPad: the Files app shows it in Quick Look (T80;
 // В64 in RUN.md). So Safari opens it from the runner, the way a hosting would serve it, and the
-// question is the element in the WebKit of iPadOS. safaridriver drives Safari and runs the watch of
-// emulators/watch.ts in the page; the driver draws a stroke on the sheet by a touch of WebDriver's
+// question is the element in the WebKit of iPadOS. The page served is the build with the watch of
+// emulators/watch.ts written in before its own script; safaridriver drives Safari and reads it; the driver draws a stroke on the sheet by a touch of WebDriver's
 // actions, saves the sample, shows the workbook's page, draws and saves again. Each file the page
 // hands to a download is read from the watch's copy of its blob into build/page-ipad-<iOS>/saved,
 // for the workflow's job of the saved files; where Safari puts the download is T22's to see. Each
@@ -34,7 +34,6 @@ import {
   TASKS,
   TO_WORKBOOK,
   verdicts,
-  WATCH,
   WORKBOOK,
 } from "./watch.ts";
 import { command } from "./webdriver.ts";
@@ -214,7 +213,6 @@ async function pass(file: string): Promise<void> {
       shown = await read();
       if (!shown?.defined) await sleep(1000);
     }
-    await execute(WATCH);
     shown = await read();
     shot("opened");
     run.record(

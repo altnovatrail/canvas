@@ -70,18 +70,26 @@ async function box(tools: DevTools, selector: string): Promise<Box | undefined> 
 }
 
 /** Draw a stroke on the element through the touchscreen, where the page's save button, seen in
- * the page and on the screen, says a point of the page lies; say how many strokes it holds then. */
-async function draw(tools: DevTools, name: string): Promise<number> {
+ * the page and on the screen, says a point of the page lies; give how many strokes it holds then,
+ * or undefined when the screen did not show the button: Chrome's own offers, such as one to
+ * translate the page, may stand over it for a while, and that is the device's failure, not the
+ * page's. */
+async function draw(tools: DevTools, name: string): Promise<number | undefined> {
   await tools.evaluate('document.getElementById("save").scrollIntoView({ block: "end" })');
-  await sleep(1000);
+  let node: ReturnType<typeof find>;
+  for (let i = 0; i < 10 && !node; i++) {
+    await sleep(1000);
+    node = find(android.screen(), SAVE);
+  }
   const button = await box(tools, "#save");
-  const node = find(android.screen(), SAVE);
   const sheet = await box(tools, "novatrail-canvas");
-  if (!button || !node || !sheet) {
-    run.log(
-      `draw ${name}: the button ${button ? "seen" : "unseen"} in the page, ${node ? "seen" : "unseen"} on the screen`,
-    );
-    return -1;
+  run.record(
+    `find the save button on the screen, for the ${name}`,
+    Boolean(node && button && sheet),
+  );
+  if (!node || !button || !sheet) {
+    android.screenshot(`${name}-no-button`);
+    return undefined;
   }
   const toScreen = calibrate(button, node);
   const [from, to] = strokeIn(sheet);
@@ -148,6 +156,7 @@ async function pass(file: string): Promise<void> {
     if (!shown?.defined) return;
 
     const strokes = await draw(tools, "sheet");
+    if (strokes === undefined) return;
     run.record(
       "the sheet holds the stroke drawn",
       strokes > 0,
@@ -170,6 +179,7 @@ async function pass(file: string): Promise<void> {
       "page",
     );
     const cells = await draw(tools, "workbook");
+    if (cells === undefined) return;
     run.record("the workbook holds the stroke drawn", cells > 0, `${cells} in its history`, "page");
     run.record(
       "the workbook's sample is handed to a download",
