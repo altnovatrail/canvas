@@ -19,6 +19,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { Android, AWAY, calibrate, DevTools, find, HOST, newPage, type Target } from "./android.ts";
 import { Run } from "./run.ts";
 import { type Device, passes, volunteer } from "./volunteer.ts";
+import { until } from "./wait.ts";
 import {
   type Box,
   boxOf,
@@ -107,11 +108,12 @@ class Chrome implements Device {
    * page, may stand over the button a while: then it is the device's failure, not the page's. */
   async draw(name: string): Promise<string | undefined> {
     await this.evaluate('document.getElementById("save").scrollIntoView({ block: "end" })');
-    let node: ReturnType<typeof find>;
-    for (let i = 0; i < 10 && !node; i++) {
-      await sleep(1000);
-      node = find(android.screen(), SAVE);
-    }
+    await sleep(1000);
+    let shown: ReturnType<Android["screen"]> = [];
+    const node = await until(15, () => {
+      shown = android.screen();
+      return find(shown, SAVE);
+    });
     const button = await this.box("#save");
     const sheet = await this.box("novatrail-canvas");
     const stroke = sheet && strokeIn(sheet);
@@ -120,6 +122,8 @@ class Chrome implements Device {
       Boolean(node && button && stroke),
     );
     if (!node || !button || !stroke) {
+      // What stood on the screen instead: an offer of Chrome's, or a window the dump read alone.
+      run.log(`screen ${Android.words(shown).slice(0, 600)}`);
       android.screenshot(`${name}-not-found`);
       return undefined;
     }
@@ -136,10 +140,19 @@ class Chrome implements Device {
     // The form of the markup stands above the button: it comes into view first.
     await this.evaluate('document.getElementById("save").scrollIntoView({ block: "center" })');
     await sleep(1000);
-    const pressed = await android.tapWhen(SAVE, 5);
-    await android.tapWhen(AWAY, 3);
+    const before = saved().length;
+    const pressed = await android.tapWhen(SAVE, 10);
     run.record(`tap the save button, for the ${name}`, pressed);
-    return pressed;
+    if (!pressed) return false;
+    // The file in Chrome's downloads, with Chrome's question answered if it asks one before it
+    // downloads: the file comes in a second or two, and a wait on its question alone took ten.
+    await until(10, () => {
+      if (saved().length > before) return true;
+      const away = find(android.screen(), AWAY);
+      if (away) android.tap(away);
+      return undefined;
+    });
+    return true;
   }
 
   async toWorkbook(): Promise<void> {
@@ -160,15 +173,20 @@ class Chrome implements Device {
   }
 }
 
-/** The server asked for nothing but the page, and the files the page saved, off the device. */
-function after(file: string): void {
-  const { step, ok, note } = served(run.folder, file);
-  run.record(step, ok, note, "page");
-  const names = android
+/** The files of the page's saving in Chrome's downloads, by name. */
+function saved(): string[] {
+  return android
     .shell(`ls ${DOWNLOADS}`)
     .split("\n")
     .map((name) => name.trim())
     .filter((name) => SAVED.test(name));
+}
+
+/** The server asked for nothing but the page, and the files the page saved, off the device. */
+function after(file: string): void {
+  const { step, ok, note } = served(run.folder, file);
+  run.record(step, ok, note, "page");
+  const names = saved();
   const into = join(run.folder, "saved");
   mkdirSync(into, { recursive: true });
   for (const name of names) android.pull(`${DOWNLOADS}/${name}`, join(into, name));

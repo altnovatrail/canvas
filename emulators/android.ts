@@ -10,13 +10,18 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import type { Run } from "./run.ts";
+import { until } from "./wait.ts";
 
 /** Chrome's package, and the activity a VIEW intent starts it at. */
 export const CHROME = "com.android.chrome";
 const MAIN = `${CHROME}/com.google.android.apps.chrome.Main`;
 /** The flags that keep Chrome's first run from standing in the way, as Chrome reads them on a
- * debuggable image from this file. */
-const FLAGS = "_ --disable-fre --no-default-browser-check --no-first-run";
+ * debuggable image from this file; and its bubbles of help over a page opened from a download,
+ * enabled by default in Chrome 133 (components/feature_engagement/public/feature_constants.cc,
+ * tag 133.0.6943.137): uiautomator reads the bubble's window alone, and the page's button under it
+ * was not found for fifty seconds (T83). */
+const FLAGS =
+  "_ --disable-fre --no-default-browser-check --no-first-run --disable-features=IPH_CCTMinimized,IPH_CCTHistory";
 /** Answers that let a download go on or put Chrome's offers away, as a person would give them:
  * Chrome may ask before it downloads a file of some types or over plain HTTP, and on its first run
  * it offers notifications. */
@@ -267,25 +272,22 @@ export class Android {
 
   /** Wait until Chrome has the focus, and say whether it came. */
   async focused(seconds: number): Promise<boolean> {
-    for (let i = 0; i < seconds; i++) {
-      if (this.chromeFocused()) return true;
-      await sleep(1000);
-    }
+    if (await until(seconds, () => this.chromeFocused())) return true;
     this.run.log("Chrome without the focus");
     return false;
   }
 
   /** Wait until Chrome has the focus and shows more than its splash: a screen with words on it. */
   async settle(seconds: number): Promise<void> {
-    for (let i = 0; i < seconds; i++) {
-      const all = this.chromeFocused() ? this.screen() : [];
-      if (all.some(({ text, description }) => text || description)) {
-        this.run.log(`screen ${Android.words(all).slice(0, 600)}`);
-        return;
-      }
-      await sleep(1000);
-    }
-    this.run.log("screen: Chrome without the focus, or without words");
+    const all = await until(seconds, () => {
+      const shown = this.chromeFocused() ? this.screen() : [];
+      return shown.some(({ text, description }) => text || description) && shown;
+    });
+    this.run.log(
+      all
+        ? `screen ${Android.words(all).slice(0, 600)}`
+        : "screen: Chrome without the focus, or without words",
+    );
   }
 
   /** Tap a node in its middle, and say so in the log. */
@@ -297,16 +299,11 @@ export class Android {
 
   /** Tap the first node that matches within the time, and say whether there was one. */
   async tapWhen(match: RegExp | string, seconds: number): Promise<boolean> {
-    for (let i = 0; i < seconds; i++) {
-      const node = find(this.screen(), match);
-      if (node) {
-        this.tap(node);
-        await sleep(1000);
-        return true;
-      }
-      await sleep(1000);
-    }
-    return false;
+    const node = await until(seconds, () => find(this.screen(), match));
+    if (!node) return false;
+    this.tap(node);
+    await sleep(1000);
+    return true;
   }
 
   /** Open an address in Chrome, by a VIEW intent. */
@@ -341,8 +338,9 @@ export class Android {
     // Chrome in front is enough: an empty page shows no words to wait for, and a wait for words
     // took the whole two minutes of every run (T81).
     await this.focused(120);
+    // Its offers put away until three looks in a row find none.
     let quiet = 0;
-    for (let i = 0; i < 30 && quiet < 3; i++) {
+    await until(30, () => {
       const away = find(this.screen(), AWAY);
       if (away) {
         this.tap(away);
@@ -350,8 +348,8 @@ export class Android {
       } else {
         quiet += 1;
       }
-      await sleep(1000);
-    }
+      return quiet >= 3;
+    });
     this.screenshot("warm");
     return true;
   }
@@ -361,7 +359,11 @@ export class Android {
    * choice; Chrome's menu opens the list when Chrome shows neither. Say which, or "" when none
    * came. */
   async openDownload(file: string): Promise<string> {
-    for (let i = 0; i < 60; i++) {
+    const start = Date.now();
+    // The seconds after which Chrome's menu is tried, each once, while neither has come: as late
+    // as the fifteenth and thirty-fifth tries of uiautomator came before (T83).
+    const menuAt = [45, 90];
+    const how = await until(120, async () => {
       const all = this.screen();
       const named = find(all, file);
       if (named) {
@@ -375,17 +377,18 @@ export class Android {
       } else if (open) {
         this.tap(open);
         return "Open in the message of the download";
-      } else if (i === 15 || i === 35) {
+      } else if (menuAt.length > 0 && Date.now() - start >= (menuAt[0] ?? 0) * 1000) {
+        menuAt.shift();
         const menu = find(all, "Customize and control Google Chrome");
         if (menu) {
           this.run.log("no message and no list of the download: Chrome's menu, then Downloads");
           this.tap(menu);
           await this.tapWhen("Downloads", 5);
-          continue;
         }
       }
-      await sleep(1000);
-    }
+      return undefined;
+    });
+    if (how) return how;
     this.run.log(`screen ${Android.words(this.screen()).slice(0, 600)}`);
     return "";
   }
@@ -408,16 +411,12 @@ export async function newPage(
   seen: Set<string>,
   seconds: number,
 ): Promise<Target | undefined> {
-  for (let i = 0; i < seconds; i++) {
-    const page = (await targets()).find(
+  const page = await until(seconds, async () =>
+    (await targets()).find(
       ({ id, type, title: own, webSocketDebuggerUrl }) =>
         type === "page" && own === title && webSocketDebuggerUrl && !seen.has(id),
-    );
-    if (page) {
-      seen.add(page.id);
-      return page;
-    }
-    await sleep(1000);
-  }
-  return undefined;
+    ),
+  );
+  if (page) seen.add(page.id);
+  return page;
 }

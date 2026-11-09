@@ -28,13 +28,15 @@ phase "Safari is launched"
 xcrun simctl launch "$udid" com.apple.mobilesafari > /dev/null
 sleep 5
 
-phase "the server and safaridriver start"
-
+phase "the page's copy with the watch"
 page=$(basename build/page/samples-page_v*.html)
 # The page with the watch in it before its own script (emulators/watch.ts), served as pages.
 node emulators/watch.ts build/page build/page-watched > /dev/null
+phase "the server starts"
 nohup node emulators/serve.ts build/page-watched 8080 --inline > "$out/server.txt" 2>&1 &
+phase "safaridriver is enabled"
 sudo safaridriver --enable
+phase "safaridriver starts, and the server and it answer"
 nohup safaridriver --port 4444 > "$out/safaridriver.txt" 2>&1 &
 # Both answer within seconds; the page asked of the server here is the one the driver opens too.
 for _ in $(seq 1 30); do
