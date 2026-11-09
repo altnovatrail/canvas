@@ -143,22 +143,17 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-  # Safari in the iPad Simulator on both iPadOS the volunteers may have. 27 is on the image GitHub
-  # still calls a public preview, so its failure is shown and does not fail the run: 26.5, on the
-  # stable image, answers either way (T80). The image's own Xcode: safaridriver loses
-  # Simulator.app after a switch by xcode-select.
+  # Safari in the iPad Simulator, iPadOS 26.5 on the stable image, with the image's own Xcode:
+  # safaridriver loses Simulator.app after a switch by xcode-select. Not iPadOS 27: on the image
+  # xcode-27 safaridriver finds no session host in the simulator (T78), and the probe alone runs
+  # there, through WebDriverAgent (T80).
   ipad:
-    name: iPad ${{ matrix.ios }}
+    name: iPad 26.5
     needs: build
-    runs-on: ${{ matrix.runner }}
+    runs-on: macos-26
     timeout-minutes: 30
-    continue-on-error: ${{ matrix.preview }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { runner: macos-26, ios: "26.5", preview: false }
-          - { runner: xcode-27, ios: "27", preview: true }
+    env:
+      IOS: "26.5"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -179,16 +174,14 @@ jobs:
           path: build/page
 
       - name: Simulator, safaridriver and page
-        env:
-          IOS: ${{ matrix.ios }}
         run: bash emulators/page-ipad.sh
 
       - name: Screenshots, reports and saved files
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: page-ipad-${{ matrix.ios }}
-          path: build/page-ipad-${{ matrix.ios }}
+          name: page-ipad-26.5
+          path: build/page-ipad-26.5
           retention-days: 7
           if-no-files-found: error
 
@@ -212,21 +205,14 @@ jobs:
       - name: Toolchain image
         run: docker build --target toolchain --tag toolchain - < .devcontainer/Dockerfile
 
-      # Every device whose run saved its files: the preview's iPad 27 too, when it got so far.
       - name: Sample files
         run: |
-          folders=()
-          for folder in build/page-android build/page-ipad-*; do
-            [[ -d "$folder/saved" ]] && folders+=("$folder")
-          done
-          echo "${folders[@]}"
           docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp \
               --volume "$PWD:/work" --workdir /work \
-              toolchain bash -c 'npm ci --no-audit --no-fund && node emulators/saved.ts 0.0.0 "$@"' _ "${folders[@]}"
+              toolchain bash -c "npm ci --no-audit --no-fund && node emulators/saved.ts 0.0.0 build/page-android build/page-ipad-26.5"
 
   # The one check main requires: every job above went right, or was skipped because the pull
-  # request changes nothing they check. A failure of iPad 27, on the preview image, is shown on its
-  # job and its summary, and not counted here.
+  # request changes nothing they check.
   result:
     name: Samples page
     needs: [changes, build, android, ipad, saved]
