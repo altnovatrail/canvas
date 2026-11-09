@@ -27,8 +27,6 @@ interface PageTask {
 declare const SAMPLES_PAGE: { readonly version: string; readonly tasks: readonly PageTask[] };
 
 const data = SAMPLES_PAGE;
-// TEMPORARY (T78): a request on purpose, for the emulators to catch. Reverted in the next commit.
-fetch("https://probe.invalid/leak").catch(() => {});
 const picker = document.getElementById("task") as HTMLSelectElement;
 const holder = document.getElementById("holder") as HTMLElement;
 const status = document.getElementById("saved") as HTMLElement;

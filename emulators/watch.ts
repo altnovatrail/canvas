@@ -4,8 +4,8 @@
 // runs before the page's own: on Android DevTools puts it into the page, and for Safari, which no
 // WebDriver lets a script into before the page's own, it is written into a copy of the page,
 // its hash beside the script's in the policy (watched()). A driver's own scripts run outside the
-// page's policy. Nothing of the page's own changes: the spy on URL.createObjectURL only keeps a
-// copy of the text of each blob it is given.
+// page's policy. Nothing of the page's own changes: the spies on Blob and URL.createObjectURL only
+// keep a copy of the text of each blob the page hands to a link.
 
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -44,12 +44,19 @@ export const WATCH = `(() => {
   }, true);
   addEventListener("error", (event) => { watch.errors.push(String(event.message).slice(0, 200)); });
   addEventListener("unhandledrejection", (event) => { watch.errors.push(String(event.reason).slice(0, 200)); });
+  // The text of a blob made of strings, kept as it is made: reading the blob back races Safari's
+  // download of it, which fails the read (T78).
+  const texts = new WeakMap();
+  const Native = Blob;
+  window.Blob = class extends Native {
+    constructor(parts, options) {
+      super(parts, options);
+      if (Array.isArray(parts) && parts.every((part) => typeof part === "string")) texts.set(this, parts.join(""));
+    }
+  };
   const create = URL.createObjectURL.bind(URL);
   URL.createObjectURL = (blob) => {
-    if (blob instanceof Blob) {
-      const at = watch.blobs.push(null) - 1;
-      blob.text().then((text) => { watch.blobs[at] = text; });
-    }
+    if (blob instanceof Native) watch.blobs.push(texts.get(blob) ?? null);
     return create(blob);
   };
 })();`;
@@ -80,7 +87,7 @@ export function boxOf(selector: string): string {
 })())`;
 }
 
-/** The text of the blob the page handed out at an index, once it is read; null before. */
+/** The text of the blob the page handed out at an index; null when there is none. */
 export function blobAt(index: number): string {
   return `window.__canvasWatch?.blobs[${index}] ?? null`;
 }
