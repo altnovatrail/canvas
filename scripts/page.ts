@@ -11,15 +11,21 @@
 // bundles page/main.ts into one script; the page's own style stays as it is. The policy of
 // scripts/csp.ts goes into a <meta> element with the hashes of both. The tasks are worked out here,
 // from tutor's file of open tasks in tasks/, checked against its sum (R49), and put into the
-// bundle: a page has no synchronous hash for openTasksOf. The license notices of all the code the
-// file carries — its own, every package bundled, the icons' set — go into the file itself, and a
-// package under a license off the list stops the build (R12).
+// bundle: a page has no synchronous hash for openTasksOf. Every task of the file goes in, bank by
+// bank (T21; R62): openTasksOf refuses a task with a field outside the open view, so no key,
+// solution or trap reaches the file a release carries, and a task that names a picture stops the
+// build, since tutor's file carries no media for it (Д4 in RUN.md). The license notices of all the
+// code the file carries — its own, every package bundled, the icons' set — go into the file
+// itself, and a package under a license off the list stops the build (R12).
 
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import type * as open from "@altnovatrail/spec/formatv0/open";
 import { build, createServer } from "vite";
 import { isTestSet, type TextSet, textSetOf } from "../page/sets.ts";
+import type { TaskKind } from "../page/texts.ts";
+import type { OpenTask, OpenTasks } from "../src/eval/tasks.ts";
 import { policy, styleOf } from "./csp.ts";
 
 /** Where the page's source is, from the repository's root. */
@@ -51,13 +57,6 @@ export const LICENSES: ReadonlySet<string> = new Set([
   "BSD-3-Clause",
   "(Apache-2.0 AND BSD-3-Clause)",
 ]);
-
-/** The tasks the page offers, by bank and position in tutor's file: a sheet, a free sheet, a page. */
-const CHOSEN = [
-  { bank: "eval/bank.json", index: 0, kind: "Лист" },
-  { bank: "eval/free-bank.json", index: 0, kind: "Лист" },
-  { bank: "eval/workbook.json", index: 0, kind: "Тетрадь" },
-] as const;
 
 /** The name of the page's file for a version. */
 export function fileName(version: string): string {
@@ -168,8 +167,54 @@ export function pageOf(template: string, script: string, noticesHtml: string): s
     .replace(SCRIPT_HOLE, () => `<script>${script}</script>`);
 }
 
+/** A task of the file of open tasks, as its JSON holds it: its open view. */
+type FileTask = Pick<open.Task, "id" | "statement" | "items">;
+
+/** A task the page offers: its kind, its bank, its open view and the sample's view of it. */
+export interface PageTask {
+  readonly kind: TaskKind;
+  readonly bank: string;
+  readonly task: FileTask;
+  readonly open: OpenTask;
+}
+
+/**
+ * The tasks the page offers: every task of the file, bank by bank in the file's order, beside its
+ * open view. A sheet whose one answer slot is the whole sheet is an essay. A task that names a
+ * picture is an Error, since the build carries no media, and so is a sheet of another shape than
+ * one answer slot anywhere or on the whole sheet, which the page could not mark up.
+ */
+export function pageTasksOf(
+  file: {
+    readonly banks: readonly { readonly bank: string; readonly tasks: readonly FileTask[] }[];
+  },
+  views: OpenTasks,
+): PageTask[] {
+  return file.banks.flatMap(({ bank, tasks }) =>
+    tasks.map((task, index) => {
+      const view = views.get(bank)?.[index];
+      if (!view) throw new Error(`no task ${index} in ${bank}`);
+      if (task.statement?.some((part) => part.picture !== undefined)) {
+        throw new Error(`${bank} ${task.id} names a picture, and the build carries no media`);
+      }
+      if ("workbook" in view.canvas) return { kind: "workbook" as const, bank, task, open: view };
+      // The page marks a sheet up by its one answer slot, anywhere on it or the whole sheet: a task
+      // of more slots, or of a zone or a choice, it could not mark up.
+      const slots = task.items.flatMap((item) => item.answer_slots ?? []);
+      const binding = task.items.length === 1 && slots.length === 1 ? slots[0]?.binding : undefined;
+      if (binding !== "anywhere" && binding !== "sheet") {
+        throw new Error(
+          `${bank} ${task.id} has not one answer slot anywhere or on the whole sheet`,
+        );
+      }
+      const kind = binding === "sheet" ? ("essay" as const) : ("sheet" as const);
+      return { kind, bank, task, open: view };
+    }),
+  );
+}
+
 /** The tasks the page offers, with their open views and references, from tutor's file in tasks/. */
-async function tasksOf(): Promise<unknown[]> {
+async function tasksOf(): Promise<PageTask[]> {
   const server = await createServer({
     configFile: false,
     logLevel: "silent",
@@ -183,17 +228,9 @@ async function tasksOf(): Promise<unknown[]> {
     const bytes = readFileSync(join("tasks", TUTOR_FILE.name));
     const sum = createHash("sha256").update(bytes).digest("hex");
     if (sum !== TUTOR_FILE.sha256) throw new Error(`${TUTOR_FILE.name} is not the file of its sum`);
-    const file = JSON.parse(bytes.toString("utf8")) as {
-      banks: { bank: string; tasks: { id: string }[] }[];
-    };
+    const file = JSON.parse(bytes.toString("utf8")) as Parameters<typeof pageTasksOf>[0];
     const sha256 = (text: string) => createHash("sha256").update(text, "utf8").digest("hex");
-    const open = openTasksOf(file, TUTOR_FILE.tag, sum, sha256);
-    return CHOSEN.map(({ bank, index, kind }) => {
-      const task = file.banks.find((given) => given.bank === bank)?.tasks[index];
-      const view = open.get(bank)?.[index];
-      if (!task || !view) throw new Error(`no task ${index} in ${bank}`);
-      return { title: `${kind}: ${task.id}`, task, open: view };
-    });
+    return pageTasksOf(file, openTasksOf(file, TUTOR_FILE.tag, sum, sha256));
   } finally {
     await server.close();
   }

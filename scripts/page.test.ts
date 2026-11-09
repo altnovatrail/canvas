@@ -10,7 +10,9 @@ import { pathToFileURL } from "node:url";
 import { Purpose, Writer } from "@altnovatrail/contracts/novatrail/eval/v1/sample_pb.js";
 import { type Browser, chromium, type Page } from "playwright";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { TASKS as EMULATED_TASKS, WORKBOOK as EMULATED_WORKBOOK } from "../emulators/watch.ts";
 import { readSample, type Sample } from "../src/eval/sample.ts";
+import { TUTOR_FILE } from "../src/eval/tasks.ts";
 import { policy, styleOf } from "./csp.ts";
 import {
   buildPage,
@@ -21,9 +23,22 @@ import {
   notices,
   packagesOf,
   pageOf,
+  pageTasksOf,
   TEMPLATE,
   textsFor,
 } from "./page.ts";
+
+/** The banks of tutor's file in tasks/, which the build offers whole (T21). */
+const BANKS = (
+  JSON.parse(readFileSync(join("tasks", TUTOR_FILE.name), "utf8")) as {
+    banks: { bank: string; tasks: { id: string }[] }[];
+  }
+).banks;
+/** The IDs of its tasks, by their places in the picker. */
+const IDS = BANKS.flatMap(({ tasks }) => tasks.map(({ id }) => id));
+/** Where the picker holds the first page of a workbook and the first essay, as values. */
+const WORKBOOK = String(IDS.indexOf("workbook-01"));
+const ESSAY = String(IDS.indexOf("essay-01"));
 
 /** The test set of texts, approved for tests alone (T20; R58). */
 const TEST_SET = "page/sets/test-approved-0.json";
@@ -166,6 +181,51 @@ describe("the builder", () => {
     expect(notices("own", [], "icons")).toContain("NovaTrail canvas — Apache-2.0");
   });
 
+  test("offers every task of the file, an essay by its one slot, and refuses a picture (T21)", () => {
+    const view = (canvas: object) => ({ reference: {}, canvas }) as never;
+    const file = (
+      statement: { text?: string; picture?: string }[],
+    ): Parameters<typeof pageTasksOf>[0] => ({
+      banks: [
+        {
+          bank: "b.json",
+          tasks: [
+            { id: "s", statement, items: [{ answer_slots: [{ binding: "anywhere" }] }] },
+            { id: "e", statement: [], items: [{ answer_slots: [{ binding: "sheet" }] }] },
+            { id: "w", statement: [], items: [{ line: [{ binding: "box" }] }] },
+          ],
+        },
+      ],
+    });
+    const open = new Map([
+      ["b.json", [view({ sheet: true }), view({ sheet: true }), view({ workbook: [] })]],
+    ]);
+    expect(
+      pageTasksOf(file([{ text: "t" }]), open).map(({ kind, task }) => [kind, task.id]),
+    ).toEqual([
+      ["sheet", "s"],
+      ["essay", "e"],
+      ["workbook", "w"],
+    ]);
+    expect(() => pageTasksOf(file([{ picture: "p.png" }]), open)).toThrow(
+      "b.json s names a picture, and the build carries no media",
+    );
+    expect(() => pageTasksOf(file([]), new Map())).toThrow("no task 0 in b.json");
+    const shaped = (items: Parameters<typeof pageTasksOf>[0]["banks"][0]["tasks"][0]["items"]) =>
+      pageTasksOf(
+        { banks: [{ bank: "b.json", tasks: [{ id: "c", statement: [], items }] }] },
+        open,
+      );
+    for (const items of [
+      [{ answer_slots: [{ binding: "choice", options: ["1", "2"] }] }],
+      [{ answer_slots: [{ binding: "anywhere" }] }, { answer_slots: [{ binding: "anywhere" }] }],
+      [{ answer_slots: [{ binding: "anywhere" }, { binding: "sheet" }] }],
+      [],
+    ] as const) {
+      expect(() => shaped(items)).toThrow("b.json c has not one answer slot");
+    }
+  });
+
   test("takes the draft of texts into any version, and the test set into none but 0.0.0", () => {
     expect(textsFor("page/sets/draft-0.json", "1.0.0").version).toBe("draft-0");
     expect(textsFor(TEST_SET, "0.0.0").version).toBe("test-approved-0");
@@ -231,11 +291,25 @@ describe("opened from a file", () => {
       });
       await page.goto(pathToFileURL(built.path).href);
       await page.waitForFunction(() => customElements.get("novatrail-canvas") !== undefined);
-      expect(await page.locator("#task option").allTextContents()).toEqual([
+      // Every task of tutor's file, a group for each bank, in the file's order (T21).
+      expect(
+        await page
+          .locator("#task optgroup")
+          .evaluateAll((groups) =>
+            groups.map((group) => [group.getAttribute("label"), group.children.length]),
+          ),
+      ).toEqual(BANKS.map(({ bank, tasks }) => [`Банк ${bank}`, tasks.length]));
+      const titles = await page.locator("#task option").allTextContents();
+      expect(titles).toHaveLength(56);
+      const at = (id: string) => titles[IDS.indexOf(id)];
+      expect([at("equation-1"), at("grasshopper"), at("workbook-01"), at("essay-01")]).toEqual([
         "Лист: equation-1",
         "Лист: grasshopper",
         "Тетрадь: workbook-01",
+        "Сочинение: essay-01",
       ]);
+      // The emulators' drivers count the tasks and choose the workbook by these (emulators/watch.ts).
+      expect([titles.length, WORKBOOK]).toEqual([EMULATED_TASKS, EMULATED_WORKBOOK]);
       expect(await page.textContent("#version")).toBe("Версия страницы: 0.0.0.");
       // The words for a device where the script does not run, an iPad's Files: in the file, and gone
       // once the script runs (T85).
@@ -299,11 +373,11 @@ describe("opened from a file", () => {
       await page.evaluate(() => window.scrollTo(0, 0));
       await stroke(page, box, [300, 220], [360, 260], 4);
       page.once("dialog", (dialog) => dialog.dismiss());
-      await page.selectOption("#task", "2");
+      await page.selectOption("#task", WORKBOOK);
       expect(await page.inputValue("#task")).toBe("0");
       page.once("dialog", (dialog) => dialog.accept());
-      await page.selectOption("#task", "2");
-      expect(await page.inputValue("#task")).toBe("2");
+      await page.selectOption("#task", WORKBOOK);
+      expect(await page.inputValue("#task")).toBe(WORKBOOK);
       // The page of the workbook: a stroke in its first box, and a sample of its surface.
       await page.evaluate(() => window.scrollTo(0, 0));
       const workbook = await page.locator("novatrail-canvas").boundingBox();
@@ -341,6 +415,41 @@ describe("opened from a file", () => {
       expect(
         await page.evaluate(() => (window as unknown as { violations: string[] }).violations),
       ).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  }, 60_000);
+
+  test("marks an essay up by its text as written, and saves it with no mark of a criterion (T21)", async () => {
+    const context = await browser.newContext({ acceptDownloads: true });
+    try {
+      const page = await context.newPage();
+      await page.goto(pathToFileURL(built.path).href);
+      await begin(page, "measurement");
+      await page.selectOption("#task", ESSAY);
+      await page.evaluate(() => window.scrollTo(0, 0));
+      // The essay's statement, on its lined sheet.
+      expect(
+        await page.evaluate(() => document.querySelector("novatrail-canvas")?.task?.statement),
+      ).toEqual([{ text: expect.stringContaining("robot that bakes bread") }]);
+      const box = await page.locator("novatrail-canvas").boundingBox();
+      if (!box) throw new Error("the element is not shown");
+      await stroke(page, box, [120, 220], [320, 240]);
+      await page.click("#markup");
+      expect(await page.locator("#form li[data-part]").count()).toBe(0);
+      expect(await page.textContent("#form")).toContain("Оценки критериев ставит организатор");
+      await page.check("#personal");
+      expect(await page.textContent("#lacks")).toContain("текст сочинения");
+      await page.fill('#form textarea[data-field="essay"]', " The Bread Robot\nIt bakes bred. ");
+      const [download] = await Promise.all([page.waitForEvent("download"), page.click("#save")]);
+      const sample = readSample(readFileSync(await download.path(), "utf8"));
+      expect(sample.task?.task).toBe("essay-01");
+      const read = sample.markup?.truth?.answerSlots[0]?.read;
+      expect(read?.case === "value" && read.value).toBe("The Bread Robot\nIt bakes bred.");
+      expect(sample.markup?.writing).toEqual({
+        case: "marks",
+        value: expect.objectContaining({ marks: [] }),
+      });
     } finally {
       await context.close();
     }

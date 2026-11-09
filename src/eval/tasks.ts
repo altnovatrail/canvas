@@ -1,14 +1,16 @@
-// The tasks the synthetic samples answer (R49): the open views of a file of open tasks of a release
-// of tutor, which the tree holds as it came and ci-licenses verifies by spec's release-verify (R77
-// spec). A sample names its task without its key (R05 spec): the release's tag, the file's digest,
-// the bank, the bank's digest as the file gives it, the task's ID, and the digest of its open view,
-// as the module format takes a digest (contracts/README.md, section «The sample file»). The file is
-// of the version of the module format the element reads, or of 0.3 before it, or it is refused
-// (T77, T85): of a task, the
-// samples take only its ID, its kind of canvas and a workbook's items, which have the shape the
-// layout of a page reads (R35).
+// The tasks the synthetic samples and the samples page answer (R49, R62): the open views of a file
+// of open tasks of a release of tutor, which the tree holds as it came and ci-licenses verifies by
+// spec's release-verify (R77 spec). A sample names its task without its key (R05 spec): the
+// release's tag, the file's digest, the bank, the bank's digest as the file gives it, the task's
+// ID, and the digest of its open view, as the module format takes a digest (contracts/README.md,
+// section «The sample file»). The file is of the version of the module format the element reads, or
+// of 0.3 before it, or it is refused (T77, T85). A task holds the fields of the open view alone, at
+// every depth, or the file is refused (T21; R62): what a sample or the samples page takes of it is
+// open. Of a task, the samples take only its ID, its kind of canvas and a workbook's items, which
+// have the shape the layout of a page reads (R35).
 
 import type { TaskReferenceSchema } from "@altnovatrail/contracts/novatrail/eval/v1/sample_pb.js";
+import type * as open from "@altnovatrail/spec/formatv0/open";
 import type { MessageInitShape } from "@bufbuild/protobuf";
 import { FORMAT } from "../core/manifest.js";
 import type { WorkbookItem } from "../core/task.js";
@@ -75,12 +77,15 @@ export function openTasksOf(
     if (typeof bank !== "string" || typeof digest !== "string" || !Array.isArray(given)) {
       throw new TypeError("a bank has its path, its digest and its tasks");
     }
+    // A sample names its bank by its path: two of one path would give one's tasks the other's.
+    if (tasks.has(bank)) throw new TypeError(`the bank ${bank} is in the file twice`);
     const source = { tag, fileDigest: `sha256:${fileSha256}`, bank, bankDigest: digest };
     tasks.set(
       bank,
       given.map(
         (task: { readonly id?: unknown; readonly canvas?: { readonly kind?: unknown } }) => {
           if (typeof task.id !== "string") throw new TypeError(`a task of ${bank} has no ID`);
+          checkOpen(task, TASK, `${bank} ${task.id}:`);
           return {
             reference: {
               source: { case: "tutor", value: source },
@@ -94,6 +99,95 @@ export function openTasksOf(
     );
   }
   return tasks;
+}
+
+/**
+ * What a field of the open view holds: a text, a number or a truth value ("leaf"), a list of texts
+ * ("leaves"), one object of a shape, or a list of such objects.
+ */
+type Field = "leaf" | "leaves" | { readonly one: Shape } | { readonly each: Shape };
+
+/** The fields of an object of the open view, by name. */
+interface Shape {
+  readonly [name: string]: Field;
+}
+
+// The open view of a task, by the types spec generates from the marks x-open of its schemas: each
+// table names every field of its type and no other, so that a field spec opens fails tsc until it
+// is named here, and a closed field is never named.
+const RECTANGLE = {
+  left: "leaf",
+  top: "leaf",
+  width: "leaf",
+  height: "leaf",
+} as const satisfies Record<keyof open.SheetRectangle, Field>;
+const SLOT = {
+  binding: "leaf",
+  zone: { one: RECTANGLE },
+  options: "leaves",
+} as const satisfies Record<keyof open.AnswerSlot, Field>;
+const LINE_PART = { text: "leaf", binding: "leaf" } as const satisfies Record<
+  keyof open.LinePart,
+  Field
+>;
+const ITEM = {
+  text: "leaf",
+  answer_slots: { each: SLOT },
+  line: { each: LINE_PART },
+} as const satisfies Record<keyof open.Item, Field>;
+const STATEMENT_PART = {
+  text: "leaf",
+  picture: "leaf",
+  alt: "leaf",
+  width: "leaf",
+  height: "leaf",
+} as const satisfies Record<keyof open.StatementPart, Field>;
+const CANVAS = { kind: "leaf", grid: "leaf", grid_step: "leaf" } as const satisfies Record<
+  keyof open.Canvas,
+  Field
+>;
+const TASK = {
+  id: "leaf",
+  statement: { each: STATEMENT_PART },
+  canvas: { one: CANVAS },
+  items: { each: ITEM },
+  givens: "leaves",
+  unknown: "leaf",
+} as const satisfies Record<keyof open.Task, Field>;
+
+/** Whether a value is a text, a number or a truth value: what a leaf of the open view holds. */
+function isLeaf(value: unknown): boolean {
+  return typeof value === "string" || typeof value === "number" || typeof value === "boolean";
+}
+
+/**
+ * Check that an object holds the fields of its shape alone, at every depth: a field of another name
+ * is closed, or no field of the format, and either is a TypeError that names where it is. A field
+ * of the shape that holds what the shape does not say — an object for a leaf — is one too, since a
+ * closed field could hide in it.
+ */
+function checkOpen(value: unknown, shape: Shape, path: string): void {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new TypeError(`${path} is no object of the open view`);
+  }
+  for (const [name, given] of Object.entries(value)) {
+    const at = `${path} ${name}`;
+    // Own names alone: `constructor` of an object is no field.
+    const field = Object.hasOwn(shape, name) ? shape[name] : undefined;
+    if (field === undefined) throw new TypeError(`${at} is no field of the open view`);
+    if (field === "leaf") {
+      if (!isLeaf(given)) throw new TypeError(`${at} is no text, number or truth value`);
+    } else if (field === "leaves") {
+      if (!Array.isArray(given) || !given.every((one) => typeof one === "string")) {
+        throw new TypeError(`${at} is no list of texts`);
+      }
+    } else if ("one" in field) {
+      checkOpen(given, field.one, at);
+    } else {
+      if (!Array.isArray(given)) throw new TypeError(`${at} is no list`);
+      for (const [index, each] of given.entries()) checkOpen(each, field.each, `${at}[${index}]`);
+    }
+  }
 }
 
 /** The kind of canvas of a task, and a workbook's items. */

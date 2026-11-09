@@ -9,7 +9,7 @@ import { afterEach, beforeEach, expect, test } from "vitest";
 import { Run } from "./run.ts";
 import { type Device, passes, volunteer } from "./volunteer.ts";
 import type { Clock } from "./wait.ts";
-import { MARK, MARKING, MARKUP, type Seen, START } from "./watch.ts";
+import { MARK, MARKING, MARKUP, type Seen, START, TASKS, WORKBOOK } from "./watch.ts";
 
 /** A clock that moves only by the waits' own pauses: a wait of thirty seconds takes none. */
 function clock(): Clock {
@@ -44,7 +44,7 @@ function device(
   const seen = (): Seen => ({
     watched: true,
     defined: true,
-    tasks: 3,
+    tasks: TASKS,
     task: page.task,
     strokes: page.strokes,
     policy: "default-src 'none'; connect-src 'none'",
@@ -83,7 +83,7 @@ function device(
       return true;
     },
     toWorkbook: async () => {
-      page.task = "2";
+      page.task = WORKBOOK;
       page.strokes = 0;
     },
     requests: () => [],
@@ -122,7 +122,9 @@ test("a page that does what it should passes each step, and its files are kept w
     "sheet.json",
     "workbook.json",
   ]);
-  expect(readFileSync(join(folder, "saved", "workbook.json"), "utf8")).toBe('{"surface":"2"}');
+  expect(readFileSync(join(folder, "saved", "workbook.json"), "utf8")).toBe(
+    `{"surface":"${WORKBOOK}"}`,
+  );
   expect(JSON.parse(readFileSync(join(folder, "watch.json"), "utf8")).requests).toEqual([]);
 });
 

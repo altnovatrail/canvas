@@ -1,7 +1,7 @@
 // The markup the samples page makes (T81 in RUN.md; R56 in docs/decisions.md): what a form gives
-// and what it still lacks, by the rules spec's sample-check holds a file to, and two example
-// samples written by it, a sheet's and a workbook's, which ci-licenses checks by sample-check as it
-// checks those of src/eval/ (R48). Their strokes are the code's: the synthetic sheets and pages of
+// and what it still lacks, by the rules spec's sample-check holds a file to, and three example
+// samples written by it, a sheet's, an essay's and a workbook's, which ci-licenses checks by
+// sample-check as it checks those of src/eval/ (R48). Their strokes are the code's: the synthetic sheets and pages of
 // the tests of the groups and the boxes (CLAUDE.md).
 
 import { PartKind } from "@altnovatrail/contracts/novatrail/eval/v1/sample_pb.js";
@@ -15,6 +15,7 @@ import { Purpose, readSample, sampleOf, sampleText, Writer } from "../src/eval/s
 import {
   type BoxForm,
   changed,
+  essayMarkup,
   joined,
   type Made,
   moved,
@@ -190,29 +191,80 @@ describe("a workbook", () => {
   });
 });
 
+describe("an essay's markup (T21)", () => {
+  test("is its text as written, trimmed, with no mark of a criterion", () => {
+    expect(
+      markupOf(essayMarkup(true, { illegible: false, text: " The Bread Robot\nIt bakes. " })),
+    ).toEqual({
+      truth: {
+        answerSlots: [
+          {
+            answerSlot: { item: 1, slot: 1 },
+            read: { case: "value", value: "The Bread Robot\nIt bakes." },
+          },
+        ],
+      },
+      notes: [],
+      writing: { case: "marks", value: { marks: [] } },
+    });
+  });
+
+  test.each([
+    [true, true, Unreadable.ILLEGIBLE],
+    [false, false, Unreadable.BLANK],
+  ])("with strokes %s and illegible %s reads as unreadable %s", (shows, illegible, reason) => {
+    const { truth } = markupOf(essayMarkup(shows, { illegible, text: "" }));
+    expect(truth?.answerSlots?.[0]?.read).toEqual({ case: "unreadable", value: reason });
+  });
+
+  test("names what it lacks: a text where strokes are, and nothing illegible on a blank sheet", () => {
+    expect(essayMarkup(true, { illegible: false, text: " " })).toEqual({
+      lacks: [LACKS.essayText],
+    });
+    expect(essayMarkup(false, { illegible: true, text: "" })).toEqual({
+      lacks: [LACKS.illegibleBlank],
+    });
+  });
+});
+
 describe("the examples of the page", () => {
   // A sample as the page saves it: the author's own measurement, a person's, of the draft of
   // texts, with a fixed ID and code, so that the file is the same at each run.
   const page = { purpose: Purpose.MEASUREMENT, writer: Writer.ADULT, writerCode: "PAGE2345" };
   const origin = { person: { textSetVersion: "draft-0", canvasVersion: "0.0.0" } };
-  const task = (bank: string, id: string) => ({
+  // The digests of each bank of tutor v0.1.1 and of its first task's open view, as spec's examples
+  // name them: sheet-measurement.json, sheet-essay.json and workbook-child.json.
+  const DIGESTS: Record<string, { bank: string; task: string }> = {
+    "eval/bank.json": {
+      bank: "sha256:c6f25b486faa79aa344eeb1dee6bd2aae8c069fd670a0d20c3fe929aeb9fdf13",
+      task: "sha256:96d317ad771f0a9478406ae88992f4495c8e1d7665d088f6d54a4b86b3ede0b8",
+    },
+    "eval/essays.json": {
+      bank: "sha256:17c6bb82a0bd743be36baf3fe1c1d168661e45076fbde3483887896de0ed320c",
+      task: "sha256:24788ab617d12dc7aa9a044e8a42820e24cef0751c51ffc33b6d562295518b40",
+    },
+    "eval/workbook.json": {
+      bank: "sha256:fbc262aca2f1bd7e8e2293bca0a42bfee6b79f484a3b512c2131150e8730d26f",
+      task: "sha256:62c09c1e098e33c8eb8f2598ec187b19b72facebb61c2a6064b4d2a89e1e43da",
+    },
+  };
+  const task = (bank: string, id: string) => {
+    const digests = DIGESTS[bank];
+    if (!digests) throw new RangeError(`no digests of ${bank}`);
+    return taskOf(bank, id, digests);
+  };
+  const taskOf = (bank: string, id: string, digests: { bank: string; task: string }) => ({
     source: {
       case: "tutor" as const,
       value: {
         tag: "v0.1.1",
         fileDigest: "sha256:8e6857777c3ebb6e628096c3089a67dcb60718356a166e52120c9c6c538087f1",
         bank,
-        bankDigest:
-          bank === "eval/bank.json"
-            ? "sha256:c6f25b486faa79aa344eeb1dee6bd2aae8c069fd670a0d20c3fe929aeb9fdf13"
-            : "sha256:fbc262aca2f1bd7e8e2293bca0a42bfee6b79f484a3b512c2131150e8730d26f",
+        bankDigest: digests.bank,
       },
     },
     task: id,
-    openViewDigest:
-      id === "equation-1"
-        ? "sha256:96d317ad771f0a9478406ae88992f4495c8e1d7665d088f6d54a4b86b3ede0b8"
-        : "sha256:62c09c1e098e33c8eb8f2598ec187b19b72facebb61c2a6064b4d2a89e1e43da",
+    openViewDigest: digests.task,
   });
 
   test("examples/page-sheet-measurement.json is the staircase marked up as the page marks it", async () => {
@@ -239,6 +291,22 @@ describe("the examples of the page", () => {
     const text = sampleText(sample);
     expect(readSample(text).markup?.writing.case).toBe("parts");
     await expect(text).toMatchFileSnapshot("../examples/page-sheet-measurement.json");
+  });
+
+  test("examples/page-essay-measurement.json is an essay marked up by its text (T21)", async () => {
+    // The strokes are the staircase's: the example shows the markup of an essay, not a hand.
+    const sheet = staircase();
+    const sample = sampleOf({
+      ...page,
+      id: "page-essay",
+      origin,
+      task: task("eval/essays.json", "essay-01"),
+      surface: { sheet: { history: sheet.work.history, digit: 24 } },
+      markup: markupOf(
+        essayMarkup(true, { illegible: false, text: "The Bread Robot\nIt bakes bred at night." }),
+      ),
+    });
+    await expect(sampleText(sample)).toMatchFileSnapshot("../examples/page-essay-measurement.json");
   });
 
   test("examples/page-workbook-measurement.json is the page of numbers marked up box by box", async () => {

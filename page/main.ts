@@ -1,9 +1,10 @@
 // The samples page (T19, T81 in RUN.md; R55, R56 in docs/decisions.md): a build of its own of the
 // element <novatrail-canvas>, one HTML file that opens from a file on the device and goes to no
-// network (R25 spec; R07, R11). scripts/page.ts builds it and puts the tasks in: their open views
-// and the sample's reference to each, worked out at the build from tutor's file of open tasks in
-// tasks/ (R49). The page takes the element as a consumer does, through its properties and events
-// (the 2026-11-02 amendment to R07), and saves a sample as a file on the device.
+// network (R25 spec; R07, R11). scripts/page.ts builds it and puts the tasks in: every task of
+// tutor's file of open tasks in tasks/, bank by bank (T21; R62), with its open view and the
+// sample's reference to it, worked out at the build (R49). The page takes the element as a
+// consumer does, through its properties and events (the 2026-11-02 amendment to R07), and saves a
+// sample as a file on the device.
 //
 // First the start (T20; R58): the purpose — the measurement, or a module's eval set — as the set
 // of texts the build carries opens them (R11), the writer's code for the measurement, typed or new
@@ -14,11 +15,11 @@
 //
 // The writer writes, then marks the writing up (T81): on a sheet, the parts of the solution — the
 // element's groups of strokes, which the writer joins — with their texts and flags, the final
-// answer and the first error; on a workbook, every box. The element frames on the sheet what is
-// being marked, and the page shows the crops the model would see. A sample is saved only once its
-// markup is whole (page/markup.ts). In a child's session the child writes and the adult marks up,
-// from what the child says. The page remembers nothing: not a sheet half written either. Every
-// text is page/texts.ts's or the set's.
+// answer and the first error; on an essay, its text as written; on a workbook, every box. The
+// element frames on the sheet what is being marked, and the page shows the crops the model would
+// see. A sample is saved only once its markup is whole (page/markup.ts). In a child's session the
+// child writes and the adult marks up, from what the child says. The page remembers nothing: not a
+// sheet half written either. Every text is page/texts.ts's or the set's.
 
 import { Purpose, Writer } from "@altnovatrail/contracts/novatrail/eval/v1/sample_pb.js";
 import { cellsOf } from "../src/core/boxes.js";
@@ -36,6 +37,8 @@ import type { OpenTask } from "../src/eval/tasks.js";
 import {
   type BoxForm,
   changed,
+  type EssayForm,
+  essayMarkup,
   type Group,
   joined,
   type Made,
@@ -49,11 +52,12 @@ import {
 } from "./markup.js";
 import type { TextSet } from "./sets.js";
 import { codeOf, hasCode, lacks, type PurposeKey, purposes, statements, textsOf } from "./steps.js";
-import { TEXTS } from "./texts.js";
+import { type TaskKind, TEXTS } from "./texts.js";
 
-/** A task the build put in: what the picker calls it, its open view, and the sample's view of it. */
+/** A task the build put in: its kind, its bank, its open view, and the sample's view of it. */
 interface PageTask {
-  readonly title: string;
+  readonly kind: TaskKind;
+  readonly bank: string;
   readonly task: Task;
   readonly open: OpenTask;
 }
@@ -126,6 +130,14 @@ type Marking =
       /** The crop the model would see, one picture for every drawing of the form. */
       readonly crop?: HTMLImageElement;
       form: SheetForm;
+    }
+  | {
+      readonly kind: "essay";
+      readonly at: number;
+      /** Whether the sheet shows a stroke: one that shows none is a blank essay. */
+      readonly shows: boolean;
+      readonly crop?: HTMLImageElement;
+      form: EssayForm;
     }
   | { readonly kind: "workbook"; readonly at: number; boxes: BoxForm[] };
 let marking: Marking | undefined;
@@ -238,9 +250,9 @@ function frame(marks: readonly Mark[]): void {
 /** What the markup makes now, or undefined before it is asked for. */
 function made(): Made | undefined {
   if (!marking) return undefined;
-  return marking.kind === "sheet"
-    ? sheetMarkup(marking.groups, marking.form)
-    : workbookMarkup(marking.boxes);
+  if (marking.kind === "sheet") return sheetMarkup(marking.groups, marking.form);
+  if (marking.kind === "essay") return essayMarkup(marking.shows, marking.form);
+  return workbookMarkup(marking.boxes);
 }
 
 /** The save button, and what the markup still lacks. */
@@ -420,6 +432,34 @@ function sheetForm(mark: Extract<Marking, { kind: "sheet" }>, focus?: number): v
     list.querySelector<HTMLElement>(`[data-part="${focus}"] fieldset`)?.focus();
 }
 
+/** The form of an essay's markup: its crop, its text as written and whether it reads at all. */
+function essayForm(mark: Extract<Marking, { kind: "essay" }>): void {
+  form.replaceChildren();
+  if (mark.crop) form.append(make("p", TEXTS.crop), mark.crop);
+  if (!mark.shows) form.append(make("p", TEXTS.noStrokes));
+  const label = make("label", TEXTS.essayText);
+  const text = make("textarea", "", { "data-field": "essay", rows: "8" });
+  text.value = mark.form.text;
+  text.addEventListener("input", () => {
+    mark.form = { ...mark.form, text: text.value };
+    refresh();
+  });
+  label.append(make("br"), text);
+  const flags = make("div", "", { class: "flags" });
+  flags.append(
+    checkbox(
+      TEXTS.essayIllegible,
+      mark.form.illegible,
+      (on) => {
+        mark.form = { ...mark.form, illegible: on };
+      },
+      "illegible",
+    ),
+  );
+  form.append(label, flags, make("p", TEXTS.essayMarks));
+  form.hidden = false;
+}
+
 /** The form of a workbook's markup: every box of the page, each filled one with its crop. */
 function workbookForm(mark: Extract<Marking, { kind: "workbook" }>): void {
   form.replaceChildren();
@@ -500,8 +540,19 @@ async function markUp(): Promise<void> {
     return;
   }
   work = given;
-  const { open } = chosen();
-  if ("workbook" in open.canvas) {
+  const { open, kind } = chosen();
+  if (kind === "essay") {
+    const shows = work !== null && "png" in work && work.submission.groups.length > 0;
+    const mark: Extract<Marking, { kind: "essay" }> = {
+      kind: "essay",
+      at,
+      shows,
+      ...(work && "png" in work ? { crop: picture(work.png, TEXTS.crop) } : {}),
+      form: { illegible: false, text: "" },
+    };
+    marking = mark;
+    essayForm(mark);
+  } else if ("workbook" in open.canvas) {
     const filled = new Set(
       work && "cells" in work ? work.cells.map(({ item, slot }) => `${item}.${slot}`) : [],
     );
@@ -750,6 +801,9 @@ function begin(): void {
       const task = data.tasks[Number(option.value)];
       if (!task || !ofModule(task)) option.remove();
     }
+    for (const group of picker.querySelectorAll("optgroup")) {
+      if (group.children.length === 0) group.remove();
+    }
   }
   mount();
   picker.focus();
@@ -766,8 +820,16 @@ function restart(): void {
 // without its script (В64; the 2026-11-08 amendment to R25 spec; T85) — go.
 byId("no-script").remove();
 words();
-for (const [index, { title }] of data.tasks.entries()) {
-  picker.append(new Option(title, String(index)));
+// A group of the picker for each bank, in the build's order (T21).
+const banks = new Map<string, HTMLOptGroupElement>();
+for (const [index, { kind, bank, task }] of data.tasks.entries()) {
+  let group = banks.get(bank);
+  if (!group) {
+    group = make("optgroup", "", { label: TEXTS.bank(bank) });
+    banks.set(bank, group);
+    picker.append(group);
+  }
+  group.append(new Option(TEXTS.task(TEXTS.taskKind[kind], task.id), String(index)));
 }
 picker.addEventListener("change", mount);
 markupButton.addEventListener("click", () => void markUp());
