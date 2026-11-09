@@ -8,8 +8,8 @@
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { setTimeout as sleep } from "node:timers/promises";
 import type { Run } from "./run.ts";
+import { type Clock, REAL, until } from "./wait.ts";
 import { blobAt, MARK, MARKING, MARKUP, type Seen, TASKS, verdicts, WORKBOOK } from "./watch.ts";
 
 /** What a device does on the volunteer's way. A step it cannot do it records as the device's and
@@ -40,13 +40,17 @@ const SURFACES = ["sheet", "workbook"] as const;
 
 /** Wait until the page has its element and the watch has seen it from its start: a reload under
  * way would show the document before it, which the watch never saw. */
-async function ready(device: Device, seconds: number): Promise<Seen | undefined> {
-  for (let i = 0; i < seconds; i++) {
-    const shown = await device.read();
-    if (shown?.watched && shown.defined && shown.tasks > 0) return shown;
-    await sleep(1000);
-  }
-  return device.read();
+async function ready(device: Device, seconds: number, clock: Clock): Promise<Seen | undefined> {
+  const shown = await until(
+    seconds,
+    async () => {
+      const seen = await device.read();
+      return seen?.watched && seen.defined && seen.tasks > 0 ? seen : undefined;
+    },
+    1000,
+    clock,
+  );
+  return shown ?? device.read();
 }
 
 /** Wait for the page to hand the file at an index to a download, and keep its text, when asked to,
@@ -57,38 +61,48 @@ async function handed(
   index: number,
   name: string,
   keep: boolean,
+  clock: Clock,
 ): Promise<boolean> {
-  for (let i = 0; i < 10; i++) {
-    const text = await device.evaluate(blobAt(index)).catch(() => null);
-    if (typeof text === "string") {
-      if (keep) {
-        mkdirSync(join(run.folder, "saved"), { recursive: true });
-        writeFileSync(join(run.folder, "saved", `${name}.json`), text);
-      }
-      device.shot(`${name}-saved`);
-      return true;
-    }
-    await sleep(1000);
+  const text = await until(
+    30,
+    async () => {
+      const value = await device.evaluate(blobAt(index)).catch(() => null);
+      return typeof value === "string" ? value : undefined;
+    },
+    1000,
+    clock,
+  );
+  if (text === undefined) return false;
+  if (keep) {
+    mkdirSync(join(run.folder, "saved"), { recursive: true });
+    writeFileSync(join(run.folder, "saved", `${name}.json`), text);
   }
-  return false;
+  device.shot(`${name}-saved`);
+  return true;
 }
 
 /** Mark the writing up through the page's form, as the writer would after writing (T81): the
  * markup asked for, its form filled in. Whether the page will save the sample then; or undefined
  * when the driver could not reach the form — a page that no longer answers is the device's
  * failure, which this records. */
-async function markUp(run: Run, device: Device, name: string): Promise<boolean | undefined> {
+async function markUp(
+  run: Run,
+  device: Device,
+  name: string,
+  clock: Clock,
+): Promise<boolean | undefined> {
   try {
     await device.evaluate(MARKUP);
-    for (let i = 0; i < 10; i++) {
-      if ((await device.evaluate(MARKING)) === true) {
-        const ready = (await device.evaluate(MARK)) === true;
-        device.shot(`${name}-marked`);
-        return ready;
-      }
-      await sleep(1000);
-    }
-    return false;
+    const shown = await until(
+      30,
+      async () => (await device.evaluate(MARKING)) === true,
+      1000,
+      clock,
+    );
+    if (!shown) return false;
+    const ready = (await device.evaluate(MARK)) === true;
+    device.shot(`${name}-marked`);
+    return ready;
   } catch (error) {
     run.record(`reach the form of the markup of the ${name}`, false, String(error).slice(0, 200));
     return undefined;
@@ -96,11 +110,18 @@ async function markUp(run: Run, device: Device, name: string): Promise<boolean |
 }
 
 /** One pass of the volunteer's way. The files the page saves are kept from the watch's copies
- * when keep is set; a device that takes them off itself leaves it unset. */
-export async function volunteer(run: Run, device: Device, keep: boolean): Promise<void> {
-  if (!(await device.open())) return;
+ * when keep is set; a device that takes them off itself leaves it unset. Its waits run on the
+ * clock given: the real one, or a test's. */
+export async function volunteer(
+  run: Run,
+  device: Device,
+  keep: boolean,
+  clock: Clock = REAL,
+): Promise<void> {
   try {
-    const shown = await ready(device, 30);
+    // Inside the try: a device that opened a session and then failed to open the page closes it.
+    if (!(await device.open())) return;
+    const shown = await ready(device, 45, clock);
     device.shot("opened");
     run.record(
       "the element stands and offers the build's tasks",
@@ -128,13 +149,13 @@ export async function volunteer(run: Run, device: Device, keep: boolean): Promis
       if (!after) return;
       const strokes = after.strokes;
       run.record(`the ${name} holds the stroke drawn`, strokes > 0, `${strokes}, ${how}`, "page");
-      const marked = await markUp(run, device, name);
+      const marked = await markUp(run, device, name, clock);
       if (marked === undefined) return;
       run.record(`the ${name} is marked up, and the page will save it`, marked, "", "page");
       if (!(await device.press(name))) return;
       run.record(
         `the ${name}'s sample is handed to a download`,
-        await handed(run, device, index, name, keep),
+        await handed(run, device, index, name, keep, clock),
         "",
         "page",
       );

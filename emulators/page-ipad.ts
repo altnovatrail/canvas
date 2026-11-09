@@ -21,6 +21,7 @@ import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { Run } from "./run.ts";
 import { type Device, passes, volunteer } from "./volunteer.ts";
+import { until } from "./wait.ts";
 import {
   type Box,
   boxOf,
@@ -56,6 +57,7 @@ class Safari implements Device {
    * simulator is not ready for it; a session not of iOS is closed and no session. */
   private async connect(): Promise<boolean> {
     for (let attempt = 1; attempt <= 3; attempt++) {
+      run.log(`session ${attempt} of 3: asked`);
       try {
         const value = (await command("POST", "/session", {
           capabilities: {
@@ -144,14 +146,15 @@ class Safari implements Device {
   async toWorkbook(): Promise<void> {
     await this.evaluate(`(${TO_WORKBOOK}, 0)`);
     // The page asks before strokes not saved are lost; the driver says yes, as a person would.
-    for (let i = 0; i < 5; i++) {
-      try {
-        await command("POST", `/session/${this.session}/alert/accept`, {});
-        break;
-      } catch {
-        await sleep(500);
-      }
-    }
+    await until(
+      3,
+      () =>
+        command("POST", `/session/${this.session}/alert/accept`, {}).then(
+          () => true,
+          () => false,
+        ),
+      500,
+    );
     await sleep(1500);
   }
 
@@ -183,8 +186,10 @@ async function main(): Promise<void> {
     // Safari closed and launched anew, for the next session to connect to.
     async () => {
       execFileSync(XCRUN, ["simctl", "terminate", udid, SAFARI], { stdio: "ignore" });
+      run.log("Safari terminated");
       await sleep(2000);
       execFileSync(XCRUN, ["simctl", "launch", udid, SAFARI], { stdio: "ignore" });
+      run.log("Safari launched");
       await sleep(5000);
     },
   );

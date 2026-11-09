@@ -8,7 +8,19 @@ import { join } from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { Run } from "./run.ts";
 import { type Device, passes, volunteer } from "./volunteer.ts";
+import type { Clock } from "./wait.ts";
 import { MARK, MARKING, MARKUP, type Seen } from "./watch.ts";
+
+/** A clock that moves only by the waits' own pauses: a wait of thirty seconds takes none. */
+function clock(): Clock {
+  let at = 0;
+  return {
+    now: () => at,
+    pause: async (ms: number) => {
+      at += ms;
+    },
+  };
+}
 
 let folder: string;
 let run: Run;
@@ -84,7 +96,7 @@ function device(
 
 test("a page that does what it should passes each step, and its files are kept when asked", async () => {
   const quiet = device(run);
-  await volunteer(run, quiet, true);
+  await volunteer(run, quiet, true, clock());
   expect(run.verdict()).toBe("ok");
   expect(quiet.closed).toBe(1);
   expect(run.steps.map(({ step }) => step)).toEqual([
@@ -113,10 +125,10 @@ test("a page that does what it should passes each step, and its files are kept w
 });
 
 test("a device that cannot draw or press is the device's failure, and the pass stops there", async () => {
-  await volunteer(run, device(run, { draw: true }), false);
+  await volunteer(run, device(run, { draw: true }), false, clock());
   expect(run.verdict()).toBe("device");
   const other = new Run(mkdtempSync(join(folder, "press-")));
-  await volunteer(other, device(other, { press: true }), false);
+  await volunteer(other, device(other, { press: true }), false, clock());
   expect(other.verdict()).toBe("device");
   expect(other.steps.at(-1)?.step).toBe("press for the sheet");
 });
@@ -127,7 +139,7 @@ test("a page that no longer answers after the stroke is the device's failure", a
   const read = hung.read;
   // The first read finds the page ready; the one after the stroke finds no answer.
   hung.read = async () => (++reads > 1 ? undefined : read());
-  await volunteer(run, hung, false);
+  await volunteer(run, hung, false, clock());
   expect(run.verdict()).toBe("device");
   expect(run.steps.at(-1)?.step).toBe("read the page after the stroke on the sheet");
 });
@@ -139,7 +151,7 @@ test("a form of the markup the driver cannot reach is the device's failure", asy
     if (expression === MARKING) throw new Error("POST /execute/sync: TimeoutError");
     return evaluate(expression);
   };
-  await volunteer(run, hung, false);
+  await volunteer(run, hung, false, clock());
   expect(run.verdict()).toBe("device");
   expect(run.steps.at(-1)?.step).toBe("reach the form of the markup of the sheet");
 });
@@ -147,7 +159,7 @@ test("a form of the markup the driver cannot reach is the device's failure", asy
 test("a page whose markup does not let it save is the page's failure", {
   timeout: 40_000,
 }, async () => {
-  await volunteer(run, device(run, { mark: true }), false);
+  await volunteer(run, device(run, { mark: true }), false, clock());
   expect(run.verdict()).toBe("page");
   expect(
     run.steps.find(({ step }) => step.endsWith("marked up, and the page will save it"))?.ok,
@@ -155,7 +167,7 @@ test("a page whose markup does not let it save is the page's failure", {
 });
 
 test("a page that hands no file over is the page's failure", { timeout: 40_000 }, async () => {
-  await volunteer(run, device(run, { save: true }), false);
+  await volunteer(run, device(run, { save: true }), false, clock());
   expect(run.verdict()).toBe("page");
 });
 
