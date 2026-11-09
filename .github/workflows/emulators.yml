@@ -10,9 +10,10 @@ name: Emulators
 on:
   pull_request:
     paths:
+      # The probe alone: it has answered its question (T29, T74, T80), and a change of the drivers'
+      # shared parts in emulators/ is checked by the samples page's workflow, page.yml, which takes
+      # them every time. The probe runs on them by workflow_dispatch when it is wanted (T81).
       - "probe/**"
-      # The drivers' shared parts, which the samples page's workflow, page.yml, uses too.
-      - "emulators/**"
       - ".github/workflows/emulators.yml"
       # The toolchain stage the job runs the probe in.
       - ".devcontainer/Dockerfile"
