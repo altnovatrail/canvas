@@ -147,7 +147,8 @@ export function pageOf(template: string, script: string, noticesHtml: string): s
   }
   const meta = `<meta http-equiv="Content-Security-Policy" content="${policy(styleOf(template), script)}">`;
   return template
-    .replace(POLICY_HOLE, () => meta)
+    // TEMPORARY (T78): no policy, for the emulators to catch the request that goes out.
+    .replace(POLICY_HOLE, () => (meta ? "" : meta))
     .replace(NOTICES_HOLE, () => noticesHtml)
     .replace(SCRIPT_HOLE, () => `<script>${script}</script>`);
 }

@@ -36,11 +36,8 @@ const QUIET: Seen = {
   task: "0",
   strokes: 1,
   resources: [],
-  reports: [],
-  events: [],
-  blocked: [],
-  errors: 0,
-  reporting: true,
+  violations: [],
+  errors: [],
   blobs: 1,
 };
 
@@ -111,12 +108,28 @@ describe("the pure parts", () => {
   test("a quiet page passes each check, and a violation, an error or a request fails its own", () => {
     expect(verdicts(QUIET, []).every(({ ok }) => ok)).toBe(true);
     const loud = verdicts(
-      { ...QUIET, reports: ["connect-src"], events: ["connect-src", "img-src\n"], errors: 2 },
+      {
+        ...QUIET,
+        violations: [
+          { directive: "connect-src", blocked: "https://a.invalid/" },
+          { directive: "img-src\n", blocked: "data:x" },
+        ],
+        errors: ["TypeError: x"],
+      },
       ["https://a.invalid/"],
     );
     expect(loud.map(({ ok }) => ok)).toEqual([true, false, false, false]);
-    expect(loud[1]?.note).toBe("3: connect-src, img-src");
-    expect(verdicts({ ...QUIET, reporting: false }, [])[0]).toMatchObject({ ok: false });
+    expect(loud[1]?.note).toBe("2: connect-src, img-src");
+    expect(verdicts({ ...QUIET, watched: false }, [])[0]).toMatchObject({ ok: false });
+  });
+
+  test("the browser's own icon, which the policy stops, is no violation of the page's", () => {
+    const icon = { directive: "img-src", blocked: "http://localhost:8080/favicon.ico" };
+    expect(verdicts({ ...QUIET, violations: [icon] }, [])[1]).toEqual({
+      step: "the policy saw no violation",
+      ok: true,
+      note: "the browser's icon stopped",
+    });
   });
 });
 
@@ -210,8 +223,11 @@ describe("in the page's build", () => {
       await page.goto(pathToFileURL(path).href);
       await until(page, `${READ}.includes("connect-src")`);
       const seen = await read(page);
-      expect(seen).toMatchObject({ watched: true, defined: true, errors: 0 });
-      expect(seen.blocked).toContain("https://probe.invalid/leak");
+      expect(seen).toMatchObject({ watched: true, defined: true, errors: [] });
+      expect(seen.violations).toContainEqual({
+        directive: "connect-src",
+        blocked: "https://probe.invalid/leak",
+      });
       expect(verdicts(seen, outside(seen.resources))[1]).toMatchObject({ ok: false });
     } finally {
       await page.close();

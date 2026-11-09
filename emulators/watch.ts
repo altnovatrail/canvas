@@ -34,28 +34,16 @@ export function pageFile(): string {
   return pageIn(readdirSync(BUILD));
 }
 
-/** The watch, as a script of its own: it runs once in a page. */
+/** The watch, as a script of its own: it runs once in a page, before the page's own. */
 export const WATCH = `(() => {
   if (window.__canvasWatch) return;
-  const watch = { reports: [], events: [], blocked: [], errors: 0, blobs: [], reporting: true };
-  const blocked = (address) => watch.blocked.push(String(address ?? "").slice(0, 60));
+  const watch = { violations: [], errors: [], blobs: [] };
   window.__canvasWatch = watch;
-  try {
-    new ReportingObserver((list) => {
-      for (const report of list) {
-        watch.reports.push(String(report.body?.effectiveDirective ?? report.type));
-        blocked(report.body?.blockedURL);
-      }
-    }, { types: ["csp-violation"], buffered: true }).observe();
-  } catch {
-    watch.reporting = false;
-  }
   document.addEventListener("securitypolicyviolation", (event) => {
-    watch.events.push(event.effectiveDirective);
-    blocked(event.blockedURI);
+    watch.violations.push({ directive: event.effectiveDirective, blocked: String(event.blockedURI).slice(0, 80) });
   }, true);
-  addEventListener("error", () => { watch.errors += 1; });
-  addEventListener("unhandledrejection", () => { watch.errors += 1; });
+  addEventListener("error", (event) => { watch.errors.push(String(event.message).slice(0, 200)); });
+  addEventListener("unhandledrejection", (event) => { watch.errors.push(String(event.reason).slice(0, 200)); });
   const create = URL.createObjectURL.bind(URL);
   URL.createObjectURL = (blob) => {
     if (blob instanceof Blob) {
@@ -77,11 +65,8 @@ export const READ = `JSON.stringify((() => {
     task: document.getElementById("task")?.value ?? "",
     strokes: sheet && Array.isArray(sheet.history) ? sheet.history.length : -1,
     resources: performance.getEntriesByType("resource").map((entry) => entry.name),
-    reports: watch?.reports ?? [],
-    events: watch?.events ?? [],
-    blocked: watch?.blocked ?? [],
-    errors: watch?.errors ?? 0,
-    reporting: watch?.reporting ?? false,
+    violations: watch?.violations ?? [],
+    errors: watch?.errors ?? [],
     blobs: watch?.blobs.length ?? 0,
   };
 })())`;
@@ -115,12 +100,10 @@ export interface Seen {
   readonly task: string;
   readonly strokes: number;
   readonly resources: readonly string[];
-  readonly reports: readonly string[];
-  readonly events: readonly string[];
-  /** The start of each address the policy stopped, for the run's artifact. */
-  readonly blocked: readonly string[];
-  readonly errors: number;
-  readonly reporting: boolean;
+  /** Each violation of the policy: its directive, and the start of the address it stopped. */
+  readonly violations: readonly { readonly directive: string; readonly blocked: string }[];
+  /** The message of each error, for the run's artifact. */
+  readonly errors: readonly string[];
   readonly blobs: number;
 }
 
@@ -165,31 +148,36 @@ export function asked(
   return { others: others.filter((line) => !icon(line)), icons: others.filter(icon) };
 }
 
+/** A site's icon, which a browser asks for of itself: Safari asks for it of a page from a server,
+ * and the page's policy stops it as any picture not of a blob. It says nothing of the page. */
+const ICON = /\/(favicon\.ico|apple-touch-icon[\w-]*\.png)$/;
+
 /** The checks of what the page did over the whole run, each a step of the page's own: no
- * violation of its policy, no error, no request, and a watch that saw it all. */
+ * violation of its policy but the browser's own icon, no error, no request, and a watch that saw
+ * it all. */
 export function verdicts(
   seen: Seen,
   requests: readonly string[],
 ): { step: string; ok: boolean; note: string }[] {
-  const violations = [...seen.reports, ...seen.events];
+  const own = seen.violations.filter(({ blocked }) => !ICON.test(blocked));
+  const icons = seen.violations.length - own.length;
+  // A directive's name, in its own letters only: what the page reported goes to the log.
+  const names = [...new Set(own.map(({ directive }) => directive.replace(/[^a-z-]/g, "")))];
+  const notes = [
+    own.length ? `${own.length}: ${names.join(", ")}` : "",
+    icons ? "the browser's icon stopped" : "",
+  ];
   return [
-    {
-      step: "the watch saw the page, its policy's reports included",
-      ok: seen.watched && seen.reporting,
-      note: seen.reporting ? "" : "no ReportingObserver",
-    },
+    { step: "the watch saw the page from its start", ok: seen.watched, note: "" },
     {
       step: "the policy saw no violation",
-      ok: violations.length === 0,
-      // A directive's name, in its own letters only: what the page reported goes to the log.
-      note: violations.length
-        ? `${violations.length}: ${[...new Set(violations.map((name) => name.replace(/[^a-z-]/g, "")))].join(", ")}`
-        : "",
+      ok: own.length === 0,
+      note: notes.filter(Boolean).join("; "),
     },
     {
       step: "the page threw no error",
-      ok: seen.errors === 0,
-      note: seen.errors ? `${seen.errors}` : "",
+      ok: seen.errors.length === 0,
+      note: seen.errors.length ? `${seen.errors.length}, in watch.json` : "",
     },
     {
       step: "the page asked for nothing outside its file",
