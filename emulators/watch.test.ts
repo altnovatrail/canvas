@@ -77,7 +77,7 @@ describe("the pure parts", () => {
           "content://1",
           "https://a.invalid/",
           "http://localhost:8080/favicon.ico",
-          "http://10.0.2.2:8080/apple-touch-icon-precomposed.png",
+          "http://localhost:8080/apple-touch-icon-precomposed.png",
           "https://tracker.example/favicon.ico",
         ],
         ["content://1"],

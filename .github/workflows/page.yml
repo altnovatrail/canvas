@@ -87,7 +87,8 @@ jobs:
           if-no-files-found: error
 
   # The tablet of Android 16 of the probe (T74), the page downloaded from the runner's server as
-  # from a release of GitHub, where the emulator reaches it as 10.0.2.2.
+  # from a release of GitHub, where the emulator reaches it on its own localhost through adb
+  # reverse (emulators/android.sh).
   android:
     name: Android
     needs: build

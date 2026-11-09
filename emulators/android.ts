@@ -21,8 +21,9 @@ const FLAGS = "_ --disable-fre --no-default-browser-check --no-first-run";
  * Chrome may ask before it downloads a file of some types or over plain HTTP, and on its first run
  * it offers notifications. */
 export const AWAY = /^(Download|Download anyway|Keep|No thanks|Don.t allow|Not now|Got it)$/i;
-/** Where the emulator reaches the runner: its own alias of the host's loopback. */
-export const HOST = "10.0.2.2";
+/** Where the emulator reaches the runner's server: its own loopback, whose port emulators/android.sh
+ * hands over to the runner's by `adb reverse`. */
+export const HOST = "localhost";
 
 /** A node of uiautomator's dump: its text, its description and its bounds on the screen. */
 export interface Node {

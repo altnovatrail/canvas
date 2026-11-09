@@ -149,7 +149,7 @@ export function strokeIn(box: Box): [[number, number], [number, number]] | undef
 const ICON = String.raw`/(favicon\.ico|apple-touch-icon[\w-]*\.png)`;
 /** The icon at the address of the runner's own server, as the emulator or the simulator reaches
  * it: the same path anywhere else is a request like any other. */
-const OWN_ICON = new RegExp(String.raw`^http://(localhost|127\.0\.0\.1|10\.0\.2\.2):\d+${ICON}$`);
+const OWN_ICON = new RegExp(String.raw`^http://localhost:\d+${ICON}$`);
 /** A line of the server's log for the icon. */
 const ICON_LINE = new RegExp(String.raw` ${ICON} \d{3}$`);
 

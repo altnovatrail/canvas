@@ -43,7 +43,7 @@ jobs:
 
       # The probe's two files, and the server that hands them out on port 8080 with the headers of
       # a release asset of GitHub, in the background on the runner's network, where the emulator
-      # reaches it as 10.0.2.2.
+      # reaches it on its own localhost through adb reverse (emulators/android.sh).
       - name: Probe and its server
         run: |
           docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp \
