@@ -237,6 +237,10 @@ describe("opened from a file", () => {
         "Тетрадь: workbook-01",
       ]);
       expect(await page.textContent("#version")).toBe("Версия страницы: 0.0.0.");
+      // The words for a device where the script does not run, an iPad's Files: in the file, and gone
+      // once the script runs (T85).
+      expect(readFileSync(built.path, "utf8")).toContain("На iPad сборку, открытую из файла");
+      expect(await page.locator("#no-script").count()).toBe(0);
       // The start (T20): under the draft the eval set is closed, with why, and nothing is written
       // before the purpose, a new writer's code shown to be written down, and both statements.
       expect(await page.isDisabled('input[name="purpose"][value="evalSet"]')).toBe(true);

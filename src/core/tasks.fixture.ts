@@ -1,10 +1,11 @@
 // The tasks, worked examples and manifests of the tests and of the demo page: open views of the
-// module format 0.3 that the element takes (R32, R42), each changed only where its test needs it,
+// module format 0.4 that the element takes (R32, R42), each changed only where its test needs it,
 // so that the tests say one thing about the format and change together when it does. A module of
 // the tests alone: the build leaves it out, as it leaves out the tests (tsconfig.build.json), and
 // the package check holds to that (scripts/package.ts).
 
-import type { CheckedExample, ExampleCanvas, ExamplePart } from "./example.js";
+import type { CheckedExample, ExamplePart } from "./example.js";
+import type { GridKind } from "./grid.js";
 import { FORMAT, type Manifest } from "./manifest.js";
 import type {
   SheetCanvas,
@@ -101,7 +102,7 @@ export function refusal(call: () => unknown): string {
 export interface ExampleChange {
   readonly statement?: readonly StatementPart[];
   readonly demo?: readonly ExamplePart[];
-  readonly grid?: ExampleCanvas["grid"];
+  readonly grid?: GridKind;
   readonly grid_step?: number;
 }
 

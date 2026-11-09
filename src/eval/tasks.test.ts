@@ -56,10 +56,12 @@ test("a file of another format, a bank or a task short of what it needs, is refu
     banks: [{ bank: "b.json", digest: "sha256:0", tasks }],
   });
   expect(open({ format: "tutor-open-tasks", version: 1, banks: [] })).toThrow(TypeError);
-  // Of the version of the module format the element reads, and no other (T77).
-  for (const other of ["0.2", "0.4", undefined]) {
-    expect(open({ ...bank([]), module_format_version: other })).toThrow("module format 0.3");
+  // Of the version of the module format the element reads, or of 0.3 before it, and no other
+  // (T77, T85): tutor's file is still of 0.3, whose open view 0.4 keeps.
+  for (const other of ["0.2", "0.5", undefined, 0.4, ["0.3"]]) {
+    expect(open({ ...bank([]), module_format_version: other })).toThrow("module format 0.4 or 0.3");
   }
+  expect(open({ ...bank([]), module_format_version: "0.4" })()).toEqual(new Map([["b.json", []]]));
   expect(open({ ...bank([]), banks: [{ bank: "b.json" }] })).toThrow(TypeError);
   expect(open(bank([{ canvas: { kind: "handwriting_sheet" } }]))).toThrow("no ID");
   expect(open(bank([{ id: "t", canvas: { kind: "text" } }]))).toThrow("neither");

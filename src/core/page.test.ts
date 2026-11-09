@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { isBox, LAYOUT, type Page, type PageBox, type PageText, pageOf } from "./page.js";
 import { type CorpusPage, LONG, line, PAGES, SHORT } from "./pages.fixture.js";
@@ -257,96 +260,96 @@ describe("the layout of a workbook's page", () => {
   });
 });
 
-/** What the test vectors say of themselves (R35). */
-const ABOUT =
-  "Test vectors of canvas's layout of a workbook's page, R35 in docs/decisions.md: from a task's items, the lines of the module format (R51 spec), to where the template puts each item's number, the pieces of its line and its boxes, in whole units of the page, 1000 × 1400 like the handwriting sheet (R34). How the lines are laid out is the canvas's (the format's README, section 14). The numbers change only by a decision once released: histories know neither the task nor the layout (R34). For the synthetic samples and for module-kit, which may lay a page out by the same rule: nothing else needs it, for a sample carries the rectangles of its boxes.";
+// The layout by spec's page (T85; R60): the numbers of format/page.yaml and its test vectors
+// format/vectors/pages/, which the npm package @altnovatrail/spec carries as JSON (README of the
+// format, §§9 and 14). They began as canvas's own, vectors/pages.json (R35), and spec made them the
+// format's rule (R108 spec): the element lays a page out by the same numbers, and its tests hold its
+// layout to the vectors. vectors/pages.json stays as it was last written, a record the decisions of
+// E6 name, and no test writes it any more.
 
-/** A code point as the vectors write it: U+00A0. */
+const require = createRequire(import.meta.url);
+/** The page of format/page.yaml, as the package gives it. */
+const SPEC_PAGE = require("@altnovatrail/spec/format/page.json") as {
+  sheet: { width: number; height: number };
+  numbers: Record<string, number>;
+  most_items: number;
+  widths: {
+    digits: { characters: string; width: number };
+    signs: { characters: string; width: number };
+    space: number;
+    characters: { width: number; characters: string }[];
+    spaces: { code_point: string; width: number }[];
+    zero: string[];
+    wide: { width: number; ranges: string[] };
+    breaks: string[];
+    unknown: number;
+  };
+};
+/** The folder of the page's vectors in the package. */
+const SPEC_VECTORS = join(
+  dirname(require.resolve("@altnovatrail/spec/format/page.json")),
+  "vectors",
+  "pages",
+);
+
+/** A code point as the page writes it: U+00A0. */
 function hex(code: number): string {
   return `U+${code.toString(16).toUpperCase().padStart(4, "0")}`;
 }
 
-/** Ranges of code points as the vectors write them. */
+/** Ranges of code points as the page writes them. */
 function ranges(list: readonly (readonly [number, number])[]): string[] {
   return list.map(([from, to]) => (from === to ? hex(from) : `${hex(from)}–${hex(to)}`));
 }
 
-/** The test vectors, one line to an item, so that a reader can follow them. */
-function vectors(): string {
-  const lines = [
-    "{",
-    `  "about": ${JSON.stringify(ABOUT)},`,
-    `  "numbers": ${JSON.stringify(LAYOUT)},`,
-    `  "widths": ${JSON.stringify({
-      unit: "whole hundredths of the type size",
-      digits: { characters: "0123456789", width: DIGIT },
-      signs: { characters: SIGNS, width: SIGN },
-      space: SPACE,
-      characters: BY_WIDTH,
-      spaces: SPACES.map(([code, width]) => [hex(code), width]),
-      zero: ranges(ZERO),
-      wide: { ranges: ranges(WIDE_RANGES), width: WIDE },
-      breaks: BREAKS.map(hex),
-      unknown: UNKNOWN,
-    })},`,
-    `  "rules": ${JSON.stringify({
-      words:
-        "a piece of text is cut at runs of the breaking white space into words; a piece of white space alone has none",
-      clusters:
-        "code points by for…of; one of no width, one after U+200D and the second of two regional indicators join the cluster before them; a cluster is as wide as its first code point",
-      joints:
-        "words of one piece: a space, inside the piece's text; a word and a word of the next piece: the space's width, or none when the second starts with one of .,:;!?)]}»… or the first ends with one of ([{«„; a word and a box, a box and a word: gap; two boxes: apart",
-      breaks:
-        "a line may break at a joint, but not before a word that starts with a closing mark, not after a word that ends with an opening one, and never between a box and the word after it; it may between two boxes. A run of tokens no line may break that is wider than a line goes token by token",
-      fragment:
-        "the words of one piece side by side on one line are one text, ceil(size × (Σ hundredths + space × (words − 1)) / 100) wide; places are running sums of whole numbers",
-      short:
-        "an item is short if its line, laid on one line, is no wider than the column (440) less the indent (56); two short items in a row stand side by side, at 40 and 520, and a short item before a long one stands alone",
-      wrap: "a long item's line fills lines of 864 greedily, run by run: a run wider than a line goes token by token, and a word wider than a line by clusters",
-      most: "a page holds no more than 99 items, whose numbers have two digits at most",
-      heights:
-        "a line with a box is boxHeight tall, one without line; between two lines of an item: apart if both have a box, lead if one has, none if neither has",
-      baseline:
-        "the line's top + floor(its height / 2) + floor(size / 3); a box's top is its line's",
-      number:
-        "«n.» right in the column of the numbers, 40 wide — «00.» — on the first line's baseline; the line starts gap after it",
-      rows: "rows from the top margin, items apart; a row that ends below 1400 − margin is a TypeError at its first item, task.items[i], 0-based",
-    })},`,
-    '  "cases": [',
-  ];
-  PAGES.forEach((page, n) => {
-    const tail = n < PAGES.length - 1 ? "," : "";
-    const items = page.items.map(
-      (item, k) => `        ${JSON.stringify(item)}${k < page.items.length - 1 ? "," : ""}`,
-    );
-    lines.push(
-      "    {",
-      `      "name": ${JSON.stringify(page.name)},`,
-      `      "about": ${JSON.stringify(page.about)},`,
-      '      "items": [',
-      ...items,
-      "      ],",
-    );
-    if (page.refused !== undefined) {
-      lines.push(`      "error": ${JSON.stringify(`task.items[${page.refused}]`)}`, `    }${tail}`);
-      return;
-    }
-    const laid = pageOf(page.items);
-    lines.push(
-      `      "bottom": ${laid.bottom},`,
-      '      "page": [',
-      ...laid.items.map(
-        (item, k) =>
-          `        ${JSON.stringify({ number: item.number, line: item.line })}${k < laid.items.length - 1 ? "," : ""}`,
-      ),
-      "      ]",
-      `    }${tail}`,
-    );
-  });
-  lines.push("  ]", "}", "");
-  return lines.join("\n");
-}
+test("the layout's numbers and widths are those of spec's page, format/page.yaml", () => {
+  const { numbers, widths } = SPEC_PAGE;
+  expect(SPEC_PAGE.sheet).toEqual({ width: 1000, height: 1400 });
+  expect({
+    size: numbers.size,
+    boxWidth: numbers.box_width,
+    boxHeight: numbers.box_height,
+    line: numbers.line,
+    lead: numbers.lead,
+    gap: numbers.gap,
+    apart: numbers.apart,
+    items: numbers.items,
+    gutter: numbers.gutter,
+    margin: numbers.margin,
+  }).toEqual(LAYOUT);
+  expect(SPEC_PAGE.most_items).toBe(99);
+  expect(widths.digits).toEqual({ characters: "0123456789", width: DIGIT });
+  expect(widths.signs).toEqual({ characters: SIGNS, width: SIGN });
+  expect(widths.space).toBe(SPACE);
+  expect(widths.characters).toEqual(BY_WIDTH.map(([width, characters]) => ({ width, characters })));
+  expect(widths.spaces).toEqual(SPACES.map(([code, width]) => ({ code_point: hex(code), width })));
+  expect(widths.zero).toEqual(ranges(ZERO));
+  expect(widths.wide).toEqual({ width: WIDE, ranges: ranges(WIDE_RANGES) });
+  expect(widths.breaks).toEqual(BREAKS.map(hex));
+  expect(widths.unknown).toBe(UNKNOWN);
+});
 
-test("the test vectors are what the layout gives on the corpus's pages", async () => {
-  await expect(vectors()).toMatchFileSnapshot("../../vectors/pages.json");
+test("the layout gives each test vector of spec's page, a page or the item with no room", () => {
+  const names = readdirSync(SPEC_VECTORS).filter((name) => name.endsWith(".json"));
+  expect(names.length).toBeGreaterThanOrEqual(19);
+  for (const name of names) {
+    const vector = JSON.parse(readFileSync(join(SPEC_VECTORS, name), "utf8")) as {
+      items: WorkbookItem[];
+      no_room_at?: number;
+      bottom?: number;
+      page?: unknown;
+    };
+    if (vector.no_room_at !== undefined) {
+      const message = refusal(() => pageOf(vector.items));
+      expect(message.startsWith(`task.items[${vector.no_room_at}]:`), `${name}: ${message}`).toBe(
+        true,
+      );
+      continue;
+    }
+    const laid = pageOf(vector.items);
+    expect(
+      { bottom: laid.bottom, page: laid.items.map(({ number, line }) => ({ number, line })) },
+      name,
+    ).toEqual({ bottom: vector.bottom, page: vector.page });
+  }
 });

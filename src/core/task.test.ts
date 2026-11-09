@@ -27,10 +27,10 @@ function sheetOf(template: Template): SheetTemplate {
   return template;
 }
 
-// Copies of the task examples and the open-view vectors of the module format at spec v0.9.8
+// Copies of the task examples and the open-view vectors of the module format at spec v0.12.0
 // (spec/format/examples/task/ and spec/format/vectors/open-view/task/): code and tests read nothing
 // of spec/, so a move to a new tag compares them with `git -C spec diff <old> <new> -- format/`
-// (R32). The format is version 0.3 since spec v0.9.0, and no draft (R64 spec). Each is written as
+// (R32). The format is version 0.4 since spec v0.10.0, and no draft (R64 spec). Each is written as
 // a change to what the examples share, with its keys in their order: a valid example as its
 // open view, as app gets it, and an invalid one with its open fields and the closed field at fault,
 // its other closed fields left as those the examples share.
@@ -49,6 +49,7 @@ const CLOSED = [
   "solution",
   "leak_phrases",
   "template",
+  "leading_question",
 ];
 const CLOSED_IN_ITEMS = ["skills", "simpler_case"];
 const CLOSED_IN_SLOTS = ["check"];
@@ -230,6 +231,11 @@ const VALID: Readonly<Record<string, Task>> = {
     canvas: SQUARES,
     items: ANYWHERE,
   },
+  "minutes-past-the-hour": oneSlot(
+    "minutes-past-the-hour",
+    "A film begins at 6:45 and lasts 45 minutes. When does it end? Write the time as hours and minutes, like 9:15.",
+    { binding: "anywhere" },
+  ),
   "missing-factor": {
     id: "missing-factor",
     statement: [{ text: "Write the missing number." }],
@@ -270,6 +276,12 @@ const VALID: Readonly<Record<string, Task>> = {
       DIVISION,
     ],
   },
+  "who-is-shorter": oneSlot(
+    "who-is-shorter",
+    "Kim is taller than Lea, and Lea is taller than Maya. Who is the shortest? Write the name, or write that it is impossible to tell.",
+    { binding: "anywhere" },
+    "lines",
+  ),
   "zones-and-picture": {
     id: "clock-walk-1",
     statement: [
@@ -500,6 +512,28 @@ const INVALID: readonly (readonly [string, string, object])[] = [
     { canvas: WORKBOOK, items: [{ line: [{ text: "7 × 8 = 56" }] }] },
   ],
   ["no-items", "#/items", { items: [], solution: undefined }],
+  [
+    "notation-on-a-number",
+    "#/items/0/answer_slots/0/check",
+    checked({ kind: "number", key: "12", notation: "word" }),
+  ],
+  [
+    "notation-on-a-tapped-choice",
+    "#/items/0/answer_slots/0/check",
+    {
+      items: [
+        {
+          answer_slots: [
+            {
+              binding: "choice",
+              options: ["Kim", "Lea"],
+              check: { kind: "choice", notation: "word", key: "Lea" },
+            },
+          ],
+        },
+      ],
+    },
+  ],
   ["no-primary-skill", "#/skills", { skills: { supporting: ["time-calendar"] } }],
   ["no-solution", "#", { id: "gaps-ladder-1", solution: undefined }],
   [
@@ -648,6 +682,16 @@ const INVALID: readonly (readonly [string, string, object])[] = [
   ],
   ["template-without-parameters", "#/template/parameters", templated({ parameters: {} }, "7")],
   ["text-and-picture-in-one-part", "#/statement/0", { statement: [{ ...LEAVES, ...CLOCK }] }],
+  [
+    "time-of-sixty-minutes-as-the-key",
+    "#/items/0/answer_slots/0/check/key",
+    checked({ kind: "time", key: "5:60" }),
+  ],
+  [
+    "time-with-a-leading-zero",
+    "#/items/0/answer_slots/0/check/key",
+    checked({ kind: "time", key: "07:30" }),
+  ],
   ["tolerance-in-a-check", "#/items/0/answer_slots/0/check", checked({ ...SEVEN, tolerance: "1" })],
   [
     "trap-value-in-words",
@@ -783,7 +827,7 @@ function openOf(task: object): Record<string, unknown> {
 }
 
 test("the open view of every valid example and open-view vector of the format is a task: a copy of it", () => {
-  expect(EVERY).toHaveLength(16 + 7);
+  expect(EVERY).toHaveLength(18 + 7);
   for (const [name, task] of EVERY) {
     expect(taskOf(task), name).toStrictEqual(task);
     expect(taskOf(task), name).not.toBe(task);
@@ -816,7 +860,7 @@ test("an invalid example of the format is a TypeError at the place its first lin
     expect(under(message, pathOf(place, "task")), `${name}: ${message}`).toBe(true);
     refused++;
   }
-  expect(INVALID).toHaveLength(55);
+  expect(INVALID).toHaveLength(59);
   expect(refused).toBe(19);
 });
 
@@ -894,7 +938,9 @@ test("a task's one answer anywhere on the sheet or the whole sheet is the sheet'
     "heads-and-legs",
     "heads-and-legs-template",
     "ladder",
+    "minutes-past-the-hour",
     "number-thought-of-template",
+    "who-is-shorter",
     "answer-anywhere",
     "essay-rubric-closed",
     "hints-closed",

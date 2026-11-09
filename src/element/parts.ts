@@ -6,13 +6,22 @@
 // picture is, which shows the picture once the element's pictures have its file and what it shows
 // in words till then. A picture on an area of the sheet is read by its words here, while the
 // picture itself stands on the layer of the author's demo, stretched over its area, the later part
-// over the earlier, and nothing stands there till its file is decoded (T61). This module is no
-// entry point of the package.
+// over the earlier, and nothing stands there till its file is decoded (T61). A box of a workbook
+// the demo fills is read as the box and its value, which the element writes in the box itself
+// (T85). This module is no entry point of the package.
 
-import { type AreaPicture, type DemoState, type ExamplePart, onSheet } from "../core/example.js";
+import {
+  type AreaPicture,
+  type DemoState,
+  type ExamplePart,
+  type FillPart,
+  isFill,
+  onSheet,
+} from "../core/example.js";
 import { SHEET } from "../core/sheet.js";
 import type { Zone } from "../core/task.js";
 import { placeOver, SVG, write } from "./attributes.js";
+import { labelsFor } from "./labels.js";
 import type { Pictures } from "./pictures.js";
 import { framed } from "./statement.js";
 
@@ -49,6 +58,24 @@ export class Parts {
   readonly #off = new WeakMap<Element, () => void>();
   /** The area of the sheet of an item whose picture stands there. */
   readonly #areas = new WeakMap<Element, Zone>();
+
+  /** The open items of parts that fill a box, which a new language words anew. */
+  readonly #fills = new Map<HTMLLIElement, FillPart>();
+  /**
+   * What a part that fills a box says, and in what language: the box, in the labels' language, and
+   * its value. The element sets it with each example and as its language changes; `words` says the
+   * open items again in the new one.
+   */
+  #fillWords: (part: FillPart) => Told = ({ fill }) => {
+    const { lang, labels } = labelsFor(null);
+    return { number: `${labels.box} ${fill.line}.${fill.box}`, lang };
+  };
+
+  /** What a part that fills a box says from now on, the items already open too. */
+  set fillWords(words: (part: FillPart) => Told) {
+    this.#fillWords = words;
+    for (const [item, part] of this.#fills) this.#sayFill(item, part);
+  }
 
   /** The list and the region, by their IDs, whose pictures the element's pictures give files. */
   constructor(ids: { readonly status: string; readonly parts: string }, pictures: Pictures) {
@@ -131,12 +158,20 @@ export class Parts {
     const number = document.createElement("span");
     number.lang = told.lang;
     number.textContent = told.number;
+    const said = document.createElement("span");
+    if (isFill(part)) {
+      // A box and its value, in the labels' language, as its item says them.
+      const { number: words, lang } = this.#fillWords(part);
+      said.lang = lang;
+      said.textContent = words;
+      this.status.replaceChildren(number, " ", said);
+      return;
+    }
     const words = "text" in part ? part.text : part.alt;
     if (words === "") {
       this.status.replaceChildren(number);
       return;
     }
-    const said = document.createElement("span");
     // The parts' language, which the list has, or none: then the element's own, as the list's.
     const lang = this.list.getAttribute("lang");
     if (lang !== null) said.lang = lang;
@@ -149,10 +184,18 @@ export class Parts {
     this.status.replaceChildren();
   }
 
-  /** An item leaving the list takes its picture off, once. */
+  /** An item of a part that fills a box says the box and its value, in the labels' language. */
+  #sayFill(item: HTMLLIElement, part: FillPart): void {
+    const { number, lang } = this.#fillWords(part);
+    item.lang = lang;
+    item.textContent = number;
+  }
+
+  /** An item leaving the list takes its picture off, once, and is no fill's any more. */
   #takeOff(item: Element): void {
     this.#off.get(item)?.();
     this.#off.delete(item);
+    if (item instanceof HTMLLIElement) this.#fills.delete(item);
   }
 
   /**
@@ -163,7 +206,10 @@ export class Parts {
    */
   #itemOf(part: ExamplePart): HTMLLIElement {
     const item = document.createElement("li");
-    if ("text" in part) {
+    if (isFill(part)) {
+      this.#fills.set(item, part);
+      this.#sayFill(item, part);
+    } else if ("text" in part) {
       // Text, never markup: a module is data (R02 spec).
       item.textContent = part.text;
     } else if (!onSheet(part)) {

@@ -730,3 +730,93 @@ test("Next brings a picture on an area taller than what is in sight into sight b
   expect(viewport.scrollTop).toBeGreaterThan(0);
   expect(top()).toBeCloseTo(viewport.getBoundingClientRect().top, 0);
 });
+
+test("on a workbook the demo fills the example's boxes with their values as its parts open: a value in the middle of its box, at the width of its text, its box named with it, the item of the list the box and its value; hidden with a hidden demo, gone when the consumer gives fewer (T85)", async () => {
+  const { element, root } = await placed(made, 400);
+  element.lang = "ru";
+  element.workedExample = {
+    statement: [{ text: "Share the apples into equal heaps, and say how many are left over." }],
+    canvas: { kind: "workbook" },
+    lines: [
+      {
+        line: [
+          { text: "23 ÷ 4 =" },
+          { binding: "box", value: "5" },
+          { text: "r" },
+          { binding: "box", value: "3" },
+        ],
+      },
+    ],
+    demo: [
+      { text: "Take the largest number of heaps that fit, then count what is left." },
+      { fill: { line: 1, box: 1 } },
+      { fill: { line: 1, box: 2 } },
+    ],
+  };
+  await settle();
+  const boxes = () => [...root.querySelectorAll<SVGRectElement>(".print rect")];
+  const values = () => [...root.querySelectorAll<SVGTextElement>(".print text[aria-hidden]")];
+  expect(boxes()).toHaveLength(2);
+  expect(values()).toEqual([]);
+  expect(boxes().map((rect) => rect.getAttribute("aria-label"))).toEqual(["Окошко 1", "Окошко 2"]);
+  const next = page.elementLocator(element).getByRole("button", { name: "Дальше" });
+  await next.click();
+  await next.click();
+  // The first box holds its value, centred, on the line's baseline, as the layout measures it.
+  const [five] = values();
+  const box = boxes()[0];
+  if (five === undefined || box === undefined) throw new Error("no value");
+  expect(five.textContent).toBe("5");
+  const width = Number(five.getAttribute("textLength"));
+  expect(width).toBe(16);
+  const left = Number(box.getAttribute("x"));
+  expect(Number(five.getAttribute("x"))).toBe(left + Math.floor((100 - width) / 2));
+  expect(boxes().map((rect) => rect.getAttribute("aria-label"))).toEqual([
+    "Окошко 1: 5",
+    "Окошко 2",
+  ]);
+  const list = root.querySelector("ol.parts");
+  expect(list?.lastElementChild?.textContent).toBe("Окошко 1.1: 5");
+  await next.click();
+  expect(values().map((text) => text.textContent)).toEqual(["5", "3"]);
+  // Hidden with the demo, back with it, and gone from the end when the consumer gives fewer parts.
+  await page.elementLocator(element).getByRole("button", { name: "Показ" }).click();
+  expect(values()).toEqual([]);
+  expect(boxes().map((rect) => rect.getAttribute("aria-label"))).toEqual(["Окошко 1", "Окошко 2"]);
+  await page.elementLocator(element).getByRole("button", { name: "Показ" }).click();
+  expect(values()).toHaveLength(2);
+  element.demoState = { opened: 2, hidden: false };
+  expect(values().map((text) => text.textContent)).toEqual(["5"]);
+  // Taking the example off takes the values off with its page.
+  element.workedExample = undefined;
+  expect(values()).toEqual([]);
+});
+
+test("a box the demo fills is told in the labels' language, English without lang, and anew when lang changes; another example of the same lines starts with its boxes empty (T85)", async () => {
+  const { element, root } = await placed(made, 400);
+  element.manifest = moduleManifest({ explanation: "en" });
+  const remainders = (quotient: string) => ({
+    statement: [{ text: "Share the apples into equal heaps." }],
+    canvas: { kind: "workbook" as const },
+    lines: [{ line: [{ text: "23 ÷ 4 =" }, { binding: "box", value: quotient }] }],
+    demo: [{ fill: { line: 1, box: 1 } }],
+  });
+  element.workedExample = remainders("5");
+  await settle();
+  await page.elementLocator(element).getByRole("button", { name: "Next" }).click();
+  const item = () => root.querySelector("ol.parts li");
+  // No lang: the element's own labels, English, in the item and the region alike.
+  expect(item()?.textContent).toBe("Box 1.1: 5");
+  expect(item()?.getAttribute("lang")).toBe("en");
+  expect(root.querySelector('[role="status"]')?.textContent).toBe("Part 1 of 1. Box 1.1: 5");
+  // In the labels' language, which is not the list's, the module's.
+  element.lang = "ru";
+  expect(item()?.textContent).toBe("Окошко 1.1: 5");
+  expect(item()?.getAttribute("lang")).toBe("ru");
+  expect(root.querySelector("ol.parts")?.getAttribute("lang")).toBe("en");
+  // Another example on the same page: no value of the last one stays in its box or its name.
+  element.workedExample = remainders("6");
+  const values = root.querySelectorAll(".print text[aria-hidden]");
+  expect(values).toHaveLength(0);
+  expect(root.querySelector(".print rect")?.getAttribute("aria-label")).toBe("Окошко");
+});
