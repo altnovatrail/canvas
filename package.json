@@ -36,13 +36,21 @@
     "@bufbuild/protobuf": "2.16.0",
     "@iconify-json/material-symbols": "1.2.97",
     "@iconify/utils": "3.1.7",
+    "@types/mdast": "4.0.4",
     "@types/node": "24.19.2",
     "@types/rbush": "4.0.0",
     "@vitest/browser-playwright": "5.1.0",
     "@vitest/coverage-v8": "5.1.0",
+    "ajv": "8.20.0",
+    "mdast-util-from-markdown": "2.1.0",
+    "mdast-util-gfm": "3.1.0",
+    "mdast-util-gfm-table": "2.0.1",
+    "micromark-extension-gfm": "3.0.0",
+    "micromark-extension-gfm-table": "2.1.2",
     "playwright": "1.64.1",
     "typescript": "7.0.2",
     "vite": "8.3.6",
-    "vitest": "5.1.0"
+    "vitest": "5.1.0",
+    "yaml": "2.9.1"
   }
 }

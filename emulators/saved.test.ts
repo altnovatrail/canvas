@@ -28,7 +28,7 @@ function child(): Sample {
   return asPage(
     readSample(readFileSync("examples/workbook-child.json", "utf8")),
     CHILD_CODE,
-    "test-approved-0",
+    "test-child-sample-1",
   );
 }
 
@@ -79,7 +79,7 @@ test("a test build's folder holds a child's session: by a child, its final geome
   expect(problemsOf(draft, "0.0.0", "test")).toEqual([]);
   expect(problemsOf(asPage(example("sheet")), "0.0.0", "test")).toEqual([
     "not by a child",
-    "not of the test set of texts",
+    "not of the test set of a child's session",
     `not of the code typed, ${CHILD_CODE}`,
     "no strokes in its final geometry",
   ]);

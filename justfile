@@ -18,6 +18,11 @@ bin := "node_modules/.bin"
 # TUTOR_FILE in src/eval/tasks.ts, which scripts/synthetic.test.ts holds this to (R49).
 tutor_tag := "v0.1.22"
 
+# The release of spec whose file of the legal texts, in tasks/spec-<tag>/, the samples page takes
+# its sets of texts from (T89; R69): the tag spec/ stands on, and LEGAL_FILE's in scripts/legal.ts,
+# which scripts/legal.test.ts holds this to. ci-licenses verifies the file.
+spec_tag := "v0.14.0"
+
 # The release of modules whose package of grade-3-math, in tasks/modules-<tag>/, ci-licenses writes
 # synthetic samples of a module's eval set on (T86; R63): ci-licenses verifies the index, and holds
 # the package's inventory to the index's digest of it, as moduleTasksOf holds server.json to the
@@ -74,7 +79,8 @@ ci-vuln:
 # eval protocol forbids a check of canvas's own, and this job alone has spec/ (R93 spec; R48). The
 # synthetic set too, which no tree holds: tutor's file of open tasks that it answers is verified
 # first, as a file of a release enters NovaTrail, then the set is written into build/synthetic and
-# each of its files checked (R77 spec; R49). The samples of a module's eval set too: the index of
+# each of its files checked (R77 spec; R49); so is spec's file of the legal texts, whose sets the
+# samples page carries (T89; R69). The samples of a module's eval set too: the index of
 # the release of modules whose package of grade-3-math the tree holds is verified, a sample is
 # written of each of its tasks into build/synthetic-module by the generator's file, built as a
 # release carries it, and sample-check holds them, and the example of a module's sheet, as an eval
@@ -84,6 +90,7 @@ ci-licenses:
     {{ quote(just_executable()) }} -f spec/justfile licenses-check-repo package-lock.json licenses.json
     {{ quote(just_executable()) }} -f spec/justfile release-verify-npm package-lock.json
     {{ quote(just_executable()) }} -f spec/justfile release-verify tutor {{ tutor_tag }} tasks/tutor_{{ tutor_tag }}_open-tasks.json
+    {{ quote(just_executable()) }} -f spec/justfile release-verify spec {{ spec_tag }} tasks/spec-{{ spec_tag }}/legal-1.tar.gz
     {{ quote(just_executable()) }} -f spec/justfile sample-check examples/*.json
     {{ quote(just_executable()) }} synthetic build/synthetic > /dev/null
     {{ quote(just_executable()) }} -f spec/justfile sample-check build/synthetic/*.json

@@ -211,15 +211,14 @@ describe("the pure parts", () => {
 describe("in the page's build", () => {
   let folder: string;
   let file: string;
-  /** The test build, with the test set of texts approved for tests alone (T84; R59). */
+  /** The test build, with the legal texts' part for tests alone (T84, T89; R59, R69). */
   let tested: string;
   let browser: Browser;
 
   beforeAll(async () => {
     folder = mkdtempSync(join(tmpdir(), "canvas-watch-"));
     file = (await buildPage(folder, "0.0.0")).path;
-    tested = (await buildPage(join(folder, "test"), "0.0.0", "page/sets/test-approved-0.json"))
-      .path;
+    tested = (await buildPage(join(folder, "test"), "0.0.0", "page/sets/test")).path;
     browser = await chromium.launch();
   }, 120_000);
 
@@ -423,7 +422,7 @@ describe("in the page's build", () => {
       expect(sample).toMatchObject({
         writer: "WRITER_CHILD",
         writer_code: CHILD_CODE,
-        text_set_version: "test-approved-0",
+        text_set_version: "test-child-sample-1",
       });
     } finally {
       await page.close();

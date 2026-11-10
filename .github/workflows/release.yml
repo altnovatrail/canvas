@@ -45,8 +45,9 @@ jobs:
       # their generator is src/eval/, which src/*.ts takes, and its script, its build, the archive's
       # script, tutor's file of open tasks and the lock file, whose packages write each sample's
       # JSON (R50). The lock file is no part of the package's archive, and its compiler is pinned in
-      # package.json. The samples page too: its own code, template, kept notices and draft of texts
-      # — the set for tests goes into no release — its builder and policy, and the programs whose
+      # package.json. The samples page too: its own code, template, kept notices and the author's
+      # draft of texts — the part for tests goes into no release — its builder, the reader of spec's
+      # file of the legal texts, which tasks/* takes (T89; R69), its policy, and the programs whose
       # options Vite's transform reads for the files it bundles, the element's and the DOM-free
       # part's, through tsconfig.json (R55, R66). The generator of a module's eval set too: its
       # script, its entry, its builder, the notices' helpers both builders share, and the program of
@@ -62,6 +63,7 @@ jobs:
         page/notices/*
         page/sets/draft-0.json
         scripts/page.ts
+        scripts/legal.ts
         scripts/csp.ts
         scripts/notices.ts
         tsconfig.json
