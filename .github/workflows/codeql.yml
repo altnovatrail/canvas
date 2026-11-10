@@ -20,7 +20,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
-    uses: altnovatrail/.github/.github/workflows/codeql.yml@706f4067a66c91b0442033f82a7924eeb8b60497 # v0.1.21
+    uses: altnovatrail/.github/.github/workflows/codeql.yml@c0234058dc1a85edd7b5d579b90f8fdb98ea826b # v0.1.22
     # The repository's language besides actions, which is always analysed (Д9 in spec's RUN.md).
     with:
       languages: javascript-typescript

@@ -27,7 +27,7 @@ function sheetOf(template: Template): SheetTemplate {
   return template;
 }
 
-// Copies of the task examples and the open-view vectors of the module format at spec v0.12.0
+// Copies of the task examples and the open-view vectors of the module format at spec v0.14.0
 // (spec/format/examples/task/ and spec/format/vectors/open-view/task/): code and tests read nothing
 // of spec/, so a move to a new tag compares them with `git -C spec diff <old> <new> -- format/`
 // (R32). The format is version 0.4 since spec v0.10.0, and no draft (R64 spec). Each is written as

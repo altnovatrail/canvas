@@ -18,7 +18,7 @@ import type { PicturePart } from "./task.js";
 import { DEMO, pathOf, REMAINDERS, refusal, under, workedExample } from "./tasks.fixture.js";
 
 // Copies of the worked examples of the lesson examples and vectors of the module format at spec
-// v0.12.0 (spec/format/examples/lesson/, spec/format/vectors/open-view/lesson/ and
+// v0.14.0 (spec/format/examples/lesson/, spec/format/vectors/open-view/lesson/ and
 // spec/format/vectors/rules/: lesson.areas/, lesson.example-fills/ and lesson.workbook-page/): code and tests read nothing of spec/, so a move to a
 // new tag compares them with `git -C spec diff <old> <new> -- format/` (R32). The element takes one
 // segment of a lesson, its worked example (R42): the rest of a lesson is app's, and so are the

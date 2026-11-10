@@ -1,11 +1,11 @@
 // A set of the samples page's texts (T20, T84 in RUN.md; R11, R58, R59 in docs/decisions.md): the
 // notice of each purpose and of a child's session, the statements the adult makes before writing,
-// and where the file goes after. Its
-// version goes into every sample the page saves, and its status — a draft, or approved by the
-// lawyer — says which purposes are open (docs/architecture.md, section 3.6). The build carries one
-// set: the draft, page/sets/draft-0.json, or, given --texts, another; a test set, whose version
-// begins with "test-", only into a page of version 0.0.0, which no release of canvas has. It has
-// no imports, so that scripts/page.ts checks a set with the page's own rules.
+// and where the file goes after. Its version goes into every sample the page saves, and its
+// status — a draft, or approved by the author on Claude's analysis (R112 spec) — says which
+// purposes are open (docs/architecture.md, section 3.6). The build carries one set: the draft,
+// page/sets/draft-0.json, or, given --texts, another; a test set, whose version begins with
+// "test-", only into a page of version 0.0.0, which no release of canvas has. It has no imports,
+// so that scripts/page.ts checks a set with the page's own rules.
 
 /** What a set says of one purpose. */
 export interface PurposeTexts {
@@ -23,13 +23,14 @@ export interface TextSet {
   /** The version the samples name: 1 to 32 Latin letters, digits, dots and hyphens, never none. */
   readonly version: string;
   readonly status: "draft" | "approved";
-  /** The statement of age every purpose asks for (П-6). */
+  /** The statement every purpose asks for (П-6): of age, and of the right to make the agreement
+   * where the adult lives (R124 spec; the T88 amendment to R11). */
   readonly adult: string;
   readonly measurement: PurposeTexts;
   /** The eval set's texts: an approved set may have them; a draft keeps the eval set closed. */
   readonly evalSet?: PurposeTexts;
   /** The texts of a child's session: an approved set may have them; a draft keeps it closed. The
-   * lawyer reads the adults' consent (П-16) and a child's (П-10) apart, so a set approved for one
+   * author approves the adults' consent (П-16) and a child's (П-10) apart, so a set approved for one
    * may come before the other. */
   readonly child?: PurposeTexts;
 }

@@ -136,7 +136,7 @@ export function workedExample(change: ExampleChange = {}): CheckedExample {
 
 /**
  * The worked example on a workbook of the format's lesson of remainders (spec/format/examples/lesson/
- * valid/remainders-on-a-workbook.yaml at v0.12.0): 23 ÷ 4 = [5] r [3], its demo a paragraph and the
+ * valid/remainders-on-a-workbook.yaml at v0.14.0): 23 ÷ 4 = [5] r [3], its demo a paragraph and the
  * two boxes filled.
  */
 export const REMAINDERS = {

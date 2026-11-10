@@ -583,7 +583,11 @@ describe("opened from a file", () => {
       expect(sample.writerCode).toBe("KID12345");
       expect(sample.textSetVersion).toBe("test-approved-0");
       expect(sample.license).toBeUndefined();
-      expect(await page.textContent("#hand-over")).toContain("не pull request");
+      // By the organiser's upload link, then erased from the device (R125 spec; T88).
+      const handOver = await page.textContent("#hand-over");
+      expect(handOver).toContain("не pull request");
+      expect(handOver).toContain("по ссылке на загрузку");
+      expect(handOver).toContain("сотрите его с устройства");
     } finally {
       await context.close();
     }

@@ -34,7 +34,7 @@ test("a set is refused for a version out of shape, none, a status unknown or tex
   expect(bad({ evalSet: draftJson.measurement })).toThrow(TypeError);
   expect(bad({ child: draftJson.measurement })).toThrow(TypeError);
   expect(bad({ status: "approved", child: { notice: ["n"], statement: "s" } })).toThrow(TypeError);
-  // An approved set may come for the adults' measurement alone: the lawyer reads each consent apart.
+  // An approved set may come for the adults' measurement alone: the author approves each consent apart.
   const { evalSet: _evalSet, child: _child, ...adults } = approvedJson;
   expect(textSetOf(adults)).toEqual({ ...approved, evalSet: undefined, child: undefined });
 });
@@ -53,7 +53,7 @@ test("an approved set opens the eval set only in a build with tasks of modules, 
     { key: "evalSet", open: true },
     { key: "child", open: true },
   ]);
-  // The lawyer may approve the adults' texts before a child's, or the other way round.
+  // The author may approve the adults' texts before a child's, or the other way round.
   const { evalSet: _evalSet, child: _child, ...adults } = approved;
   expect(purposes(adults, true).slice(1)).toEqual([
     { key: "evalSet", open: false, note: PURPOSE_NOTES.noTexts },
@@ -74,6 +74,12 @@ test("each purpose asks the age and its own statement: the author's samples, or 
   ]);
   expect(statements(approved, "evalSet")[1]).toMatch(/Форма согласия версии test-approved-0/);
   expect(statements(approved, "child")[1]).toMatch(/родителя или опекуна этого ребёнка/);
+  // The age, and the right to make the agreement where the adult lives (R124 spec; T88).
+  for (const set of [draft, approved]) {
+    expect(set.adult).toContain(
+      "18 лет или больше, и по законам места, где я живу, я вправе заключить этот договор.",
+    );
+  }
 });
 
 test("a typed code is forgiven its case and spaces, and kept to the protocol's shape", () => {
