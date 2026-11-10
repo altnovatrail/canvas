@@ -98,6 +98,9 @@ const FORBIDDEN = new Set([
   "linkReference",
   "definition",
 ]);
+/** The system's tar, by a fixed path rather than by PATH, as spec's tools name it: /usr/bin where
+ * /usr is merged with /, and on macOS, where the iPad's job builds the page; /bin elsewhere. */
+const TAR = ["/usr/bin/tar", "/bin/tar"].find((path) => existsSync(path)) ?? "/usr/bin/tar";
 /** The part's version in VERSION: an integer from 1 and a newline. */
 const VERSION = /^([1-9]\d*)\n$/;
 
@@ -504,7 +507,7 @@ export function withLegalFile<T>(
   const dir = mkdtempSync(join(tmpdir(), "canvas-legal-"));
   try {
     // The bytes held to the sum, not the path read again.
-    const unpacked = spawnSync("tar", ["-xzf", "-", "-C", dir], { input: bytes, encoding: "utf8" });
+    const unpacked = spawnSync(TAR, ["-xzf", "-", "-C", dir], { input: bytes, encoding: "utf8" });
     if (unpacked.status !== 0) throw new Error(`${path} cannot be unpacked: ${unpacked.stderr}`);
     const folder = join(dir, `legal-${name[1]}`, "legal");
     const schema = JSON.parse(readFileSync(join(folder, "schemas", "legal.schema.json"), "utf8"));
