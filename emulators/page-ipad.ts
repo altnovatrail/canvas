@@ -22,7 +22,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { Run } from "./run.ts";
-import { type Device, passes, volunteer, type Way } from "./volunteer.ts";
+import { build, checkAll, type Device, volunteer, type Way, type Ways } from "./volunteer.ts";
 import { until } from "./wait.ts";
 import {
   type Box,
@@ -239,35 +239,26 @@ class Safari implements Device {
   }
 }
 
-/** A build's run: its passes of the volunteer's way, the server's log after a pass that went
- * right, and its journal closed. */
-async function build(run: Run, file: string, port: string, way: Way): Promise<void> {
-  try {
-    await passes(
-      run,
-      () => volunteer(run, new Safari(run, file, port), { keep: true, way }),
-      // Safari closed and launched anew, for the next session to connect to.
-      async () => {
-        execFileSync(XCRUN, ["simctl", "terminate", udid, SAFARI], { stdio: "ignore" });
-        run.log("Safari terminated");
-        await sleep(2000);
-        execFileSync(XCRUN, ["simctl", "launch", udid, SAFARI], { stdio: "ignore" });
-        run.log("Safari launched");
-        await sleep(5000);
-      },
-    );
-    if (run.verdict() === "ok") {
+/** A build's run in the simulator: its passes of the volunteer's way, Safari launched anew
+ * between them, and the server's log after a pass that went right. */
+function ways(run: Run, build: string, port: string, way: Way): Ways {
+  const file = pageFile(build);
+  return {
+    pass: () => volunteer(run, new Safari(run, file, port), { keep: true, way }),
+    // Safari closed and launched anew, for the next session to connect to.
+    recover: async () => {
+      execFileSync(XCRUN, ["simctl", "terminate", udid, SAFARI], { stdio: "ignore" });
+      run.log("Safari terminated");
+      await sleep(2000);
+      execFileSync(XCRUN, ["simctl", "launch", udid, SAFARI], { stdio: "ignore" });
+      run.log("Safari launched");
+      await sleep(5000);
+    },
+    after: () => {
       const { step, ok, note } = served(run.folder, file);
       run.record(step, ok, note, "page");
-    }
-  } catch (error) {
-    run.log(`error: ${String(error)}`);
-    run.record("the run went to its end", false, String(error).slice(0, 200));
-  } finally {
-    const title = way === "release" ? "Samples page" : "Test build";
-    run.close(`${title} on iPad ${ios}`);
-    writeFileSync(join(run.folder, "verdict.txt"), `${run.verdict()}\n`);
-  }
+    },
+  };
 }
 
 /** The release build, then the test build, each served on a port of its own: either that failed
@@ -275,10 +266,13 @@ async function build(run: Run, file: string, port: string, way: Way): Promise<vo
 async function main(): Promise<void> {
   const release = new Run(`build/page-ipad-${ios}`);
   const tested = new Run(`build/page-ipad-${ios}-test`);
-  await build(release, pageFile(BUILD_WATCHED), "8080", "release");
-  await build(tested, pageFile(TEST_WATCHED), "8081", "test");
-  release.check();
-  tested.check();
+  await build(release, `Samples page on iPad ${ios}`, () =>
+    ways(release, BUILD_WATCHED, "8080", "release"),
+  );
+  await build(tested, `Test build on iPad ${ios}`, () =>
+    ways(tested, TEST_WATCHED, "8081", "test"),
+  );
+  checkAll([release, tested]);
 }
 
 if (import.meta.main) {

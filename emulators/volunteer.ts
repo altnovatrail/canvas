@@ -274,9 +274,22 @@ async function moves(run: Run, device: Device, name: string): Promise<boolean> {
     "page",
   );
   device.shot(`${name}-cancelled`);
+  // A press of a row's button that changed nothing on the sheet did not reach it: a tap of the
+  // device that missed, as a tap of the save button that made no file (T78), not the page's.
+  const tap = async (label: string): Promise<SheetNow | undefined> => {
+    const was = await sheet();
+    if (!(await device.button(label, name))) return undefined;
+    const now = await sheet();
+    if (now.tool === was.tool && now.events === was.events) {
+      run.record(`the press of the row's ${label} reached it`, false, "the sheet is as it was");
+      return undefined;
+    }
+    return now;
+  };
   const press = async (label: string, tool: string, step: string): Promise<boolean> => {
-    if (!(await device.button(label, name))) return false;
-    run.record(step, (await sheet()).tool === tool, "", "page");
+    const now = await tap(label);
+    if (!now) return false;
+    run.record(step, now.tool === tool, now.tool, "page");
     return true;
   };
   if (!(await press(ERASER, "eraser", "the row's eraser takes the presses after it"))) return false;
@@ -284,14 +297,14 @@ async function moves(run: Run, device: Device, name: string): Promise<boolean> {
   const erased = await sheet();
   run.record("the eraser takes the stroke off", erased.last === "erase", erased.last, "page");
   device.shot(`${name}-erased`);
-  if (!(await device.button(UNDO, name))) return false;
-  const undone = await sheet();
+  const undone = await tap(UNDO);
+  if (!undone) return false;
   run.record("undo puts the stroke back", undone.last === "undo", undone.last, "page");
   device.shot(`${name}-undone`);
   // A second stroke, erased: the file keeps it, and the page that opens the file shows it apart.
   if (!(await press(PEN, "pen", "the pen comes back"))) return false;
   if ((await device.draw(name, true)) === undefined) return false;
-  if (!(await device.button(ERASER, name))) return false;
+  if (!(await tap(ERASER))) return false;
   if ((await device.draw(name, true)) === undefined) return false;
   const second = await sheet();
   run.record(
@@ -413,7 +426,14 @@ export async function volunteer(
         );
         // The release's workbook is an adult's imitating a child's hand (R09): the page asks it of
         // each sample, and a child's session asks it of none.
-        if (way === "release") await device.evaluate(AS_CHILD);
+        if (way === "release") {
+          run.record(
+            "the writer says they imitate a child's hand",
+            (await device.evaluate(AS_CHILD)) === true,
+            "",
+            "page",
+          );
+        }
       }
       if (!(await painted(device, clock))) {
         run.record(`the page renders the ${name} before the stroke`, false, "no frame in 20 s");
@@ -464,4 +484,49 @@ export async function passes(
     await recover();
     run.pass += 1;
   }
+}
+
+/** What a device gives a build's run: a pass, its recovery, what it checks after a pass that went
+ * right, and what it keeps when the run broke off. */
+export interface Ways {
+  readonly pass: () => Promise<void>;
+  readonly recover: () => Promise<void>;
+  readonly after?: () => void;
+  readonly broken?: () => void;
+}
+
+/** A build's run (T22; R65): its passes, what the device checks after a pass that went right, and
+ * its journal closed and its verdict written whatever came — a build's file the device could not
+ * find too, which prepare finds inside. */
+export async function build(run: Run, title: string, prepare: () => Ways): Promise<void> {
+  try {
+    const ways = prepare();
+    try {
+      await passes(run, ways.pass, ways.recover);
+      if (run.verdict() === "ok") ways.after?.();
+    } catch (error) {
+      ways.broken?.();
+      throw error;
+    }
+  } catch (error) {
+    run.log(`error: ${String(error)}`);
+    run.record("the run went to its end", false, String(error).slice(0, 200));
+  } finally {
+    run.close(title);
+    writeFileSync(join(run.folder, "verdict.txt"), `${run.verdict()}\n`);
+  }
+}
+
+/** Throw if a step of the last pass of any of the runs failed, naming every run's: a job of two
+ * builds fails when either did, and says of both. */
+export function checkAll(runs: readonly Run[]): void {
+  const failed = runs.flatMap((run) => {
+    try {
+      run.check();
+      return [];
+    } catch (error) {
+      return [`${run.folder}: ${(error as Error).message}`];
+    }
+  });
+  if (failed.length > 0) throw new Error(failed.join("; "));
 }

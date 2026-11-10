@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { Run } from "./run.ts";
-import { type Device, passes, volunteer } from "./volunteer.ts";
+import { build, checkAll, type Device, passes, volunteer } from "./volunteer.ts";
 import type { Clock } from "./wait.ts";
 import {
   AS_CHILD,
@@ -121,7 +121,8 @@ function device(
         });
       }
       if (expression === CHILD_FLAG || expression === OPEN_SHOWN) return true;
-      if (expression === AS_CHILD || expression === REOPEN) return 0;
+      if (expression === AS_CHILD) return true;
+      if (expression === REOPEN) return 0;
       if (expression === SHOW_HIDDEN) return !fails.view;
       if (expression === VIEWED) {
         const hidden = fails.view ? 0 : 1;
@@ -221,6 +222,7 @@ test("a page that does what it should passes each step, and its files are kept w
     "the sheet is marked up, and the page will save it",
     "the sheet's sample is handed to a download",
     "the picker shows the workbook's page",
+    "the writer says they imitate a child's hand",
     "read the page after the stroke on the workbook",
     "the workbook holds the stroke drawn",
     "the workbook is marked up, and the page will save it",
@@ -308,7 +310,6 @@ test("a page that hands no file over is the page's failure", { timeout: 40_000 }
 
 test.each([
   ["cancel", "a stroke the browser cancels leaves nothing on the sheet"],
-  ["eraser", "the row's eraser takes the presses after it"],
   ["scroll", "two fingers scroll the sheet or the page, and write nothing"],
   [
     "view",
@@ -322,6 +323,38 @@ test.each([
     expect(run.steps.find((one) => one.step === step)).toMatchObject({ ok: false, kind: "page" });
   },
 );
+
+test("a press of a row's button that changes nothing on the sheet missed it: the device's failure, which earns one more pass", async () => {
+  await volunteer(run, device(run, { eraser: true }), { keep: false }, clock());
+  expect(run.verdict()).toBe("device");
+  expect(run.steps.at(-1)).toMatchObject({
+    step: "the press of the row's Ластик reached it",
+    ok: false,
+    kind: "device",
+  });
+});
+
+test("a build's run closes its journal whatever came, and the job fails naming every run that failed", async () => {
+  // A build whose file the device cannot find: the run records it, and still closes.
+  await build(run, "a build", () => {
+    throw new Error("the build holds not one page");
+  });
+  expect(run.steps.at(-1)).toMatchObject({ step: "the run went to its end", ok: false });
+  expect(readFileSync(join(folder, "verdict.txt"), "utf8")).toBe("device\n");
+  expect(readdirSync(folder)).toContain("steps.json");
+  const fine = new Run(mkdtempSync(join(folder, "fine-")));
+  const checked: string[] = [];
+  await build(fine, "a fine build", () => ({
+    pass: async () => fine.record("a step", true),
+    recover: async () => {},
+    after: () => checked.push("after"),
+  }));
+  expect(checked).toEqual(["after"]);
+  expect(() => checkAll([fine])).not.toThrow();
+  const other = new Run(mkdtempSync(join(folder, "other-")));
+  other.record("a step", false, "", "page");
+  expect(() => checkAll([run, fine, other])).toThrow(/run.*went to its end.*other-.*a step/s);
+});
 
 test("the test build's way: its start, a child's session begun with the form's code, a child's sheet and workbook (T22)", async () => {
   const child = device(run);

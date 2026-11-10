@@ -42,15 +42,18 @@ phase "safaridriver is enabled"
 sudo safaridriver --enable
 phase "safaridriver starts, and the server and it answer"
 nohup safaridriver --port 4444 > "$out/safaridriver.txt" 2>&1 &
-# Both answer within seconds; the page asked of the server here is the one the driver opens too.
+# All three answer within seconds; the pages asked of the servers here are those the driver opens.
+test_page=$(basename build/page-test-watched/samples-page_v*.html)
 for _ in $(seq 1 30); do
   if curl --silent --fail --max-time 5 http://127.0.0.1:4444/status > /dev/null \
-      && curl --silent --fail --max-time 5 --output /dev/null "http://127.0.0.1:8080/$page"; then
+      && curl --silent --fail --max-time 5 --output /dev/null "http://127.0.0.1:8080/$page" \
+      && curl --silent --fail --max-time 5 --output /dev/null "http://127.0.0.1:8081/$test_page"; then
     break
   fi
   sleep 1
 done
 curl --silent --fail --max-time 5 http://127.0.0.1:4444/status > /dev/null
+curl --silent --fail --max-time 5 --output /dev/null "http://127.0.0.1:8081/$test_page"
 
 phase "the driver runs"
 # Each line of the driver, its session's tries and steps among them, with the time it came.

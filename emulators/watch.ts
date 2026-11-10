@@ -167,21 +167,25 @@ export function pointersBy(
  * label is the button's text, after its icon. As JSON, null when the row has none such. */
 export function buttonBox(label: string): string {
   return `JSON.stringify((() => {
-  const host = document.querySelector("novatrail-canvas");
-  const button = [...(host?.shadowRoot?.querySelectorAll(".tools button") ?? [])]
-    .find((one) => one.textContent.trim() === ${JSON.stringify(label)} && !one.hidden);
-  const box = button?.getBoundingClientRect();
-  return box && box.width > 0 ? { x: box.x, y: box.y, width: box.width, height: box.height, view: innerHeight } : null;
+  const box = ${rowButton(label)}?.getBoundingClientRect();
+  // A button wholly outside the window is none to tap: the row has not come into view.
+  const shown = box && box.width > 0 && box.y + box.height > 0 && box.y < innerHeight;
+  return shown ? { x: box.x, y: box.y, width: box.width, height: box.height, view: innerHeight } : null;
 })())`;
+}
+
+/** An expression of the button of the element's row with a label, or undefined: the row's buttons
+ * are in the element's shadow tree, each named by its text after its icon. */
+function rowButton(label: string): string {
+  return `[...(document.querySelector("novatrail-canvas")?.shadowRoot?.querySelectorAll(".tools button") ?? [])]
+    .find((one) => one.textContent.trim() === ${JSON.stringify(label)} && !one.hidden)`;
 }
 
 /** A script that presses a button of the element's row by its own click(), as the iPad's driver
  * presses the page's buttons (T81); whether there was one. */
 export function clickButton(label: string): string {
   return `(() => {
-  const host = document.querySelector("novatrail-canvas");
-  const button = [...(host?.shadowRoot?.querySelectorAll(".tools button") ?? [])]
-    .find((one) => one.textContent.trim() === ${JSON.stringify(label)} && !one.hidden);
+  const button = ${rowButton(label)};
   if (!button) return false;
   button.click();
   return true;
@@ -218,7 +222,11 @@ export interface SheetNow {
 
 /** A script that has the writer say they imitate a child's hand: the page writes the sample as
  * an adult's imitating a child's (R09). */
-export const AS_CHILD = `(document.querySelector('input[name="writer"][value="child"]').click(), 0)`;
+export const AS_CHILD = `(() => {
+  const radio = document.querySelector('input[name="writer"][value="child"]');
+  radio?.click();
+  return radio?.checked === true;
+})()`;
 
 /** A script that reads the test build's start before anything is chosen (T22; R58, R59): the eval
  * set closed with its reason, for the build has no task of a module, and the measurement and a
@@ -416,14 +424,25 @@ export function strokeIn(
   box: Box,
   second = false,
 ): [[number, number], [number, number]] | undefined {
+  const at = shownOf(box, 40);
+  if (!at) return undefined;
+  const left = second ? 0.6 : 0.2;
+  return [at(left, 0.3), at(left + 0.2, 0.5)];
+}
+
+/** Where a point of the part of an element the window shows lies, by its shares across the
+ * element and down that part, in whole pixels; none when the window shows less than a strip of
+ * the height given. */
+function shownOf(
+  box: Box,
+  strip: number,
+): ((across: number, down: number) => [number, number]) | undefined {
   const top = Math.max(box.y, 0);
   const bottom = Math.min(box.y + box.height, box.view);
-  if (bottom - top < 40) return undefined;
-  const round = (x: number, y: number): [number, number] => [Math.round(x), Math.round(y)];
-  const left = second ? 0.6 : 0.2;
-  return [
-    round(box.x + box.width * left, top + (bottom - top) * 0.3),
-    round(box.x + box.width * (left + 0.2), top + (bottom - top) * 0.5),
+  if (bottom - top < strip) return undefined;
+  return (across, down) => [
+    Math.round(box.x + box.width * across),
+    Math.round(top + (bottom - top) * down),
   ];
 }
 
@@ -433,15 +452,11 @@ export function strokeIn(
 export function fingersIn(
   box: Box,
 ): [[[number, number], [number, number]], [[number, number], [number, number]]] | undefined {
-  const top = Math.max(box.y, 0);
-  const bottom = Math.min(box.y + box.height, box.view);
-  if (bottom - top < 120) return undefined;
-  const round = (x: number, y: number): [number, number] => [Math.round(x), Math.round(y)];
-  const from = top + (bottom - top) * 0.75;
-  const to = top + (bottom - top) * 0.4;
-  const finger = (at: number): [[number, number], [number, number]] => [
-    round(box.x + box.width * at, from),
-    round(box.x + box.width * at, to),
+  const at = shownOf(box, 120);
+  if (!at) return undefined;
+  const finger = (across: number): [[number, number], [number, number]] => [
+    at(across, 0.75),
+    at(across, 0.4),
   ];
   return [finger(0.4), finger(0.6)];
 }

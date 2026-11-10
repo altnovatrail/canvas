@@ -17,7 +17,7 @@
 // strokes are the code's: no handwriting goes into a run. It needs adb (ADB) and the servers'
 // ports (PORT, TEST_PORT).
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import {
@@ -34,10 +34,11 @@ import {
   type Target,
 } from "./android.ts";
 import { Run } from "./run.ts";
-import { type Device, passes, volunteer, type Way } from "./volunteer.ts";
+import { build, checkAll, type Device, volunteer, type Way, type Ways } from "./volunteer.ts";
 import { until } from "./wait.ts";
 import {
   type Box,
+  BUILD,
   boxOf,
   buttonBox,
   chooseFile,
@@ -206,17 +207,18 @@ class Chrome implements Device {
   private async touches(
     paths: readonly (readonly [Point, Point])[],
     end: "touchEnd" | "touchCancel",
+    steps = 10,
   ): Promise<void> {
     if (!this.tools) throw new Error("no page");
     const tools = this.tools;
     const at = (step: number) =>
       paths.map(([[x1, y1], [x2, y2]], id) => ({
-        x: x1 + ((x2 - x1) * step) / 10,
-        y: y1 + ((y2 - y1) * step) / 10,
+        x: x1 + (x2 - x1) * (steps > 0 ? step / steps : 0),
+        y: y1 + (y2 - y1) * (steps > 0 ? step / steps : 0),
         id,
       }));
     await tools.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: at(0) });
-    for (let step = 1; step <= 10; step++) {
+    for (let step = 1; step <= steps; step++) {
       await sleep(30);
       await tools.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: at(step) });
     }
@@ -252,7 +254,8 @@ class Chrome implements Device {
     this.run.record(`find the row's button ${label} on the ${name}`, Boolean(box));
     if (!box) return false;
     const middle: Point = [box.x + box.width / 2, box.y + box.height / 2];
-    await this.touches([[middle, middle]], "touchEnd");
+    // A tap, lifted at once: a touch held a while is a long press to Chrome, which clicks nothing.
+    await this.touches([[middle, middle]], "touchEnd", 0);
     return true;
   }
 
@@ -371,31 +374,25 @@ function after(run: Run, android: Android, file: string): void {
   );
 }
 
-/** A build's run: its passes of the volunteer's way, the server's log and the files saved after a
- * pass that went right, and its journal closed. */
-async function build(run: Run, android: Android, file: string, port: string, way: Way) {
-  try {
-    await passes(
-      run,
-      () => volunteer(run, new Chrome(run, android, file, port), { keep: false, way }),
-      async () => {
-        android.stopChrome();
-        await sleep(3000);
-      },
-    );
-    if (run.verdict() === "ok") after(run, android, file);
-  } catch (error) {
-    run.log(`error: ${String(error)}`);
-    try {
-      android.screenshot("error");
-    } catch {
-      // No screen to take: the error above says why.
-    }
-    run.record("the run went to its end", false, String(error).slice(0, 200));
-  } finally {
-    run.close(way === "release" ? "Samples page on Android" : "Test build on Android");
-    writeFileSync(join(run.folder, "verdict.txt"), `${run.verdict()}\n`);
-  }
+/** A build's run on the emulator: its passes of the volunteer's way, Chrome stopped between
+ * them, and the server's log and the files saved after a pass that went right. */
+function ways(run: Run, android: Android, build: string, port: string, way: Way): Ways {
+  const file = pageFile(build);
+  return {
+    pass: () => volunteer(run, new Chrome(run, android, file, port), { keep: false, way }),
+    recover: async () => {
+      android.stopChrome();
+      await sleep(3000);
+    },
+    after: () => after(run, android, file),
+    broken: () => {
+      try {
+        android.screenshot("error");
+      } catch {
+        // No screen to take: the error the run records says why.
+      }
+    },
+  };
 }
 
 async function main(): Promise<void> {
@@ -407,17 +404,19 @@ async function main(): Promise<void> {
     release.close("Samples page on Android");
     throw new Error("the image has no Chrome");
   }
-  await build(release, android, pageFile(), process.env.PORT ?? "8080", "release");
-  await build(
-    tested,
-    new Android(tested),
-    pageFile(TEST_BUILD),
-    process.env.TEST_PORT ?? "8081",
-    "test",
+  await build(release, "Samples page on Android", () =>
+    ways(release, android, BUILD, process.env.PORT ?? "8080", "release"),
+  );
+  // Chrome begins the test build afresh: nothing of the release's page, its dialogs or the
+  // message of its download stands over the next one.
+  android.stopChrome();
+  await sleep(3000);
+  const again = new Android(tested);
+  await build(tested, "Test build on Android", () =>
+    ways(tested, again, TEST_BUILD, process.env.TEST_PORT ?? "8081", "test"),
   );
   // Both builds' runs go to their end, and either that failed fails the job.
-  release.check();
-  tested.check();
+  checkAll([release, tested]);
 }
 
 if (import.meta.main) {
