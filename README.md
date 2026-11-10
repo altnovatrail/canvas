@@ -34,6 +34,16 @@ npm install --save-exact --save-dev @altnovatrail/spec@<its version>
 
 A pull request that changes the lock file has spec's recipe check it, as NovaTrail's rules ask of every package of `@altnovatrail`: `just -f spec/justfile release-verify-npm package-lock.json`, from a checkout of spec at a tag. It takes the archive from the registry only if it is the same bytes as the file of canvas's release, signed by .github's shared release at the call of canvas's `release.yml` on `main`.
 
+## The samples page
+
+Every release since 2026-11-10 carries the samples page as one file, `samples-page_v<version>.html`: download it from the release's page and open it from the file, on a computer or on Android. It goes to no network while it runs and remembers nothing between openings; the sample it saves is a file on the device. On an iPad, Files shows the file without its script, and the page does not work there. GitHub sees the IP address of whoever downloads a file of a release, the page too, and each release's notes say so first. The page's own file is checked as any file of a NovaTrail release, from a checkout of spec at a tag:
+
+```sh
+just -f spec/justfile release-verify canvas v<version> samples-page_v<version>.html
+```
+
+with its bundle, `samples-page_v<version>.html.sigstore.json`, beside it.
+
 ## Code
 
 - `src/core/` — the DOM-free part, `@altnovatrail/canvas/core`: it runs the same in a browser and in Node, and its entry point gives the sheet's size, the types of the data and the fold of a history into its strokes.
@@ -46,7 +56,7 @@ A pull request that changes the lock file has spec's recipe check it, as NovaTra
 - `tasks/` — the file of open tasks of a release of tutor that the synthetic samples answer, as the release has it, with its signature, which spec's `release-verify` checks in CI; and the index of a release of modules, signed too, with the inventory and canonical view of one package it names, on which CI writes the samples of a module's eval set.
 - `licenses.json` — the packages the license check accepts by name, each with why.
 
-`just build` builds the package into `lib/`, and `just release-files v0.1.0` writes the files of that release into `dist/` — the package's archive, with NOTICE in it, the synthetic samples' archive and the list of what each shows, LICENSE and SHA256SUMS — and prints the sums, which a build of the same commit gives again. `just synthetic <folder>` writes the synthetic samples into a folder, one file each, and prints what each shows: no tree holds them. `just synthetic-module <package> <tag> <folder> <task>:<seed>...` writes synthetic samples of a module's eval set: run it from a clone of canvas at a release's tag, with the package that `module-kit build` wrote of the module at the commit the samples go into, the tag of the newest release of modules, and the module's `eval/` folder; it writes `synthetic-<seed>.json` for each task and seed named, writes a seed's file anew only when it is a sample of the same task, and refuses a template, a choice, an essay or a zone, writing nothing then. `just ci` runs the checks CI runs: format, lint and types; the tests in Node and in Chromium; advisories; licenses. They run in the devcontainer, whose toolchain stage holds the browser the tests run in. The license check is spec's recipe, run from the `spec/` submodule with the exceptions in `licenses.json`, so it needs `spec/` checked out: see [CLAUDE.md](CLAUDE.md), Environment.
+`just build` builds the package into `lib/`, and `just release-files v0.1.0` writes the files of that release into `dist/` — the package's archive, with NOTICE in it, the synthetic samples' archive and the list of what each shows, the samples page, LICENSE and SHA256SUMS — and prints the sums, which a build of the same commit gives again. `just synthetic <folder>` writes the synthetic samples into a folder, one file each, and prints what each shows: no tree holds them. `just synthetic-module <package> <tag> <folder> <task>:<seed>...` writes synthetic samples of a module's eval set: run it from a clone of canvas at a release's tag, with the package that `module-kit build` wrote of the module at the commit the samples go into, the tag of the newest release of modules, and the module's `eval/` folder; it writes `synthetic-<seed>.json` for each task and seed named, writes a seed's file anew only when it is a sample of the same task, and refuses a template, a choice, an essay or a zone, writing nothing then. `just ci` runs the checks CI runs: format, lint and types; the tests in Node and in Chromium; advisories; licenses. They run in the devcontainer, whose toolchain stage holds the browser the tests run in. The license check is spec's recipe, run from the `spec/` submodule with the exceptions in `licenses.json`, so it needs `spec/` checked out: see [CLAUDE.md](CLAUDE.md), Environment.
 
 ## Documents
 

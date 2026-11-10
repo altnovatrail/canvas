@@ -102,13 +102,18 @@ build: _install
 # submodule and no token (R08; R18 .github). They are the package's archive, as npm pack makes it,
 # with the version without its v, NOTICE in it too (R46); the synthetic samples, as just synthetic
 # writes them, in one flat archive, synthetic-samples_<version>.tar.gz, and what each shows, one
-# line to a sample under a line of the columns' names, synthetic-samples_<version>.tsv (R50);
-# LICENSE; and SHA256SUMS of the four. The set is written outside dist/, which takes files alone.
+# line to a sample under a line of the columns' names, synthetic-samples_<version>.tsv (R50); the
+# samples page, as scripts/page.ts builds it with the draft of texts, samples-page_<version>.html,
+# whose own version is the number without its v (R55; R66): the set of texts for tests goes into
+# no page but 0.0.0, so into no release; LICENSE; and SHA256SUMS of the five. The set is written
+# outside dist/, which takes files alone; the page's builder writes its one file there and prints
+# its path first.
 # The package's archive is packed from a copy of what npm pack takes, with the version set there,
 # so that the package.json of the tree keeps 0.0.0, and scripts/release.ts checks the archive
-# itself and names it. npm pack fixes every file's time and order, and scripts/archive.ts writes
-# nothing of the machine or the time, so a build of the same commit gives the same sums, and the
-# sums are printed for whoever builds it again to compare.
+# itself and names it. npm pack fixes every file's time and order, scripts/archive.ts writes
+# nothing of the machine or the time, and two builds of the page are the same bytes (R66), so a
+# build of the same commit gives the same sums, and the sums are printed for whoever builds it
+# again to compare.
 release-files version: build
     #!/usr/bin/env bash
     set -euo pipefail
@@ -129,8 +134,9 @@ release-files version: build
     synthetic="synthetic-samples_${version}"
     {{ quote(just_executable()) }} synthetic "$stage/synthetic" "dist/${synthetic}.tsv" > /dev/null
     node scripts/archive.ts "$stage/synthetic" "dist/${synthetic}.tar.gz"
+    page="$(basename "$(node scripts/page.ts dist "$number" | sed -n 1p)")"
     cp LICENSE dist/LICENSE
-    (cd dist && sha256sum -- "$archive" "${synthetic}.tar.gz" "${synthetic}.tsv" LICENSE > SHA256SUMS)
+    (cd dist && sha256sum -- "$archive" "${synthetic}.tar.gz" "${synthetic}.tsv" "$page" LICENSE > SHA256SUMS)
     cat dist/SHA256SUMS
 
 # Write the synthetic samples into a folder, one file each, <ID>.json, and print a line for each:
