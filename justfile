@@ -21,11 +21,13 @@ tutor_tag := "v0.1.10"
 # The release of modules whose package of grade-3-math, in tasks/modules-<tag>/, ci-licenses writes
 # synthetic samples of a module's eval set on (T86; R63): ci-licenses verifies the index, and holds
 # the package's inventory to the index's digest of it, as moduleTasksOf holds server.json to the
-# inventory.
+# inventory. The package of english-essays 0.2.0 beside it, whose essays the tests hold to the
+# digests module-kit gives their open views, is held to the index the same way (T98).
 modules_tag := "v0.2.0"
 module_id := "novatrail/grade-3-math"
 module_version := "0.2.0"
 module_package := "tasks/modules-" + modules_tag + "/novatrail-grade-3-math-" + module_version
+essays_package := "tasks/modules-" + modules_tag + "/novatrail-english-essays-0.2.0"
 
 # Run the four checks CI runs, before a pull request.
 ci: ci-lint ci-test ci-vuln ci-licenses
@@ -87,6 +89,7 @@ ci-licenses:
     {{ quote(just_executable()) }} -f spec/justfile sample-check build/synthetic/*.json
     {{ quote(just_executable()) }} -f spec/justfile release-verify modules {{ modules_tag }} tasks/modules-{{ modules_tag }}/module-index.json
     test "sha256:$(sha256sum < {{ module_package }}/inventory.json | cut -d ' ' -f 1)" = "$(node -p 'require("./tasks/modules-{{ modules_tag }}/module-index.json").modules["{{ module_id }}"]["{{ module_version }}"].package_digest')"
+    test "sha256:$(sha256sum < {{ essays_package }}/inventory.json | cut -d ' ' -f 1)" = "$(node -p 'require("./tasks/modules-{{ modules_tag }}/module-index.json").modules["novatrail/english-essays"]["0.2.0"].package_digest')"
     rm -rf build/synthetic-module
     {{ quote(just_executable()) }} synthetic-module {{ module_package }} {{ modules_tag }} build/synthetic-module comparing-fractions-d1:201 comparing-fractions-d3:202 comparing-fractions-d5:203 division-with-remainder-d1:204 division-with-remainder-d3:205 division-with-remainder-d5:206 fractions-of-a-whole-d1:207 fractions-of-a-whole-d3:208 fractions-of-a-whole-d5:209 times-tables-d1:210 times-tables-d3:211 times-tables-d5:212 > /dev/null
     {{ quote(just_executable()) }} -f spec/justfile sample-check --eval-set {{ module_id }} build/synthetic-module/*.json

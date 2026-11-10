@@ -1,7 +1,15 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
-import { INVENTORY, type Json, RELEASE, repackaged, SERVER, taskIn } from "./packages.fixture.js";
+import {
+  ESSAYS,
+  INVENTORY,
+  type Json,
+  RELEASE,
+  repackaged,
+  SERVER,
+  taskIn,
+} from "./packages.fixture.js";
 import { canonicalText, moduleTasksOf, type OpenTasks, openTasksOf, TUTOR_FILE } from "./tasks.js";
 
 const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
@@ -186,6 +194,37 @@ test("a module's package gives each task the open view module-kit gives, by the 
     },
   });
   expect(task && "canvas" in task && "workbook" in task.canvas).toBe(true);
+});
+
+/** The digests of the open views of english-essays 0.2.0's tasks — five essays and three choices of
+ * a first sentence, none of which the generator draws —, as module-kit open v0.3.0 gave them (T98). */
+const MODULE_KIT_ESSAYS: Record<string, string> = {
+  "a-day-you-remember-1": "ceb479179124f5eed1e7eed69b58dc6c4400cb283a81e1bd4a7d2e80b329798f",
+  "best-first-sentence-1": "cc5418e741d51c3120837474b1393b8018752e68acc08e4c91a02fc650d89553",
+  "best-first-sentence-2": "08a1e90c6c5edf8be1aa8040fc5ebb5265f0d1b8d71d5e02a70dc592ff90d491",
+  "best-first-sentence-3": "090d28f5242e44a63951117b181ae0d05d02b00f3fe38c23c448bcd5096dd543",
+  "dragon-draft-1": "26fb60fc8bb9c0cfcc1e5a2f783502b1483ad8a89cf45a13e0dcd451e8baa57b",
+  "talking-umbrella-1": "bd9796689900f4801a2bebe82880c35867053ee0405b09333b6d91d7d9a77edc",
+  "undiscovered-island-1": "b033ab537daafb06cc7170d562c439a97bda437cb7df0a4c5bd90d6461a1a08f",
+  "weather-shop-1": "bbfeb4aee2a6514472f1ee9535e2242a18d37f487e32798217b5cff74edcf10d",
+};
+
+test("the essays and choices of english-essays 0.2.0 are refused with the digests module-kit gives their open views (T98)", () => {
+  const index = JSON.parse(readFileSync(new URL("module-index.json", RELEASE), "utf8"));
+  const inventory = readFileSync(new URL("inventory.json", ESSAYS), "utf8");
+  const server = readFileSync(new URL("server.json", ESSAYS), "utf8");
+  expect(`sha256:${sha256(inventory)}`).toBe(
+    index.modules["novatrail/english-essays"]["0.2.0"].package_digest,
+  );
+  const module = moduleTasksOf(inventory, server, "v0.2.0", sha256);
+  const digests = Object.fromEntries(
+    [...module.tasks].map(([id, task]) => {
+      const why = id.startsWith("best-first-sentence-") ? "a choice" : "an essay";
+      expect(task).toEqual({ refused: why, openViewDigest: expect.any(String) });
+      return [id, "openViewDigest" in task ? task.openViewDigest?.replace("sha256:", "") : ""];
+    }),
+  );
+  expect(digests).toEqual(MODULE_KIT_ESSAYS);
 });
 
 // What the generator draws no sample of (T86; R63): each kept, with why, and with the digest of its

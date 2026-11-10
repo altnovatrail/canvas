@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
 import {
+  ESSAYS,
   type Json,
   PACKAGE as MODULE_PACKAGE,
   repackaged,
@@ -181,4 +182,17 @@ test("a task the generator draws none of has a digest, but a template or a task 
       "no-such-task: novatrail/grade-3-math has no task no-such-task",
     ],
   });
+});
+
+test("an essay has its digest, which the generator draws no sample of (T98)", () => {
+  const essays = fileURLToPath(ESSAYS);
+  const { lines, wrong } = moduleDigests(essays, ["weather-shop-1", "a-day-you-remember-1"]);
+  expect(wrong).toEqual([]);
+  expect(lines).toEqual([
+    "weather-shop-1\tsha256:bbfeb4aee2a6514472f1ee9535e2242a18d37f487e32798217b5cff74edcf10d",
+    "a-day-you-remember-1\tsha256:ceb479179124f5eed1e7eed69b58dc6c4400cb283a81e1bd4a7d2e80b329798f",
+  ]);
+  expect(() =>
+    writeModuleSamples(essays, "v0.2.0", temporary("eval"), ["weather-shop-1:1"]),
+  ).toThrow("weather-shop-1:1: weather-shop-1 is an essay");
 });
