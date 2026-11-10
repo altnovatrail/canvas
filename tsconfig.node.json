@@ -12,6 +12,7 @@
     "probe/**/*.ts",
     "emulators/**/*.ts",
     "src/**/*.test.ts",
+    "page/**/*.test.ts",
     "vitest.config.ts",
     "demo/vite.config.ts"
   ]

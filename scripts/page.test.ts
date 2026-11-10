@@ -11,6 +11,7 @@ import { Purpose, Writer } from "@altnovatrail/contracts/novatrail/eval/v1/sampl
 import { type Browser, chromium, type Page } from "playwright";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { TASKS as EMULATED_TASKS, WORKBOOK as EMULATED_WORKBOOK } from "../emulators/watch.ts";
+import { viewOf } from "../page/open.ts";
 import { readSample, type Sample } from "../src/eval/sample.ts";
 import { TUTOR_FILE } from "../src/eval/tasks.ts";
 import { policy, styleOf } from "./csp.ts";
@@ -109,6 +110,18 @@ async function markAndSave(page: Page, text: string): Promise<Sample> {
   await page.check("#personal");
   const [download] = await Promise.all([page.waitForEvent("download"), page.click("#save")]);
   return readSample(readFileSync(await download.path(), "utf8"));
+}
+
+/** What a page asks for outside its file, and the errors it throws, gathered while it runs. */
+function watched(page: Page): { outside: string[]; errors: string[] } {
+  const outside: string[] = [];
+  const errors: string[] = [];
+  page.on("request", (request) => {
+    const url = request.url();
+    if (!url.startsWith("file:") && !url.startsWith("blob:")) outside.push(url);
+  });
+  page.on("pageerror", (error) => errors.push(error.message));
+  return { outside, errors };
 }
 
 afterAll(async () => {
@@ -275,13 +288,7 @@ describe("opened from a file", () => {
     const context = await browser.newContext({ acceptDownloads: true });
     try {
       const page = await context.newPage();
-      const outside: string[] = [];
-      page.on("request", (request) => {
-        const url = request.url();
-        if (!url.startsWith("file:") && !url.startsWith("blob:")) outside.push(url);
-      });
-      const errors: string[] = [];
-      page.on("pageerror", (error) => errors.push(error.message));
+      const { outside, errors } = watched(page);
       await page.addInitScript(() => {
         const seen: string[] = [];
         Object.assign(window, { violations: seen });
@@ -467,12 +474,15 @@ describe("opened from a file", () => {
       expect(await page.textContent("#start-lacks")).toContain("от 6 до 16");
       await page.fill("#typed", "");
       expect(await begin(page, "measurement", "ab12 cd34")).toBeUndefined();
+      // Once writing has begun, no file opens: the sheet half written stays as it is (T87).
+      expect(await page.isHidden("#open")).toBe(true);
       expect(await page.textContent("#summary-text")).toContain("AB12CD34");
       const storage = () =>
         page.evaluate(() => [localStorage.length, sessionStorage.length, document.cookie]);
       expect(await storage()).toEqual([0, 0, ""]);
       await page.reload();
       expect(await page.isVisible("#start")).toBe(true);
+      expect(await page.isVisible("#open")).toBe(true);
       expect(await page.isHidden("#work")).toBe(true);
       expect(await page.locator('input[name="purpose"]:checked').count()).toBe(0);
       expect(await page.locator('input[name="code"]:checked').count()).toBe(0);
@@ -556,6 +566,104 @@ describe("opened from a file", () => {
       expect(sample.textSetVersion).toBe("test-approved-0");
       expect(sample.license).toBeUndefined();
       expect(await page.textContent("#hand-over")).toContain("не pull request");
+    } finally {
+      await context.close();
+    }
+  }, 60_000);
+});
+
+/** How many crops a sample's file holds: the sheet's, or every filled box's. */
+function cropsOf({ surface }: Sample): number {
+  if (surface.case === "sheet") return surface.value.crops?.crops.length ?? 0;
+  if (surface.case !== "workbook") return 0;
+  return surface.value.filledBoxes.reduce((sum, box) => sum + (box.crops?.crops.length ?? 0), 0);
+}
+
+describe("a sample file opened on the page (T87)", () => {
+  test("shows each composition's strokes, crops and markup from the file alone, the erased apart, and keeps and sends nothing", async () => {
+    const context = await browser.newContext();
+    try {
+      const page = await context.newPage();
+      const { outside, errors } = watched(page);
+      page.on("download", () => errors.push("a download"));
+      await page.goto(pathToFileURL(built.path).href);
+      expect(await page.isVisible("#open")).toBe(true);
+      expect(await page.isHidden("#view")).toBe(true);
+      for (const name of [
+        "sheet-measurement",
+        "sheet-eval-set",
+        "module-sheet-eval-set",
+        "workbook-child",
+        "page-workbook-measurement",
+        "page-essay-measurement",
+      ]) {
+        const path = join("examples", `${name}.json`);
+        const sample = readSample(readFileSync(path, "utf8"));
+        await page.setInputFiles("#open-file", path);
+        await expect.poll(() => page.isVisible("#view")).toBe(true);
+        expect(await page.isHidden("#start")).toBe(true);
+        // Every stroke the file holds is drawn: what the sheet showed at the end, and apart what the
+        // history did not show, which the examples erased.
+        const { shown, hidden } = viewOf(sample);
+        const erased = (sample.ink.case === "history" ? sample.ink.value.events : []).flatMap(
+          ({ event }) => (event.case === "erase" ? event.value.ids : []),
+        );
+        expect(hidden.map(({ id }) => id).sort()).toEqual([...erased].sort());
+        expect(await page.locator("#view svg > polyline").count()).toBe(shown.length);
+        expect(await page.locator("#view svg [data-hidden] polyline").count()).toBe(hidden.length);
+        // Those the sheet did not show are drawn only once asked for.
+        const display = () => page.getAttribute("#view svg [data-hidden]", "display");
+        expect(await display()).toBe("none");
+        expect(await page.locator("#show-hidden").count()).toBe(hidden.length > 0 ? 1 : 0);
+        if (hidden.length > 0) {
+          await page.check("#show-hidden");
+          expect(await display()).toBe("inline");
+        }
+        const boxes = sample.surface.case === "workbook" ? sample.surface.value.boxes.length : 0;
+        expect(await page.locator("#view svg rect[data-box]").count()).toBe(boxes);
+        const images = page.locator("#view img.crop");
+        expect(await images.count()).toBe(cropsOf(sample));
+        // Each crop is the file's PNG, which the browser decodes and draws at its size.
+        expect(
+          await images.evaluateAll((all) =>
+            Promise.all(
+              all.map(async (image) => {
+                const picture = image as HTMLImageElement;
+                await picture.decode();
+                return picture.naturalWidth > 0;
+              }),
+            ),
+          ),
+        ).not.toContain(false);
+        const text = (await page.textContent("#view")) ?? "";
+        expect(text).toContain(sample.id);
+        const parts =
+          sample.markup?.writing.case === "parts" ? sample.markup.writing.value.parts : [];
+        for (const part of parts) expect(text).toContain(part.text);
+      }
+      // A file of no sample is said so, and the last one shown goes.
+      const wrong = join(folder, "not-a-sample.json");
+      writeFileSync(wrong, '{"protocol":"novatrail.eval.v1","name":"x"}');
+      await page.setInputFiles("#open-file", wrong);
+      await expect
+        .poll(() => page.textContent("#open-error"))
+        .toContain("не может прочесть этот файл");
+      expect(await page.isHidden("#view")).toBe(true);
+      const storage = () =>
+        page.evaluate(async () => [
+          localStorage.length,
+          sessionStorage.length,
+          document.cookie,
+          (await indexedDB.databases()).length,
+        ]);
+      expect(await storage()).toEqual([0, 0, "", 0]);
+      // Back to the start is the page opened anew, with nothing of the file.
+      await page.click("#open-back");
+      await expect.poll(() => page.isVisible("#start")).toBe(true);
+      expect(await page.isHidden("#view")).toBe(true);
+      expect(await page.isHidden("#open-back")).toBe(true);
+      expect(outside).toEqual([]);
+      expect(errors).toEqual([]);
     } finally {
       await context.close();
     }

@@ -22,6 +22,11 @@ novatrail-canvas { display: block; }
 #notice p { margin: 4px 0; }
 #session { margin-top: 16px; }
 details pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+.sketch { display: block; width: 100%; height: auto; }
+#view figure { display: inline-block; margin: 4px 8px 4px 0; }
+#view dt { font-weight: bold; }
+#view dd { margin: 0 0 4px 16px; overflow-wrap: anywhere; }
+.as-written { white-space: pre-wrap; }
 </style>
 <header>
   <h1>Страница образцов</h1>
@@ -49,6 +54,14 @@ details pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
     <div id="start-lacks" role="status"></div>
     <p><button id="begin" type="button" disabled>Начать</button></p>
   </section>
+  <section id="open" aria-labelledby="open-title">
+    <h2 id="open-title">Открыть образец</h2>
+    <p id="open-about"></p>
+    <p><label for="open-file">Файл образца:</label> <input id="open-file" type="file" accept=".json,application/json"></p>
+    <p id="open-error" role="status"></p>
+    <p><button id="open-back" type="button" hidden></button></p>
+  </section>
+  <section id="view" aria-label="Образец из файла" hidden></section>
   <p id="summary" hidden><span id="summary-text"></span> <button id="restart" type="button">Начать заново</button></p>
   <section id="work" aria-label="Письмо и разметка" hidden>
     <p><label for="task">Задача:</label> <select id="task"></select></p>
