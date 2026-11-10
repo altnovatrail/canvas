@@ -114,7 +114,14 @@ export interface ModuleTasks {
   readonly version: string;
   readonly packageDigest: string;
   /** Every task of the package by its ID: the open task, or why the generator draws none. */
-  readonly tasks: ReadonlyMap<string, OpenTask | { readonly refused: string }>;
+  readonly tasks: ReadonlyMap<string, OpenTask | RefusedTask>;
+}
+
+/** A task of a package the generator draws no sample of: why, and the digest of its open view,
+ * which a person's sample of it names (T97), unless it is a template, which has no open view. */
+export interface RefusedTask {
+  readonly refused: string;
+  readonly openViewDigest?: string;
 }
 
 /**
@@ -164,7 +171,7 @@ export function moduleTasksOf(
   }
   const packageDigest = `sha256:${sha256(inventoryText)}`;
   const source = { tag, module, version, packageDigest };
-  const tasks = new Map<string, OpenTask | { readonly refused: string }>();
+  const tasks = new Map<string, OpenTask | RefusedTask>();
   for (const [id, task] of Object.entries(given)) {
     if (task === null || typeof task !== "object" || Array.isArray(task)) {
       throw new TypeError(`the task ${id} of ${module} is no object`);
@@ -177,19 +184,16 @@ export function moduleTasksOf(
       continue;
     }
     const view = openOf(task, TASK, `${module} ${id}:`, "drop");
+    const openViewDigest = `sha256:${sha256(canonicalText(view))}`;
     const refused = undrawn(view);
     tasks.set(
       id,
       refused === undefined
         ? {
-            reference: {
-              source: { case: "modules", value: source },
-              task: id,
-              openViewDigest: `sha256:${sha256(canonicalText(view))}`,
-            },
+            reference: { source: { case: "modules", value: source }, task: id, openViewDigest },
             canvas: canvasOf(view, `${module} ${id}`),
           }
-        : { refused },
+        : { refused, openViewDigest },
     );
   }
   return { module, version, packageDigest, tasks };
@@ -219,6 +223,9 @@ function undrawn(view: Record<string, unknown>): string | undefined {
     // A page's answers are its boxes: an item of an answer slot beside them the page does not draw.
     const boxed = (items ?? []).every((item) => Array.isArray(item.line) && !item.answer_slots);
     return boxed ? undefined : "a workbook with an answer slot outside its boxes";
+  }
+  if (canvas?.kind !== "handwriting_sheet") {
+    return `a canvas of the kind ${String(canvas?.kind)}, neither a sheet nor a workbook`;
   }
   const slots = (items ?? []).flatMap((item) => item.answer_slots ?? []);
   const binding = items?.length === 1 && slots.length === 1 ? slots[0]?.binding : undefined;

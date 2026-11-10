@@ -4,12 +4,14 @@
 //
 //   node scripts/generator.ts <folder> <version>
 //
-// writes <folder>/synthetic-module_v<version>.mjs and prints its path. Vite's API bundles
-// scripts/synthetic-module.main.ts for Node, as the page's builder bundles the page (R55): every
-// package inside, Node's own modules outside, the code as it is written and not minified, so that
-// a reader of modules sees what runs in its CI. The file opens with a comment that names it, the
-// Node it wants and how to check it, and the license notices of all the code it carries — its own
-// and every package's —; a package under a license off the list stops the build (R12).
+// writes <folder>/synthetic-module_v<version>.mjs and prints its path. The file has two modes:
+// --module writes samples, and --digest prints the digests of the tasks' open views (T97). Vite's
+// API bundles scripts/synthetic-module.main.ts for Node, as the page's builder bundles the page
+// (R55): every package inside, Node's own modules outside, the code as it is written and not
+// minified, so that a reader of modules sees what runs in its CI. The file opens with a comment
+// that names it, the Node it wants and how to check it, and the license notices of all the code it
+// carries — its own and every package's —; a package under a license off the list stops the build
+// (R12).
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -40,6 +42,10 @@ export function header(version: string, own: string, packages: readonly Carried[
       `Run by Node ${NODE} or newer, with no package of npm beside it:`,
       "",
       `  node synthetic-module_v${version}.mjs --module <package> <tag> <folder> <task>:<seed>...`,
+      `  node synthetic-module_v${version}.mjs --digest <package> <task>...`,
+      "",
+      "The first writes synthetic samples of a module's eval set into its folder; the second prints",
+      "each task's ID and the digest of its open view, by the projection the samples name it by.",
       "",
       "Its source is https://github.com/altnovatrail/canvas at the tag of its release, and a checkout",
       "of spec at a tag checks the file against the release's signature:",

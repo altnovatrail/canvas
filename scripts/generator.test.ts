@@ -11,7 +11,7 @@ import { afterAll, beforeAll, expect, test } from "vitest";
 import { PACKAGE as MODULE_PACKAGE } from "../src/eval/packages.fixture.ts";
 import { temporary } from "./folders.fixture.ts";
 import { buildGenerator, fileName, header } from "./generator.ts";
-import { writeModuleSamples } from "./synthetic-module.ts";
+import { moduleDigests, writeModuleSamples } from "./synthetic-module.ts";
 
 /** grade-3-math 0.2.0 of the release of modules v0.2.0, which ci-licenses verifies (T86). */
 const PACKAGE = fileURLToPath(MODULE_PACKAGE);
@@ -103,6 +103,7 @@ test("imports nothing but Node's own modules, and opens with what it is and its 
   const comment = text.slice(0, text.indexOf("\n*/\n"));
   expect(comment.startsWith("/*!\nsynthetic-module_v1.2.3.mjs")).toBe(true);
   expect(comment).toContain("release-verify canvas v1.2.3 synthetic-module_v1.2.3.mjs");
+  expect(comment).toContain("synthetic-module_v1.2.3.mjs --digest <package> <task>...");
   expect(comment).toContain("NovaTrail canvas — Apache-2.0");
   for (const name of packages) expect(comment).toContain(`\n${name} `);
   // Nothing in a notice ends the comment before its end.
@@ -126,9 +127,24 @@ test("writes a module's samples as writeModuleSamples does, byte for byte, and p
   }
 }, 60_000);
 
+test("prints the digests of the tasks' open views as moduleDigests does, and exits 1 naming a task without one (T97)", () => {
+  const tasks = ["times-tables-d5", "comparing-fractions-d1"];
+  expect(run(["--digest", PACKAGE, ...tasks])).toEqual({
+    out: `${moduleDigests(PACKAGE, tasks).lines.join("\n")}\n`,
+    err: "",
+    status: 0,
+  });
+  expect(run(["--digest", PACKAGE, "no-such-task", "times-tables-d5"])).toEqual({
+    out: `${moduleDigests(PACKAGE, ["times-tables-d5"]).lines[0]}\n`,
+    err: "no-such-task: novatrail/grade-3-math has no task no-such-task\n",
+    status: 1,
+  });
+}, 60_000);
+
 test("exits 2 on a call out of form and 1 on a call it refuses, writing nothing", () => {
   const usage =
-    "usage: node synthetic-module_v1.2.3.mjs --module <package> <tag> <folder> <task>:<seed>...\n";
+    "usage: node synthetic-module_v1.2.3.mjs --module <package> <tag> <folder> <task>:<seed>...\n" +
+    "       node synthetic-module_v1.2.3.mjs --digest <package> <task>...\n";
   expect(run([])).toEqual({ out: "", err: usage, status: 2 });
   expect(run(["--digest", PACKAGE])).toEqual({ out: "", err: usage, status: 2 });
   expect(run(["--module", PACKAGE, "v0.2.0"])).toEqual({ out: "", err: usage, status: 2 });

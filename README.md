@@ -51,7 +51,10 @@ Each release carries the generator of a module's synthetic samples as one file, 
 ```sh
 just -f spec/justfile release-verify canvas v<version> synthetic-module_v<version>.mjs
 node synthetic-module_v<version>.mjs --module <package> <tag> <folder> <task>:<seed>...
+node synthetic-module_v<version>.mjs --digest <package> <task>...
 ```
+
+`--digest` prints a line for each task named, its ID and the digest of its open view, `sha256:` and 64 hexadecimal digits, by the same projection the samples name a task by: a module's CI holds people's samples to the package of its commit with it. A task the generator draws no sample of — a choice, an essay, a zone — has its digest too. A template has no open view, and a task the package does not have no digest: the call prints the other tasks' lines all the same, names each of those after them, and exits 1.
 
 The file opens with a comment that says what it is and holds the license notices of all the code it carries, and its code is not minified, so that whoever runs it can read it.
 

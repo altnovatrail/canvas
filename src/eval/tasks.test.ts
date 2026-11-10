@@ -5,6 +5,8 @@ import { INVENTORY, type Json, RELEASE, repackaged, SERVER, taskIn } from "./pac
 import { canonicalText, moduleTasksOf, type OpenTasks, openTasksOf, TUTOR_FILE } from "./tasks.js";
 
 const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
+/** A digest as the module format writes one: sha256 and 64 hexadecimal digits. */
+const DIGEST = /^sha256:[0-9a-f]{64}$/;
 const bytes = readFileSync(new URL(`../../tasks/${TUTOR_FILE.name}`, import.meta.url));
 
 /** The tasks of the file the tree holds, as the synthetic samples take them. */
@@ -186,7 +188,8 @@ test("a module's package gives each task the open view module-kit gives, by the 
   expect(task && "canvas" in task && "workbook" in task.canvas).toBe(true);
 });
 
-// What the generator draws no sample of (T86; R63): each kept, with why.
+// What the generator draws no sample of (T86; R63): each kept, with why, and with the digest of its
+// open view, which a person's sample of it names (T97), but a template, which has none.
 test.each([
   ["a template", (task: Json) => (task.template = { parameters: {} }), "a template"],
   [
@@ -217,6 +220,14 @@ test.each([
     "not one answer slot anywhere on the sheet",
   ],
   [
+    "a slot anywhere on a canvas of another kind",
+    (task: Json) => {
+      task.canvas = { kind: "number_line" };
+      task.items = [{ answer_slots: [{ binding: "anywhere" }] }];
+    },
+    "a canvas of the kind number_line",
+  ],
+  [
     "a workbook of an answer slot outside its boxes",
     (task: Json) => {
       task.items = [...(task.items as Json[]), { answer_slots: [{ binding: "anywhere" }] }];
@@ -225,9 +236,12 @@ test.each([
   ],
 ])("a package's task that is %s is kept with why the generator draws none", (_, change, why) => {
   const [inventory, server] = repackaged((view) => change(taskIn(view)));
-  expect(moduleTasksOf(inventory, server, "v0.2.0", sha256).tasks.get("times-tables-d1")).toEqual({
-    refused: expect.stringContaining(why),
-  });
+  const task = moduleTasksOf(inventory, server, "v0.2.0", sha256).tasks.get("times-tables-d1");
+  expect(task).toEqual(
+    why === "a template"
+      ? { refused: expect.stringContaining(why) }
+      : { refused: expect.stringContaining(why), openViewDigest: expect.stringMatching(DIGEST) },
+  );
 });
 
 test("a sheet of one answer slot anywhere drops its closed fields, and a package out of shape is refused", () => {

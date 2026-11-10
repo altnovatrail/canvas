@@ -1,5 +1,6 @@
 // The synthetic samples of a module's eval set (T86, T96 in RUN.md; R63, R68 in
-// docs/decisions.md): what writeModuleSamples writes and refuses, as the generator's file runs it.
+// docs/decisions.md): what writeModuleSamples writes and refuses, as the generator's file runs it,
+// and the digests of the tasks' open views that moduleDigests prints (T97).
 
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -11,8 +12,9 @@ import {
   repackaged,
   taskIn,
 } from "../src/eval/packages.fixture.ts";
+import { readSample } from "../src/eval/sample.ts";
 import { temporary } from "./folders.fixture.ts";
-import { writeModuleSamples } from "./synthetic-module.ts";
+import { moduleDigests, writeModuleSamples } from "./synthetic-module.ts";
 
 // The samples of a module's eval set (T86; R63), on grade-3-math 0.2.0 from the release of modules
 // v0.2.0, which ci-licenses verifies.
@@ -123,4 +125,60 @@ test("examples/module-sheet-eval-set.json is a module's sheet, as the generator 
   await expect(readFileSync(join(folder, "synthetic-401.json"), "utf8")).toMatchFileSnapshot(
     "../examples/module-sheet-eval-set.json",
   );
+});
+
+// The digests of the tasks' open views (T97): a module's CI holds people's samples to them.
+const TASKS = [
+  "comparing-fractions-d1",
+  "comparing-fractions-d3",
+  "comparing-fractions-d5",
+  "division-with-remainder-d1",
+  "division-with-remainder-d3",
+  "division-with-remainder-d5",
+  "fractions-of-a-whole-d1",
+  "fractions-of-a-whole-d3",
+  "fractions-of-a-whole-d5",
+  "times-tables-d1",
+  "times-tables-d3",
+  "times-tables-d5",
+];
+
+test("a task's digest is the one its sample names, a line to a task in the order named", () => {
+  const folder = temporary("eval");
+  writeModuleSamples(
+    PACKAGE,
+    "v0.2.0",
+    folder,
+    TASKS.map((task, index) => `${task}:${501 + index}`),
+  );
+  const named = TASKS.map((task, index) => {
+    const sample = readSample(readFileSync(join(folder, `synthetic-${501 + index}.json`), "utf8"));
+    return `${task}\t${sample.task?.openViewDigest}`;
+  });
+  const order = [...TASKS].reverse();
+  expect(moduleDigests(PACKAGE, order)).toEqual({ lines: [...named].reverse(), wrong: [] });
+  expect(named.every((line) => /\tsha256:[0-9a-f]{64}$/.test(line))).toBe(true);
+  // Twelve drawn, workbooks among them: a time of its own, as the generator's tests have.
+}, 60_000);
+
+test("a task the generator draws none of has a digest, but a template or a task not there is named", () => {
+  const choice = packageWith((view) => {
+    const task = taskIn(view);
+    task.canvas = { kind: "handwriting_sheet" };
+    task.items = [{ answer_slots: [{ binding: "choice", options: ["1", "2"] }] }];
+  });
+  const [line] = moduleDigests(choice, ["times-tables-d1"]).lines;
+  expect(line).toMatch(/^times-tables-d1\tsha256:[0-9a-f]{64}$/);
+  expect(line).not.toBe(moduleDigests(PACKAGE, ["times-tables-d1"]).lines[0]);
+  // The others' lines come all the same, and each that has no digest is named.
+  const template = packageWith((view) => {
+    taskIn(view).template = { parameters: {} };
+  });
+  expect(moduleDigests(template, ["times-tables-d1", "times-tables-d3", "no-such-task"])).toEqual({
+    lines: moduleDigests(PACKAGE, ["times-tables-d3"]).lines,
+    wrong: [
+      "times-tables-d1: no open view, being a template: its instance by a seed is module-kit's",
+      "no-such-task: novatrail/grade-3-math has no task no-such-task",
+    ],
+  });
 });

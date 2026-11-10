@@ -12,15 +12,32 @@
 // synthetic-module_v<X.Y.Z>.mjs, which just synthetic-module runs too:
 //
 //   node synthetic-module_v<X.Y.Z>.mjs --module <package> <tag> <folder> <task>:<seed>...
+//   node synthetic-module_v<X.Y.Z>.mjs --digest <package> <task>...
+//
+// The second prints each task's ID and the digest of its open view, by the projection the samples
+// name it by (T97): a module's CI holds people's samples to the package of its commit with it, and
+// a task of a changed open view loses them (R95 spec). A template has no open view, and a task the
+// package does not have no digest: the call prints the others' lines and names those, exit 1.
 
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { readSample, sampleText } from "../src/eval/sample.ts";
 import { moduleSample, SCENARIOS, type Synthetic } from "../src/eval/synthetic.ts";
-import { moduleTasksOf } from "../src/eval/tasks.ts";
+import { type ModuleTasks, moduleTasksOf } from "../src/eval/tasks.ts";
 
 const sha256 = (data: string | Buffer) => createHash("sha256").update(data).digest("hex");
+
+/** The tasks of the package in `pack`, its inventory.json and server.json, for samples that name
+ * the release of modules `tag`. */
+function packageOf(pack: string, tag: string): ModuleTasks {
+  return moduleTasksOf(
+    readFileSync(join(pack, "inventory.json"), "utf8"),
+    readFileSync(join(pack, "server.json"), "utf8"),
+    tag,
+    sha256,
+  );
+}
 
 /** A call of a module's sample: a task's ID and a seed, `<task>:<seed>`. */
 const CALL = /^([a-z0-9][a-z0-9-]*):(0|[1-9]\d*)$/;
@@ -36,12 +53,7 @@ export function writeModuleSamples(
   folder: string,
   calls: readonly string[],
 ): string[] {
-  const module = moduleTasksOf(
-    readFileSync(join(pack, "inventory.json"), "utf8"),
-    readFileSync(join(pack, "server.json"), "utf8"),
-    tag,
-    sha256,
-  );
+  const module = packageOf(pack, tag);
   const wrong: string[] = [];
   const seeds = new Set<string>();
   const made: Synthetic[] = [];
@@ -100,7 +112,62 @@ function otherSample(path: string, module: string, task: string): string | undef
 /** How the file is called, by the name it runs under: the release's, or the build's. */
 export function usage(): string {
   const file = basename(process.argv[1] ?? "synthetic-module.mjs");
-  return `usage: node ${file} --module <package> <tag> <folder> <task>:<seed>...`;
+  return [
+    `usage: node ${file} --module <package> <tag> <folder> <task>:<seed>...`,
+    `       node ${file} --digest <package> <task>...`,
+  ].join("\n");
+}
+
+/** The tag a reference to a task names when the call names none: the digest of a task's open view
+ * is of the view alone, whatever release the package comes from. */
+const ANY_TAG = "v0.0.0";
+
+/**
+ * The digests of the named tasks' open views, on the package in `pack`, by the projection the
+ * samples name a task by: `lines`, one to each task that has one, its ID and its digest, in the
+ * order named; and `wrong`, why each other has none — a template has no open view, and a task the
+ * package does not have no digest.
+ */
+export function moduleDigests(
+  pack: string,
+  tasks: readonly string[],
+): { lines: string[]; wrong: string[] } {
+  const module = packageOf(pack, ANY_TAG);
+  const lines: string[] = [];
+  const wrong: string[] = [];
+  for (const task of tasks) {
+    const open = module.tasks.get(task);
+    if (open === undefined) wrong.push(`${task}: ${module.module} has no task ${task}`);
+    else if ("reference" in open) lines.push(`${task}\t${open.reference.openViewDigest}`);
+    else if (open.openViewDigest) lines.push(`${task}\t${open.openViewDigest}`);
+    else wrong.push(`${task}: no open view, being ${open.refused}`);
+  }
+  return { lines, wrong };
+}
+
+/** Run a call: print its lines, then why it fails, if it does; give the exit code, 0 or 1. */
+function run(call: () => { readonly lines: readonly string[]; readonly wrong: readonly string[] }) {
+  try {
+    const { lines, wrong } = call();
+    for (const line of lines) console.log(line);
+    if (wrong.length === 0) return 0;
+    console.error(wrong.join("\n"));
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+  }
+  return 1;
+}
+
+/** Run the call of the digests, its arguments after --digest, and give the exit code: 0; 1 when a
+ * task named has no digest, whose reason it prints after the others' lines, or the package cannot
+ * be read; 2 when the call is out of form. */
+export function digestMain(args: readonly string[]): number {
+  const [pack, ...tasks] = args;
+  if (!pack || tasks.length === 0) {
+    console.error(usage());
+    return 2;
+  }
+  return run(() => moduleDigests(pack, tasks));
 }
 
 /** Run the call of a module's samples, its arguments after --module: their lines, or why none is
@@ -111,11 +178,5 @@ export function moduleMain(args: readonly string[]): number {
     console.error(usage());
     return 2;
   }
-  try {
-    for (const line of writeModuleSamples(pack, tag, folder, calls)) console.log(line);
-    return 0;
-  } catch (error) {
-    console.error(error instanceof Error ? error.message : String(error));
-    return 1;
-  }
+  return run(() => ({ lines: writeModuleSamples(pack, tag, folder, calls), wrong: [] }));
 }
