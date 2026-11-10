@@ -22,7 +22,7 @@ export const WORKBOOK = "16";
 
 /** The build the workflow's build job wrote with scripts/page.ts. */
 export const BUILD = "build/page";
-/** The test build, with the test set of texts approved for tests alone (T84; R59), as the workflow
+/** The test build, with the legal texts' part for tests alone (T84, T89; R59, R69), as the workflow
  * serves it: its file named apart, for Chrome keeps both downloads in one list (T22). */
 export const TEST_BUILD = "build/page-test-served";
 

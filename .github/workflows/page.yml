@@ -27,6 +27,7 @@ on:
       - "src/**"
       - "page/**"
       - "scripts/page.ts"
+      - "scripts/legal.ts"
       - "scripts/csp.ts"
       - "tasks/**"
       - "package.json"
@@ -71,8 +72,8 @@ jobs:
             echo "page=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          changed=$(git diff --name-only "$BASE...$HEAD" -- src page scripts/page.ts scripts/csp.ts \
-              tasks package.json package-lock.json .devcontainer/Dockerfile emulators \
+          changed=$(git diff --name-only "$BASE...$HEAD" -- src page scripts/page.ts scripts/legal.ts \
+              scripts/csp.ts tasks package.json package-lock.json .devcontainer/Dockerfile emulators \
               .github/workflows/page.yml)
           echo "$changed"
           echo "page=$([[ -n "$changed" ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
@@ -82,7 +83,7 @@ jobs:
   # file pins, its version none of a release. It is downloaded from the runner's server as from a
   # release of GitHub, where the emulator reaches it on its own localhost through adb reverse
   # (emulators/android.sh). The files it saved are read and held to the protocol here too, in the
-  # same stage. The test build, with the test set of texts approved for tests alone, goes the same
+  # same stage. The test build, with the legal texts' part for tests alone (T89), goes the same
   # way after the release's, a child's session on it (T22; R65), and is kept as an artifact of its
   # own (T84; R58, R59): no release carries it.
   android:

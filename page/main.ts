@@ -6,12 +6,12 @@
 // consumer does, through its properties and events (the 2026-11-02 amendment to R07), and saves a
 // sample as a file on the device.
 //
-// First the start (T20; R58): the purpose — the measurement, or a module's eval set — as the set
-// of texts the build carries opens them (R11), the writer's code for the measurement, typed or new
-// and never remembered, the purpose's notice and the statements without which the person goes no
-// further. Below the purposes, a child's session (T84; R59): the adult who leads it types the
-// child's code from the form accepted, or asks a new one for a form, without the child. Once begun,
-// they hold for this opening alone: another needs the page opened anew.
+// First the start (T20; R58): the purpose — the measurement, or a module's eval set — as the sets
+// of texts the build carries open them (R11; T89, R69), the writer's code for the measurement,
+// typed or new and never remembered, the purpose's notice and the statements without which the
+// person goes no further. Below the purposes, a child's session (T84; R59): the adult who leads it
+// types the child's code from the form accepted, or asks a new one for a form, without the child.
+// Once begun, they hold for this opening alone: another needs the page opened anew.
 //
 // The writer writes, then marks the writing up (T81): on a sheet, the parts of the solution — the
 // element's groups of strokes, which the writer joins — with their texts and flags, the final
@@ -19,7 +19,7 @@
 // element frames on the sheet what is being marked, and the page shows the crops the model would
 // see. A sample is saved only once its markup is whole (page/markup.ts). In a child's session the
 // child writes and the adult marks up, from what the child says. The page remembers nothing: not a
-// sheet half written either. Every text is page/texts.ts's or the set's.
+// sheet half written either. Every text is page/texts.ts's or a set's.
 //
 // Below the start, a sample file opens to be looked at (T87; R64): its strokes, drawn from the file
 // alone with what a history erased apart, its crops and its markup in words, for whoever looks in it
@@ -64,9 +64,20 @@ import {
   sheetMarkup,
   workbookMarkup,
 } from "./markup.js";
+import { noticeNodes } from "./notice.js";
 import { type Field, type Line, type SampleView, viewOf } from "./open.js";
-import type { TextSet } from "./sets.js";
-import { codeOf, hasCode, lacks, type PurposeKey, purposes, statements, textsOf } from "./steps.js";
+import { type AuthorDraft, isDraft, type LegalSet, type PageTexts } from "./sets.js";
+import {
+  codeOf,
+  handOverOf,
+  hasCode,
+  lacks,
+  type PurposeKey,
+  purposes,
+  statements,
+  textsOf,
+  versionOf,
+} from "./steps.js";
 import { OPEN, type TaskKind, TEXTS } from "./texts.js";
 
 /** A task the build put in: its kind, its bank, its open view, and the sample's view of it. */
@@ -80,12 +91,18 @@ interface PageTask {
 /** What scripts/page.ts puts into the build. */
 declare const SAMPLES_PAGE: {
   readonly version: string;
-  readonly texts: TextSet;
+  readonly texts: PageTexts;
   readonly tasks: readonly PageTask[];
 };
 
 const data = SAMPLES_PAGE;
-const set = data.texts;
+const texts = data.texts;
+/** The version of the texts of a purpose that is open, which its samples name. */
+function versionFor(purpose: PurposeKey): string {
+  const version = versionOf(texts, purpose);
+  if (version === undefined) throw new TypeError(`the build has no texts for ${purpose}`);
+  return version;
+}
 /** Whether a task of the build is a module's: only such a task's sample goes into an eval set. */
 const ofModule = ({ open }: PageTask) => open.reference.source?.case === "modules";
 const moduleTasks = data.tasks.some(ofModule);
@@ -630,7 +647,7 @@ function current(): { id: string; text: string } | undefined {
     id: personId(random(12)),
     purpose: evalSet ? Purpose.EVAL_SET : Purpose.MEASUREMENT,
     writer: writer(),
-    origin: { person: { textSetVersion: set.version, canvasVersion: data.version } },
+    origin: { person: { textSetVersion: versionFor(begun.purpose), canvasVersion: data.version } },
     ...(begun.code ? { writerCode: begun.code } : {}),
     task: open.reference,
     surface,
@@ -653,7 +670,7 @@ function save(): void {
   // The download has its own copy once it has begun.
   setTimeout(() => URL.revokeObjectURL(link.href), 60_000);
   status.textContent = TEXTS.saved(sample.id);
-  handOver.textContent = (begun && textsOf(set, begun.purpose)?.handOver) ?? "";
+  handOver.textContent = (begun && handOverOf(texts, begun.purpose)) ?? "";
   handOver.hidden = handOver.textContent === "";
   fresh();
   refresh();
@@ -689,11 +706,11 @@ function codeChosen(purpose: PurposeKey | undefined): {
   return code ? { way, code, typed: true } : { way, typed: true };
 }
 
-/** The purposes the set opens, each a choice, a child's session in its own group below the others;
+/** The purposes the sets open, each a choice, a child's session in its own group below the others;
  * a closed one shown with why, and not to be chosen. */
 function purposeChoices(): void {
   const session = byId("session");
-  for (const { key, open, note } of purposes(set, moduleTasks)) {
+  for (const { key, open, note } of purposes(texts, moduleTasks)) {
     const fieldset = key === "child" ? session : byId("purpose");
     const label = make("label");
     const radio = make("input", "", { type: "radio", name: "purpose", value: key });
@@ -711,11 +728,20 @@ function purposeChoices(): void {
   }
 }
 
+/** A purpose's notice: a legal text's gist in Russian, then its English text, which is the one in
+ * force (privacy 7 spec); the author's draft, paragraph by paragraph. */
+function noticeOf(own: LegalSet | AuthorDraft): HTMLElement[] {
+  if (isDraft(own)) return own.notice.map((paragraph) => make("p", paragraph));
+  const english = make("div", "", { lang: "en", class: "legal" });
+  english.append(...noticeNodes(own.notice));
+  return [make("p", TEXTS.gist(own.gist)), make("p", TEXTS.inEnglish), english];
+}
+
 /** The statements of a purpose, asked anew: ticked for another purpose, they say nothing here. */
 function statementsAsked(purpose: PurposeKey): void {
   const box = byId("statements");
   for (const label of box.querySelectorAll("label")) label.remove();
-  for (const statement of statements(set, purpose)) {
+  for (const statement of statements(texts, purpose)) {
     const label = make("label");
     label.append(make("input", "", { type: "checkbox", "data-statement": "" }), ` ${statement}`);
     box.append(label);
@@ -750,23 +776,23 @@ function startShown(changedPurpose: boolean): void {
   shownCode.textContent = "";
   if (way === "new" && coded === "child") {
     newCodes.child ??= writerCode(random(8));
-    shownCode.textContent = TEXTS.newChildCode(newCodes.child, set.version);
+    shownCode.textContent = TEXTS.newChildCode(newCodes.child, versionFor("child"));
   } else if (way === "new" && coded === "measurement") {
     newCodes.measurement ??= writerCode(random(8));
     shownCode.textContent = TEXTS.newCode(newCodes.measurement);
   }
-  const texts = purpose ? textsOf(set, purpose) : undefined;
-  byId("notice").hidden = !texts;
-  byId("statements").hidden = !texts;
-  if (changedPurpose && purpose && texts) {
-    byId("notice-title").textContent = TEXTS.notice(TEXTS.purpose[purpose], set.version);
-    byId("notice-text").replaceChildren(...texts.notice.map((paragraph) => make("p", paragraph)));
+  const own = purpose ? textsOf(texts, purpose) : undefined;
+  byId("notice").hidden = !own;
+  byId("statements").hidden = !own;
+  if (changedPurpose && purpose && own) {
+    byId("notice-title").textContent = TEXTS.notice(TEXTS.purpose[purpose], own.version);
+    byId("notice-text").replaceChildren(...noticeOf(own));
     statementsAsked(purpose);
   }
   const agreed = [
     ...byId("statements").querySelectorAll<HTMLInputElement>("input[data-statement]"),
   ].map((tick) => tick.checked);
-  const missing = lacks(set, moduleTasks, {
+  const missing = lacks(texts, moduleTasks, {
     ...(purpose ? { purpose } : {}),
     ...codeChosen(purpose),
     agreed,
@@ -803,7 +829,7 @@ function begin(): void {
   byId("summary-text").textContent = TEXTS.summary(
     TEXTS.purpose[purpose],
     begun.code,
-    set.version,
+    versionFor(purpose),
     child,
   );
   // In a child's session the child writes: no adult's hand to ask of each sample.

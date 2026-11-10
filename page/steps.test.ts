@@ -1,64 +1,69 @@
-// The steps before writing (T20, T84 in RUN.md; R58, R59 in docs/decisions.md): the purposes each
-// set of texts opens, a child's session among them, the statements asked, the writer's code typed,
-// and what the start lacks; and the sets of page/sets/ held to the rules of page/sets.ts.
+// The steps before writing (T20, T84, T89 in RUN.md; R58, R59, R69 in docs/decisions.md): the
+// purposes the build's texts open, a child's session among them, the statements asked, the writer's
+// code typed, and what the start lacks; and the author's draft in page/sets/ held to the rules of
+// page/sets.ts.
 
 import { expect, test } from "vitest";
 import draftJson from "./sets/draft-0.json" with { type: "json" };
-import approvedJson from "./sets/test-approved-0.json" with { type: "json" };
-import { isTestSet, textSetOf } from "./sets.js";
-import { codeOf, lacks, purposes, statements } from "./steps.js";
-import { PURPOSE_NOTES, START_LACKS } from "./texts.js";
+import { draftOf, type LegalSet, type PageTexts } from "./sets.js";
+import { codeOf, handOverOf, lacks, purposes, statements, versionOf } from "./steps.js";
+import { HAND_OVER, PURPOSE_NOTES, START_LACKS, STATEMENTS } from "./texts.js";
 
-const draft = textSetOf(draftJson);
-const approved = textSetOf(approvedJson);
+/** A current set of the legal texts, as the build gives one. */
+function legal(version: string): LegalSet {
+  return { version, notice: [{ paragraph: [{ text: "The notice." }] }], gist: "Суть." };
+}
 
-test("the sets in page/sets/ hold to the rules, and only the test one is a test set", () => {
-  expect(draft.version).toBe("draft-0");
-  expect(draft.status).toBe("draft");
-  expect(draft.evalSet).toBeUndefined();
-  expect(isTestSet(draft)).toBe(false);
-  expect(approved.status).toBe("approved");
-  expect(isTestSet(approved)).toBe(true);
+const author = draftOf(draftJson);
+/** A build whose measurement has no current set: the author's draft opens it. */
+const draft: PageTexts = { measurement: author };
+/** A build with a current set for every purpose. */
+const approved: PageTexts = {
+  measurement: legal("measure-1"),
+  evalSet: legal("eval-set-1"),
+  child: legal("child-sample-1"),
+};
+
+test("the author's draft holds to the rules, and is no version of a set of the legal texts", () => {
+  expect(author.version).toBe("draft-0");
+  // The file of a sample holds no pressure (R93 spec).
+  expect(author.notice.join(" ")).toContain("без нажима");
 });
 
-test("a set is refused for a version out of shape, none, a status unknown or texts missing", () => {
-  const good: Record<string, unknown> = { ...draftJson };
-  const bad = (change: Record<string, unknown>) => () => textSetOf({ ...good, ...change });
+test("a draft is refused for a version out of shape, none, or texts missing", () => {
+  const bad = (change: Record<string, unknown>) => () => draftOf({ ...draftJson, ...change });
   expect(bad({ version: "none" })).toThrow(TypeError);
   expect(bad({ version: "draft 0" })).toThrow(TypeError);
   expect(bad({ version: "x".repeat(33) })).toThrow(TypeError);
-  expect(bad({ status: "final" })).toThrow(TypeError);
-  expect(bad({ adult: " " })).toThrow(TypeError);
-  expect(bad({ measurement: { notice: [], statement: "s", handOver: "h" } })).toThrow(TypeError);
-  // A draft with the eval set's texts, or a child's session's.
-  expect(bad({ evalSet: draftJson.measurement })).toThrow(TypeError);
-  expect(bad({ child: draftJson.measurement })).toThrow(TypeError);
-  expect(bad({ status: "approved", child: { notice: ["n"], statement: "s" } })).toThrow(TypeError);
-  // An approved set may come for the adults' measurement alone: the author approves each consent apart.
-  const { evalSet: _evalSet, child: _child, ...adults } = approvedJson;
-  expect(textSetOf(adults)).toEqual({ ...approved, evalSet: undefined, child: undefined });
+  expect(bad({ notice: [] })).toThrow(TypeError);
+  expect(bad({ notice: [" "] })).toThrow(TypeError);
+  expect(bad({ statement: "" })).toThrow(TypeError);
+  expect(bad({ handOver: undefined })).toThrow(TypeError);
 });
 
-test("a draft opens the measurement to the author alone and keeps the eval set and a child's session closed, with why", () => {
+test("the draft opens the measurement to the author alone, and a purpose with no set is closed, with why", () => {
   expect(purposes(draft, true)).toEqual([
     { key: "measurement", open: true, note: PURPOSE_NOTES.measurementDraft },
-    { key: "evalSet", open: false, note: PURPOSE_NOTES.evalSetDraft },
-    { key: "child", open: false, note: PURPOSE_NOTES.childDraft },
+    { key: "evalSet", open: false, note: PURPOSE_NOTES.evalSetNoSet },
+    { key: "child", open: false, note: PURPOSE_NOTES.childNoSet },
   ]);
 });
 
-test("an approved set opens the eval set only in a build with tasks of modules, and each of the eval set and the session only with its texts", () => {
+test("each purpose opens with its own set, and the eval set only in a build with tasks of modules", () => {
   expect(purposes(approved, true)).toEqual([
     { key: "measurement", open: true },
     { key: "evalSet", open: true },
     { key: "child", open: true },
   ]);
-  // The author may approve the adults' texts before a child's, or the other way round.
-  const { evalSet: _evalSet, child: _child, ...adults } = approved;
-  expect(purposes(adults, true).slice(1)).toEqual([
-    { key: "evalSet", open: false, note: PURPOSE_NOTES.noTexts },
-    { key: "child", open: false, note: PURPOSE_NOTES.noTexts },
+  // The author approves the adults' consent and a child's apart.
+  expect(purposes({ measurement: legal("measure-1") }, true).slice(1)).toEqual([
+    { key: "evalSet", open: false, note: PURPOSE_NOTES.evalSetNoSet },
+    { key: "child", open: false, note: PURPOSE_NOTES.childNoSet },
   ]);
+  expect(purposes({ measurement: author, child: legal("child-sample-1") }, true)[2]).toEqual({
+    key: "child",
+    open: true,
+  });
   // A sample of a task of tutor would be refused by a module's eval set.
   expect(purposes(approved, false)[1]).toEqual({
     key: "evalSet",
@@ -67,19 +72,34 @@ test("an approved set opens the eval set only in a build with tasks of modules, 
   });
 });
 
-test("each purpose asks the age and its own statement: the author's samples, or the form", () => {
+test("a purpose's samples name its set's version, and its file goes where the page's words say", () => {
+  expect(versionOf(approved, "measurement")).toBe("measure-1");
+  expect(versionOf(approved, "child")).toBe("child-sample-1");
+  expect(versionOf(draft, "measurement")).toBe("draft-0");
+  expect(versionOf(draft, "evalSet")).toBeUndefined();
+  expect(handOverOf(approved, "evalSet")).toBe(HAND_OVER.evalSet);
+  expect(handOverOf(approved, "child")).toBe(HAND_OVER.child);
+  expect(handOverOf(draft, "measurement")).toBe(author.handOver);
+  expect(handOverOf(draft, "child")).toBeUndefined();
+});
+
+test("each purpose asks the age and its own statement: the author's samples, or the form of its version", () => {
   expect(statements(draft, "measurement")).toEqual([
-    draft.adult,
+    STATEMENTS.adult,
     "Я автор проекта и пишу свои образцы.",
   ]);
-  expect(statements(approved, "evalSet")[1]).toMatch(/Форма согласия версии test-approved-0/);
-  expect(statements(approved, "child")[1]).toMatch(/родителя или опекуна этого ребёнка/);
+  expect(statements(approved, "measurement")[1]).toBe(
+    "Форма согласия версии measure-1 подписана и принята организатором.",
+  );
+  expect(statements(approved, "evalSet")[1]).toMatch(/Форма согласия версии eval-set-1/);
+  expect(statements(approved, "child")[1]).toMatch(
+    /родителя или опекуна этого ребёнка версии child-sample-1/,
+  );
+  expect(statements(draft, "child")).toEqual([STATEMENTS.adult]);
   // The age, and the right to make the agreement where the adult lives (R124 spec; T88).
-  for (const set of [draft, approved]) {
-    expect(set.adult).toContain(
-      "18 лет или больше, и по законам места, где я живу, я вправе заключить этот договор.",
-    );
-  }
+  expect(STATEMENTS.adult).toContain(
+    "18 лет или больше, и по законам места, где я живу, я вправе заключить этот договор.",
+  );
 });
 
 test("a typed code is forgiven its case and spaces, and kept to the protocol's shape", () => {

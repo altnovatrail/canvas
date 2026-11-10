@@ -31,19 +31,19 @@ const IDS = BANKS.flatMap(({ tasks }) => tasks.map(({ id }) => id));
 const WORKBOOK = String(IDS.indexOf("workbook-01"));
 const ESSAY = String(IDS.indexOf("essay-01"));
 
-/** The test set of texts, approved for tests alone (T20; R58). */
-const TEST_SET = "page/sets/test-approved-0.json";
+/** The part of the legal texts for tests alone, its sets in force (T20, T89; R58, R69). */
+const TEST_PART = "page/sets/test";
 
 let folder: string;
 let built: { path: string; packages: readonly Carried[] };
-/** The page built with the test set of texts, approved for tests alone. */
+/** The page built with the part of the legal texts for tests alone. */
 let tested: { path: string };
 let browser: Browser;
 
 beforeAll(async () => {
   folder = mkdtempSync(join(tmpdir(), "canvas-page-"));
   built = await buildPage(folder, "0.0.0");
-  tested = await buildPage(join(folder, "test"), "0.0.0", TEST_SET);
+  tested = await buildPage(join(folder, "test"), "0.0.0", TEST_PART);
   browser = await chromium.launch();
 }, 120_000);
 
@@ -183,10 +183,19 @@ describe("the builder", () => {
     }
   });
 
-  test("takes the draft of texts into any version, and the test set into none but 0.0.0", () => {
-    expect(textsFor("page/sets/draft-0.json", "1.0.0").version).toBe("draft-0");
-    expect(textsFor(TEST_SET, "0.0.0").version).toBe("test-approved-0");
-    expect(() => textsFor(TEST_SET, "1.0.0")).toThrow("goes into no page but 0.0.0");
+  test("takes the release file's sets and the draft while the measurement has none, and the part for tests into no version but 0.0.0 (T89)", () => {
+    // Every set of legal-1 at v0.14.0 is a draft: the measurement opens by the author's draft
+    // alone.
+    expect(textsFor("1.0.0")).toEqual({
+      measurement: expect.objectContaining({ version: "draft-0" }),
+    });
+    const tests = textsFor("0.0.0", TEST_PART);
+    expect([tests.measurement.version, tests.evalSet?.version, tests.child?.version]).toEqual([
+      "test-measure-1",
+      "test-eval-set-1",
+      "test-child-sample-1",
+    ]);
+    expect(() => textsFor("1.0.0", TEST_PART)).toThrow("go into no page but 0.0.0");
   });
 });
 
@@ -223,7 +232,9 @@ describe("the file", () => {
     // The minifier writes the strings of the page's data in any of the quotes.
     expect(page).toMatch(/version:["'`]1\.2\.3["'`]/);
     expect(page).toMatch(/["'`]draft-0["'`]/);
-    expect(page).not.toContain("test-approved-0");
+    expect(page).not.toMatch(/test-(measure|eval-set|child-sample)/);
+    // No draft of the legal texts is shown to anyone (README of spec's legal part, section 2).
+    expect(page).not.toContain("what happens to your samples");
   }, 60_000);
 
   test("names every package it carries, with its license's text, and the icons' set", () => {
@@ -283,12 +294,14 @@ describe("opened from a file", () => {
       // once the script runs (T85).
       expect(readFileSync(built.path, "utf8")).toContain("На iPad сборку, открытую из файла");
       expect(await page.locator("#no-script").count()).toBe(0);
-      // The start (T20): under the draft the eval set is closed, with why, and nothing is written
-      // before the purpose, a new writer's code shown to be written down, and both statements.
+      // The start (T20, T89): with no set of its own the eval set is closed, with why, and so is a
+      // child's session; nothing is written before the purpose, a new writer's code shown to be
+      // written down, and both statements.
       expect(await page.isDisabled('input[name="purpose"][value="evalSet"]')).toBe(true);
-      expect(await page.textContent("#purpose-note-evalSet")).toContain("черновые");
+      expect(await page.textContent("#purpose-note-evalSet")).toContain("не утверждён");
       expect(await page.isDisabled('input[name="purpose"][value="child"]')).toBe(true);
-      expect(await page.textContent("#purpose-note-child")).toContain("черновые");
+      expect(await page.textContent("#purpose-note-child")).toContain("не утверждён");
+      expect(await page.textContent("#purpose-note-measurement")).toContain("автора проекта");
       expect(await page.isHidden("#work")).toBe(true);
       const code = (await begin(page, "measurement")) ?? "";
       expect(code).toMatch(/^[0-9A-Z]{6,16}$/);
@@ -455,7 +468,7 @@ describe("opened from a file", () => {
     }
   }, 60_000);
 
-  test("with the test set of texts asks the form of the measurement, and keeps the eval set closed in a build of tutor's tasks (T20)", async () => {
+  test("with the part for tests shows the set's gist and English text, asks the form of its version, and keeps the eval set closed in a build of tutor's tasks (T20, T89)", async () => {
     const context = await browser.newContext({ acceptDownloads: true });
     try {
       const page = await context.newPage();
@@ -465,10 +478,33 @@ describe("opened from a file", () => {
       expect(await page.textContent("#purpose-note-evalSet")).toContain("нет задач модулей");
       expect(await page.locator("#purpose-note-measurement").count()).toBe(0);
       await page.check('input[name="purpose"][value="measurement"]');
-      expect(await page.textContent("#notice-title")).toContain("test-approved-0");
+      expect(await page.textContent("#notice-title")).toContain("test-measure-1");
+      // The gist in Russian, then the text in force, in English, block by block.
+      const notice = page.locator("#notice-text");
+      expect(await notice.locator("p").first().textContent()).toContain("Коротко: Тестовый набор");
+      const english = notice.locator('div[lang="en"]');
+      expect(await english.locator("h4").first().textContent()).toBe("Test set: the measurement");
+      expect(await english.locator("h5").allTextContents()).toEqual([
+        "What a sample holds",
+        "How it ends",
+      ]);
+      expect(await english.locator("ul > li").count()).toBe(3);
+      expect(await english.locator("strong").first().textContent()).toBe("for tests alone");
+      expect(await english.locator("li code").textContent()).toBe("ABCD2345");
+      expect(await english.locator("thead th").allTextContents()).toEqual([
+        "Who",
+        "Sees the sample",
+      ]);
+      expect(await english.locator("tbody tr").count()).toBe(2);
+      // An ordered list keeps the number the text gives its first item.
+      expect(
+        await english
+          .locator("ol")
+          .evaluateAll((lists) => lists.map((list) => (list as HTMLOListElement).start)),
+      ).toEqual([1, 2]);
       const ticks = page.locator("#statements label");
       expect(await ticks.count()).toBe(2);
-      expect(await ticks.nth(1).textContent()).toContain("Форма согласия версии test-approved-0");
+      expect(await ticks.nth(1).textContent()).toContain("Форма согласия версии test-measure-1");
       await begin(page, "measurement", "ab12 cd34");
       const box = await page.locator("novatrail-canvas").boundingBox();
       if (!box) throw new Error("the element is not shown");
@@ -476,9 +512,9 @@ describe("opened from a file", () => {
       const sample = await markAndSave(page, "x = 2");
       expect(sample.purpose).toBe(Purpose.MEASUREMENT);
       expect(sample.writerCode).toBe("AB12CD34");
-      expect(sample.textSetVersion).toBe("test-approved-0");
+      expect(sample.textSetVersion).toBe("test-measure-1");
       // Where the file goes is shown for the one saved, and goes with the next stroke.
-      expect(await page.isVisible("#hand-over")).toBe(true);
+      expect(await page.textContent("#hand-over")).toContain("по ссылке на загрузку");
       await page.evaluate(() => window.scrollTo(0, 0));
       await stroke(page, box, [300, 220], [360, 260]);
       expect(await page.isHidden("#hand-over")).toBe(true);
@@ -487,7 +523,7 @@ describe("opened from a file", () => {
     }
   }, 60_000);
 
-  test("with the test set of texts leads a child's session: the code of the form typed, the child writing, a sample of measurement by a child (T84)", async () => {
+  test("with the part for tests leads a child's session: the code of the form typed, the child writing, a sample of measurement by a child (T84)", async () => {
     const context = await browser.newContext({ acceptDownloads: true });
     try {
       const page = await context.newPage();
@@ -502,10 +538,10 @@ describe("opened from a file", () => {
       expect(await page.inputValue("#typed")).toBe("");
       // A new code is for the form, made without the child: no session begins with it.
       await page.check('input[name="code"][value="new"]');
-      expect(await page.textContent("#new-code")).toMatch(/[0-9A-Z]{6,16}.*test-approved-0/);
+      expect(await page.textContent("#new-code")).toMatch(/[0-9A-Z]{6,16}.*test-child-sample-1/);
       expect(await page.textContent("#start-lacks")).toContain("принятой формы");
       expect(await page.locator("#statements label").nth(1).textContent()).toContain(
-        "родителя или опекуна этого ребёнка",
+        "родителя или опекуна этого ребёнка версии test-child-sample-1",
       );
       await begin(page, "child", "kid 12345");
       expect(await page.textContent("#summary-text")).toContain("код ребёнка KID12345");
@@ -524,7 +560,7 @@ describe("opened from a file", () => {
       expect(sample.writer).toBe(Writer.CHILD);
       expect(sample.ink.case).toBe("geometry");
       expect(sample.writerCode).toBe("KID12345");
-      expect(sample.textSetVersion).toBe("test-approved-0");
+      expect(sample.textSetVersion).toBe("test-child-sample-1");
       expect(sample.license).toBeUndefined();
       // By the organiser's upload link, then erased from the device (R125 spec; T88).
       const handOver = await page.textContent("#hand-over");

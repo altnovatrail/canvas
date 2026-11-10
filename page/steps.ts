@@ -1,11 +1,11 @@
-// The steps before writing on the samples page (T20, T84 in RUN.md; R11, R58, R59 in
-// docs/decisions.md; docs/architecture.md, section 3.6): which purposes the set of texts and the
-// build's tasks open — a child's session among them — and why the others are closed, the
+// The steps before writing on the samples page (T20, T84, T89 in RUN.md; R11, R58, R59, R69 in
+// docs/decisions.md; docs/architecture.md, section 3.6): which purposes the build's sets of texts
+// and its tasks open — a child's session among them — and why the others are closed, the
 // statements each asks for, the writer's code the person types, and what the start still lacks.
-// No DOM: page/main.ts shows what this decides, and every word is page/texts.ts's or the set's.
+// No DOM: page/main.ts shows what this decides, and every word is page/texts.ts's or a set's.
 
-import type { TextSet } from "./sets.js";
-import { PURPOSE_NOTES, START_LACKS } from "./texts.js";
+import { type AuthorDraft, isDraft, type LegalSet, type PageTexts } from "./sets.js";
+import { HAND_OVER, PURPOSE_NOTES, START_LACKS, STATEMENTS } from "./texts.js";
 
 /** What a start begins: the measurement or a module's eval set, which an adult writes for, or a
  * child's session, whose samples are of the measurement, written by the child (T84). */
@@ -19,37 +19,48 @@ export interface Offered {
   readonly note?: string;
 }
 
-/** The purposes under a set, for a build with or without tasks of modules, a child's session last.
- * A draft opens the measurement to the author's own samples alone and keeps the eval set and the
- * session closed. An approved set opens the eval set and the session where it has their texts —
- * the author approves the adults' and a child's consent apart —, and the eval set only where the
- * build has tasks of modules too: a module's eval set takes samples of its own module's tasks
- * alone (contracts/README.md of spec, «Eval sets»), and a sample of a task of tutor would be
- * refused there. */
-export function purposes(set: TextSet, moduleTasks: boolean): Offered[] {
-  const draft = set.status === "draft";
+/** The purposes under a build's texts, for a build with or without tasks of modules, a child's
+ * session last. Each opens with a current set of its own (R130 spec): the author approves the
+ * adults' and a child's consent apart. The measurement's draft opens it to the author's own samples
+ * alone while it has none (R11). The eval set opens only where the build has tasks of modules too:
+ * a module's eval set takes samples of its own module's tasks alone (contracts/README.md of spec,
+ * «Eval sets»), and a sample of a task of tutor would be refused there. */
+export function purposes(texts: PageTexts, moduleTasks: boolean): Offered[] {
   const closed = (key: PurposeKey, note: string): Offered => ({ key, open: false, note });
   let evalSet: Offered = { key: "evalSet", open: true };
-  if (draft) evalSet = closed("evalSet", PURPOSE_NOTES.evalSetDraft);
-  else if (set.evalSet === undefined) evalSet = closed("evalSet", PURPOSE_NOTES.noTexts);
+  if (texts.evalSet === undefined) evalSet = closed("evalSet", PURPOSE_NOTES.evalSetNoSet);
   else if (!moduleTasks) evalSet = closed("evalSet", PURPOSE_NOTES.evalSetNoModule);
-  let child: Offered = { key: "child", open: true };
-  if (draft) child = closed("child", PURPOSE_NOTES.childDraft);
-  else if (set.child === undefined) child = closed("child", PURPOSE_NOTES.noTexts);
+  const child: Offered =
+    texts.child === undefined
+      ? closed("child", PURPOSE_NOTES.childNoSet)
+      : { key: "child", open: true };
   return [
     {
       key: "measurement",
       open: true,
-      ...(draft ? { note: PURPOSE_NOTES.measurementDraft } : {}),
+      ...(isDraft(texts.measurement) ? { note: PURPOSE_NOTES.measurementDraft } : {}),
     },
     evalSet,
     child,
   ];
 }
 
-/** The texts of a purpose in a set, if the set has them. */
-export function textsOf(set: TextSet, purpose: PurposeKey) {
-  return { measurement: set.measurement, evalSet: set.evalSet, child: set.child }[purpose];
+/** The texts of a purpose, if the build has them: its set, or the measurement's draft. */
+export function textsOf(texts: PageTexts, purpose: PurposeKey): LegalSet | AuthorDraft | undefined {
+  return { measurement: texts.measurement, evalSet: texts.evalSet, child: texts.child }[purpose];
+}
+
+/** The version of the texts a purpose's samples name: its set's, such as measure-1, or the
+ * draft's; undefined for a purpose the build has no texts for. */
+export function versionOf(texts: PageTexts, purpose: PurposeKey): string | undefined {
+  return textsOf(texts, purpose)?.version;
+}
+
+/** Where a purpose's file goes once it is saved: the draft's own words, or the page's. */
+export function handOverOf(texts: PageTexts, purpose: PurposeKey): string | undefined {
+  const own = textsOf(texts, purpose);
+  if (!own) return undefined;
+  return isDraft(own) ? own.handOver : HAND_OVER[purpose];
 }
 
 /** Whether a purpose's sample has a writer's code: the measurement's and a child's do, an eval
@@ -58,12 +69,15 @@ export function hasCode(purpose: PurposeKey): purpose is "measurement" | "child"
   return purpose !== "evalSet";
 }
 
-/** The statements without which the person goes no further: the age, and the form — a child's
- * parent's or guardian's for a session — or, under a draft, that the author writes their own
- * samples. */
-export function statements(set: TextSet, purpose: PurposeKey): string[] {
-  const texts = textsOf(set, purpose);
-  return texts ? [set.adult, texts.statement] : [set.adult];
+/** The statements without which the person goes no further: the age, and the form of the set's
+ * version — a child's parent's or guardian's for a session — or, under the measurement's draft,
+ * that the author writes their own samples. */
+export function statements(texts: PageTexts, purpose: PurposeKey): string[] {
+  const own = textsOf(texts, purpose);
+  if (!own) return [STATEMENTS.adult];
+  if (isDraft(own)) return [STATEMENTS.adult, own.statement];
+  const form = purpose === "child" ? STATEMENTS.childForm : STATEMENTS.form;
+  return [STATEMENTS.adult, form(own.version)];
 }
 
 /** A writer's code as the person typed it, in the protocol's shape — 6 to 16 digits and capital
@@ -90,9 +104,9 @@ export interface Start {
 
 /** What the start still lacks before writing, in a build with or without tasks of modules; none
  * when the person may begin. */
-export function lacks(set: TextSet, moduleTasks: boolean, start: Start): string[] {
+export function lacks(texts: PageTexts, moduleTasks: boolean, start: Start): string[] {
   const found: string[] = [];
-  const open = purposes(set, moduleTasks).find(({ key }) => key === start.purpose)?.open ?? false;
+  const open = purposes(texts, moduleTasks).find(({ key }) => key === start.purpose)?.open ?? false;
   if (!start.purpose || !open) return [START_LACKS.purpose];
   if (start.purpose === "child" && start.way === "new") {
     // A new code goes into the form first: a session begins with the code of a form accepted (R11).
@@ -102,7 +116,7 @@ export function lacks(set: TextSet, moduleTasks: boolean, start: Start): string[
     if (start.typed) found.push(child ? START_LACKS.childCodeShape : START_LACKS.codeShape);
     else found.push(child ? START_LACKS.childCode : START_LACKS.code);
   }
-  const asked = statements(set, start.purpose).length;
+  const asked = statements(texts, start.purpose).length;
   if (start.agreed.length !== asked || start.agreed.some((on) => !on)) {
     found.push(START_LACKS.statements);
   }

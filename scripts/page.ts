@@ -2,11 +2,13 @@
 // from a file on the device and goes to no network (R25 spec; R08, R11), of page/index.html and
 // page/main.ts with the element and all they take inline:
 //
-//   node scripts/page.ts <folder> <version> [--texts <set>]
+//   node scripts/page.ts <folder> <version> [--texts <part>]
 //
-// writes <folder>/samples-page_v<version>.html, with the set of texts of page/sets/draft-0.json or
-// the one --texts names (T20; R58): a set for tests only into a page of version 0.0.0, which no
-// release has. It builds from the tree alone — no spec/, no git, no
+// writes <folder>/samples-page_v<version>.html, with the current sets of texts of spec's release
+// file of the legal texts in tasks/, held to its sum (T89; R69; scripts/legal.ts), and, while the
+// measurement has none, the author's draft, page/sets/draft-0.json (R11). --texts names a part of
+// the legal texts for tests instead, whose sets begin with test-, and only into a page of version
+// 0.0.0, which no release has (T20; R58). It builds from the tree alone — no spec/, no git, no
 // token, no network — in the toolchain stage, as release-files will take it (T75). Vite's API
 // bundles page/main.ts into one script; the page's own style stays as it is. The policy of
 // scripts/csp.ts goes into a <meta> element with the hashes of both. The tasks are worked out here,
@@ -23,10 +25,11 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type * as open from "@altnovatrail/spec/formatv0/open";
 import { build, createServer } from "vite";
-import { isTestSet, type TextSet, textSetOf } from "../page/sets.ts";
+import { draftOf, type PageTexts } from "../page/sets.ts";
 import type { TaskKind } from "../page/texts.ts";
 import type { OpenTask, OpenTasks } from "../src/eval/tasks.ts";
 import { policy, styleOf } from "./csp.ts";
+import { pageSetsOf, withLegalFile } from "./legal.ts";
 import { bundleOf, type Carried, NOTICE_SEPARATOR, noticeParts } from "./notices.ts";
 
 /** Where the page's source is, from the repository's root. */
@@ -37,17 +40,30 @@ const POLICY_HOLE = "<!-- policy -->";
 const SCRIPT_HOLE = '<script src="main.ts"></script>';
 const NOTICES_HOLE = "<!-- notices -->";
 
-/** The set of texts a build carries unless it is given another: the draft (R11). */
+/** The author's draft of the measurement, which a build carries while the measurement has no
+ * current set (R11). */
 export const DRAFT = "page/sets/draft-0.json";
 
-/** The set of texts of a file, checked, for a page of a version: a set for tests goes only into a
- * page of version 0.0.0, which no release of canvas has (contracts/README.md of spec). */
-export function textsFor(path: string, version: string): TextSet {
-  const set = textSetOf(JSON.parse(readFileSync(path, "utf8")));
-  if (isTestSet(set) && version !== "0.0.0") {
-    throw new Error(`the set ${set.version} is for tests: it goes into no page but 0.0.0`);
+/** The prefix of the IDs of the sets of a part for tests: test-measure, test-eval-set and
+ * test-child-sample. */
+const TEST_PREFIX = "test-";
+
+/** The texts of a page of a version: each purpose's current set in the release file of spec's legal
+ * texts — or, given a part for tests, in that part, for a page of version 0.0.0 alone, which no
+ * release of canvas has (contracts/README.md of spec) — and the draft while the measurement has no
+ * set. Both are read against the schema the release file carries. */
+export function textsFor(version: string, part?: string): PageTexts {
+  if (part !== undefined && version !== "0.0.0") {
+    throw new Error(`the texts of ${part} are for tests: they go into no page but 0.0.0`);
   }
-  return set;
+  const { measurement, evalSet, child } = withLegalFile((folder, schema) =>
+    part === undefined ? pageSetsOf(folder, schema) : pageSetsOf(part, schema, TEST_PREFIX),
+  );
+  return {
+    measurement: measurement ?? draftOf(JSON.parse(readFileSync(DRAFT, "utf8"))),
+    ...(evalSet ? { evalSet } : {}),
+    ...(child ? { child } : {}),
+  };
 }
 
 /** The name of the page's file for a version. */
@@ -174,10 +190,10 @@ async function tasksOf(): Promise<PageTask[]> {
 export async function buildPage(
   folder: string,
   version: string,
-  texts = DRAFT,
+  part?: string,
 ): Promise<{ path: string; packages: readonly Carried[] }> {
   const name = fileName(version);
-  const data = { version, texts: textsFor(texts, version), tasks: await tasksOf() };
+  const data = { version, texts: textsFor(version, part), tasks: await tasksOf() };
   const outputs = await build({
     configFile: false,
     logLevel: "silent",
@@ -209,10 +225,10 @@ if (import.meta.main) {
     (flag !== undefined && (flag !== "--texts" || !texts)) ||
     rest.length > 0
   ) {
-    console.error("usage: node scripts/page.ts <folder> <version> [--texts <set>]");
+    console.error("usage: node scripts/page.ts <folder> <version> [--texts <part>]");
     process.exit(2);
   }
-  const { path, packages } = await buildPage(folder, version, texts ?? DRAFT);
+  const { path, packages } = await buildPage(folder, version, texts);
   console.log(path);
   for (const { name, version: v, license } of packages) console.log(`  ${name} ${v} ${license}`);
 }

@@ -1,0 +1,93 @@
+# A part of the legal texts for tests alone (T89 in RUN.md; R58, R69 in docs/decisions.md), in the
+# layout of spec's legal/ (its README, section 3): its sets are in force, so that the test build of
+# the samples page, of version 0.0.0 alone, opens every purpose; no sample is made under them.
+format: 1
+texts:
+  test-measure-notice:
+    place: samples_page
+    versions:
+      - version: 1
+        status: in_force
+        in_force_since: "2026-11-10"
+        summary:
+          en: "A test set, not for samples: the notice of the measurement, for the tests and the test build alone."
+          ru: "Тестовый набор, не для образцов: уведомление замера, только для тестов и тестовой сборки."
+  test-measure-form:
+    place: form
+    versions:
+      - version: 1
+        status: in_force
+        in_force_since: "2026-11-10"
+        summary:
+          en: "A test set, not for samples: the form of the measurement."
+          ru: "Тестовый набор, не для образцов: форма замера."
+  test-eval-set-notice:
+    place: samples_page
+    versions:
+      - version: 1
+        status: in_force
+        in_force_since: "2026-11-10"
+        summary:
+          en: "A test set, not for samples: the notice of a module's eval set."
+          ru: "Тестовый набор, не для образцов: уведомление eval-набора модуля."
+  test-volunteer-form:
+    place: form
+    versions:
+      - version: 1
+        status: in_force
+        in_force_since: "2026-11-10"
+        summary:
+          en: "A test set, not for samples: the volunteer's form."
+          ru: "Тестовый набор, не для образцов: форма добровольца."
+  test-child-sample-notice:
+    place: samples_page
+    versions:
+      - version: 1
+        status: in_force
+        in_force_since: "2026-11-10"
+        summary:
+          en: "A test set, not for samples: the notice of a child's session."
+          ru: "Тестовый набор, не для образцов: уведомление сеанса образца ребёнка."
+  test-child-sample-form:
+    place: form
+    versions:
+      - version: 1
+        status: in_force
+        in_force_since: "2026-11-10"
+        summary:
+          en: "A test set, not for samples: the parent's form for a child's samples."
+          ru: "Тестовый набор, не для образцов: форма родителя на образцы ребёнка."
+sets:
+  test-measure:
+    versions:
+      - version: 1
+        status: in_force
+        in_force_since: "2026-11-10"
+        notice:
+          text: test-measure-notice
+          version: 1
+        form:
+          text: test-measure-form
+          version: 1
+  test-eval-set:
+    versions:
+      - version: 1
+        status: in_force
+        in_force_since: "2026-11-10"
+        notice:
+          text: test-eval-set-notice
+          version: 1
+        form:
+          text: test-volunteer-form
+          version: 1
+  test-child-sample:
+    versions:
+      - version: 1
+        status: in_force
+        in_force_since: "2026-11-10"
+        notice:
+          text: test-child-sample-notice
+          version: 1
+        form:
+          text: test-child-sample-form
+          version: 1

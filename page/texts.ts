@@ -2,8 +2,10 @@
 // docs/decisions.md); the template, page/index.html, holds the few words that never change — the
 // heading and two labels — so that a reader of the template sees them. The screens are in Russian
 // alone, and a translation by the rules of UI packages' translations (R91 spec; epic E10 in RUN.md)
-// goes here and there. The texts are for now: those of the notices and the consent
-// come from spec's release, legal-<version>.tar.gz, with T89 (R130 spec; R11).
+// goes here and there. A notice is no text of the page's: it comes from spec's release,
+// legal-<n>.tar.gz, in English, with its gist in Russian (T89; R130 spec; R69), and only the
+// author's draft of the measurement, page/sets/draft-0.json, is the page's own. The statements and
+// where the file goes are the page's words, here.
 
 /** The kinds of task the samples page offers (T21): a sheet, an essay — a sheet whose answer is the
  * whole sheet — and a workbook's page. */
@@ -41,16 +43,38 @@ export const START_LACKS = {
   statements: "Отметьте все заявления: без них дальше нельзя.",
 } as const;
 
-/** Why a purpose is closed, or what an open one is limited to (T20; docs/architecture.md, 3.6). */
+/** Why a purpose is closed, or what an open one is limited to (T20, T89; docs/architecture.md,
+ * 3.6). */
 export const PURPOSE_NOTES = {
-  measurementDraft: "Пока тексты черновые — только образцы автора проекта.",
-  evalSetDraft:
-    "Закрыт, пока тексты черновые: pull request публикует образец сразу, и согласие на него должно быть по утверждённым текстам.",
+  measurementDraft:
+    "Пока текст согласия на образцы замера не утверждён — только образцы автора проекта.",
+  evalSetNoSet:
+    "Закрыт, пока текст согласия на него не утверждён: образец публикуется с модулем навсегда.",
   evalSetNoModule:
     "Закрыт: в этой сборке нет задач модулей, а в eval-набор модуля идут образцы только его задач.",
-  childDraft:
-    "Закрыт, пока тексты черновые: образец ребёнка делается только по утверждённой форме родителя или опекуна.",
-  noTexts: "Закрыт: в наборе текстов этой сборки для него нет текстов.",
+  childNoSet:
+    "Закрыт, пока текст согласия на него не утверждён: образец ребёнка делается только по утверждённой форме родителя или опекуна.",
+} as const;
+
+/** The statements without which the adult goes no further (T20, T84, T89): of age, and of the
+ * right to make the agreement where the adult lives (П-6; R124 spec), and of the form of the set's
+ * version, signed and accepted — for a child's session, the parent's or guardian's (П-10). */
+export const STATEMENTS = {
+  adult: "Мне 18 лет или больше, и по законам места, где я живу, я вправе заключить этот договор.",
+  form: (version: string) => `Форма согласия версии ${version} подписана и принята организатором.`,
+  childForm: (version: string) =>
+    `Отдельная письменная форма родителя или опекуна этого ребёнка версии ${version} с кодом, введённым выше, подписана и принята организатором.`,
+} as const;
+
+/** Where the file goes once it is saved, as each set's notice says (R125 spec, R126 spec): by the
+ * organizer's upload link, which works for one day, and then off the device. */
+export const HAND_OVER = {
+  measurement:
+    "Отправьте файл организатору замера по ссылке на загрузку, которую он дал: она действует сутки. Когда организатор получит файл, сотрите его с устройства.",
+  evalSet:
+    "Отправьте файл организатору eval-набора по ссылке на загрузку, которую он дал: она действует сутки. В modules образец вносит он. Когда он получит файл, сотрите его с устройства.",
+  child:
+    "Отправьте файл организатору — не pull request, — по ссылке на загрузку, которую он дал для этого сеанса: она действует сутки. Когда организатор получит файл, сотрите его с устройства.",
 } as const;
 
 /** The words of the page's screen. */
@@ -81,6 +105,10 @@ export const TEXTS = {
   newChildCode: (code: string, version: string) =>
     `Новый код ребёнка: ${code}. Впишите его в форму согласия родителя или опекуна версии ${version}: по нему отзывают согласие и удаляют образцы ребёнка. Страница его не запомнит.`,
   notice: (purpose: string, version: string) => `Уведомление: ${purpose}, тексты версии ${version}`,
+  /** A legal text's gist in Russian, before the English text, which is the one in force (privacy 7
+   * spec; R116 spec). */
+  gist: (gist: string) => `Коротко: ${gist}`,
+  inEnglish: "Ниже — полный текст уведомления. Действует он, на английском языке.",
   summary: (purpose: string, code: string | undefined, version: string, child = false) =>
     `${purpose}${code ? `, ${child ? "код ребёнка" : "код писавшего"} ${code}` : ""}, тексты версии ${version}.`,
   /** Who writes and who marks up in a child's session (docs/architecture.md, 3.6). */
