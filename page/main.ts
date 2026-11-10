@@ -20,10 +20,16 @@
 // see. A sample is saved only once its markup is whole (page/markup.ts). In a child's session the
 // child writes and the adult marks up, from what the child says. The page remembers nothing: not a
 // sheet half written either. Every text is page/texts.ts's or the set's.
+//
+// Below the start, a sample file opens to be looked at (T87; R64): its strokes, drawn from the file
+// alone with what a history erased apart, its crops and its markup in words, for whoever looks in it
+// for a name or a contact before it goes on (R110 spec). Nothing of it is changed, kept or sent, and
+// back to the start is the page opened anew.
 
 import { Purpose, Writer } from "@altnovatrail/contracts/novatrail/eval/v1/sample_pb.js";
 import { cellsOf } from "../src/core/boxes.js";
 import { NO_MANIFEST } from "../src/core/manifest.js";
+import { INK_WIDTH } from "../src/core/outline.js";
 import { pageOf } from "../src/core/page.js";
 import {
   type ExportedWork,
@@ -32,7 +38,14 @@ import {
   TAG,
   type Task,
 } from "../src/element/index.js";
-import { personId, type Surface, sampleOf, sampleText, writerCode } from "../src/eval/sample.js";
+import {
+  personId,
+  readSample,
+  type Surface,
+  sampleOf,
+  sampleText,
+  writerCode,
+} from "../src/eval/sample.js";
 import type { OpenTask } from "../src/eval/tasks.js";
 import {
   type BoxForm,
@@ -46,13 +59,15 @@ import {
   type Part,
   parted,
   partsOf,
+  placeOf,
   type SheetForm,
   sheetMarkup,
   workbookMarkup,
 } from "./markup.js";
+import { type Field, type Line, type SampleView, viewOf } from "./open.js";
 import type { TextSet } from "./sets.js";
 import { codeOf, hasCode, lacks, type PurposeKey, purposes, statements, textsOf } from "./steps.js";
-import { type TaskKind, TEXTS } from "./texts.js";
+import { OPEN, type TaskKind, TEXTS } from "./texts.js";
 
 /** A task the build put in: its kind, its bank, its open view, and the sample's view of it. */
 interface PageTask {
@@ -156,6 +171,8 @@ function words(): void {
   saveButton.textContent = TEXTS.save;
   byId("child-writes").textContent = TEXTS.childWrites;
   byId("ipad-note").textContent = TEXTS.ipadDownloads;
+  byId("open-about").textContent = OPEN.about;
+  byId("open-back").textContent = OPEN.back;
   const writers = byId("writer");
   byId("writer-label").textContent = TEXTS.writer;
   for (const [value, text] of [
@@ -466,7 +483,7 @@ function workbookForm(mark: Extract<Marking, { kind: "workbook" }>): void {
   const cells = work && "cells" in work ? work.cells : [];
   const list = make("ol", "", { class: "boxes" });
   mark.boxes.forEach((box, at) => {
-    const place = `${box.item}.${box.slot}`;
+    const place = placeOf(box);
     const item = make("li", "", { "data-box": place });
     const set = make("fieldset");
     set.append(make("legend", TEXTS.box(place)));
@@ -553,14 +570,12 @@ async function markUp(): Promise<void> {
     marking = mark;
     essayForm(mark);
   } else if ("workbook" in open.canvas) {
-    const filled = new Set(
-      work && "cells" in work ? work.cells.map(({ item, slot }) => `${item}.${slot}`) : [],
-    );
+    const filled = new Set(work && "cells" in work ? work.cells.map(placeOf) : []);
     const boxes = cellsOf(pageOf(open.canvas.workbook)).map(
       ({ item, slot }): BoxForm => ({
         item,
         slot,
-        filled: filled.has(`${item}.${slot}`),
+        filled: filled.has(placeOf({ item, slot })),
         read: "value",
         value: "",
         mirrored: false,
@@ -783,6 +798,8 @@ function begin(): void {
   begun = hasCode(purpose) && code ? { purpose, code } : { purpose };
   const child = purpose === "child";
   byId("start").hidden = true;
+  // Writing has begun: a file is opened from the start alone (T87).
+  byId("open").hidden = true;
   byId("summary-text").textContent = TEXTS.summary(
     TEXTS.purpose[purpose],
     begun.code,
@@ -816,6 +833,168 @@ function restart(): void {
   location.reload();
 }
 
+/** The namespace of SVG, whose elements the picture of an opened sample is made of. */
+const SVG = "http://www.w3.org/2000/svg";
+
+/** A new element of SVG with its attributes: presentation attributes, for the page's policy allows
+ * no style attribute (R55). */
+function drawn<K extends keyof SVGElementTagNameMap>(
+  tag: K,
+  attributes: Record<string, string>,
+): SVGElementTagNameMap[K] {
+  const element = document.createElementNS(SVG, tag);
+  for (const [name, value] of Object.entries(attributes)) element.setAttribute(name, value);
+  return element;
+}
+
+/** The blobs of the opened file's crops, let go when another file is opened. */
+let viewed: string[] = [];
+
+/** Fields of the file, each its name and its value, as a list of terms. */
+function fields(list: readonly Field[]): HTMLDListElement {
+  const terms = make("dl");
+  for (const { name, value } of list) terms.append(make("dt", name), make("dd", value));
+  return terms;
+}
+
+/** A stroke as a line of the picture; a stroke of one point, a dot. */
+function line({ points }: Line, attributes: Record<string, string>): SVGPolylineElement {
+  const at = points.map(([x, y]) => `${x},${y}`);
+  const first = at[0] ?? "";
+  return drawn("polyline", {
+    points: (at.length === 1 ? [first, first] : at).join(" "),
+    fill: "none",
+    "stroke-width": String(INK_WIDTH),
+    "stroke-linecap": "round",
+    "stroke-linejoin": "round",
+    ...attributes,
+  });
+}
+
+/** The picture of the sample from its file alone (R64): the sheet, a workbook's boxes with their
+ * places, the strokes shown at the end, and those the history did not show, apart and hidden until
+ * asked for. It takes in a stroke beyond the sheet too: none is cut off. */
+function sketch(view: SampleView): SVGSVGElement {
+  const { width, height, frame } = view;
+  const svg = drawn("svg", {
+    viewBox: `${frame.x} ${frame.y} ${frame.width} ${frame.height}`,
+    role: "img",
+    "aria-label": OPEN.picture(view.shown.length),
+    class: "sketch",
+  });
+  const edge = { fill: "none", stroke: "GrayText", "stroke-width": "2" };
+  svg.append(
+    drawn("rect", { x: "0", y: "0", width: String(width), height: String(height), ...edge }),
+  );
+  for (const box of view.boxes) {
+    const { left, top } = box;
+    svg.append(
+      drawn("rect", {
+        x: String(left),
+        y: String(top),
+        width: String(box.width),
+        height: String(box.height),
+        "data-box": box.place,
+        ...edge,
+      }),
+    );
+    const label = drawn("text", {
+      x: String(left + 4),
+      y: String(top + 20),
+      "font-size": "18",
+      fill: "GrayText",
+    });
+    label.textContent = box.place;
+    svg.append(label);
+  }
+  const hidden = drawn("g", { "data-hidden": "", display: "none" });
+  for (const stroke of view.hidden) {
+    hidden.append(line(stroke, { stroke: "GrayText", "stroke-dasharray": "6 6" }));
+  }
+  for (const stroke of view.shown) svg.append(line(stroke, { stroke: "currentColor" }));
+  // Over what is shown: an erased stroke often lies where the writing went on.
+  svg.append(hidden);
+  return svg;
+}
+
+/** The markup of the file in words: the truth, the notes, the parts or the marks. */
+function markupShown(view: SampleView): Node[] {
+  const { markup } = view;
+  if (!markup) return [make("p", OPEN.noMarkup)];
+  const nodes: Node[] = [make("h4", OPEN.truthTitle), fields(markup.truth)];
+  if (markup.notes.length > 0) nodes.push(make("h4", OPEN.notesTitle), fields(markup.notes));
+  if (markup.parts.length > 0) {
+    const list = make("ol", "", { class: "parts" });
+    for (const part of markup.parts) {
+      const item = make("li");
+      item.append(make("strong", part.title), make("p", part.text, { class: "as-written" }));
+      if (part.flags.length > 0) item.append(make("p", part.flags.join("; ")));
+      list.append(item);
+    }
+    nodes.push(make("h4", OPEN.partsTitle), list);
+  }
+  if (markup.firstError) nodes.push(make("p", `${OPEN.firstError} ${markup.firstError}`));
+  if (markup.marks.length > 0) nodes.push(make("h4", OPEN.marksTitle), fields(markup.marks));
+  return nodes;
+}
+
+/** The sample the person chose, read and shown: nothing of it is changed, kept or sent (R64). A file
+ * that is no sample is said so, and nothing is drawn. */
+async function opened(): Promise<void> {
+  const chosen = byId<HTMLInputElement>("open-file");
+  const file = chosen.files?.[0];
+  const view = byId("view");
+  const error = byId("open-error");
+  for (const url of viewed) URL.revokeObjectURL(url);
+  viewed = [];
+  view.replaceChildren();
+  view.hidden = true;
+  error.textContent = "";
+  if (!file) return;
+  let shown: SampleView;
+  try {
+    const text = await file.text();
+    // Another file chosen while this one was read: that one is shown, not this.
+    if (chosen.files?.[0] !== file) return;
+    shown = viewOf(readSample(text));
+  } catch (failure) {
+    if (chosen.files?.[0] === file) error.textContent = OPEN.notRead((failure as Error).message);
+    return;
+  }
+  byId("start").hidden = true;
+  byId("open-back").hidden = false;
+  view.append(make("h3", OPEN.fileTitle), fields(shown.about));
+  view.append(make("h3", OPEN.taskTitle), fields(shown.task));
+  view.append(make("h3", OPEN.pictureTitle));
+  const picture = sketch(shown);
+  if (shown.hidden.length > 0) {
+    const toggle = checkbox(OPEN.hidden(shown.hidden.length), false, (on) => {
+      picture.querySelector("[data-hidden]")?.setAttribute("display", on ? "inline" : "none");
+    });
+    toggle.querySelector("input")?.setAttribute("id", "show-hidden");
+    const paragraph = make("p");
+    paragraph.append(toggle);
+    view.append(paragraph);
+  }
+  view.append(picture);
+  if (shown.crops.length > 0) view.append(make("h3", OPEN.cropsTitle));
+  for (const { title, crops: set } of shown.crops) {
+    view.append(make("h4", title));
+    for (const { label, png } of set) {
+      const url = URL.createObjectURL(new Blob([new Uint8Array(png)], { type: "image/png" }));
+      viewed.push(url);
+      const figure = make("figure");
+      figure.append(
+        make("img", "", { src: url, alt: `${title}, ${label}`, class: "crop" }),
+        make("figcaption", label),
+      );
+      view.append(figure);
+    }
+  }
+  view.append(make("h3", OPEN.markupTitle), ...markupShown(shown));
+  view.hidden = false;
+}
+
 // The page's script runs: the words for where it does not — an iPad's Files, which shows the page
 // without its script (В64; the 2026-11-08 amendment to R25 spec; T85) — go.
 byId("no-script").remove();
@@ -842,4 +1021,7 @@ byId("start").addEventListener("change", (event) =>
 typed.addEventListener("input", () => startShown(false));
 beginButton.addEventListener("click", begin);
 byId("restart").addEventListener("click", restart);
+byId("open-file").addEventListener("change", () => void opened());
+// Back to the start is the page opened anew: it keeps nothing of the file (R11).
+byId("open-back").addEventListener("click", () => location.reload());
 startShown(false);

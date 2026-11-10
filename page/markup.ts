@@ -238,12 +238,16 @@ export function essayMarkup(shows: boolean, form: EssayForm): Made {
   };
 }
 
+/** An answer slot's place as the page names a box, `item.slot`. */
+export const placeOf = ({ item, slot }: { readonly item: number; readonly slot: number }) =>
+  `${item}.${slot}`;
+
 /** What a workbook's form lacks, or its markup: every box of the page in the task's order, an
  * empty one blank, and the notes of those set apart. */
 export function workbookMarkup(boxes: readonly BoxForm[]): Made {
   const lacks: string[] = [];
   for (const box of boxes) {
-    const place = `${box.item}.${box.slot}`;
+    const place = placeOf(box);
     if (!box.filled && (box.mirrored || box.rewritten)) lacks.push(LACKS.emptyNote(place));
     if (box.filled && box.read === "value" && !box.mirrored && blank(box.value)) {
       lacks.push(LACKS.boxValue(place));
