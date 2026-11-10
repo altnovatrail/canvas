@@ -45,12 +45,25 @@ jobs:
       # their generator is src/eval/, which src/*.ts takes, and its script, its build, the archive's
       # script, tutor's file of open tasks and the lock file, whose packages write each sample's
       # JSON (R50). The lock file is no part of the package's archive, and its compiler is pinned in
-      # package.json.
+      # package.json. The samples page too: its own code, template, kept notices and draft of texts
+      # — the set for tests goes into no release — its builder and policy, and the programs whose
+      # options Vite's transform reads for the files it bundles, the element's and the DOM-free
+      # part's, through tsconfig.json (R55, R66).
       paths: |
         src/*.ts
         :(exclude)src/*.test.ts
         :(exclude)src/*.fixture.ts
         :(exclude)src/*.check.ts
+        page/*.ts
+        :(exclude)page/*.test.ts
+        page/index.html
+        page/notices/*
+        page/sets/draft-0.json
+        scripts/page.ts
+        scripts/csp.ts
+        tsconfig.json
+        tsconfig.core.json
+        tsconfig.element.json
         scripts/synthetic.ts
         scripts/archive.ts
         tsconfig.synthetic.json
@@ -67,3 +80,66 @@ jobs:
         .github/workflows/release.yml
       publish: ${{ github.event_name != 'pull_request' }}
       npm-package: "@altnovatrail/canvas"
+
+  # The notes of a release that carries the samples page say first what downloading it shows
+  # GitHub (R11, R66 in docs/decisions.md). The shared release.yml writes its notes from the pull
+  # requests alone (--generate-notes) and takes no text of its own; the notes of an immutable
+  # release stay open to edits, its files and tag do not. So this job, after it, finds the release
+  # of the commit, by the SHA the shared job makes it at, and puts the paragraph first, between two
+  # marks: a run again, a new wording or notes edited on the web replace it rather than add one
+  # more, and a commit that got no release is left as it is. It runs however the shared job ended,
+  # once it ran, so that a release already out whose npm step then failed gets the paragraph too;
+  # a pull request runs it on the newest release and prints the notes it would write.
+  notes:
+    name: Notes
+    needs: release
+    if: ${{ !cancelled() && needs.release.result != 'skipped' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: The notes begin with what GitHub sees
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          OPEN: "<!-- canvas: the samples page -->"
+          CLOSE: "<!-- /canvas: the samples page -->"
+          PREAMBLE: >-
+            **The samples page**, `samples-page_vX.Y.Z.html`, is one file: download it and open
+            it from the file, on a computer or on Android. It goes to no network while it runs.
+            On an iPad, Files shows it without its script, and it does not work there. GitHub
+            sees the IP address of whoever downloads a file of this release, the page too.
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+              tag=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)
+          else
+              tag=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+                  --jq '.[] | select(.target_commitish == $ENV.SHA) | .tag_name' | sed -n 1p)
+          fi
+          if [ -z "$tag" ]; then
+              echo "No release of ${SHA}: nothing to write."
+              exit 0
+          fi
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json body --jq .body > "$RUNNER_TEMP/body.md"
+          {
+              printf '%s\n%s\n%s\n\n' "$OPEN" "${PREAMBLE//vX.Y.Z/$tag}" "$CLOSE"
+              awk -v first="$OPEN" -v last="$CLOSE" '
+                  { line = $0; sub(/\r$/, "", line) }
+                  line == first { skip = 1; next }
+                  skip && line == last { skip = 0; gap = 1; next }
+                  skip { next }
+                  gap && line == "" { gap = 0; next }
+                  { gap = 0; print }
+              ' "$RUNNER_TEMP/body.md"
+          } > "$RUNNER_TEMP/notes.md"
+          if [ "$EVENT" = pull_request ]; then
+              echo "The notes of ${tag} would be:"
+              cat "$RUNNER_TEMP/notes.md"
+          elif cmp -s "$RUNNER_TEMP/body.md" "$RUNNER_TEMP/notes.md"; then
+              echo "The notes of ${tag} begin with the paragraph already."
+          else
+              gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --notes-file "$RUNNER_TEMP/notes.md"
+              echo "The notes of ${tag} begin with the paragraph now."
+          fi

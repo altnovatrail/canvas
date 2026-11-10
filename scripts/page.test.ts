@@ -3,6 +3,7 @@
 // toolchain stage (R13), as a volunteer opens it from the downloads — no request leaves it, the
 // policy is kept, and the sample it saves reads back.
 
+import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -264,6 +265,23 @@ describe("the file", () => {
     expect(page).not.toMatch(/\s(src|href)=/);
     expect(page.match(/<script/g)).toHaveLength(1);
   });
+
+  test("of a release's version is the same bytes on every build, by its name, with the draft of texts (T75)", async () => {
+    const once = await buildPage(join(folder, "release"), "1.2.3");
+    // The other build in a process of its own, as release-files runs the builder.
+    const again =
+      execFileSync(process.execPath, ["scripts/page.ts", join(folder, "again"), "1.2.3"], {
+        encoding: "utf8",
+      }).split("\n")[0] ?? "";
+    expect(once.path.endsWith("samples-page_v1.2.3.html")).toBe(true);
+    expect(again).toBe(join(folder, "again", "samples-page_v1.2.3.html"));
+    const page = readFileSync(once.path, "utf8");
+    expect(readFileSync(again, "utf8")).toBe(page);
+    // The minifier writes the strings of the page's data in any of the quotes.
+    expect(page).toMatch(/version:["'`]1\.2\.3["'`]/);
+    expect(page).toMatch(/["'`]draft-0["'`]/);
+    expect(page).not.toContain("test-approved-0");
+  }, 60_000);
 
   test("names every package it carries, with its license's text, and the icons' set", () => {
     const page = readFileSync(built.path, "utf8");
