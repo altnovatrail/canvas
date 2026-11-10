@@ -59,8 +59,11 @@ export function problemsOf(sample: Sample, version: string, built: Built = "rele
     want(sample.writer === Writer.CHILD, "not by a child");
     want(sample.textSetVersion === "test-approved-0", "not of the test set of texts");
     want(sample.writerCode === CHILD_CODE, `not of the code typed, ${CHILD_CODE}`);
+    // A workbook's final geometry holds only the strokes in its boxes (R53), and the drivers'
+    // stroke falls in the draft beside them: a child's workbook may hold none.
     want(
-      sample.ink.case === "geometry" && sample.ink.value.strokes.length > 0,
+      sample.ink.case === "geometry" &&
+        (sample.ink.value.strokes.length > 0 || sample.surface.case === "workbook"),
       "no strokes in its final geometry",
     );
   }

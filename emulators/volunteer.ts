@@ -365,6 +365,8 @@ async function opening(run: Run, device: Device, text: string, clock: Clock): Pr
       : how,
     "page",
   );
+  // A frame or two for the browser to draw what the page shows, before the picture of the screen.
+  await clock.pause(1500);
   device.shot("opened-file");
   run.record(
     "its checkbox draws the strokes the history did not show",
@@ -372,6 +374,7 @@ async function opening(run: Run, device: Device, text: string, clock: Clock): Pr
     "",
     "page",
   );
+  await clock.pause(1500);
   device.shot("opened-hidden");
   await checked(run, device, ", after the page was opened anew");
 }

@@ -73,6 +73,10 @@ test("a test build's folder holds a child's session: by a child, its final geome
     "release",
   ]);
   expect(problemsOf(child(), "0.0.0", "test")).toEqual([]);
+  // A child's workbook whose strokes fell in the draft holds none in its final geometry (R53).
+  const draft = child();
+  if (draft.ink.case === "geometry") draft.ink.value.strokes = [];
+  expect(problemsOf(draft, "0.0.0", "test")).toEqual([]);
   expect(problemsOf(asPage(example("sheet")), "0.0.0", "test")).toEqual([
     "not by a child",
     "not of the test set of texts",
