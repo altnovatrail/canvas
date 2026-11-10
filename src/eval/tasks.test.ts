@@ -39,7 +39,7 @@ test("a task's reference names the release, the file, the bank and the digest of
     source: {
       case: "tutor",
       value: {
-        tag: "v0.1.10",
+        tag: "v0.1.22",
         fileDigest: `sha256:${TUTOR_FILE.sha256}`,
         bank: "eval/bank.json",
         bankDigest: "sha256:c6f25b486faa79aa344eeb1dee6bd2aae8c069fd670a0d20c3fe929aeb9fdf13",
@@ -63,14 +63,14 @@ test("a file of another format, a bank or a task short of what it needs, is refu
   const bank = (tasks: unknown) => ({
     format: "tutor-open-tasks",
     version: 0,
-    module_format_version: "0.3",
+    module_format_version: "0.4",
     banks: [{ bank: "b.json", digest: "sha256:0", tasks }],
   });
   expect(open({ format: "tutor-open-tasks", version: 1, banks: [] })).toThrow(TypeError);
-  // Of the version of the module format the element reads, or of 0.3 before it, and no other
-  // (T77, T85): tutor's file is still of 0.3, whose open view 0.4 keeps.
-  for (const other of ["0.2", "0.5", undefined, 0.4, ["0.3"]]) {
-    expect(open({ ...bank([]), module_format_version: other })).toThrow("module format 0.4 or 0.3");
+  // Of the version of the module format the element reads, and no other: the exception for 0.3 is
+  // gone with tutor's file of 0.4 (T77, T85, T99).
+  for (const other of ["0.2", "0.3", "0.5", undefined, 0.4, ["0.4"]]) {
+    expect(open({ ...bank([]), module_format_version: other })).toThrow("module format 0.4");
   }
   expect(open({ ...bank([]), module_format_version: "0.4" })()).toEqual(new Map([["b.json", []]]));
   expect(open({ ...bank([]), banks: [{ bank: "b.json" }] })).toThrow(TypeError);

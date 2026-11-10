@@ -16,7 +16,7 @@ bin := "node_modules/.bin"
 
 # The release of tutor whose file of open tasks, in tasks/, the synthetic samples answer: the tag of
 # TUTOR_FILE in src/eval/tasks.ts, which scripts/synthetic.test.ts holds this to (R49).
-tutor_tag := "v0.1.10"
+tutor_tag := "v0.1.22"
 
 # The release of modules whose package of grade-3-math, in tasks/modules-<tag>/, ci-licenses writes
 # synthetic samples of a module's eval set on (T86; R63): ci-licenses verifies the index, and holds
