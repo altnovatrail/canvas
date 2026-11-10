@@ -22,6 +22,9 @@ export const WORKBOOK = "16";
 
 /** The build the workflow's build job wrote with scripts/page.ts. */
 export const BUILD = "build/page";
+/** The test build, with the test set of texts approved for tests alone (T84; R59), as the workflow
+ * serves it: its file named apart, for Chrome keeps both downloads in one list (T22). */
+export const TEST_BUILD = "build/page-test-served";
 
 /** The page's one file among a build's. */
 export function pageIn(names: readonly string[]): string {
@@ -30,9 +33,9 @@ export function pageIn(names: readonly string[]): string {
   return file;
 }
 
-/** The page's one file in the build. */
-export function pageFile(): string {
-  return pageIn(readdirSync(BUILD));
+/** The page's one file in a build: the release's, unless another is named. */
+export function pageFile(build = BUILD): string {
+  return pageIn(readdirSync(build));
 }
 
 /** The watch, as a script of its own: it runs once in a page, before the page's own. */
@@ -125,24 +128,205 @@ export function blobAt(index: number): string {
  * element takes them as it takes a finger's; what a real pen or palm does is the hardware's to
  * show (Д7 in RUN.md). It gives the strokes the sheet holds then. */
 export function strokeBy(
-  [x1, y1]: readonly [number, number],
-  [x2, y2]: readonly [number, number],
+  from: readonly [number, number],
+  to: readonly [number, number],
   type: "touch" | "pen" | "mouse",
+  end: "pointerup" | "pointercancel" = "pointerup",
+): string {
+  return pointersBy([[from, to]], type, end);
+}
+
+/** A script that moves pointers of the page's own over the element together, each from its point
+ * to its own, and ends them all with one kind of event: one pointer is a stroke, ended by
+ * pointerup or, as a browser that takes the touch back ends it, by pointercancel; two of a touch
+ * are the fingers that scroll the sheet (R29; T22). It gives the strokes the sheet holds then. */
+export function pointersBy(
+  paths: readonly (readonly [readonly [number, number], readonly [number, number]])[],
+  type: "touch" | "pen" | "mouse",
+  end: "pointerup" | "pointercancel" = "pointerup",
 ): string {
   return `(() => {
   const host = document.querySelector("novatrail-canvas");
-  const target = host.shadowRoot.elementFromPoint(${x1}, ${y1}) ?? host;
-  const at = (kind, x, y) => target.dispatchEvent(new PointerEvent(kind, {
-    pointerId: 7, pointerType: ${JSON.stringify(type)}, isPrimary: true, bubbles: true, composed: true,
-    cancelable: true, clientX: x, clientY: y, buttons: kind === "pointerup" ? 0 : 1,
-    pressure: kind === "pointerup" ? 0 : 0.5,
+  const paths = ${JSON.stringify(paths)};
+  const targets = paths.map(([[x, y]]) => host.shadowRoot.elementFromPoint(x, y) ?? host);
+  const at = (n, kind, x, y) => targets[n].dispatchEvent(new PointerEvent(kind, {
+    pointerId: 7 + n, pointerType: ${JSON.stringify(type)}, isPrimary: n === 0, bubbles: true,
+    composed: true, cancelable: true, clientX: x, clientY: y, buttons: kind === "pointermove" || kind === "pointerdown" ? 1 : 0,
+    pressure: kind === "pointermove" || kind === "pointerdown" ? 0.5 : 0,
   }));
-  at("pointerdown", ${x1}, ${y1});
-  for (let i = 1; i <= 12; i++) at("pointermove", ${x1} + (${x2 - x1} * i) / 12, ${y1} + (${y2 - y1} * i) / 12);
-  at("pointerup", ${x2}, ${y2});
+  paths.forEach(([[x, y]], n) => at(n, "pointerdown", x, y));
+  for (let i = 1; i <= 12; i++) {
+    paths.forEach(([[x1, y1], [x2, y2]], n) => at(n, "pointermove", x1 + ((x2 - x1) * i) / 12, y1 + ((y2 - y1) * i) / 12));
+  }
+  paths.forEach(([, [x, y]], n) => at(n, ${JSON.stringify(end)}, x, y));
   return host.history.length;
 })()`;
 }
+
+/** The box of a button of the element's own row, by its label as the screen shows it (R46): the
+ * label is the button's text, after its icon. As JSON, null when the row has none such. */
+export function buttonBox(label: string): string {
+  return `JSON.stringify((() => {
+  const host = document.querySelector("novatrail-canvas");
+  const button = [...(host?.shadowRoot?.querySelectorAll(".tools button") ?? [])]
+    .find((one) => one.textContent.trim() === ${JSON.stringify(label)} && !one.hidden);
+  const box = button?.getBoundingClientRect();
+  return box && box.width > 0 ? { x: box.x, y: box.y, width: box.width, height: box.height, view: innerHeight } : null;
+})())`;
+}
+
+/** A script that presses a button of the element's row by its own click(), as the iPad's driver
+ * presses the page's buttons (T81); whether there was one. */
+export function clickButton(label: string): string {
+  return `(() => {
+  const host = document.querySelector("novatrail-canvas");
+  const button = [...(host?.shadowRoot?.querySelectorAll(".tools button") ?? [])]
+    .find((one) => one.textContent.trim() === ${JSON.stringify(label)} && !one.hidden);
+  if (!button) return false;
+  button.click();
+  return true;
+})()`;
+}
+
+/** The labels of the row's buttons in Russian, the page's language (src/element/labels.ts). */
+export const PEN = "Перо";
+export const ERASER = "Ластик";
+export const UNDO = "Отменить";
+
+/** What the sheet holds now, as JSON: how many events its history has, the kind of the last, the
+ * tool in use and how far the sheet and the page are scrolled — the viewport of the element and
+ * the window together, for two fingers scroll whichever can go (R29). */
+export const SHEET = `JSON.stringify((() => {
+  const host = document.querySelector("novatrail-canvas");
+  const history = host && Array.isArray(host.history) ? host.history : [];
+  const viewport = host?.shadowRoot?.querySelector(".viewport");
+  return {
+    events: history.length,
+    last: history.at(-1)?.kind ?? "",
+    tool: host?.tool ?? "",
+    scrolled: Math.round((viewport?.scrollTop ?? 0) + scrollY),
+  };
+})())`;
+
+/** What SHEET gives. */
+export interface SheetNow {
+  readonly events: number;
+  readonly last: string;
+  readonly tool: string;
+  readonly scrolled: number;
+}
+
+/** A script that has the writer say they imitate a child's hand: the page writes the sample as
+ * an adult's imitating a child's (R09). */
+export const AS_CHILD = `(document.querySelector('input[name="writer"][value="child"]').click(), 0)`;
+
+/** A script that reads the test build's start before anything is chosen (T22; R58, R59): the eval
+ * set closed with its reason, for the build has no task of a module, and the measurement and a
+ * child's session open, as JSON. */
+export const TEST_START = `JSON.stringify((() => {
+  const radio = (value) => document.querySelector('input[name="purpose"][value="' + value + '"]');
+  return {
+    evalSetClosed: radio("evalSet")?.disabled === true
+      && (document.getElementById("purpose-note-evalSet")?.textContent ?? "").includes("нет задач модулей"),
+    measurementOpen: radio("measurement")?.disabled === false,
+    childOpen: radio("child")?.disabled === false,
+  };
+})())`;
+
+/** A child's code as the form of the test would hold it: what the adult types (R59). */
+export const CHILD_CODE = "T22CHILD";
+
+/** A script that goes through the start of a child's session as the adult who leads it would
+ * (T84; R59): the session chosen, the statements ticked, a new code asked — which the page shows
+ * for a form and begins nothing with — and then the form's code typed, and «Начать». What came of
+ * each, as JSON. */
+export const CHILD_START = `JSON.stringify((() => {
+  const input = (field, value) => {
+    field.value = value;
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+  document.querySelector('input[name="purpose"][value="child"]').click();
+  for (const tick of document.querySelectorAll("#statements input[data-statement]")) {
+    if (!tick.checked) tick.click();
+  }
+  document.querySelector('input[name="code"][value="new"]').click();
+  const newShown = /[0-9A-Z]{6,16}/.test(document.getElementById("new-code").textContent ?? "");
+  const begin = document.getElementById("begin");
+  const newBlocks = begin.disabled;
+  document.querySelector('input[name="code"][value="own"]').click();
+  input(document.getElementById("typed"), ${JSON.stringify(CHILD_CODE)});
+  const open = !begin.disabled;
+  if (open) begin.click();
+  return {
+    newShown,
+    newBlocks,
+    begun: open && document.querySelector("novatrail-canvas") !== null,
+    childWrites: !document.getElementById("child-writes").hidden,
+    ipadNote: !document.getElementById("ipad-note").hidden,
+    writerAsked: !document.getElementById("writer").hidden,
+  };
+})())`;
+
+/** Whether the form of a child's sheet labels the flag of a part illegible as the adult can say
+ * it: unread by the child's words too, not on purpose (R59). */
+export const CHILD_FLAG = `(document.querySelector('[data-part="0"] input[data-flag="illegible"]')?.parentElement?.textContent ?? "").includes("со слов ребёнка")`;
+
+/** A script that opens the page anew, as a person does to begin again (R11): the start, with the
+ * section that opens a file below it (T87). */
+export const REOPEN = "(setTimeout(() => location.reload(), 0), 0)";
+
+/** Whether the page shows its start and the section that opens a sample file. */
+export const OPEN_SHOWN = `document.getElementById("start")?.hidden === false && document.getElementById("open")?.hidden === false`;
+
+/** A script that gives the section of the page that opens a file a sample's text as a file chosen
+ * (T87): the page's own way to read it, not the system's picker, which only hardware shows (Д7).
+ * The text is the script's first argument where the driver passes one, or else in it. */
+export function chooseFile(text?: string): string {
+  const given = text === undefined ? "arguments[0]" : JSON.stringify(text);
+  return `(() => {
+  const input = document.getElementById("open-file");
+  const files = new DataTransfer();
+  files.items.add(new File([${given}], "sample.json", { type: "application/json" }));
+  input.files = files.files;
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+  return input.files.length;
+})()`;
+}
+
+/** What the page shows of a sample file it opened (T87), as JSON: whether the view is there, how
+ * many strokes it draws as shown and as not shown at the end, whether its checkbox of those is
+ * there, and how many crops it shows and how many of them the browser has decoded. */
+export const VIEWED = `JSON.stringify((() => {
+  const view = document.getElementById("view");
+  const crops = [...document.querySelectorAll("#view img.crop")];
+  return {
+    shown: view?.hidden === false,
+    lines: document.querySelectorAll("#view svg > polyline").length,
+    hidden: document.querySelectorAll("#view svg [data-hidden] polyline").length,
+    toggle: document.getElementById("show-hidden") !== null,
+    crops: crops.length,
+    decoded: crops.filter((crop) => crop.complete && crop.naturalWidth > 0).length,
+  };
+})())`;
+
+/** What VIEWED gives. */
+export interface Viewed {
+  readonly shown: boolean;
+  readonly lines: number;
+  readonly hidden: number;
+  readonly toggle: boolean;
+  readonly crops: number;
+  readonly decoded: number;
+}
+
+/** A script that ticks the checkbox of the strokes the history did not show, brings the picture
+ * into view, and says whether they are drawn then. */
+export const SHOW_HIDDEN = `(() => {
+  const toggle = document.getElementById("show-hidden");
+  if (toggle && !toggle.checked) toggle.click();
+  document.querySelector("#view svg")?.scrollIntoView({ block: "start" });
+  return document.querySelector("#view svg [data-hidden]")?.getAttribute("display") === "inline";
+})()`;
 
 /** A script that goes through the page's start as the author would under the draft of texts (T20):
  * the measurement, a new writer's code, every statement ticked, and «Начать». Whether the sheet is
@@ -226,17 +410,40 @@ export interface Box {
 }
 
 /** A stroke inside the part of an element the window shows: from a point a fifth into it to one
- * a little lower and to the right, as in the build's own test; none when the window shows less
- * than a strip of it. */
-export function strokeIn(box: Box): [[number, number], [number, number]] | undefined {
+ * a little lower and to the right, as in the build's own test; the second stroke of a sheet to the
+ * right of the first, apart from it (T22). None when the window shows less than a strip of it. */
+export function strokeIn(
+  box: Box,
+  second = false,
+): [[number, number], [number, number]] | undefined {
   const top = Math.max(box.y, 0);
   const bottom = Math.min(box.y + box.height, box.view);
   if (bottom - top < 40) return undefined;
   const round = (x: number, y: number): [number, number] => [Math.round(x), Math.round(y)];
+  const left = second ? 0.6 : 0.2;
   return [
-    round(box.x + box.width * 0.2, top + (bottom - top) * 0.3),
-    round(box.x + box.width * 0.4, top + (bottom - top) * 0.5),
+    round(box.x + box.width * left, top + (bottom - top) * 0.3),
+    round(box.x + box.width * (left + 0.2), top + (bottom - top) * 0.5),
   ];
+}
+
+/** Two fingers inside the part of an element the window shows, side by side a fifth of it apart,
+ * each moving up a third of what the window shows: the content goes on with them (R29). None when
+ * the window shows less than a strip of it. */
+export function fingersIn(
+  box: Box,
+): [[[number, number], [number, number]], [[number, number], [number, number]]] | undefined {
+  const top = Math.max(box.y, 0);
+  const bottom = Math.min(box.y + box.height, box.view);
+  if (bottom - top < 120) return undefined;
+  const round = (x: number, y: number): [number, number] => [Math.round(x), Math.round(y)];
+  const from = top + (bottom - top) * 0.75;
+  const to = top + (bottom - top) * 0.4;
+  const finger = (at: number): [[number, number], [number, number]] => [
+    round(box.x + box.width * at, from),
+    round(box.x + box.width * at, to),
+  ];
+  return [finger(0.4), finger(0.6)];
 }
 
 /** A site's icon, which a browser asks for of itself: Safari asks for it of a page from a server,

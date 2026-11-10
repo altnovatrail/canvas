@@ -1,7 +1,9 @@
 // The watch the drivers of the samples page put into it (T78 in RUN.md; R54 in
 // docs/decisions.md): its pure parts, and the watch itself in the page's build opened by file:// in
 // Chrome Headless Shell from the toolchain stage (R13), as the drivers use it in the emulators — a
-// stroke, a save, the workbook's page, and a page that asks for the network, which it must see.
+// stroke, a save, the workbook's page, and a page that asks for the network, which it must see;
+// and the scripts of T22's moves (R65): a stroke cancelled, the eraser and undo, two fingers, the
+// page opened anew with a file opened in it, and the test build's child's session.
 
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -13,24 +15,43 @@ import { hash, policy, styleOf } from "../scripts/csp.ts";
 import { buildPage } from "../scripts/page.ts";
 import {
   asked,
+  type Box,
   blobAt,
   boxOf,
+  buttonBox,
+  CHILD_CODE,
+  CHILD_FLAG,
+  CHILD_START,
+  chooseFile,
+  clickButton,
+  ERASER,
+  fingersIn,
   MARK,
   MARKING,
   MARKUP,
   noNetwork,
+  OPEN_SHOWN,
   outside,
   PAINT,
   PAINTED,
+  PEN,
   pageIn,
+  pointersBy,
   READ,
+  REOPEN,
   type Seen,
+  SHEET,
+  SHOW_HIDDEN,
+  type SheetNow,
   START,
   served,
   strokeBy,
   strokeIn,
   TASKS,
+  TEST_START,
   TO_WORKBOOK,
+  UNDO,
+  VIEWED,
   verdicts,
   WATCH,
   WORKBOOK,
@@ -74,6 +95,25 @@ describe("the pure parts", () => {
     // Wholly above the window, or a strip of it too thin to draw in: no stroke.
     expect(strokeIn({ x: 0, y: -900, width: 100, height: 800, view: 1000 })).toBeUndefined();
     expect(strokeIn({ x: 0, y: 980, width: 100, height: 800, view: 1000 })).toBeUndefined();
+    // The sheet's second stroke, to the right of the first and apart from it (T22).
+    expect(strokeIn({ x: 10, y: 100, width: 500, height: 400, view: 1000 }, true)).toEqual([
+      [310, 220],
+      [410, 300],
+    ]);
+  });
+
+  test("two fingers stand side by side in the part the window shows, and move up together (T22)", () => {
+    expect(fingersIn({ x: 0, y: 0, width: 1000, height: 2000, view: 800 })).toEqual([
+      [
+        [400, 600],
+        [400, 320],
+      ],
+      [
+        [600, 600],
+        [600, 320],
+      ],
+    ]);
+    expect(fingersIn({ x: 0, y: 700, width: 1000, height: 2000, view: 800 })).toBeUndefined();
   });
 
   test("a request is any address but the page's own blobs, data and file", () => {
@@ -171,11 +211,15 @@ describe("the pure parts", () => {
 describe("in the page's build", () => {
   let folder: string;
   let file: string;
+  /** The test build, with the test set of texts approved for tests alone (T84; R59). */
+  let tested: string;
   let browser: Browser;
 
   beforeAll(async () => {
     folder = mkdtempSync(join(tmpdir(), "canvas-watch-"));
     file = (await buildPage(folder, "0.0.0")).path;
+    tested = (await buildPage(join(folder, "test"), "0.0.0", "page/sets/test-approved-0.json"))
+      .path;
     browser = await chromium.launch();
   }, 120_000);
 
@@ -262,6 +306,125 @@ describe("in the page's build", () => {
       const seen = await read(page);
       expect(seen.blobs).toBe(2);
       expect(verdicts(seen, outside(seen.resources)).filter(({ ok }) => !ok)).toEqual([]);
+    } finally {
+      await page.close();
+    }
+  }, 60_000);
+
+  test("goes T22's moves on the sheet, the page opened anew and the file opened in it (R65)", async () => {
+    const page = await opened(file);
+    try {
+      expect(await page.evaluate(START)).toBe(true);
+      const sheet = async () => JSON.parse(String(await page.evaluate(SHEET))) as SheetNow;
+      const box = async (): Promise<Box> => {
+        await page.evaluate(
+          'document.querySelector("novatrail-canvas").scrollIntoView({ block: "start" })',
+        );
+        return JSON.parse(String(await page.evaluate(boxOf("novatrail-canvas"))));
+      };
+      const stroke = async (second = false, end: "pointerup" | "pointercancel" = "pointerup") => {
+        const at = strokeIn(await box(), second);
+        if (!at) throw new Error("the element is not in the window");
+        return page.evaluate(strokeBy(at[0], at[1], "touch", end));
+      };
+      expect(await stroke()).toBe(1);
+      // A stroke the browser cancels leaves nothing.
+      expect(await stroke(true, "pointercancel")).toBe(1);
+      // The row's eraser takes the stroke off, and undo puts it back.
+      expect(JSON.parse(String(await page.evaluate(buttonBox(ERASER))))).toMatchObject({
+        width: expect.any(Number),
+      });
+      expect(await page.evaluate(clickButton(ERASER))).toBe(true);
+      expect((await sheet()).tool).toBe("eraser");
+      await stroke();
+      expect((await sheet()).last).toBe("erase");
+      expect(await page.evaluate(clickButton(UNDO))).toBe(true);
+      expect((await sheet()).last).toBe("undo");
+      // A second stroke, erased: the file keeps it apart.
+      expect(await page.evaluate(clickButton(PEN))).toBe(true);
+      await stroke(true);
+      await page.evaluate(clickButton(ERASER));
+      await stroke(true);
+      expect(await sheet()).toMatchObject({ events: 5, last: "erase", tool: "eraser" });
+      await page.evaluate(clickButton(PEN));
+      // Two fingers scroll the page, and write nothing.
+      const before = await sheet();
+      const fingers = fingersIn(JSON.parse(String(await page.evaluate(boxOf("novatrail-canvas")))));
+      if (!fingers) throw new Error("the element is not in the window");
+      await page.evaluate(pointersBy(fingers, "touch"));
+      const after = await sheet();
+      expect(after.events).toBe(before.events);
+      expect(after.scrolled).toBeGreaterThan(before.scrolled);
+      expect(await page.evaluate(clickButton("Нет такой"))).toBe(false);
+      // The sheet saved, then the page opened anew and its file opened in it (T87).
+      await page.evaluate(MARKUP);
+      await until(page, MARKING);
+      expect(await page.evaluate(MARK)).toBe(true);
+      await page.click("#save");
+      await until(page, blobAt(0));
+      const text = String(await page.evaluate(blobAt(0)));
+      await page.evaluate(REOPEN);
+      await page.waitForEvent("load");
+      await until(page, OPEN_SHOWN);
+      expect(await page.evaluate(chooseFile(text))).toBe(1);
+      await until(page, `${VIEWED}.includes('"shown":true')`);
+      await until(
+        page,
+        `(() => { const v = JSON.parse(${VIEWED}); return v.decoded === v.crops; })()`,
+      );
+      expect(JSON.parse(String(await page.evaluate(VIEWED)))).toEqual({
+        shown: true,
+        lines: 1,
+        hidden: 1,
+        toggle: true,
+        crops: 4,
+        decoded: 4,
+      });
+      expect(await page.evaluate(SHOW_HIDDEN)).toBe(true);
+      const seen = await read(page);
+      expect(verdicts(seen, outside(seen.resources)).filter(({ ok }) => !ok)).toEqual([]);
+    } finally {
+      await page.close();
+    }
+  }, 60_000);
+
+  test("in the test build: the eval set closed, and a child's session begun with the form's code (T22)", async () => {
+    const page = await opened(tested);
+    try {
+      expect(JSON.parse(String(await page.evaluate(TEST_START)))).toEqual({
+        evalSetClosed: true,
+        measurementOpen: true,
+        childOpen: true,
+      });
+      expect(JSON.parse(String(await page.evaluate(CHILD_START)))).toEqual({
+        newShown: true,
+        newBlocks: true,
+        begun: true,
+        childWrites: true,
+        ipadNote: true,
+        writerAsked: false,
+      });
+      // As the drivers do: a frame of the element first, then the stroke in the window.
+      await page.evaluate(PAINT);
+      await until(page, PAINTED);
+      await page.evaluate(
+        'document.querySelector("novatrail-canvas").scrollIntoView({ block: "start" })',
+      );
+      const at = strokeIn(JSON.parse(String(await page.evaluate(boxOf("novatrail-canvas")))));
+      if (!at) throw new Error("the element is not in the window");
+      expect(await page.evaluate(strokeBy(at[0], at[1], "touch"))).toBe(1);
+      await page.evaluate(MARKUP);
+      await until(page, MARKING);
+      expect(await page.evaluate(CHILD_FLAG)).toBe(true);
+      expect(await page.evaluate(MARK)).toBe(true);
+      await page.click("#save");
+      await until(page, blobAt(0));
+      const sample = JSON.parse(String(await page.evaluate(blobAt(0))));
+      expect(sample).toMatchObject({
+        writer: "WRITER_CHILD",
+        writer_code: CHILD_CODE,
+        text_set_version: "test-approved-0",
+      });
     } finally {
       await page.close();
     }

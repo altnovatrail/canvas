@@ -28,12 +28,16 @@ phase "Safari is launched"
 xcrun simctl launch "$udid" com.apple.mobilesafari > /dev/null
 sleep 5
 
-phase "the page's copy with the watch"
+phase "the pages' copies with the watch"
 page=$(basename build/page/samples-page_v*.html)
-# The page with the watch in it before its own script (emulators/watch.ts), served as pages.
+# The page with the watch in it before its own script (emulators/watch.ts), served as pages; the
+# test build beside it on a port of its own, its server's log in its own run's folder (T22).
 node emulators/watch.ts build/page build/page-watched > /dev/null
-phase "the server starts"
+node emulators/watch.ts build/page-test-served build/page-test-watched > /dev/null
+mkdir -p "$out-test"
+phase "the servers start"
 nohup node emulators/serve.ts build/page-watched 8080 --inline > "$out/server.txt" 2>&1 &
+nohup node emulators/serve.ts build/page-test-watched 8081 --inline > "$out-test/server.txt" 2>&1 &
 phase "safaridriver is enabled"
 sudo safaridriver --enable
 phase "safaridriver starts, and the server and it answer"

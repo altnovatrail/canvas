@@ -5,24 +5,47 @@
 // emulators/page-ipad.ts — gives the ways of its own: how the page opens, how a stroke is drawn,
 // how the save button is pressed. Its own steps are the device's, which earn the run one more pass
 // when they fail; the steps here are the page's, which fail it.
+//
+// Two builds, two ways (T22; R65). The release's goes the author's measurement with the moves of
+// T22's checklist on the sheet — a stroke the browser cancels, the eraser and undo, two fingers that
+// scroll — and the workbook written as an adult imitating a child; then the page is opened anew
+// and the sheet's file opened in it (T87). The test build's goes its start, the eval set closed and
+// a child's session begun with the form's code, and the child's sheet and workbook (R59).
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Run } from "./run.ts";
 import { type Clock, REAL, until } from "./wait.ts";
 import {
+  AS_CHILD,
   blobAt,
+  CHILD_FLAG,
+  CHILD_START,
+  ERASER,
   MARK,
   MARKING,
   MARKUP,
+  OPEN_SHOWN,
   PAINT,
   PAINTED,
+  PEN,
+  REOPEN,
   type Seen,
+  SHEET,
+  SHOW_HIDDEN,
+  type SheetNow,
   START,
   TASKS,
+  TEST_START,
+  UNDO,
+  VIEWED,
+  type Viewed,
   verdicts,
   WORKBOOK,
 } from "./watch.ts";
+
+/** Which build a pass goes through, and so its way: the release's or the test's (T22). */
+export type Way = "release" | "test";
 
 /** What a device does on the volunteer's way. A step it cannot do it records as the device's and
  * says so by its answer. */
@@ -33,8 +56,20 @@ export interface Device {
   read(): Promise<Seen | undefined>;
   /** Run an expression in the page, its value back. */
   evaluate(expression: string): Promise<unknown>;
-  /** Draw a stroke on the element: how, or undefined when the device could not. */
-  draw(name: string): Promise<string | undefined>;
+  /** Draw a stroke on the element, the sheet's second apart from the first: how, or undefined
+   * when the device could not. */
+  draw(name: string, second?: boolean): Promise<string | undefined>;
+  /** Draw a stroke that the browser cancels before it ends, by a pointercancel: how, or undefined
+   * when the device could not. */
+  cancel(name: string): Promise<string | undefined>;
+  /** Move two fingers up the element together, as one scrolls the sheet: how, or undefined when
+   * the device could not. */
+  scroll(name: string): Promise<string | undefined>;
+  /** Press a button of the element's row by its label; whether the device could. */
+  button(label: string, name: string): Promise<boolean>;
+  /** Give the section that opens a sample file the text of one: how, or undefined when the device
+   * could not. */
+  openFile(text: string): Promise<string | undefined>;
   /** Press the save button; whether the device could. */
   press(name: string): Promise<boolean>;
   /** Show the workbook's page, answering the page's question as a person would: yes. */
@@ -83,8 +118,8 @@ async function painted(device: Device, clock: Clock): Promise<boolean> {
 }
 
 /** Wait for the page to hand the file at an index to a download, and keep its text, when asked to,
- * in the run's folder saved/; whether it came, or undefined when the page stopped answering the
- * driver — the device's failure, which this records, not the page's. */
+ * in the run's folder saved/: its text, "" when none came, or undefined when the page stopped
+ * answering the driver — the device's failure, which this records, not the page's. */
 async function handed(
   run: Run,
   device: Device,
@@ -92,7 +127,7 @@ async function handed(
   name: string,
   keep: boolean,
   clock: Clock,
-): Promise<boolean | undefined> {
+): Promise<string | undefined> {
   // What the last read of the page threw, if it threw: then the page did not answer at all.
   let lost: unknown;
   const text = await until(
@@ -118,23 +153,25 @@ async function handed(
     );
     return undefined;
   }
-  if (text === undefined) return false;
+  if (text === undefined) return "";
   if (keep) {
     mkdirSync(join(run.folder, "saved"), { recursive: true });
     writeFileSync(join(run.folder, "saved", `${name}.json`), text);
   }
   device.shot(`${name}-saved`);
-  return true;
+  return text;
 }
 
 /** Mark the writing up through the page's form, as the writer would after writing (T81): the
  * markup asked for, its form filled in. Whether the page will save the sample then; or undefined
  * when the driver could not reach the form — a page that no longer answers is the device's
- * failure, which this records. */
+ * failure, which this records. In a child's session the form's flag of a part written illegibly
+ * is the adult's to say, and the page labels it so (R59). */
 async function markUp(
   run: Run,
   device: Device,
   name: string,
+  way: Way,
   clock: Clock,
 ): Promise<boolean | undefined> {
   try {
@@ -146,6 +183,14 @@ async function markUp(
       clock,
     );
     if (!shown) return false;
+    if (way === "test" && name === "sheet") {
+      run.record(
+        "a child's form labels an illegible part unread by the child's words too",
+        (await device.evaluate(CHILD_FLAG)) === true,
+        "",
+        "page",
+      );
+    }
     const ready = (await device.evaluate(MARK)) === true;
     device.shot(`${name}-marked`);
     return ready;
@@ -155,13 +200,189 @@ async function markUp(
   }
 }
 
-/** One pass of the volunteer's way. The files the page saves are kept from the watch's copies
- * when keep is set; a device that takes them off itself leaves it unset. Its waits run on the
- * clock given: the real one, or a test's. */
+/** What an expression of the page gives as JSON. */
+async function json<T>(device: Device, expression: string): Promise<T> {
+  return JSON.parse(String(await device.evaluate(expression))) as T;
+}
+
+/** The start of the way: under the release's draft, the author's measurement (T20); under the test
+ * set, the eval set closed with its reason and a child's session begun with the form's code, a new
+ * code beginning none (T84; R59). Whether the sheet is there then. */
+async function begin(run: Run, device: Device, way: Way): Promise<boolean> {
+  if (way === "release") {
+    const started = (await device.evaluate(START)) === true;
+    run.record("the start lets the author begin the measurement", started, "", "page");
+    return started;
+  }
+  const start = await json<{
+    evalSetClosed: boolean;
+    measurementOpen: boolean;
+    childOpen: boolean;
+  }>(device, TEST_START);
+  run.record(
+    "the test build's start keeps the eval set closed, with why, and opens the measurement and a child's session",
+    start.evalSetClosed && start.measurementOpen && start.childOpen,
+    JSON.stringify(start),
+    "page",
+  );
+  device.shot("start");
+  const child = await json<{
+    newShown: boolean;
+    newBlocks: boolean;
+    begun: boolean;
+    childWrites: boolean;
+    ipadNote: boolean;
+    writerAsked: boolean;
+  }>(device, CHILD_START);
+  run.record(
+    "a new child's code is shown for the form, and begins no session",
+    child.newShown && child.newBlocks,
+    "",
+    "page",
+  );
+  run.record(
+    "the start lets the adult begin a child's session with the form's code",
+    child.begun,
+    "",
+    "page",
+  );
+  if (!child.begun) return false;
+  run.record(
+    "in a child's session the child writes, no adult's hand is asked, and the iPad's downloads are named",
+    child.childWrites && child.ipadNote && !child.writerAsked,
+    "",
+    "page",
+  );
+  device.shot("child-begun");
+  return true;
+}
+
+/** The moves of T22's checklist on the sheet, after its first stroke (R65): a stroke the browser
+ * cancels leaves nothing; the row's eraser takes the stroke off, and undo puts it back; a second
+ * stroke, erased, stays in the history apart; the pen comes back; two fingers scroll and write
+ * nothing. Whether the way goes on: a move the device could not make stops it, as its failure. */
+async function moves(run: Run, device: Device, name: string): Promise<boolean> {
+  const sheet = () => json<SheetNow>(device, SHEET);
+  const before = await sheet();
+  const cancelled = await device.cancel(name);
+  if (cancelled === undefined) return false;
+  const kept = await sheet();
+  run.record(
+    "a stroke the browser cancels leaves nothing on the sheet",
+    kept.events === before.events,
+    `${before.events} → ${kept.events} event(s), ${cancelled}`,
+    "page",
+  );
+  device.shot(`${name}-cancelled`);
+  const press = async (label: string, tool: string, step: string): Promise<boolean> => {
+    if (!(await device.button(label, name))) return false;
+    run.record(step, (await sheet()).tool === tool, "", "page");
+    return true;
+  };
+  if (!(await press(ERASER, "eraser", "the row's eraser takes the presses after it"))) return false;
+  if ((await device.draw(name)) === undefined) return false;
+  const erased = await sheet();
+  run.record("the eraser takes the stroke off", erased.last === "erase", erased.last, "page");
+  device.shot(`${name}-erased`);
+  if (!(await device.button(UNDO, name))) return false;
+  const undone = await sheet();
+  run.record("undo puts the stroke back", undone.last === "undo", undone.last, "page");
+  device.shot(`${name}-undone`);
+  // A second stroke, erased: the file keeps it, and the page that opens the file shows it apart.
+  if (!(await press(PEN, "pen", "the pen comes back"))) return false;
+  if ((await device.draw(name, true)) === undefined) return false;
+  if (!(await device.button(ERASER, name))) return false;
+  if ((await device.draw(name, true)) === undefined) return false;
+  const second = await sheet();
+  run.record(
+    "a second stroke is written and erased",
+    second.last === "erase" && second.events === undone.events + 2,
+    `${undone.events} → ${second.events} event(s)`,
+    "page",
+  );
+  if (!(await press(PEN, "pen", "the pen comes back after the second erasing"))) return false;
+  const still = await sheet();
+  const scrolled = await device.scroll(name);
+  if (scrolled === undefined) return false;
+  const after = await sheet();
+  run.record(
+    "two fingers scroll the sheet or the page, and write nothing",
+    after.scrolled !== still.scrolled && after.events === still.events,
+    `${still.scrolled} → ${after.scrolled} px, ${scrolled}`,
+    "page",
+  );
+  device.shot(`${name}-scrolled`);
+  return true;
+}
+
+/** The page's checks of what it did, each a step of the page's own, named after when they ran. */
+async function checked(run: Run, device: Device, when: string): Promise<void> {
+  const last = await device.read();
+  const requests = last ? device.requests(last) : [];
+  writeFileSync(
+    join(run.folder, when ? "watch-opened.json" : "watch.json"),
+    `${JSON.stringify({ seen: last, requests }, null, 2)}\n`,
+  );
+  if (!last) {
+    run.record(`read the page at the end${when}`, false);
+    return;
+  }
+  for (const { step, ok, note } of verdicts(last, requests))
+    run.record(`${step}${when}`, ok, note, "page");
+}
+
+/** The page opened anew, as a person does to begin again, and the sheet's file opened in it, as the
+ * organizer of an eval set looks in a sample before it goes on (T87; R64): its strokes, those the
+ * history did not show apart, its crops; then what the page did since it opened anew. */
+async function opening(run: Run, device: Device, text: string, clock: Clock): Promise<void> {
+  await device.evaluate(REOPEN);
+  // A page that reloads answers nothing for a moment: a read that throws is no answer yet.
+  const reopened = await until(
+    30,
+    async () =>
+      (await device.evaluate(OPEN_SHOWN).catch(() => false)) === true ? true : undefined,
+    1000,
+    clock,
+  );
+  run.record(
+    "the page opened anew shows the start and the section that opens a file",
+    reopened === true,
+    "",
+    "page",
+  );
+  if (!reopened) return;
+  const how = await device.openFile(text);
+  if (how === undefined) return;
+  const view = async () => json<Viewed>(device, VIEWED).catch(() => undefined);
+  const whole = (seen: Viewed | undefined) =>
+    seen?.shown && seen.crops > 0 && seen.decoded === seen.crops ? seen : undefined;
+  const shown = (await until(20, async () => whole(await view()), 1000, clock)) ?? (await view());
+  run.record(
+    "the file opened shows its strokes, those the history did not show apart, and its crops",
+    Boolean(whole(shown) && shown && shown.lines > 0 && shown.hidden > 0 && shown.toggle),
+    shown
+      ? `${shown.lines} line(s), ${shown.hidden} apart, ${shown.decoded} of ${shown.crops} crop(s) decoded, ${how}`
+      : how,
+    "page",
+  );
+  device.shot("opened-file");
+  run.record(
+    "its checkbox draws the strokes the history did not show",
+    (await device.evaluate(SHOW_HIDDEN)) === true,
+    "",
+    "page",
+  );
+  device.shot("opened-hidden");
+  await checked(run, device, ", after the page was opened anew");
+}
+
+/** One pass of the volunteer's way through a build. The files the page saves are kept from the
+ * watch's copies when keep is set; a device that takes them off itself leaves it unset. Its waits
+ * run on the clock given: the real one, or a test's. */
 export async function volunteer(
   run: Run,
   device: Device,
-  keep: boolean,
+  { keep, way = "release" }: { readonly keep: boolean; readonly way?: Way },
   clock: Clock = REAL,
 ): Promise<void> {
   try {
@@ -176,10 +397,8 @@ export async function volunteer(
       "page",
     );
     if (!shown?.defined) return;
-    // The start, before the sheet is there: the purpose, the code and the statements (T20).
-    const started = (await device.evaluate(START)) === true;
-    run.record("the start lets the author begin the measurement", started, "", "page");
-    if (!started) return;
+    if (!(await begin(run, device, way))) return;
+    const texts: string[] = [];
     for (const [index, name] of SURFACES.entries()) {
       if (name === "workbook") {
         await device.toWorkbook();
@@ -189,6 +408,9 @@ export async function volunteer(
           "",
           "page",
         );
+        // The release's workbook is an adult's imitating a child's hand (R09): the page asks it of
+        // each sample, and a child's session asks it of none.
+        if (way === "release") await device.evaluate(AS_CHILD);
       }
       if (!(await painted(device, clock))) {
         run.record(`the page renders the ${name} before the stroke`, false, "no frame in 20 s");
@@ -203,23 +425,19 @@ export async function volunteer(
       if (!after) return;
       const strokes = after.strokes;
       run.record(`the ${name} holds the stroke drawn`, strokes > 0, `${strokes}, ${how}`, "page");
-      const marked = await markUp(run, device, name, clock);
+      if (way === "release" && name === "sheet" && !(await moves(run, device, name))) return;
+      const marked = await markUp(run, device, name, way, clock);
       if (marked === undefined) return;
       run.record(`the ${name} is marked up, and the page will save it`, marked, "", "page");
       if (!(await device.press(name))) return;
       const came = await handed(run, device, index, name, keep, clock);
       if (came === undefined) return;
-      run.record(`the ${name}'s sample is handed to a download`, came, "", "page");
+      run.record(`the ${name}'s sample is handed to a download`, came !== "", "", "page");
+      texts.push(came);
     }
-    const last = await device.read();
-    const requests = last ? device.requests(last) : [];
-    writeFileSync(
-      join(run.folder, "watch.json"),
-      `${JSON.stringify({ seen: last, requests }, null, 2)}\n`,
-    );
-    if (!last) run.record("read the page at the end", false);
-    else
-      for (const { step, ok, note } of verdicts(last, requests)) run.record(step, ok, note, "page");
+    await checked(run, device, "");
+    const [sheet] = texts;
+    if (way === "release" && sheet) await opening(run, device, sheet, clock);
   } finally {
     await device.close();
   }
