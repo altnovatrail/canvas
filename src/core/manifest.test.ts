@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import { type Manifest, NO_MANIFEST, settingsOf } from "./manifest.js";
 import { moduleManifest, pathOf, refusal, under } from "./tasks.fixture.js";
 
-// Copies of the manifest examples of the module format at spec v0.12.0, its version 0.4
+// Copies of the manifest examples of the module format at spec v0.14.0, its version 0.4
 // (spec/format/examples/manifest/), and of its vectors of a manifest — the open view
 // (spec/format/vectors/open-view/manifest/) and the rule manifest.format-version
 // (spec/format/vectors/rules/manifest.format-version/): code and tests read nothing of spec/, so a

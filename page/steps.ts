@@ -22,7 +22,7 @@ export interface Offered {
 /** The purposes under a set, for a build with or without tasks of modules, a child's session last.
  * A draft opens the measurement to the author's own samples alone and keeps the eval set and the
  * session closed. An approved set opens the eval set and the session where it has their texts —
- * the lawyer approves the adults' and a child's consent apart —, and the eval set only where the
+ * the author approves the adults' and a child's consent apart —, and the eval set only where the
  * build has tasks of modules too: a module's eval set takes samples of its own module's tasks
  * alone (contracts/README.md of spec, «Eval sets»), and a sample of a task of tutor would be
  * refused there. */

@@ -3,7 +3,7 @@
 // heading and two labels — so that a reader of the template sees them. The screens are in Russian
 // alone, and a translation by the rules of UI packages' translations (R91 spec; epic E10 in RUN.md)
 // goes here and there. The texts are for now: those of the notices and the consent
-// are the lawyer's to read (R11; epic E4 in RUN.md of spec), and T20 brings the set of texts.
+// come from spec's release, legal-<version>.tar.gz, with T89 (R130 spec; R11).
 
 /** The kinds of task the samples page offers (T21): a sheet, an essay — a sheet whose answer is the
  * whole sheet — and a workbook's page. */
