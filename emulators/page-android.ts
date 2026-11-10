@@ -412,8 +412,13 @@ async function main(): Promise<void> {
   );
   // Chrome begins the test build afresh: nothing of the release's page, its dialogs or the
   // message of its download stands over the next one.
-  android.stopChrome();
-  await sleep(3000);
+  // An emulator gone by then fails the test build's run as the device's, in its own journal.
+  try {
+    android.stopChrome();
+    await sleep(3000);
+  } catch (error) {
+    tested.log(`Chrome not stopped before the test build: ${String(error).slice(0, 200)}`);
+  }
   const again = new Android(tested);
   await build(tested, "Test build on Android", () =>
     ways(tested, again, TEST_BUILD, process.env.TEST_PORT ?? "8081", "test"),
