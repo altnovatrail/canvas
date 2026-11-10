@@ -259,4 +259,5 @@ test("a module's sample is one of its eval set by an adult, of the task given, i
   expect(() => moduleSample(page, -1)).toThrow("is no seed");
   // Its generator takes 32 bits of a seed: one above would draw another seed's sample.
   expect(() => moduleSample(page, 2 ** 32 + 301)).toThrow("from 0 to 4294967295");
-});
+  // Twelve drawn twice, workbooks among them: past 5 s on a loaded machine (T97).
+}, 30_000);

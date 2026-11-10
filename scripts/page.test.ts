@@ -4,7 +4,7 @@
 // policy is kept, and the sample it saves reads back.
 
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -16,19 +16,8 @@ import { viewOf } from "../page/open.ts";
 import { readSample, type Sample } from "../src/eval/sample.ts";
 import { TUTOR_FILE } from "../src/eval/tasks.ts";
 import { policy, styleOf } from "./csp.ts";
-import {
-  buildPage,
-  type Carried,
-  carried,
-  fileName,
-  keptName,
-  notices,
-  packagesOf,
-  pageOf,
-  pageTasksOf,
-  TEMPLATE,
-  textsFor,
-} from "./page.ts";
+import type { Carried } from "./notices.ts";
+import { buildPage, fileName, notices, pageOf, pageTasksOf, TEMPLATE, textsFor } from "./page.ts";
 
 /** The banks of tutor's file in tasks/, which the build offers whole (T21). */
 const BANKS = (
@@ -134,52 +123,6 @@ describe("the builder", () => {
   test("names the file by a version X.Y.Z, and refuses another", () => {
     expect(fileName("1.2.3")).toBe("samples-page_v1.2.3.html");
     expect(() => fileName("v1.2.3")).toThrow("no version X.Y.Z");
-  });
-
-  test("finds the folders of a bundle's packages, scoped and nested ones too, once each", () => {
-    expect(
-      packagesOf([
-        "/w/node_modules/rbush/index.js",
-        "/w/node_modules/rbush/other.js",
-        "/w/node_modules/@bufbuild/protobuf/dist/esm/wire/varint.js",
-        "/w/node_modules/rbush/node_modules/quickselect/index.js",
-        "C:\\w\\node_modules\\perfect-freehand\\dist\\index.js",
-        "/w/src/core/ink.ts",
-      ]),
-    ).toEqual([
-      "/w/node_modules/@bufbuild/protobuf",
-      "/w/node_modules/rbush",
-      "/w/node_modules/rbush/node_modules/quickselect",
-      "C:/w/node_modules/perfect-freehand",
-    ]);
-    expect(keptName("@bufbuild/protobuf", "2.16.0")).toBe("bufbuild-protobuf-2.16.0.txt");
-  });
-
-  test("takes a package's license from its folder or the kept copy, and refuses one off the list or without a text", () => {
-    const root = mkdtempSync(join(tmpdir(), "canvas-carried-"));
-    try {
-      const pkg = (name: string, license: string, file?: string) => {
-        const at = join(root, name);
-        mkdirSync(at, { recursive: true });
-        writeFileSync(
-          join(at, "package.json"),
-          JSON.stringify({ name, version: "1.0.0", license }),
-        );
-        if (file) writeFileSync(join(at, "LICENSE.md"), file);
-        return at;
-      };
-      const kept = join(root, "kept");
-      mkdirSync(kept);
-      writeFileSync(join(kept, "b-1.0.0.txt"), "kept text");
-      expect(carried(pkg("a", "MIT", "own text"), kept).text).toBe("own text");
-      expect(carried(pkg("b", "ISC"), kept).text).toBe("kept text");
-      expect(() => carried(pkg("c", "MIT"), kept)).toThrow("c 1.0.0 has no text of its license");
-      expect(() => carried(pkg("d", "GPL-3.0-only", "text"), kept)).toThrow(
-        "d carries GPL-3.0-only, which is off the list",
-      );
-    } finally {
-      rmSync(root, { recursive: true, force: true });
-    }
   });
 
   test("refuses a carriage return, an inline script it would end early, and a template without its places", () => {

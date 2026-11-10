@@ -1,6 +1,8 @@
 // A module's package for the tests (T86; R63): grade-3-math 0.2.0, a copy from the release of modules
 // v0.2.0, whose index ci-licenses verifies by release-verify; and the same package with its
 // canonical view changed, its inventory naming the view anew, as module-kit build would write it.
+// english-essays 0.2.0 of the same release too, whose essays and choices the generator draws none of
+// (T98).
 
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -11,6 +13,9 @@ export const RELEASE = new URL("../../tasks/modules-v0.2.0/", import.meta.url);
 export const PACKAGE = new URL("novatrail-grade-3-math-0.2.0/", RELEASE);
 export const INVENTORY = readFileSync(new URL("inventory.json", PACKAGE), "utf8");
 export const SERVER = readFileSync(new URL("server.json", PACKAGE), "utf8");
+
+/** The package of english-essays 0.2.0 the same index names: five essays and three choices (T98). */
+export const ESSAYS = new URL("novatrail-english-essays-0.2.0/", RELEASE);
 
 /** The SHA-256 of a text's UTF-8 bytes, in hexadecimal. */
 export const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");

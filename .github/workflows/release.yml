@@ -48,7 +48,9 @@ jobs:
       # package.json. The samples page too: its own code, template, kept notices and draft of texts
       # — the set for tests goes into no release — its builder and policy, and the programs whose
       # options Vite's transform reads for the files it bundles, the element's and the DOM-free
-      # part's, through tsconfig.json (R55, R66).
+      # part's, through tsconfig.json (R55, R66). The generator of a module's eval set too: its
+      # script, its entry, its builder, the notices' helpers both builders share, and the program of
+      # the scripts, whose options Vite's transform reads for scripts/ (R68).
       paths: |
         src/*.ts
         :(exclude)src/*.test.ts
@@ -61,12 +63,17 @@ jobs:
         page/sets/draft-0.json
         scripts/page.ts
         scripts/csp.ts
+        scripts/notices.ts
         tsconfig.json
         tsconfig.core.json
         tsconfig.element.json
         scripts/synthetic.ts
         scripts/archive.ts
         tsconfig.synthetic.json
+        scripts/synthetic-module.ts
+        scripts/synthetic-module.main.ts
+        scripts/generator.ts
+        tsconfig.node.json
         tasks/*
         package-lock.json
         package.json

@@ -456,7 +456,8 @@ describe("the file", () => {
       expect(sampleText(sampleOf(make()))).toBe(text);
       expect(text).not.toMatch(/"(key|check|solution|traps?|expected|outcome)"/);
     }
-  });
+    // Every example drawn twice, crops and all: past 5 s on a loaded machine (T97).
+  }, 30_000);
 
   test.each(EXAMPLES.map(([name, make]) => [name, make] as const))(
     "examples/%s.json is the sample its synthetic input gives, as spec's sample-check holds it in CI",

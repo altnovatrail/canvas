@@ -4,7 +4,7 @@
 // release's tag, the file's digest, the bank, the bank's digest as the file gives it, the task's
 // ID, and the digest of its open view, as the module format takes a digest (contracts/README.md,
 // section «The sample file»). The file is of the version of the module format the element reads, or
-// of 0.3 before it, or it is refused (T77, T85). A task holds the fields of the open view alone, at
+// it is refused (T77, T85, T99). A task holds the fields of the open view alone, at
 // every depth, or the file is refused (T21; R62): what a sample or the samples page takes of it is
 // open. Of a task, the samples take only its ID, its kind of canvas and a workbook's items, which
 // have the shape the layout of a page reads (R35).
@@ -21,9 +21,9 @@ import type { WorkbookItem } from "../core/task.js";
  * comes in by raising the three and the file together.
  */
 export const TUTOR_FILE = Object.freeze({
-  tag: "v0.1.10",
-  name: "tutor_v0.1.10_open-tasks.json",
-  sha256: "d32d3878002f9248023431b00923316b21ed05cebbbfc66b02910bc5b236f067",
+  tag: "v0.1.22",
+  name: "tutor_v0.1.22_open-tasks.json",
+  sha256: "76248dbe1499af29bf4f19ccac44b60b7458ed72d90aea4ebd8e40dc1480511c",
 });
 
 /** A task of the file, as a sample takes it. */
@@ -38,19 +38,11 @@ export interface OpenTask {
 export type OpenTasks = ReadonlyMap<string, readonly OpenTask[]>;
 
 /**
- * The versions of the module format a file of tutor's open tasks may be of: the element's, and 0.3
- * before it. tutor's file is a source for a while (Д4 in RUN.md), and tutor has none of 0.4 yet; a
- * module of 0.3 moved to 0.4 keeps its open view, and 0.4 took no field away (README of the format,
- * §2; T85, R60). The element itself reads 0.4 alone: a manifest of 0.3 it refuses (FORMAT).
- */
-export const TUTOR_FORMATS: readonly string[] = Object.freeze([FORMAT, "0.3"]);
-
-/**
  * The tasks of a file of open tasks of tutor, given as its parsed JSON, of the release `tag`, with
  * the SHA-256 of its bytes in hexadecimal. `sha256` gives that of a text's UTF-8 bytes: the caller's,
  * as the DOM-free part has no hash of its own. A file of another format, of tasks of a version of
- * the module format outside TUTOR_FORMATS, or a task with neither a sheet nor a workbook, is a
- * TypeError.
+ * the module format other than the element's (FORMAT), or a task with neither a sheet nor a
+ * workbook, is a TypeError.
  */
 export function openTasksOf(
   file: unknown,
@@ -67,10 +59,10 @@ export function openTasksOf(
   if (format !== "tutor-open-tasks" || version !== 0 || !Array.isArray(banks)) {
     throw new TypeError("a file of open tasks is tutor-open-tasks of the version 0, with banks");
   }
-  if (typeof module_format_version !== "string" || !TUTOR_FORMATS.includes(module_format_version)) {
-    throw new TypeError(
-      `a file of open tasks is of the module format ${TUTOR_FORMATS.join(" or ")}: the element's, or the one before`,
-    );
+  // The platform reads only the current version of the format (README of the format, §2): tutor's
+  // file is of 0.4 from v0.1.22 on, and the exception for 0.3 is gone (Д158 in RUN.md of spec; T99).
+  if (module_format_version !== FORMAT) {
+    throw new TypeError(`a file of open tasks is of the module format ${FORMAT}, the element's`);
   }
   const tasks = new Map<string, readonly OpenTask[]>();
   for (const { bank, digest, tasks: given } of banks) {
@@ -114,7 +106,14 @@ export interface ModuleTasks {
   readonly version: string;
   readonly packageDigest: string;
   /** Every task of the package by its ID: the open task, or why the generator draws none. */
-  readonly tasks: ReadonlyMap<string, OpenTask | { readonly refused: string }>;
+  readonly tasks: ReadonlyMap<string, OpenTask | RefusedTask>;
+}
+
+/** A task of a package the generator draws no sample of: why, and the digest of its open view,
+ * which a person's sample of it names (T97), unless it is a template, which has no open view. */
+export interface RefusedTask {
+  readonly refused: string;
+  readonly openViewDigest?: string;
 }
 
 /**
@@ -164,7 +163,7 @@ export function moduleTasksOf(
   }
   const packageDigest = `sha256:${sha256(inventoryText)}`;
   const source = { tag, module, version, packageDigest };
-  const tasks = new Map<string, OpenTask | { readonly refused: string }>();
+  const tasks = new Map<string, OpenTask | RefusedTask>();
   for (const [id, task] of Object.entries(given)) {
     if (task === null || typeof task !== "object" || Array.isArray(task)) {
       throw new TypeError(`the task ${id} of ${module} is no object`);
@@ -177,19 +176,16 @@ export function moduleTasksOf(
       continue;
     }
     const view = openOf(task, TASK, `${module} ${id}:`, "drop");
+    const openViewDigest = `sha256:${sha256(canonicalText(view))}`;
     const refused = undrawn(view);
     tasks.set(
       id,
       refused === undefined
         ? {
-            reference: {
-              source: { case: "modules", value: source },
-              task: id,
-              openViewDigest: `sha256:${sha256(canonicalText(view))}`,
-            },
+            reference: { source: { case: "modules", value: source }, task: id, openViewDigest },
             canvas: canvasOf(view, `${module} ${id}`),
           }
-        : { refused },
+        : { refused, openViewDigest },
     );
   }
   return { module, version, packageDigest, tasks };
@@ -219,6 +215,9 @@ function undrawn(view: Record<string, unknown>): string | undefined {
     // A page's answers are its boxes: an item of an answer slot beside them the page does not draw.
     const boxed = (items ?? []).every((item) => Array.isArray(item.line) && !item.answer_slots);
     return boxed ? undefined : "a workbook with an answer slot outside its boxes";
+  }
+  if (canvas?.kind !== "handwriting_sheet") {
+    return `a canvas of the kind ${String(canvas?.kind)}, neither a sheet nor a workbook`;
   }
   const slots = (items ?? []).flatMap((item) => item.answer_slots ?? []);
   const binding = items?.length === 1 && slots.length === 1 ? slots[0]?.binding : undefined;

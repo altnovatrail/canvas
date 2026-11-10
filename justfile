@@ -16,16 +16,18 @@ bin := "node_modules/.bin"
 
 # The release of tutor whose file of open tasks, in tasks/, the synthetic samples answer: the tag of
 # TUTOR_FILE in src/eval/tasks.ts, which scripts/synthetic.test.ts holds this to (R49).
-tutor_tag := "v0.1.10"
+tutor_tag := "v0.1.22"
 
 # The release of modules whose package of grade-3-math, in tasks/modules-<tag>/, ci-licenses writes
 # synthetic samples of a module's eval set on (T86; R63): ci-licenses verifies the index, and holds
 # the package's inventory to the index's digest of it, as moduleTasksOf holds server.json to the
-# inventory.
+# inventory. The package of english-essays 0.2.0 beside it, whose essays the tests hold to the
+# digests module-kit gives their open views, is held to the index the same way (T98).
 modules_tag := "v0.2.0"
 module_id := "novatrail/grade-3-math"
 module_version := "0.2.0"
 module_package := "tasks/modules-" + modules_tag + "/novatrail-grade-3-math-" + module_version
+essays_package := "tasks/modules-" + modules_tag + "/novatrail-english-essays-0.2.0"
 
 # Run the four checks CI runs, before a pull request.
 ci: ci-lint ci-test ci-vuln ci-licenses
@@ -74,8 +76,9 @@ ci-vuln:
 # first, as a file of a release enters NovaTrail, then the set is written into build/synthetic and
 # each of its files checked (R77 spec; R49). The samples of a module's eval set too: the index of
 # the release of modules whose package of grade-3-math the tree holds is verified, a sample is
-# written of each of its tasks into build/synthetic-module, and sample-check holds them, and the
-# example of a module's sheet, as an eval set of their module (T86; R63). sample-check runs buf
+# written of each of its tasks into build/synthetic-module by the generator's file, built as a
+# release carries it, and sample-check holds them, and the example of a module's sheet, as an eval
+# set of their module (T86, T96; R63, R68). sample-check runs buf
 # from the toolchain stage on the contracts of spec/. spec's recipes run under this same just.
 ci-licenses:
     {{ quote(just_executable()) }} -f spec/justfile licenses-check-repo package-lock.json licenses.json
@@ -86,8 +89,9 @@ ci-licenses:
     {{ quote(just_executable()) }} -f spec/justfile sample-check build/synthetic/*.json
     {{ quote(just_executable()) }} -f spec/justfile release-verify modules {{ modules_tag }} tasks/modules-{{ modules_tag }}/module-index.json
     test "sha256:$(sha256sum < {{ module_package }}/inventory.json | cut -d ' ' -f 1)" = "$(node -p 'require("./tasks/modules-{{ modules_tag }}/module-index.json").modules["{{ module_id }}"]["{{ module_version }}"].package_digest')"
+    test "sha256:$(sha256sum < {{ essays_package }}/inventory.json | cut -d ' ' -f 1)" = "$(node -p 'require("./tasks/modules-{{ modules_tag }}/module-index.json").modules["novatrail/english-essays"]["0.2.0"].package_digest')"
     rm -rf build/synthetic-module
-    node build/scripts/synthetic.js --module {{ module_package }} {{ modules_tag }} build/synthetic-module comparing-fractions-d1:201 comparing-fractions-d3:202 comparing-fractions-d5:203 division-with-remainder-d1:204 division-with-remainder-d3:205 division-with-remainder-d5:206 fractions-of-a-whole-d1:207 fractions-of-a-whole-d3:208 fractions-of-a-whole-d5:209 times-tables-d1:210 times-tables-d3:211 times-tables-d5:212 > /dev/null
+    {{ quote(just_executable()) }} synthetic-module {{ module_package }} {{ modules_tag }} build/synthetic-module comparing-fractions-d1:201 comparing-fractions-d3:202 comparing-fractions-d5:203 division-with-remainder-d1:204 division-with-remainder-d3:205 division-with-remainder-d5:206 fractions-of-a-whole-d1:207 fractions-of-a-whole-d3:208 fractions-of-a-whole-d5:209 times-tables-d1:210 times-tables-d3:211 times-tables-d5:212 > /dev/null
     {{ quote(just_executable()) }} -f spec/justfile sample-check --eval-set {{ module_id }} build/synthetic-module/*.json
     {{ quote(just_executable()) }} -f spec/justfile sample-check --eval-set example/sheets examples/module-sheet-eval-set.json
 
@@ -105,13 +109,15 @@ build: _install
 # line to a sample under a line of the columns' names, synthetic-samples_<version>.tsv (R50); the
 # samples page, as scripts/page.ts builds it with the draft of texts, samples-page_<version>.html,
 # whose own version is the number without its v (R55; R66): the set of texts for tests goes into
-# no page but 0.0.0, so into no release; LICENSE; and SHA256SUMS of the five. The set is written
-# outside dist/, which takes files alone; the page's builder writes its one file there and prints
-# its path first.
+# no page but 0.0.0, so into no release; the generator of a module's eval set, as
+# scripts/generator.ts builds it, synthetic-module_<version>.mjs (R68); LICENSE; and SHA256SUMS of
+# the six. The set is written outside dist/, which takes files alone; the builders of the page and
+# of the generator each write their one file there and print its path first.
 # The package's archive is packed from a copy of what npm pack takes, with the version set there,
 # so that the package.json of the tree keeps 0.0.0, and scripts/release.ts checks the archive
 # itself and names it. npm pack fixes every file's time and order, scripts/archive.ts writes
-# nothing of the machine or the time, and two builds of the page are the same bytes (R66), so a
+# nothing of the machine or the time, and two builds of the page or of the generator are the same
+# bytes (R66, R68), so a
 # build of the same commit gives the same sums, and the sums are printed for whoever builds it
 # again to compare.
 release-files version: build
@@ -135,8 +141,9 @@ release-files version: build
     {{ quote(just_executable()) }} synthetic "$stage/synthetic" "dist/${synthetic}.tsv" > /dev/null
     node scripts/archive.ts "$stage/synthetic" "dist/${synthetic}.tar.gz"
     page="$(basename "$(node scripts/page.ts dist "$number" | sed -n 1p)")"
+    generator="$(basename "$(node scripts/generator.ts dist "$number" | sed -n 1p)")"
     cp LICENSE dist/LICENSE
-    (cd dist && sha256sum -- "$archive" "${synthetic}.tar.gz" "${synthetic}.tsv" "$page" LICENSE > SHA256SUMS)
+    (cd dist && sha256sum -- "$archive" "${synthetic}.tar.gz" "${synthetic}.tsv" "$page" "$generator" LICENSE > SHA256SUMS)
     cat dist/SHA256SUMS
 
 # Write the synthetic samples into a folder, one file each, <ID>.json, and print a line for each:
@@ -156,12 +163,19 @@ synthetic folder list="": _synthetic-build
 # the same seed is written anew only when it is a sample of the same task; a template, a choice, an
 # essay or a zone is refused. Every path is the caller's, from where just was run. It needs neither
 # spec/ nor git nor module-kit: the package's own files, inventory.json and server.json, are enough.
+# It runs the file every release carries, synthetic-module_v<X.Y.Z>.mjs, built here as version
+# 0.0.0 (T96; R68), so that what modules runs is what canvas's CI tries.
 # Its arguments reach Node as they are, each a word of its own: none goes through the shell's text.
 [positional-arguments]
-synthetic-module package tag folder +calls: _synthetic-build
-    cd {{ quote(invocation_directory()) }} && node {{ quote(justfile_directory() / "build/scripts/synthetic.js") }} --module "$@"
+synthetic-module package tag folder +calls: _generator-build
+    cd {{ quote(invocation_directory()) }} && node {{ quote(justfile_directory() / "build/synthetic-module_v0.0.0.mjs") }} --module "$@"
 
-# The generator, built by tsc into build/: the code of src/ names its modules by .js.
+# The generator of a module's eval set, bundled as a release carries it, into build/ as version
+# 0.0.0 (R68).
+_generator-build: _install
+    node scripts/generator.ts build 0.0.0 > /dev/null
+
+# The generator of the set, built by tsc into build/: the code of src/ names its modules by .js.
 _synthetic-build: _install
     rm -rf build/scripts build/src
     {{ bin }}/tsc -p tsconfig.synthetic.json

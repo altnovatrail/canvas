@@ -16,10 +16,10 @@
 // solution or trap reaches the file a release carries, and a task that names a picture stops the
 // build, since tutor's file carries no media for it (Д4 in RUN.md). The license notices of all the
 // code the file carries — its own, every package bundled, the icons' set — go into the file
-// itself, and a package under a license off the list stops the build (R12).
+// itself, and a package under a license off the list stops the build (R12; scripts/notices.ts).
 
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type * as open from "@altnovatrail/spec/formatv0/open";
 import { build, createServer } from "vite";
@@ -27,6 +27,7 @@ import { isTestSet, type TextSet, textSetOf } from "../page/sets.ts";
 import type { TaskKind } from "../page/texts.ts";
 import type { OpenTask, OpenTasks } from "../src/eval/tasks.ts";
 import { policy, styleOf } from "./csp.ts";
+import { bundleOf, type Carried, NOTICE_SEPARATOR, noticeParts } from "./notices.ts";
 
 /** Where the page's source is, from the repository's root. */
 export const TEMPLATE = "page/index.html";
@@ -49,15 +50,6 @@ export function textsFor(path: string, version: string): TextSet {
   return set;
 }
 
-/** The licenses a package the file carries may have: the list's, as the lock file writes them. */
-export const LICENSES: ReadonlySet<string> = new Set([
-  "MIT",
-  "ISC",
-  "Apache-2.0",
-  "BSD-3-Clause",
-  "(Apache-2.0 AND BSD-3-Clause)",
-]);
-
 /** The name of the page's file for a version. */
 export function fileName(version: string): string {
   if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error(`${version} is no version X.Y.Z`);
@@ -69,68 +61,10 @@ function escaped(text: string): string {
   return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
-/** A package the bundle carries: its name, version, license and the text of its license. */
-export interface Carried {
-  readonly name: string;
-  readonly version: string;
-  readonly license: string;
-  readonly text: string;
-}
-
-/** The folders of the packages among a bundle's modules, each once, in order: a package nested
- * in another's node_modules is a package of its own, with its own license. */
-export function packagesOf(moduleIds: readonly string[]): string[] {
-  const folders = new Set<string>();
-  for (const id of moduleIds) {
-    const match = /^(.*node_modules\/(?:@[^/]+\/)?[^/]+)\//.exec(id.replaceAll("\\", "/"));
-    if (match?.[1]) folders.add(match[1]);
-  }
-  return [...folders].sort((a, b) => a.localeCompare(b));
-}
-
-/** Where the text of a package's license is kept when its npm package carries none: by its name and
- * version, so that a new version without its own text stops the build. */
-export const NOTICES = "page/notices";
-
-/** The kept text of a package's license, by name and version, as NOTICES names it. */
-export function keptName(name: string, version: string): string {
-  return `${name.replace(/^@/, "").replaceAll("/", "-")}-${version}.txt`;
-}
-
-/** A package as the file carries it, from its folder: refused unless its license is on the list,
- * and unless the text of its license is in its folder or kept in NOTICES. */
-export function carried(folder: string, kept = NOTICES): Carried {
-  const manifest = JSON.parse(readFileSync(join(folder, "package.json"), "utf8")) as {
-    name: string;
-    version: string;
-    license?: string;
-  };
-  const license = manifest.license ?? "";
-  if (!LICENSES.has(license)) {
-    throw new Error(`${manifest.name} carries ${license || "no license"}, which is off the list`);
-  }
-  const own = readdirSync(folder).find((name) => /^(licen[cs]e|copying)(\.|$)/i.test(name));
-  const copy = join(kept, keptName(manifest.name, manifest.version));
-  const path = own ? join(folder, own) : existsSync(copy) ? copy : undefined;
-  if (!path) throw new Error(`${manifest.name} ${manifest.version} has no text of its license`);
-  return {
-    name: manifest.name,
-    version: manifest.version,
-    license,
-    text: readFileSync(path, "utf8"),
-  };
-}
-
 /** The notices of a file: its own code's license, each package's, and the icons' NOTICE (R46). */
 export function notices(own: string, packages: readonly Carried[], icons: string): string {
-  const parts = [
-    `NovaTrail canvas — Apache-2.0\n\n${own}`,
-    ...packages.map(
-      ({ name, version, license, text }) => `${name} ${version} — ${license}\n\n${text}`,
-    ),
-    icons,
-  ];
-  const body = parts.map((part) => escaped(part.trim())).join("\n\n────────\n\n");
+  const parts = [...noticeParts(own, packages), icons.trim()];
+  const body = parts.map(escaped).join(NOTICE_SEPARATOR);
   return `<details id="notices">\n<summary>Лицензии кода в этом файле</summary>\n<pre>${body}</pre>\n</details>`;
 }
 
@@ -255,14 +189,7 @@ export async function buildPage(
       lib: { entry: resolve(ENTRY), formats: ["iife"], name: "samplesPage", fileName: "page" },
     },
   });
-  const output = (Array.isArray(outputs) ? outputs : [outputs])[0] as
-    | { output: { type: string; code?: string; moduleIds?: string[] }[] }
-    | undefined;
-  const chunks = output?.output.filter(({ type }) => type === "chunk") ?? [];
-  const chunk = chunks[0];
-  if (chunks.length !== 1 || !chunk?.code) throw new Error("the page is not one script");
-  const { code, moduleIds = [] } = chunk;
-  const packages = packagesOf(moduleIds).map((folder) => carried(folder));
+  const { code, packages } = bundleOf(outputs, "the page");
   const page = pageOf(
     readFileSync(TEMPLATE, "utf8"),
     code.trimEnd(),
