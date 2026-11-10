@@ -274,12 +274,15 @@ class Chrome implements Device {
     }
     if (path) {
       try {
-        const root = (await this.tools.send("DOM.getDocument")) as { root?: { nodeId?: number } };
-        const found = (await this.tools.send("DOM.querySelector", {
-          nodeId: root.root?.nodeId,
-          selector: "#open-file",
-        })) as { nodeId?: number };
-        await this.tools.send("DOM.setFileInputFiles", { nodeId: found.nodeId, files: [path] });
+        // The field by its object in the page as it is now: the IDs of DOM's nodes hold only for the
+        // document DevTools last walked, and the page was opened anew since (run 42733192609).
+        const found = (await this.tools.send("Runtime.evaluate", {
+          expression: 'document.getElementById("open-file")',
+        })) as { result?: { objectId?: string } };
+        await this.tools.send("DOM.setFileInputFiles", {
+          objectId: found.result?.objectId,
+          files: [path],
+        });
         const shown = await until(10, async () => {
           const view = JSON.parse(String(await this.evaluate(VIEWED))) as { shown: boolean };
           return view.shown ? true : undefined;
