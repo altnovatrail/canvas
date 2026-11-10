@@ -9,24 +9,30 @@
 // В64 in RUN.md). So Safari opens it from the runner, the way a hosting would serve it, and the
 // question is the element in the WebKit of iPadOS. The page served is the build with the watch of
 // emulators/watch.ts written in before its own script; safaridriver drives Safari and reads it on
-// the volunteer's way of emulators/volunteer.ts. A stroke is drawn by WebDriver's actions; each
-// file the page hands to a download is kept from the watch's copy of its text in
-// build/page-ipad-<iOS>/saved, for the workflow's job of the saved files, and where Safari puts the
-// download is T22's to see. The strokes are the code's. It needs the simulator's id (UDID) and the
-// version of its iOS (IOS).
+// the volunteer's way of emulators/volunteer.ts. A stroke is drawn by the page's own touch events
+// (T81), and so are the moves of T22's checklist — a stroke cancelled, two fingers — while the
+// buttons are pressed by their own click() (R65). Each file the page hands to a download is kept
+// from the watch's copy of its text in the run's folder saved/, for the workflow's job of the saved
+// files; where Safari puts the download the probe saw (T80): "On My iPad", in Downloads. The release
+// build goes first, then the test build on a port of its own, each a run of its own. The strokes
+// are the code's. It needs the simulator's id (UDID) and the version of its iOS (IOS).
 
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { Run } from "./run.ts";
-import { type Device, passes, volunteer } from "./volunteer.ts";
+import { build, checkAll, type Device, volunteer, type Way, type Ways } from "./volunteer.ts";
 import { until } from "./wait.ts";
 import {
   type Box,
   boxOf,
+  chooseFile,
+  clickButton,
+  fingersIn,
   outside,
   pageFile,
+  pointersBy,
   READ,
   type Seen,
   served,
@@ -40,24 +46,29 @@ const XCRUN = "/usr/bin/xcrun";
 const SAFARI = "com.apple.mobilesafari";
 const ios = process.env.IOS ?? "";
 const udid = process.env.UDID ?? "booted";
-const run = new Run(`build/page-ipad-${ios}`);
-const port = "8080";
+/** The builds as Safari is served them, each with the watch written in (emulators/page-ipad.sh). */
+const BUILD_WATCHED = "build/page-watched";
+const TEST_WATCHED = "build/page-test-watched";
 let shots = 0;
 
 /** Safari in the simulator, through one session of safaridriver. */
 class Safari implements Device {
   private session = "";
+  private readonly run: Run;
   private readonly file: string;
+  private readonly port: string;
 
-  constructor(file: string) {
+  constructor(run: Run, file: string, port: string) {
+    this.run = run;
     this.file = file;
+    this.port = port;
   }
 
   /** A session of safaridriver with Safari in the simulator, tried again a while later while the
    * simulator is not ready for it; a session not of iOS is closed and no session. */
   private async connect(): Promise<boolean> {
     for (let attempt = 1; attempt <= 3; attempt++) {
-      run.log(`session ${attempt} of 3: asked`);
+      this.run.log(`session ${attempt} of 3: asked`);
       try {
         const value = (await command("POST", "/session", {
           capabilities: {
@@ -72,14 +83,14 @@ class Safari implements Device {
         this.session = value.sessionId;
         const { platformName, platformVersion, browserVersion } = value.capabilities ?? {};
         writeFileSync(
-          join(run.folder, "session.json"),
+          join(this.run.folder, "session.json"),
           `${JSON.stringify({ platformName, platformVersion, browserVersion }, null, 2)}\n`,
         );
         if (String(platformName).toLowerCase() === "ios") return true;
         await this.close();
         return false;
       } catch (error) {
-        run.log(`session ${attempt} of 3: ${String(error).slice(0, 200)}`);
+        this.run.log(`session ${attempt} of 3: ${String(error).slice(0, 200)}`);
         if (attempt < 3) await sleep(20_000);
       }
     }
@@ -88,12 +99,12 @@ class Safari implements Device {
 
   async open(): Promise<boolean> {
     const connected = await this.connect();
-    run.record("a session of safaridriver with Safari in the simulator", connected);
+    this.run.record("a session of safaridriver with Safari in the simulator", connected);
     if (!connected) return false;
     await command("POST", `/session/${this.session}/url`, {
-      url: `http://localhost:${port}/${this.file}`,
+      url: `http://localhost:${this.port}/${this.file}`,
     });
-    run.record("Safari opens the page from the runner", true);
+    this.run.record("Safari opens the page from the runner", true);
     return true;
   }
 
@@ -115,18 +126,68 @@ class Safari implements Device {
   /** A stroke on the element by the page's own pointer events of a touch (strokeBy): WebDriver's
    * actions in Safari of the simulator took a window other than the session's, and the mouse after
    * them hung (T81). */
-  async draw(name: string): Promise<string | undefined> {
-    await this.evaluate(
-      '(document.querySelector("novatrail-canvas").scrollIntoView({ block: "start" }), 0)',
-    );
-    const sheet = (JSON.parse(String(await this.evaluate(boxOf("novatrail-canvas")))) ??
-      undefined) as Box | undefined;
-    const stroke = sheet && strokeIn(sheet);
-    run.record(`find the ${name} in Safari's window`, Boolean(stroke));
+  async draw(name: string, second = false): Promise<string | undefined> {
+    const sheet = await this.element();
+    const stroke = sheet && strokeIn(sheet, second);
+    this.run.record(`find the ${name} in Safari's window`, Boolean(stroke));
     if (!stroke) return undefined;
     await this.evaluate(strokeBy(stroke[0], stroke[1], "touch"));
     this.shot(`${name}-drawn`);
     return "by the page's own touch events";
+  }
+
+  /** The element brought into Safari's window, and its box there. */
+  private async element(): Promise<Box | undefined> {
+    await this.evaluate(
+      '(document.querySelector("novatrail-canvas").scrollIntoView({ block: "start" }), 0)',
+    );
+    return this.box();
+  }
+
+  private async box(): Promise<Box | undefined> {
+    return (JSON.parse(String(await this.evaluate(boxOf("novatrail-canvas")))) ?? undefined) as
+      | Box
+      | undefined;
+  }
+
+  /** A stroke of the page's own touch events that ends in a pointercancel, as a browser that takes
+   * the touch back ends it (R65). */
+  async cancel(name: string): Promise<string | undefined> {
+    const sheet = await this.element();
+    const stroke = sheet && strokeIn(sheet, true);
+    this.run.record(`find the ${name} in Safari's window for a stroke cancelled`, Boolean(stroke));
+    if (!stroke) return undefined;
+    await this.evaluate(strokeBy(stroke[0], stroke[1], "touch", "pointercancel"));
+    return "by the page's own touch events, cancelled";
+  }
+
+  /** Two fingers of the page's own touch events on the element where it stands: brought into the
+   * window, it would scroll before they move. */
+  async scroll(name: string): Promise<string | undefined> {
+    const sheet = await this.box();
+    const fingers = sheet && fingersIn(sheet);
+    this.run.record(`find the ${name} in Safari's window for two fingers`, Boolean(fingers));
+    if (!fingers) return undefined;
+    await this.evaluate(pointersBy(fingers, "touch"));
+    await sleep(500);
+    return "by two of the page's own touch events";
+  }
+
+  /** A button of the element's row pressed by its own click(), as the save button is. */
+  async button(label: string, name: string): Promise<boolean> {
+    const found = (await this.evaluate(clickButton(label))) === true;
+    this.run.record(`press the row's button ${label} on the ${name}`, found);
+    return found;
+  }
+
+  /** The text of the sheet's file given to the section that opens a file, as a file of the page's
+   * own: the picker of iPadOS is the hardware's to show (T87; Д7). */
+  async openFile(text: string): Promise<string | undefined> {
+    await command("POST", `/session/${this.session}/execute/sync`, {
+      script: `return ${chooseFile()};`,
+      args: [text],
+    });
+    return "the saved text, as a file of the page's own";
   }
 
   /** The save button pressed by its own click(): WebDriver's click of the element, in Safari on
@@ -138,7 +199,7 @@ class Safari implements Device {
       await this.evaluate('(document.getElementById("save").click(), 0)');
       return true;
     } catch (error) {
-      run.record(`press the save button, for the ${name}`, false, String(error).slice(0, 200));
+      this.run.record(`press the save button, for the ${name}`, false, String(error).slice(0, 200));
       return false;
     }
   }
@@ -164,11 +225,11 @@ class Safari implements Device {
 
   shot(name: string): void {
     shots += 1;
-    const file = join(run.folder, `${String(shots).padStart(2, "0")}-${name}.png`);
+    const file = join(this.run.folder, `${String(shots).padStart(2, "0")}-${name}.png`);
     try {
       execFileSync(XCRUN, ["simctl", "io", udid, "screenshot", file], { stdio: "ignore" });
     } catch {
-      run.log(`no screenshot ${name}`);
+      this.run.log(`no screenshot ${name}`);
     }
   }
 
@@ -178,13 +239,14 @@ class Safari implements Device {
   }
 }
 
-async function main(): Promise<void> {
-  const file = pageFile();
-  await passes(
-    run,
-    () => volunteer(run, new Safari(file), true),
+/** A build's run in the simulator: its passes of the volunteer's way, Safari launched anew
+ * between them, and the server's log after a pass that went right. */
+function ways(run: Run, build: string, port: string, way: Way): Ways {
+  const file = pageFile(build);
+  return {
+    pass: () => volunteer(run, new Safari(run, file, port), { keep: true, way }),
     // Safari closed and launched anew, for the next session to connect to.
-    async () => {
+    recover: async () => {
       execFileSync(XCRUN, ["simctl", "terminate", udid, SAFARI], { stdio: "ignore" });
       run.log("Safari terminated");
       await sleep(2000);
@@ -192,22 +254,30 @@ async function main(): Promise<void> {
       run.log("Safari launched");
       await sleep(5000);
     },
+    after: () => {
+      const { step, ok, note } = served(run.folder, file);
+      run.record(step, ok, note, "page");
+    },
+  };
+}
+
+/** The release build, then the test build, each served on a port of its own: either that failed
+ * fails the job. */
+async function main(): Promise<void> {
+  const release = new Run(`build/page-ipad-${ios}`);
+  const tested = new Run(`build/page-ipad-${ios}-test`);
+  await build(release, `Samples page on iPad ${ios}`, () =>
+    ways(release, BUILD_WATCHED, "8080", "release"),
   );
-  if (run.verdict() === "ok") {
-    const { step, ok, note } = served(run.folder, file);
-    run.record(step, ok, note, "page");
-  }
-  run.check();
+  await build(tested, `Test build on iPad ${ios}`, () =>
+    ways(tested, TEST_WATCHED, "8081", "test"),
+  );
+  checkAll([release, tested]);
 }
 
 if (import.meta.main) {
-  main()
-    .catch((error) => {
-      run.log(`error: ${String(error)}`);
-      process.exitCode = 1;
-    })
-    .finally(() => {
-      run.close(`Samples page on iPad ${ios}`);
-      writeFileSync(join(run.folder, "verdict.txt"), `${run.verdict()}\n`);
-    });
+  main().catch((error) => {
+    console.error(String(error));
+    process.exitCode = 1;
+  });
 }

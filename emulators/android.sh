@@ -21,11 +21,13 @@ sdkmanager --list_installed > "$out/sdk-installed.txt" 2>&1 || true
 
 "$adb" wait-for-device
 "$adb" forward tcp:9222 localabstract:chrome_devtools_remote
-# The server's port on the emulator's own loopback leads to the runner's.
+# The servers' ports on the emulator's own loopback lead to the runner's.
 "$adb" reverse tcp:8080 tcp:8080
+# The test build's server, on a port of its own (T22).
+"$adb" reverse tcp:8081 tcp:8081
 
 docker run --rm --init --network host --user "$(id -u):$(id -g)" \
-    --env HOME=/tmp --env CI --env ADB=/adb/adb --env PORT=8080 --env GITHUB_STEP_SUMMARY \
+    --env HOME=/tmp --env CI --env ADB=/adb/adb --env PORT=8080 --env TEST_PORT=8081 --env GITHUB_STEP_SUMMARY \
     --volume "$ANDROID_HOME/platform-tools:/adb:ro" \
     --volume "$GITHUB_STEP_SUMMARY:$GITHUB_STEP_SUMMARY" \
     --volume "$PWD:/work" --workdir /work \

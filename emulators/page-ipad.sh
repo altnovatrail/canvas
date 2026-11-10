@@ -28,25 +28,32 @@ phase "Safari is launched"
 xcrun simctl launch "$udid" com.apple.mobilesafari > /dev/null
 sleep 5
 
-phase "the page's copy with the watch"
+phase "the pages' copies with the watch"
 page=$(basename build/page/samples-page_v*.html)
-# The page with the watch in it before its own script (emulators/watch.ts), served as pages.
+# The page with the watch in it before its own script (emulators/watch.ts), served as pages; the
+# test build beside it on a port of its own, its server's log in its own run's folder (T22).
 node emulators/watch.ts build/page build/page-watched > /dev/null
-phase "the server starts"
+node emulators/watch.ts build/page-test-served build/page-test-watched > /dev/null
+mkdir -p "$out-test"
+phase "the servers start"
 nohup node emulators/serve.ts build/page-watched 8080 --inline > "$out/server.txt" 2>&1 &
+nohup node emulators/serve.ts build/page-test-watched 8081 --inline > "$out-test/server.txt" 2>&1 &
 phase "safaridriver is enabled"
 sudo safaridriver --enable
 phase "safaridriver starts, and the server and it answer"
 nohup safaridriver --port 4444 > "$out/safaridriver.txt" 2>&1 &
-# Both answer within seconds; the page asked of the server here is the one the driver opens too.
+# All three answer within seconds; the pages asked of the servers here are those the driver opens.
+test_page=$(basename build/page-test-watched/samples-page_v*.html)
 for _ in $(seq 1 30); do
   if curl --silent --fail --max-time 5 http://127.0.0.1:4444/status > /dev/null \
-      && curl --silent --fail --max-time 5 --output /dev/null "http://127.0.0.1:8080/$page"; then
+      && curl --silent --fail --max-time 5 --output /dev/null "http://127.0.0.1:8080/$page" \
+      && curl --silent --fail --max-time 5 --output /dev/null "http://127.0.0.1:8081/$test_page"; then
     break
   fi
   sleep 1
 done
 curl --silent --fail --max-time 5 http://127.0.0.1:4444/status > /dev/null
+curl --silent --fail --max-time 5 --output /dev/null "http://127.0.0.1:8081/$test_page"
 
 phase "the driver runs"
 # Each line of the driver, its session's tries and steps among them, with the time it came.

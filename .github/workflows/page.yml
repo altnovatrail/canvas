@@ -82,8 +82,9 @@ jobs:
   # file pins, its version none of a release. It is downloaded from the runner's server as from a
   # release of GitHub, where the emulator reaches it on its own localhost through adb reverse
   # (emulators/android.sh). The files it saved are read and held to the protocol here too, in the
-  # same stage. After them the job builds the test build for T22, with the test set of texts approved
-  # for tests alone, and keeps it as an artifact of its own (T84; R58, R59): no release carries it.
+  # same stage. The test build, with the test set of texts approved for tests alone, goes the same
+  # way after the release's, a child's session on it (T22; R65), and is kept as an artifact of its
+  # own (T84; R58, R59): no release carries it.
   android:
     name: Android
     needs: changes
@@ -123,15 +124,20 @@ jobs:
       - name: Toolchain image's file removed
         run: rm -f build/toolchain.tar
 
-      - name: Page and its server
+      # Both builds and their servers: the release's on 8080, the test build's on 8081, its file
+      # named apart, for Chrome keeps both downloads in one list (T22).
+      - name: Pages and their servers
         run: |
-          mkdir -p build/page-android
+          mkdir -p build/page-android build/page-android-test
           docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp \
               --volume "$PWD:/work" --workdir /work \
-              toolchain bash -c "npm ci --no-audit --no-fund && node scripts/page.ts build/page 0.0.0"
+              toolchain bash -c "npm ci --no-audit --no-fund && bash emulators/builds.sh"
           docker run --detach --name page-server --network host --user "$(id -u):$(id -g)" \
               --env HOME=/tmp --volume "$PWD:/work" --workdir /work \
               toolchain sh -c "node emulators/serve.ts build/page 8080 > build/page-android/server.txt 2>&1"
+          docker run --detach --name page-test-server --network host --user "$(id -u):$(id -g)" \
+              --env HOME=/tmp --volume "$PWD:/work" --workdir /work \
+              toolchain sh -c "node emulators/serve.ts build/page-test-served 8081 > build/page-android-test/server.txt 2>&1"
 
       # As the action's README asks, for the emulator to use KVM.
       - name: Enable KVM
@@ -154,14 +160,15 @@ jobs:
           disable-animations: true
           script: bash emulators/android.sh emulators/page-android.ts build/page-android
 
-      # Read as the page's own — its purpose, writer, versions and one writer's code — and held to
-      # the protocol by spec's sample-check, markup and all (T81).
+      # Read as the page's own — its purpose, writer, versions and one writer's code, a child's
+      # under the test build (T22) — and held to the protocol by spec's sample-check, markup and all
+      # (T81).
       - name: Saved files
         run: |
           docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp \
               --volume "$PWD:/work" --workdir /work \
-              toolchain bash -c "node emulators/saved.ts 0.0.0 build/page-android \
-                && just -f spec/justfile sample-check build/page-android/saved/*.json"
+              toolchain bash -c "node emulators/saved.ts 0.0.0 build/page-android build/page-android-test \
+                && just -f spec/justfile sample-check build/page-android/saved/*.json build/page-android-test/saved/*.json"
 
       - name: Screenshots, reports and saved files
         if: always()
@@ -172,17 +179,18 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-      # The test build, whose screens of the eval set and of a child's session the release keeps
-      # closed, built after the release build's checks so that its failure skips none of them. Its
-      # file has the release build's name, samples-page_v0.0.0.html, so the artifact's name tells
-      # them apart.
-      - name: Test build
+      - name: The test build's screenshots, reports and saved files
         if: always()
-        run: |
-          docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp \
-              --volume "$PWD:/work" --workdir /work \
-              toolchain node scripts/page.ts build/page-test 0.0.0 --texts page/sets/test-approved-0.json
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: page-android-test
+          path: build/page-android-test
+          retention-days: 7
+          if-no-files-found: warn
 
+      # The test build, whose screens of the eval set and of a child's session the release keeps
+      # closed, kept as built above: its file has the release build's name, samples-page_v0.0.0.html,
+      # so the artifact's name tells them apart.
       - name: Test build kept
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -223,8 +231,8 @@ jobs:
         with:
           node-version: ${{ steps.node.outputs.version }}
 
-      - name: Page
-        run: npm ci --no-audit --no-fund && node scripts/page.ts build/page 0.0.0
+      - name: Pages
+        run: npm ci --no-audit --no-fund && bash emulators/builds.sh
 
       - name: Simulator, safaridriver and page
         run: bash emulators/page-ipad.sh
@@ -232,7 +240,7 @@ jobs:
       # Read as the page's own; the protocol's check, which needs buf of the toolchain stage, is
       # the next job's.
       - name: Saved files
-        run: node emulators/saved.ts 0.0.0 build/page-ipad-26.5
+        run: node emulators/saved.ts 0.0.0 build/page-ipad-26.5 build/page-ipad-26.5-test
 
       - name: Screenshots, reports and saved files
         if: always()
@@ -242,6 +250,15 @@ jobs:
           path: build/page-ipad-26.5
           retention-days: 7
           if-no-files-found: error
+
+      - name: The test build's screenshots, reports and saved files
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: page-ipad-26.5-test
+          path: build/page-ipad-26.5-test
+          retention-days: 7
+          if-no-files-found: warn
 
   # The files the iPad saved, held to the protocol by spec's sample-check in the toolchain stage;
   # skipped with the iPad's job.
@@ -260,6 +277,11 @@ jobs:
         with:
           name: page-ipad-26.5
           path: build/page-ipad-26.5
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: page-ipad-26.5-test
+          path: build/page-ipad-26.5-test
 
       # The toolchain stage from the cache, as in the job android.
       - name: Toolchain image from the cache
@@ -287,7 +309,7 @@ jobs:
         run: |
           docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp \
               --volume "$PWD:/work" --workdir /work \
-              toolchain just -f spec/justfile sample-check build/page-ipad-26.5/saved/sheet.json build/page-ipad-26.5/saved/workbook.json
+              toolchain bash -c "just -f spec/justfile sample-check build/page-ipad-26.5/saved/*.json build/page-ipad-26.5-test/saved/*.json"
 
   # The one check main requires: every job above went right, or was skipped because the pull
   # request changes nothing they check.
