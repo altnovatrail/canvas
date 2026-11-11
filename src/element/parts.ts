@@ -21,7 +21,7 @@ import {
 import { SHEET } from "../core/sheet.js";
 import type { Zone } from "../core/task.js";
 import { placeOver, SVG, write } from "./attributes.js";
-import { labelsFor } from "./labels.js";
+import { labelsFor, say } from "./labels.js";
 import type { Pictures } from "./pictures.js";
 import { framed } from "./statement.js";
 
@@ -68,7 +68,7 @@ export class Parts {
    */
   #fillWords: (part: FillPart) => Told = ({ fill }) => {
     const { lang, labels } = labelsFor(null);
-    return { number: `${labels.box} ${fill.line}.${fill.box}`, lang };
+    return { number: say(labels.boxIn, { line: fill.line, slot: fill.box }), lang };
   };
 
   /** What a part that fills a box says from now on, the items already open too. */
