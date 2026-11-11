@@ -380,6 +380,17 @@ test("open views of another format, a closed field, another digest or a seed out
   expect(refused((copy) => Object.assign(copy.modules[0] ?? {}, { release: "main" }))).toThrow(
     "has no release of modules",
   );
+  const module = (fields: object) =>
+    refused((copy) => Object.assign(copy.modules[0] ?? {}, fields));
+  expect(module({ id: "english-essays" })).toThrow("a module of the open views has an ID");
+  expect(module({ version: "0.2" })).toThrow("has no version MAJOR.MINOR.PATCH");
+  expect(module({ package_digest: "sha256:0" })).toThrow("has no digest of its package");
+  expect(module({ module_format_version: "0.3" })).toThrow("is not of the module format 0.4");
+  expect(module({ manifest: [] })).toThrow("has no manifest");
+  expect(module({ tasks: {} })).toThrow("has no tasks");
+  expect(
+    refused((copy) => Object.assign(copy.modules[0]?.tasks[0]?.task ?? {}, { id: 7 })),
+  ).toThrow("a task of novatrail/english-essays has no ID");
   expect(
     refused((copy) => Object.assign(copy.modules[0]?.tasks[0]?.task ?? {}, { solution: "x" })),
   ).toThrow("solution is no field of the open view");

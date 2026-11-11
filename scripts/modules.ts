@@ -116,7 +116,8 @@ export function filesOf(out: string): string[] {
       }
     }
   }
-  return [...files].sort();
+  // By UTF-16 code units, as the copy's listing is the same on every machine.
+  return [...files].sort((a, b) => (a < b ? -1 : Number(a > b)));
 }
 
 /** Every file under a folder, by its path from `root`. */
