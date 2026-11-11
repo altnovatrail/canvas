@@ -210,6 +210,20 @@ export class Tools {
   }
 
   /**
+   * Whether the row sticks over what scrolls the element (R28): in a low window it stands in its
+   * place instead, above the statement, and scrolls away with it. The same state writes nothing:
+   * a token forced to what it is already changes no attribute.
+   */
+  stick(sticks: boolean): void {
+    this.element.classList.toggle("loose", !sticks);
+  }
+
+  /** Whether the row sticks, or stands in its place in a low window. */
+  get sticks(): boolean {
+    return !this.element.classList.contains("loose");
+  }
+
+  /**
    * The labels in the language of a tag — the element's `lang` — and the row's own `lang` theirs,
    * so that a screen reader reads them in the language they are in.
    */

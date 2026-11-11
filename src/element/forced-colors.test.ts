@@ -1,4 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
+import { userEvent } from "vitest/browser";
 import { CROP } from "../core/crop.js";
 import { pageOf } from "../core/page.js";
 import { SHORT } from "../core/pages.fixture.js";
@@ -159,6 +160,28 @@ test("with forced colours the row of buttons takes the system's colours of butto
     expect(getComputedStyle(unavailable).color).toBe(system("GrayText"));
     expect(getComputedStyle(unavailable).borderTopColor).toBe(system("GrayText"));
     expect(getComputedStyle(iconOf(unavailable)).fill).toBe(system("GrayText"));
+  }
+});
+
+test("with forced colours the ring of a button in focus is the system's highlight, on the tool in use and on an unavailable button alike (T92)", async () => {
+  const element = document.createElement("novatrail-canvas");
+  element.style.width = "400px";
+  element.style.setProperty("--novatrail-canvas-ink", "rgb(0, 0, 255)");
+  document.body.append(element);
+  made.push(element);
+  await settle();
+  const root = element.shadowRoot;
+  const [, , pen, , , , up] = [...(root?.querySelectorAll(".tools button") ?? [])];
+  if (!pen || !up) throw new Error("the element has no row of buttons");
+  await userEvent.tab();
+  for (const focused of [pen, up]) {
+    if (focused === up) await userEvent.keyboard("{End}{ArrowLeft}");
+    expect(root?.activeElement).toBe(focused);
+    expect(focused.matches(":focus-visible")).toBe(true);
+    const style = getComputedStyle(focused);
+    expect(style.outlineStyle).toBe("solid");
+    expect(style.outlineWidth).toBe("2px");
+    expect(style.outlineColor).toBe(system("Highlight"));
   }
 });
 

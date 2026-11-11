@@ -191,8 +191,13 @@ const UP_DOWN = 4 / 5;
 // Above the column, as wide, stands the row of the element's own buttons, outside the container's
 // scrolling: it sticks to the top of whatever scrolls the element, as far down as the consumer's
 // --novatrail-canvas-top says, while the element is in sight, over the sheet as it scrolls by
-// (R28). The element is as tall as the row, the statement and the sheet unless it is given a
-// height: then the statement and the sheet scroll in it, under the row. A worked example's open
+// (R28). In a low window, where the row would cover more than a quarter of what it sticks in, it
+// stands in its place instead, `loose`, and goes with the scrolling (1.4.10, 2.4.11). A button in
+// focus shows a ring in the ink's colour, two pixels out, that the row's side margins keep on its
+// paper; an unavailable one is paler by its colour, not its opacity, which would pale the ring too
+// (2.4.7, 1.4.11). Nothing in the element moves but the scrolling, which jumps (2.3.3). The
+// element is as tall as the row, the statement and the sheet unless it is given a height: then
+// the statement and the sheet scroll in it, under the row. A worked example's open
 // parts stand between the statement and the sheet, and the region that tells of them is out of
 // sight, but not out of the tree a screen reader reads, where a hidden region would tell nothing
 // (R42). A picture's frame there stands in its item's line, from its top, so that the item's
@@ -221,9 +226,10 @@ const STYLE = `
 .tools {
   position: sticky; top: var(--novatrail-canvas-top, 0px); z-index: 1; flex: none;
   box-sizing: border-box; width: min(100%, ${K_MAX * SHEET.width}px); margin: 0 auto;
-  padding: 8px 0; display: flex; flex-wrap: wrap; gap: 8px;
+  padding: 8px 4px; display: flex; flex-wrap: wrap; gap: 8px;
   background: var(--novatrail-canvas-paper, ${PAPER}); color: var(--novatrail-canvas-ink, ${INK});
 }
+.tools.loose { position: static; }
 .tools .demo, .tools .choice, .tools .updown {
   display: flex; gap: 8px; margin-inline-end: 16px;
 }
@@ -236,7 +242,18 @@ const STYLE = `
   background: var(--novatrail-canvas-ink, ${INK}); color: var(--novatrail-canvas-paper, ${PAPER});
   border-color: var(--novatrail-canvas-ink, ${INK});
 }
-.tools [aria-disabled="true"] { opacity: 0.4; cursor: default; }
+.tools button:focus-visible {
+  outline: 2px solid var(--novatrail-canvas-ink, ${INK}); outline-offset: 2px;
+}
+.tools [aria-disabled="true"] {
+  color: color-mix(
+    in srgb, var(--novatrail-canvas-ink, ${INK}) 40%, var(--novatrail-canvas-paper, ${PAPER})
+  );
+  cursor: default;
+}
+@supports not (color: color-mix(in srgb, red 40%, blue)) {
+  .tools [aria-disabled="true"] { opacity: 0.4; }
+}
 .tools [hidden] { display: none; }
 .tools button svg {
   display: inline-block; width: 1.125em; height: 1.125em; margin-inline-end: 4px;
@@ -315,7 +332,8 @@ canvas {
   .tools [aria-checked="true"] {
     background: Highlight; color: HighlightText; border-color: Highlight;
   }
-  .tools [aria-disabled="true"] { color: GrayText; border-color: GrayText; opacity: 1; }
+  .tools [aria-disabled="true"] { color: GrayText; border-color: GrayText; }
+  .tools button:focus-visible { outline-color: Highlight; }
 }
 `;
 
@@ -517,11 +535,26 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    */
   readonly #heard = (event: Event): void => {
     const target = event.target;
-    if (target === document || (target instanceof Element && holds(target, this))) this.#edges();
+    if (target === document || (target instanceof Element && holds(target, this))) {
+      // A new --novatrail-canvas-top changes no size: the next scroll is the first to hear of it,
+      // by one read of the row's style, and only a new offset asks anew whether the row sticks.
+      if (getComputedStyle(this.#tools.element).top !== this.#topSeen) this.#stick();
+      this.#edges();
+    }
   };
-  /** The page grown or shrunk, or the window: what scrolls the element may have room now, or none. */
-  readonly #page = new ResizeObserver(() => this.#edges());
-  readonly #resized = (): void => this.#edges();
+  /**
+   * The page grown or shrunk, or the window, the scroller the row sticks in or the row itself: what
+   * scrolls the element may have room now, or none, and the row may cover too much of it to stick.
+   */
+  readonly #resized = (): void => {
+    this.#stick();
+    this.#edges();
+  };
+  readonly #page = new ResizeObserver(this.#resized);
+  /** The scroll container the row sticks in, which `#page` watches, or null for the page's viewport. */
+  #port: Element | null = null;
+  /** The row's `top` as the last check of whether it sticks read it: the consumer's offset. */
+  #topSeen = "";
   #unwatchPen: (() => void) | undefined;
   #tool: Tool = "pen";
   #task: Task | undefined;
@@ -1016,6 +1049,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     // page that grows or shrinks scrolls nothing, and neither does a window of another size.
     document.addEventListener("scroll", this.#heard, { capture: true, passive: true });
     this.#page.observe(document.documentElement);
+    // The row wraps anew with the element's width, its language, the canvas kind and the finger's
+    // button, and grows or shrinks.
+    this.#page.observe(this.#tools.element);
     window.addEventListener("resize", this.#resized);
     this.#refresh();
   }
@@ -1110,6 +1146,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#unwatchPen = undefined;
     document.removeEventListener("scroll", this.#heard, { capture: true });
     this.#page.disconnect();
+    this.#port = null;
     window.removeEventListener("resize", this.#resized);
     // A stroke that ended here may be the one the other rows of the page waited for.
     PEN_MODE.settle();
@@ -1474,7 +1511,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * on the screen, after whatever transform the page puts on the element. The container's
    * rectangle gives the part of the canvas it shows: with the statement in sight, the canvas
    * goes on below the container's bottom. The row of buttons above the container hides what it
-   * covers, once it sticks over the sheet as the page scrolls the element by (R28).
+   * covers, once it sticks over the sheet as the page scrolls the element by (R28); in its place,
+   * in a low window, it stands above the container and hides nothing of it.
    */
   #view(): Screen | undefined {
     const canvas = this.#canvas.getBoundingClientRect();
@@ -1529,8 +1567,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * How much of what a scroller shows is in sight, down the screen: within the ancestors that clip
-   * it and the visual viewport, and below the row of buttons while the row sticks over its top. A
-   * scroller out of sight counts whole.
+   * it and the visual viewport, and below the row of buttons while the row sticks over its top, or
+   * below the consumer's band, --novatrail-canvas-top, while the row stands in its place in a low
+   * window. A scroller out of sight counts whole.
    */
   #seen(target: Element | Window): number {
     const sight = window.visualViewport;
@@ -1549,13 +1588,55 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
         bottom = Math.min(bottom, clip.bottom);
       }
     }
-    // The row hides the top while it sticks there, as far down as the consumer's offset puts it.
+    // The row hides the top while it sticks there, as far down as the consumer's offset puts it. A
+    // row that stands in its place, in a low window, leaves the consumer's band over it alone.
     const row = this.#tools.element;
-    const box = row.getBoundingClientRect();
-    if (box.top <= top + (Number.parseFloat(getComputedStyle(row).top) || 0) + 0.5) {
-      top = Math.max(top, box.bottom);
+    if (this.#tools.sticks) {
+      const box = row.getBoundingClientRect();
+      if (box.top <= top + offsetOf(row, 0) * scaleOf(row, box) + 0.5) {
+        top = Math.max(top, box.bottom);
+      }
+    } else {
+      top = Math.max(top, this.#band(target));
     }
     return bottom > top ? bottom - top : whole;
+  }
+
+  /**
+   * Whether the row sticks (R28): while it is no taller than a quarter of what it sticks in, below
+   * the consumer's offset. In a lower window, or once it wraps over more of it, it stands in its
+   * place, above the statement, and goes with the scrolling, as WCAG's technique C34 un-fixes a
+   * sticky header (1.4.10, 2.4.11). Its place and its size are the same either way, so the choice
+   * changes nothing it is made from. The scroller it sticks in is watched for its size.
+   */
+  #stick(): void {
+    if (!this.isConnected) return;
+    const room = roomOf(this.#tools.element);
+    if (room.port !== this.#port) {
+      if (this.#port !== null) this.#page.unobserve(this.#port);
+      if (room.port !== null) this.#page.observe(room.port);
+      this.#port = room.port;
+    }
+    const row = this.#tools.element;
+    const tall = row.getBoundingClientRect().height;
+    if (tall > 0 && room.height > 0) this.#tools.stick(4 * tall <= room.height - room.offset);
+    this.#topSeen = getComputedStyle(row).top;
+  }
+
+  /**
+   * Where the consumer's band over the top of what the row sticks in ends, down the screen: its
+   * offset, --novatrail-canvas-top, below the top of the scroller or of the window — for a target
+   * that is or lies within what the row sticks in, and above everything for any other.
+   */
+  #band(target: Element | Window | undefined): number {
+    const room = roomOf(this.#tools.element);
+    // The band stands over the top of what the row sticks in, and so over a scroller within it,
+    // but not over the page's when the row sticks in a scroller of its own.
+    const within =
+      room.port === null
+        ? target !== undefined
+        : target instanceof Element && (target === room.port || holds(room.port, target));
+    return within ? room.top + room.offset : Number.NEGATIVE_INFINITY;
   }
 
   /**
@@ -1598,13 +1679,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     if (scrollsOn(this.#viewport, onward)) {
       return { target: this.#viewport, scale: scaleOf(this.#viewport), rest: 0 };
     }
-    // The viewport takes the root's overflow, or the body's when the root's is visible (CSS
-    // Overflow 3): then the body scrolls nothing of its own, and the page scrolls only as it allows.
-    const root = getComputedStyle(document.documentElement).overflowY;
-    const body = document.body === null ? "visible" : getComputedStyle(document.body).overflowY;
-    const fromBody = root === "visible" && body !== "visible";
+    const { overflow, fromBody } = pageOverflow();
     for (let node = parentOf(this); node !== null; node = parentOf(node)) {
-      if (node === document.documentElement || (fromBody && node === document.body)) break;
+      if (isPage(node, fromBody)) break;
       const style = getComputedStyle(node);
       if (!SCROLLING.test(style.overflowY)) continue;
       if (scrollsOn(node, onward)) return { target: node, scale: scaleOf(node), rest: 0 };
@@ -1614,7 +1691,6 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       }
     }
     // A page that hides its overflow, as one under a modal does, a finger would not scroll: nor do two.
-    const overflow = fromBody ? body : root;
     if (overflow === "hidden" || overflow === "clip") return undefined;
     const page = document.scrollingElement;
     if (page === null || !scrollsOn(page, onward)) return undefined;
@@ -1829,7 +1905,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /**
    * An item of the list, or an area of the sheet, comes into sight at once, as near as it is (R42),
    * and then out from under the row of buttons, should the row stick over where it came to: what
-   * scrolls back up goes back as far as the row covers it. A margin of scrolling would hold for
+   * scrolls back up goes back as far as the row covers it. A row in its place, in a low window,
+   * covers nothing, and the consumer's band, --novatrail-canvas-top, is what it comes out from
+   * under then. A margin of scrolling would hold for
    * every scroller of the chain alike — the sheet's container, which the row stands above, and the
    * page, which it sticks over. An area of the sheet taller than what is in sight comes by its top
    * from below, but by its bottom from above, and then the row's cover brings its top back into
@@ -1841,10 +1919,14 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     // the chain goes once.
     const gone = new Set<Element | Window>();
     for (;;) {
-      const row = this.#tools.element.getBoundingClientRect();
-      const cover = row.bottom - item.getBoundingClientRect().top;
-      const latch = cover > 0.5 ? this.#scrollerFor(false) : undefined;
-      if (latch === undefined || gone.has(latch.target)) return;
+      const latch = this.#scrollerFor(false);
+      // A row in its place, in a low window, covers nothing of it: the consumer's band may, over
+      // what the row sticks in.
+      const over = this.#tools.sticks
+        ? this.#tools.element.getBoundingClientRect().bottom
+        : this.#band(latch?.target);
+      const cover = over - item.getBoundingClientRect().top;
+      if (cover <= 0.5 || latch === undefined || gone.has(latch.target)) return;
       gone.add(latch.target);
       latch.target.scrollBy({ top: -cover / latch.scale, behavior: "instant" });
     }
@@ -2137,6 +2219,75 @@ function contactOf(event: PointerEvent): Contact {
 
 /** The values of `overflow-y` that make an element scroll its content. */
 const SCROLLING = /^(auto|scroll|overlay)$/;
+
+/**
+ * The values of `overflow-y` that make an element a scroll container, which a sticky box sticks in:
+ * a hidden overflow too, which a script may scroll though no hand does (CSS Overflow 3).
+ */
+const CONTAINING = /^(auto|scroll|overlay|hidden)$/;
+
+/**
+ * The overflow of the page's viewport: the root's, or the body's when the root's is visible (CSS
+ * Overflow 3), and then the body scrolls nothing of its own.
+ */
+function pageOverflow(): { readonly overflow: string; readonly fromBody: boolean } {
+  const root = getComputedStyle(document.documentElement).overflowY;
+  const body = document.body === null ? "visible" : getComputedStyle(document.body).overflowY;
+  const fromBody = root === "visible" && body !== "visible";
+  return { overflow: fromBody ? body : root, fromBody };
+}
+
+/** Whether an ancestor on the way up is where the page's viewport takes over. */
+function isPage(node: Element, fromBody: boolean): boolean {
+  return node === document.documentElement || (fromBody && node === document.body);
+}
+
+/**
+ * The scroll container a sticky box sticks in: its nearest ancestor in the flat tree that is one,
+ * or null for the page's viewport.
+ */
+function stickyPortOf(element: Element): Element | null {
+  const { fromBody } = pageOverflow();
+  for (let node = parentOf(element); node !== null; node = parentOf(node)) {
+    if (isPage(node, fromBody)) return null;
+    if (CONTAINING.test(getComputedStyle(node).overflowY)) return node;
+  }
+  return null;
+}
+
+/**
+ * What a sticky box sticks in, on the screen: the scroll container, or null for the page's
+ * viewport, its top and its height — the viewport's without its scroll bar, which does not change
+ * as a phone's toolbar of the browser comes and goes — and the box's offset below that top.
+ */
+function roomOf(element: Element): {
+  readonly port: Element | null;
+  readonly top: number;
+  readonly height: number;
+  readonly offset: number;
+} {
+  const port = stickyPortOf(element);
+  const laid = port === null ? (document.scrollingElement?.clientHeight ?? 0) : port.clientHeight;
+  const own = port === null ? undefined : clientBoxOf(port);
+  return {
+    port,
+    top: own?.top ?? 0,
+    height: own === undefined ? laid : own.bottom - own.top,
+    offset: offsetOf(element, laid) * scaleOf(element),
+  };
+}
+
+/**
+ * How far below the top of what it sticks in a sticky box stands, by its `top`, in CSS pixels as
+ * laid out: a percentage of the scroller's `height`, and nothing for `auto`. A sticky box's `top`
+ * reads as the pixels it is used at, a static one's as it was given.
+ */
+function offsetOf(element: Element, height: number): number {
+  const top = getComputedStyle(element).top;
+  const value = Number.parseFloat(top);
+  if (!Number.isFinite(value)) return 0;
+  return top.endsWith("%") ? (value / 100) * height : value;
+}
 
 /** Whether an element can scroll on down its content, for `onward`, or back up it. */
 function scrollsOn(element: Element, onward: boolean): boolean {
