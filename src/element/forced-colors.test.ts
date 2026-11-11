@@ -6,6 +6,7 @@ import { toScreen, type View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
 import { workForCheck } from "../core/submission.js";
 import { workbookTask, workedExample } from "../core/tasks.fixture.js";
+import { axeOf, KINDS } from "./axe.fixture.js";
 import "./index.js";
 import {
   arrive,
@@ -270,3 +271,10 @@ test("with forced colours a picture on an area of the sheet keeps the colours of
   ]);
   expect(sameColours(shown, QUARTERS)).toEqual([true, true, true, true]);
 });
+
+test.each(KINDS)(
+  "$name has no violation that axe finds in forced colours either (T90)",
+  async ({ put, incomplete }) => {
+    await axeOf(await put(made), incomplete);
+  },
+);

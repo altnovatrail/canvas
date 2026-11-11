@@ -9,10 +9,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { Purpose, Writer } from "@altnovatrail/contracts/novatrail/eval/v1/sample_pb.js";
+import axe from "axe-core";
 import { type Browser, chromium, type Page } from "playwright";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { TASKS as EMULATED_TASKS, WORKBOOK as EMULATED_WORKBOOK } from "../emulators/watch.ts";
 import { viewOf } from "../page/open.ts";
+import { TAGS } from "../src/element/wcag.fixture.ts";
 import { readSample, type Sample } from "../src/eval/sample.ts";
 import { TUTOR_FILE } from "../src/eval/tasks.ts";
 import { policy, styleOf } from "./csp.ts";
@@ -100,6 +102,30 @@ async function markAndSave(page: Page, text: string): Promise<Sample> {
   await page.check("#personal");
   const [download] = await Promise.all([page.waitForEvent("download"), page.click("#save")]);
   return readSample(readFileSync(await download.path(), "utf8"));
+}
+
+/** What axe finds against WCAG 2.2 level AA on a page as it now stands (T90; R70): each rule
+ * violated, with its nodes, and each it leaves incomplete. Its script goes in by evaluate, for the
+ * page's policy admits no script the page did not bring. */
+async function axeFinds(page: Page): Promise<string[]> {
+  if (!(await page.evaluate(() => "axe" in window))) await page.evaluate(axe.source);
+  return page.evaluate(
+    async (tags) => {
+      type Found = { id: string; nodes: { target: unknown }[] };
+      type Run = (...a: unknown[]) => Promise<{ violations: Found[]; incomplete: Found[] }>;
+      const run = (window as unknown as { axe: { run: Run } }).axe.run;
+      const { violations, incomplete } = await run(document, {
+        runOnly: { type: "tag", values: tags },
+      });
+      return [
+        ...violations.map(
+          ({ id, nodes }) => `${id}: ${nodes.map(({ target }) => String(target)).join("; ")}`,
+        ),
+        ...incomplete.map(({ id }) => `incomplete: ${id}`),
+      ];
+    },
+    [...TAGS],
+  );
 }
 
 /** What a page asks for outside its file, and the errors it throws, gathered while it runs. */
@@ -436,6 +462,36 @@ describe("opened from a file", () => {
     }
   }, 60_000);
 
+  test("has no violation that axe finds: the start of both builds, a notice of each, writing and the markup (T90)", async () => {
+    const context = await browser.newContext();
+    try {
+      const page = await context.newPage();
+      await page.goto(pathToFileURL(built.path).href);
+      expect(await axeFinds(page)).toEqual([]);
+      await page.check('input[name="purpose"][value="measurement"]');
+      expect(await axeFinds(page)).toEqual([]);
+      await page.goto(pathToFileURL(tested.path).href);
+      for (const purpose of ["measurement", "child"]) {
+        await page.check(`input[name="purpose"][value="${purpose}"]`);
+        expect(await axeFinds(page)).toEqual([]);
+      }
+      await begin(page, "measurement", "ab12cd34");
+      expect(await axeFinds(page)).toEqual([]);
+      // The form of the markup, once a stroke is written.
+      const box = await page.locator("novatrail-canvas").boundingBox();
+      if (!box) throw new Error("the element is not shown");
+      await stroke(page, box, [120, 220], [220, 280]);
+      await page.click("#markup");
+      await expect.poll(() => page.locator("#form li[data-part]").count()).toBe(1);
+      expect(await axeFinds(page)).toEqual([]);
+      // And axe does look: a button of no name, put on the page, is a violation.
+      await page.evaluate(() => document.body.append(document.createElement("button")));
+      expect(await axeFinds(page)).toEqual([expect.stringMatching(/^button-name: /)]);
+    } finally {
+      await context.close();
+    }
+  }, 60_000);
+
   test("remembers nothing of the start when opened anew: no purpose, no code, no statement, and no storage used (R11)", async () => {
     const context = await browser.newContext();
     try {
@@ -641,6 +697,11 @@ describe("a sample file opened on the page (T87)", () => {
         const parts =
           sample.markup?.writing.case === "parts" ? sample.markup.writing.value.parts : [];
         for (const part of parts) expect(text).toContain(part.text);
+        // Nothing axe finds in the file shown, either (T90). A workbook's boxes carry their places
+        // under the strokes, inside the picture: text that is «part of a picture that contains
+        // significant other visual content», which 1.4.3 exempts, and whose background axe cannot
+        // tell.
+        expect(await axeFinds(page)).toEqual(boxes > 0 ? ["incomplete: color-contrast"] : []);
       }
       // A file of no sample is said so, and the last one shown goes.
       const wrong = join(folder, "not-a-sample.json");

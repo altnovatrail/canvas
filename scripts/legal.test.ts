@@ -93,7 +93,8 @@ describe("the release file", () => {
       }
       expect(pageSetsOf(folder, schema)).toEqual({});
     });
-  });
+    // It reads all thirteen texts twice: under 1 s alone, and past Vitest's 5 s on a loaded machine.
+  }, 30_000);
 });
 
 describe("the part for tests", () => {
