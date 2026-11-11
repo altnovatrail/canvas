@@ -21,7 +21,8 @@ tutor_tag := "v0.1.22"
 # The release of spec whose file of the legal texts, in tasks/spec-<tag>/, the samples page takes
 # its sets of texts from (T89; R69): the tag spec/ stands on, and LEGAL_FILE's in scripts/legal.ts,
 # which scripts/legal.test.ts holds this to. ci-licenses verifies the file.
-spec_tag := "v0.14.0"
+spec_tag := "v0.15.0"
+legal_file := "legal-2.tar.gz"
 
 # The release of modules whose package of grade-3-math, in tasks/modules-<tag>/, ci-licenses writes
 # synthetic samples of a module's eval set on (T86; R63): ci-licenses verifies the index, and holds
@@ -101,7 +102,7 @@ ci-licenses:
     {{ quote(just_executable()) }} -f spec/justfile licenses-check-repo package-lock.json licenses.json
     {{ quote(just_executable()) }} -f spec/justfile release-verify-npm package-lock.json
     {{ quote(just_executable()) }} -f spec/justfile release-verify tutor {{ tutor_tag }} tasks/tutor_{{ tutor_tag }}_open-tasks.json
-    {{ quote(just_executable()) }} -f spec/justfile release-verify spec {{ spec_tag }} tasks/spec-{{ spec_tag }}/legal-1.tar.gz
+    {{ quote(just_executable()) }} -f spec/justfile release-verify spec {{ spec_tag }} tasks/spec-{{ spec_tag }}/{{ legal_file }}
     {{ quote(just_executable()) }} modules-open check
     {{ quote(just_executable()) }} -f spec/justfile sample-check examples/*.json
     {{ quote(just_executable()) }} synthetic build/synthetic > /dev/null

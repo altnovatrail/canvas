@@ -1,6 +1,6 @@
 // The check of the files the samples page saved in the emulators (T78 in RUN.md; R54, R55 in
 // docs/decisions.md), on the example samples of examples/, which the code wrote (R48), made the
-// page's own: by a person, of its draft of texts and of one opening's code; and, of the test build,
+// page's own: by a person, of its measurement's set in force and of one opening's code; and, of the test build,
 // a child's session (T22; R59).
 
 import { readFileSync } from "node:fs";
@@ -8,7 +8,7 @@ import { PersonSchema, Writer } from "@altnovatrail/contracts/novatrail/eval/v1/
 import { create } from "@bufbuild/protobuf";
 import { expect, test } from "vitest";
 import { readSample, type Sample } from "../src/eval/sample.ts";
-import { builtOf, problemsOf, problemsOfAll } from "./saved.ts";
+import { builtOf, problemsOf, problemsOfAll, RELEASE_TEXTS } from "./saved.ts";
 import { CHILD_CODE } from "./watch.ts";
 
 /** An example sample of measurement, and the same as the page would write it. */
@@ -16,7 +16,7 @@ function example(surface: "sheet" | "workbook"): Sample {
   return readSample(readFileSync(`examples/${surface}-measurement.json`, "utf8"));
 }
 
-function asPage(sample: Sample, code = "ABCD2345", texts = "draft-0"): Sample {
+function asPage(sample: Sample, code = "ABCD2345", texts = RELEASE_TEXTS): Sample {
   sample.origin = { case: "person", value: create(PersonSchema) };
   sample.textSetVersion = texts;
   sample.writerCode = code;
@@ -44,7 +44,7 @@ test("a sample of the page's own is right, and one of another origin, version or
   expect(problemsOf(imitated(), "0.0.0")).toEqual([]);
   expect(problemsOf(example("sheet"), "0.0.0")).toEqual([
     "not by a person",
-    "not of the draft of texts",
+    `not of the texts ${RELEASE_TEXTS}`,
   ]);
   expect(problemsOf(asPage(example("workbook")), "1.2.3")).toEqual(["not of version 1.2.3"]);
   const empty = asPage(example("sheet"));
@@ -85,7 +85,7 @@ test("a test build's folder holds a child's session: by a child, its final geome
   ]);
   expect(problemsOf(child(), "0.0.0")).toEqual([
     "not by an adult",
-    "not of the draft of texts",
+    `not of the texts ${RELEASE_TEXTS}`,
     "no strokes in its history",
   ]);
   expect(problemsOfAll([child()], "test")).toEqual(["no sample of the sheet"]);

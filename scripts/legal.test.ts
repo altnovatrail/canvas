@@ -1,7 +1,8 @@
 // The reader of the legal texts (T89 in RUN.md; R69 in docs/decisions.md): every vector of reading
 // that spec's release file carries gives exactly what it says (section 7 of the legal part's
 // README), every text of the file is shown, the file is held to its sum and to the tag spec/ stands
-// on, and the sets the build takes — none yet in the release, all three in the part for tests.
+// on, and the sets the build takes — the measurement's and the eval set's in the release of
+// v0.15.0, all three in the part for tests (T102).
 
 import { copyFileSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -33,6 +34,7 @@ interface Case extends Part {
 describe("the release file", () => {
   test("is the one ci-licenses verifies, of the tag spec/ and @altnovatrail/spec stand on", () => {
     expect(readFileSync("justfile", "utf8")).toContain(`\nspec_tag := "${LEGAL_FILE.tag}"\n`);
+    expect(readFileSync("justfile", "utf8")).toContain(`\nlegal_file := "${LEGAL_FILE.name}"\n`);
     const manifest = JSON.parse(readFileSync("package.json", "utf8")) as {
       dependencies: Record<string, string>;
     };
@@ -83,17 +85,25 @@ describe("the release file", () => {
     ]);
   });
 
-  test("shows every text it holds, and its part has no current set yet: every version is a draft", () => {
+  test("shows every text it holds, a translation too, and gives the measurement and the eval set their sets in force, the child's session none (T102)", () => {
     withLegalFile((folder, schema) => {
       const part = partIn(folder);
-      expect(readingOf(validatorOf(schema), part)).toEqual({ current: { texts: {}, sets: {} } });
+      const reading = readingOf(validatorOf(schema), part);
+      if (!("current" in reading)) throw new Error("spec's part is refused");
+      // At v0.15.0 the sets of the adults are in force, and the child's is still a draft (R139
+      // spec, R141 spec).
+      expect(reading.current.sets).toEqual({ measure: 2, "eval-set": 1 });
+      expect(Object.keys(part.files)).toContain("texts/privacy-policy/2.ru.md");
       for (const [file, bytes] of Object.entries(part.files)) {
         expect(markdownProblem(bytes), file).toBeNull();
         expect(blocksOf(Buffer.from(bytes).toString("utf8")).length, file).toBeGreaterThan(1);
       }
-      expect(pageSetsOf(folder, schema)).toEqual({});
+      const sets = pageSetsOf(folder, schema);
+      expect(Object.keys(sets)).toEqual(["measurement", "evalSet"]);
+      expect(sets.measurement?.version).toBe("measure-2");
+      expect(sets.evalSet?.version).toBe("eval-set-1");
     });
-    // It reads all thirteen texts twice: under 1 s alone, and past Vitest's 5 s on a loaded machine.
+    // It reads all seventeen files twice: under 1 s alone, and past Vitest's 5 s on a loaded machine.
   }, 30_000);
 });
 
@@ -125,8 +135,8 @@ describe("the part for tests", () => {
     writeFileSync(join(dir, "VERSION"), "01\n");
     expect(() => partIn(dir)).toThrow("is no integer from 1 and a newline");
     // A part of another version than its passport's format.
-    writeFileSync(join(dir, "VERSION"), "2\n");
-    expect(() => partIn(dir)).toThrow("is of format 1, and VERSION says 2");
+    writeFileSync(join(dir, "VERSION"), "3\n");
+    expect(() => partIn(dir)).toThrow("is of format 2, and VERSION says 3");
   });
 });
 

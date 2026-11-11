@@ -3,8 +3,7 @@
 // heading and two labels — so that a reader of the template sees them. The screens are in Russian
 // alone, and a translation by the rules of UI packages' translations (R91 spec; epic E10 in RUN.md)
 // goes here and there. A notice is no text of the page's: it comes from spec's release,
-// legal-<n>.tar.gz, in English, with its gist in Russian (T89; R130 spec; R69), and only the
-// author's draft of the measurement, page/sets/draft-0.json, is the page's own. The statements and
+// legal-<n>.tar.gz, in English, with its gist in Russian (T89; R130 spec; R69). The statements and
 // where the file goes are the page's words, here.
 
 /** The kinds of task the samples page offers (T21): a sheet, an essay — a sheet whose answer is the
@@ -46,8 +45,7 @@ export const START_LACKS = {
 /** Why a purpose is closed, or what an open one is limited to (T20, T89; docs/architecture.md,
  * 3.6). */
 export const PURPOSE_NOTES = {
-  measurementDraft:
-    "Пока текст согласия на образцы замера не утверждён — только образцы автора проекта.",
+  measurementNoSet: "Закрыт, пока текст согласия на образцы замера не утверждён.",
   evalSetNoSet:
     "Закрыт, пока текст согласия на него не утверждён: образец публикуется с модулем навсегда.",
   evalSetNoModule:

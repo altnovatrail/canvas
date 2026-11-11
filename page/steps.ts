@@ -4,7 +4,7 @@
 // statements each asks for, the writer's code the person types, and what the start still lacks.
 // No DOM: page/main.ts shows what this decides, and every word is page/texts.ts's or a set's.
 
-import { type AuthorDraft, isDraft, type LegalSet, type PageTexts } from "./sets.js";
+import type { LegalSet, PageTexts } from "./sets.js";
 import { HAND_OVER, PURPOSE_NOTES, START_LACKS, STATEMENTS } from "./texts.js";
 
 /** What a start begins: the measurement or a module's eval set, which an adult writes for, or a
@@ -21,8 +21,8 @@ export interface Offered {
 
 /** The purposes under a build's texts, for a build with or without tasks of modules, a child's
  * session last. Each opens with a current set of its own (R130 spec): the author approves the
- * adults' and a child's consent apart. The measurement's draft opens it to the author's own samples
- * alone while it has none (R11). The eval set opens only where the build has tasks of modules too:
+ * adults' and a child's consent apart, and one with none is closed (T102). The eval set opens only
+ * where the build has tasks of modules too:
  * a module's eval set takes samples of its own module's tasks alone (contracts/README.md of spec,
  * «Eval sets»), and a sample of a task of tutor would be refused there. */
 export function purposes(texts: PageTexts, moduleTasks: boolean): Offered[] {
@@ -34,33 +34,27 @@ export function purposes(texts: PageTexts, moduleTasks: boolean): Offered[] {
     texts.child === undefined
       ? closed("child", PURPOSE_NOTES.childNoSet)
       : { key: "child", open: true };
-  return [
-    {
-      key: "measurement",
-      open: true,
-      ...(isDraft(texts.measurement) ? { note: PURPOSE_NOTES.measurementDraft } : {}),
-    },
-    evalSet,
-    child,
-  ];
+  const measurement: Offered =
+    texts.measurement === undefined
+      ? closed("measurement", PURPOSE_NOTES.measurementNoSet)
+      : { key: "measurement", open: true };
+  return [measurement, evalSet, child];
 }
 
-/** The texts of a purpose, if the build has them: its set, or the measurement's draft. */
-export function textsOf(texts: PageTexts, purpose: PurposeKey): LegalSet | AuthorDraft | undefined {
+/** The texts of a purpose, if the build has them: its set. */
+export function textsOf(texts: PageTexts, purpose: PurposeKey): LegalSet | undefined {
   return { measurement: texts.measurement, evalSet: texts.evalSet, child: texts.child }[purpose];
 }
 
-/** The version of the texts a purpose's samples name: its set's, such as measure-1, or the
- * draft's; undefined for a purpose the build has no texts for. */
+/** The version of the texts a purpose's samples name: its set's, such as measure-2; undefined for
+ * a purpose the build has no texts for. */
 export function versionOf(texts: PageTexts, purpose: PurposeKey): string | undefined {
   return textsOf(texts, purpose)?.version;
 }
 
-/** Where a purpose's file goes once it is saved: the draft's own words, or the page's. */
+/** Where a purpose's file goes once it is saved, in the page's words. */
 export function handOverOf(texts: PageTexts, purpose: PurposeKey): string | undefined {
-  const own = textsOf(texts, purpose);
-  if (!own) return undefined;
-  return isDraft(own) ? own.handOver : HAND_OVER[purpose];
+  return textsOf(texts, purpose) ? HAND_OVER[purpose] : undefined;
 }
 
 /** Whether a purpose's sample has a writer's code: the measurement's and a child's do, an eval
@@ -70,12 +64,10 @@ export function hasCode(purpose: PurposeKey): purpose is "measurement" | "child"
 }
 
 /** The statements without which the person goes no further: the age, and the form of the set's
- * version — a child's parent's or guardian's for a session — or, under the measurement's draft,
- * that the author writes their own samples. */
+ * version — a child's parent's or guardian's for a session. */
 export function statements(texts: PageTexts, purpose: PurposeKey): string[] {
   const own = textsOf(texts, purpose);
   if (!own) return [STATEMENTS.adult];
-  if (isDraft(own)) return [STATEMENTS.adult, own.statement];
   const form = purpose === "child" ? STATEMENTS.childForm : STATEMENTS.form;
   return [STATEMENTS.adult, form(own.version)];
 }

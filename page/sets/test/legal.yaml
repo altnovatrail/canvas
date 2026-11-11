@@ -1,7 +1,7 @@
 # A part of the legal texts for tests alone (T89 in RUN.md; R58, R69 in docs/decisions.md), in the
 # layout of spec's legal/ (its README, section 3): its sets are in force, so that the test build of
 # the samples page, of version 0.0.0 alone, opens every purpose; no sample is made under them.
-format: 1
+format: 2
 texts:
   test-measure-notice:
     place: samples_page

@@ -208,7 +208,7 @@ test("a page that does what it should passes each step, and its files are kept w
   expect(quiet.closed).toBe(1);
   expect(run.steps.map(({ step }) => step)).toEqual([
     "the element stands and offers the build's tasks",
-    "the start lets the author begin the measurement",
+    "the start lets an adult begin the measurement",
     "read the page after the stroke on the sheet",
     "the sheet holds the stroke drawn",
     "a stroke the browser cancels leaves nothing on the sheet",
@@ -289,7 +289,7 @@ test("a page whose start does not let the author begin is the page's failure, an
   const page = device(run, { start: true });
   await volunteer(run, page, { keep: false }, clock());
   expect(run.verdict()).toBe("page");
-  expect(run.steps.at(-1)?.step).toBe("the start lets the author begin the measurement");
+  expect(run.steps.at(-1)?.step).toBe("the start lets an adult begin the measurement");
   expect(page.closed).toBe(1);
 });
 

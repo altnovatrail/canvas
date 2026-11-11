@@ -337,7 +337,8 @@ export const SHOW_HIDDEN = `(() => {
   return document.querySelector("#view svg [data-hidden]")?.getAttribute("display") === "inline";
 })()`;
 
-/** A script that goes through the page's start as the author would under the draft of texts (T20):
+/** A script that goes through the page's start as an adult would under the measurement's set in
+ * force (T20, T102):
  * the measurement, a new writer's code, every statement ticked, and «Начать». Whether the sheet is
  * there then: false while the start lacks something. */
 export const START = `(() => {

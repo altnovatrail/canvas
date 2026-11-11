@@ -12,6 +12,7 @@ import { Purpose, Writer } from "@altnovatrail/contracts/novatrail/eval/v1/sampl
 import axe from "axe-core";
 import { type Browser, chromium, type Page } from "playwright";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { RELEASE_TEXTS } from "../emulators/saved.ts";
 import { TASKS as EMULATED_TASKS, WORKBOOK as EMULATED_WORKBOOK } from "../emulators/watch.ts";
 import { viewOf } from "../page/open.ts";
 import { TAGS } from "../src/element/wcag.fixture.ts";
@@ -351,14 +352,14 @@ describe("the builder", () => {
     ).toThrow("novatrail/grade-3-math 0.3.0 names no license");
   });
 
-  test("takes the release file's sets and the draft while the measurement has none, and the part for tests into no version but 0.0.0 (T89)", () => {
-    // Every set of legal-1 at v0.14.0 is a draft: the measurement opens by the author's draft
-    // alone.
+  test("takes the release file's sets in force, and the part for tests into no version but 0.0.0 (T89, T102)", () => {
+    // At v0.15.0 the measurement's and the eval set's sets are in force, and a child's is a draft.
     expect(textsFor("1.0.0")).toEqual({
-      measurement: expect.objectContaining({ version: "draft-0" }),
+      measurement: expect.objectContaining({ version: RELEASE_TEXTS }),
+      evalSet: expect.objectContaining({ version: "eval-set-1" }),
     });
     const tests = textsFor("0.0.0", TEST_PART);
-    expect([tests.measurement.version, tests.evalSet?.version, tests.child?.version]).toEqual([
+    expect([tests.measurement?.version, tests.evalSet?.version, tests.child?.version]).toEqual([
       "test-measure-1",
       "test-eval-set-1",
       "test-child-sample-1",
@@ -386,7 +387,7 @@ describe("the file", () => {
     expect(page.match(/<script/g)).toHaveLength(1);
   });
 
-  test("of a release's version is the same bytes on every build, by its name, with the draft of texts (T75)", async () => {
+  test("of a release's version is the same bytes on every build, by its name, with the sets in force (T75, T102)", async () => {
     const once = await buildPage(join(folder, "release"), "1.2.3");
     // The other build in a process of its own, as release-files runs the builder.
     const again =
@@ -399,10 +400,13 @@ describe("the file", () => {
     expect(readFileSync(again, "utf8")).toBe(page);
     // The minifier writes the strings of the page's data in any of the quotes.
     expect(page).toMatch(/version:["'`]1\.2\.3["'`]/);
-    expect(page).toMatch(/["'`]draft-0["'`]/);
+    expect(page).toMatch(/["'`]measure-2["'`]/);
+    expect(page).toMatch(/["'`]eval-set-1["'`]/);
     expect(page).not.toMatch(/test-(measure|eval-set|child-sample)/);
-    // No draft of the legal texts is shown to anyone (README of spec's legal part, section 2).
-    expect(page).not.toContain("what happens to your samples");
+    // The notice in force is shown, and no draft of the legal texts, a child's sample's, to anyone
+    // (README of spec's legal part, section 2).
+    expect(page).toContain("what happens to your samples");
+    expect(page).not.toMatch(/child-sample-\d/);
   }, 60_000);
 
   test("names every package it carries, with its license's text, and the icons' set", () => {
@@ -469,14 +473,14 @@ describe("opened from a file", () => {
       // once the script runs (T85).
       expect(readFileSync(built.path, "utf8")).toContain("На iPad сборку, открытую из файла");
       expect(await page.locator("#no-script").count()).toBe(0);
-      // The start (T20, T89): with no set of its own the eval set is closed, with why, and so is a
-      // child's session; nothing is written before the purpose, a new writer's code shown to be
-      // written down, and both statements.
-      expect(await page.isDisabled('input[name="purpose"][value="evalSet"]')).toBe(true);
-      expect(await page.textContent("#purpose-note-evalSet")).toContain("не утверждён");
+      // The start (T20, T89, T102): the measurement and the eval set open by their sets in force,
+      // a child's session closed, with why, while its set is a draft; nothing is written before the
+      // purpose, a new writer's code shown to be written down, and both statements.
+      expect(await page.isDisabled('input[name="purpose"][value="evalSet"]')).toBe(false);
+      expect(await page.locator("#purpose-note-evalSet").count()).toBe(0);
       expect(await page.isDisabled('input[name="purpose"][value="child"]')).toBe(true);
       expect(await page.textContent("#purpose-note-child")).toContain("не утверждён");
-      expect(await page.textContent("#purpose-note-measurement")).toContain("автора проекта");
+      expect(await page.locator("#purpose-note-measurement").count()).toBe(0);
       expect(await page.isHidden("#work")).toBe(true);
       const code = (await begin(page, "measurement")) ?? "";
       expect(code).toMatch(/^[0-9A-Z]{6,16}$/);
@@ -517,7 +521,7 @@ describe("opened from a file", () => {
       expect(sample.writer).toBe(Writer.ADULT);
       expect(sample.canvasVersion).toBe("0.0.0");
       expect(sample.task?.task).toBe("equation-1");
-      expect(sample.textSetVersion).toBe("draft-0");
+      expect(sample.textSetVersion).toBe(RELEASE_TEXTS);
       expect(sample.writerCode).toBe(code);
       const read = sample.markup?.truth?.answerSlots[0]?.read;
       expect(read?.case === "value" && read.value).toBe("2");

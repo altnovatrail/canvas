@@ -20,7 +20,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import type { Legal, TextPlace } from "@altnovatrail/spec/legalv1";
+import type { Legal, TextPlace } from "@altnovatrail/spec/legalv2";
 import { Ajv2020, type ErrorObject, type ValidateFunction } from "ajv/dist/2020.js";
 import type { PhrasingContent, RootContent } from "mdast";
 import { fromMarkdown } from "mdast-util-from-markdown";
@@ -38,9 +38,9 @@ import type { Block, Inline, LegalSet } from "../page/sets.ts";
  * the file together.
  */
 export const LEGAL_FILE = Object.freeze({
-  tag: "v0.14.0",
-  name: "legal-1.tar.gz",
-  sha256: "c8892b37978eec3e0be0e5119127a6a8ea462a4ff46b40adbdd7f429cd5aa401",
+  tag: "v0.15.0",
+  name: "legal-2.tar.gz",
+  sha256: "a1e7d264d308c0ab99f1a0d24bc61a6d66dd12bcf58333ac055811703ada107a",
 });
 
 /** Where the file lies in the tree: a folder of its tag, for release-verify knows a file of spec by
@@ -145,9 +145,18 @@ export function namesOf(errors: readonly ErrorObject[]): string[] {
   return [...paths].sort(byCodeUnits);
 }
 
-/** The file of a version of a text, by its path from the part. */
-export function fileOf(id: string, version: number): string {
-  return `texts/${id}/${version}.md`;
+/** The file of a version of a text, by its path from the part, or of its translation into the
+ * language of a tag (section 2 of the part's README, from the part's version 2). */
+export function fileOf(id: string, version: number, tag?: string): string {
+  return tag === undefined ? `texts/${id}/${version}.md` : `texts/${id}/${version}.${tag}.md`;
+}
+
+/** The files of a version of a text, as its entry names them: its own, then each translation's —
+ * every tag the entry gives, as spec's reader takes them, for an entry of the release before need
+ * not pass the schema. */
+function filesOf(id: string, version: number, translations: unknown): string[] {
+  const tags: readonly unknown[] = Array.isArray(translations) ? translations : [];
+  return [fileOf(id, version), ...tags.map((tag) => fileOf(id, version, String(tag)))];
 }
 
 /** A file's text: its bytes read as UTF-8, a byte order mark kept, as micromark reads one. */
@@ -199,11 +208,14 @@ export function markdownProblem(source: string | Uint8Array): string | null {
   return found.length ? `it holds ${found.join(", ")}` : null;
 }
 
-/** legal.files: every version has its file, and every file is a version's. */
+/** legal.files: every version has its file, and each translation it names its own, and every file
+ * is a version's or a translation's. */
 function fileBreaches({ files }: Part, passport: Legal): string[] {
   const wanted = new Set<string>();
   for (const [id, { versions }] of Object.entries(passport.texts)) {
-    for (const { version } of versions) wanted.add(fileOf(id, version));
+    for (const { version, translations } of versions) {
+      for (const file of filesOf(id, version, translations)) wanted.add(file);
+    }
   }
   return [
     ...[...wanted].filter((file) => !Object.hasOwn(files, file)),
@@ -270,15 +282,16 @@ function setTextBreaches(passport: Legal): string[] {
   return names;
 }
 
-/** legal.markdown: each version begins with a heading of the first level and holds no HTML, image
- * or link. legal.files has held, so every version has its file. */
+/** legal.markdown: each version, and each of its translations, begins with a heading of the first
+ * level and holds no HTML, image or link. legal.files has held, so every one has its file. */
 function markdownBreaches({ files }: Part, passport: Legal): string[] {
   const names: string[] = [];
   for (const [id, { versions }] of Object.entries(passport.texts)) {
-    for (const { version } of versions) {
-      const file = fileOf(id, version);
-      const source = files[file];
-      if (source !== undefined && markdownProblem(source)) names.push(file);
+    for (const { version, translations } of versions) {
+      for (const file of filesOf(id, version, translations)) {
+        const source = files[file];
+        if (source !== undefined && markdownProblem(source)) names.push(file);
+      }
     }
   }
   return names;
@@ -290,8 +303,9 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 /** legal.in-force-unchanged: every version in force in the release before is here, its entry the
- * same — and, for a text, its place — and its file the same, byte for byte. The passport before is
- * read as it stands, for it need not pass this schema. */
+ * same — and, for a text, its place — and its file the same, byte for byte, and so is the file of
+ * each translation its entry before named. The passport before is read as it stands, for it need
+ * not pass this schema. */
 function changedBreaches(part: Part, passport: Legal, previous: Part): string[] {
   const names: string[] = [];
   const before = isObject(previous.passport) ? previous.passport : {};
@@ -314,8 +328,9 @@ function changedBreaches(part: Part, passport: Legal, previous: Part): string[] 
           names.push(`${kind}.${id}`);
         }
         if (kind !== "texts" || !kept || typeof entry.version !== "number") continue;
-        const file = fileOf(id, entry.version);
-        if (!sameBytes(part.files[file], previous.files[file])) names.push(file);
+        for (const file of filesOf(id, entry.version, entry.translations)) {
+          if (!sameBytes(part.files[file], previous.files[file])) names.push(file);
+        }
       }
     }
   }
