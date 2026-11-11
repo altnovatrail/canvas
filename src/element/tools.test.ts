@@ -650,7 +650,8 @@ test("without a height Up and Down scroll the ancestor that scrolls the element,
   scroller.scrollTop = 100;
   await settle();
   expect(unavailableOf(up, down)).toEqual([null, null]);
-  // Back by four fifths of what the ancestor shows below the row, which sticks to its top: to 0.
+  // Back by four fifths of what the ancestor shows, more than 100 px whether the row sticks to its
+  // top or, wrapped over more than a quarter of 300 px, stands in its place (T92): to 0.
   await userEvent.click(up);
   expect(scroller.scrollTop).toBe(0);
   expect(unavailableOf(up, down)).toEqual(["true", null]);

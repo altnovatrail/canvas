@@ -5,6 +5,7 @@
 // forced-colors.test.ts's.
 
 import { afterEach, expect, test } from "vitest";
+import { userEvent } from "vitest/browser";
 import { sheetTask } from "../core/tasks.fixture.js";
 import { axeOf, contrast, KINDS } from "./axe.fixture.js";
 import { placed } from "./pointer.fixture.js";
@@ -50,3 +51,48 @@ test("a violation in the shadow tree fails the helper, and so does an incomplete
   await axeOf(element);
   await expect(axeOf(element, ["color-contrast"])).rejects.toThrow(/incomplete nothing/);
 });
+
+/** The row's buttons as the element has them: a worked example's Next and Demo, hidden, first. */
+function rowOf(element: HTMLElement) {
+  const root = element.shadowRoot;
+  const row = root?.querySelector<HTMLElement>(".tools");
+  const [, , pen, , , , up] = [...(root?.querySelectorAll(".tools button") ?? [])];
+  if (!root || !row || !pen || !up) throw new Error("the element has no row of buttons");
+  return { root, row, pen, up };
+}
+
+test.each([
+  { theme: "the default theme", paper: undefined, ink: undefined },
+  { theme: "a dark theme of the consumer's", paper: "rgb(17, 17, 17)", ink: "rgb(238, 238, 238)" },
+])(
+  "in $theme a button in focus shows a solid ring two pixels wide and two out, in the ink's colour, at least 3:1 to the row's paper, on the tool in use and on an unavailable Up alike (T92)",
+  async ({ paper, ink }) => {
+    const { element } = await placed(made, 400, undefined, { task: sheetTask() });
+    if (paper !== undefined) element.style.setProperty("--novatrail-canvas-paper", paper);
+    if (ink !== undefined) element.style.setProperty("--novatrail-canvas-ink", ink);
+    const { root, row, pen, up } = rowOf(element);
+    await userEvent.tab();
+    for (const focused of [pen, up]) {
+      if (focused === up) await userEvent.keyboard("{End}{ArrowLeft}");
+      expect(root.activeElement).toBe(focused);
+      expect(focused.matches(":focus-visible")).toBe(true);
+      const style = getComputedStyle(focused);
+      expect([style.outlineStyle, style.outlineWidth, style.outlineOffset]).toEqual([
+        "solid",
+        "2px",
+        "2px",
+      ]);
+      expect(style.outlineColor).toBe(getComputedStyle(row).color);
+      // 1.4.11 Non-text Contrast: «at least 3:1 against adjacent color(s)» — the row's paper, which
+      // the ring stands on, its offset too. An opacity would pale the ring with its button.
+      expect(contrast(style.outlineColor, getComputedStyle(row).backgroundColor)).toBeGreaterThan(
+        3,
+      );
+      expect(style.opacity).toBe("1");
+    }
+    expect(up.getAttribute("aria-disabled")).toBe("true");
+    // The unavailable button is paler by its colour, between the ink and the paper.
+    expect(getComputedStyle(up).color).not.toBe(getComputedStyle(row).color);
+    await axeOf(element);
+  },
+);
