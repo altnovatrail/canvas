@@ -449,7 +449,9 @@ test("app's path through a lesson: after a task, its worked example on a new ele
   sheet.replaceWith(example);
   await settle();
   const within = page.elementLocator(example);
-  await expect.element(within.getByRole("toolbar", { name: "Пример" })).toBeVisible();
+  await expect
+    .element(within.getByRole("toolbar", { name: "Кнопки примера", exact: true }))
+    .toBeVisible();
   expect(
     within
       .getByRole("button")

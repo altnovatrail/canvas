@@ -8,7 +8,7 @@ import { afterEach, expect, test } from "vitest";
 import { userEvent } from "vitest/browser";
 import { sheetTask } from "../core/tasks.fixture.js";
 import { axeOf, contrast, KINDS } from "./axe.fixture.js";
-import { placed } from "./pointer.fixture.js";
+import { placed, settle } from "./pointer.fixture.js";
 
 const made: HTMLElement[] = [];
 
@@ -19,6 +19,18 @@ afterEach(() => {
 test.each(KINDS)("$name has no violation that axe finds", async ({ put, incomplete }) => {
   await axeOf(await put(made), incomplete);
 });
+
+test.each(KINDS)(
+  "$name, of a height its content overflows, has none either: its container is a region with a stop of Tab, which axe's scrollable-region-focusable asks of it (T93)",
+  async ({ put, incomplete }) => {
+    const element = await put(made);
+    element.style.height = "300px";
+    await settle();
+    const viewport = element.shadowRoot?.querySelector(".viewport");
+    expect(viewport?.getAttribute("role")).toBe("region");
+    await axeOf(element, incomplete);
+  },
+);
 
 test.each(KINDS.filter(({ incomplete }) => incomplete.includes("color-contrast")))(
   "$name: its printed lines stand out from its paper, as axe cannot tell",

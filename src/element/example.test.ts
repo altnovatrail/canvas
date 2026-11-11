@@ -252,7 +252,7 @@ test("a worked example given before the element is upgraded is taken, and with a
     expect(taken.workedExample).toBe(given);
     expect(taken.tool).toBe("pen");
     expect(taken.shadowRoot?.querySelector(".tools")?.getAttribute("aria-label")).toBe(
-      "Worked example",
+      "Worked example buttons",
     );
     expect(warn).not.toHaveBeenCalled();
     // The task before the example: the task stays, and the example goes.

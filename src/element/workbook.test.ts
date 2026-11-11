@@ -275,8 +275,10 @@ test("a screen reader reads the lines as a list in the task's order, each item i
   expect(read[0]).toEqual(["1.", "7 ×", "Окошко", "= 56"]);
   expect(read[3]).toEqual(["4.", "47 ÷ 6 =", "Окошко 1", "r", "Окошко 2"]);
   // The panel is named by the canvas kind, in the labels' language.
-  expect(within.getByRole("toolbar", { name: "Тетрадь" }).all()).toHaveLength(1);
-  expect(root.querySelector(".tools")?.getAttribute("aria-label")).toBe("Тетрадь");
+  expect(within.getByRole("toolbar", { name: "Кнопки тетради", exact: true }).all()).toHaveLength(
+    1,
+  );
+  expect(root.querySelector(".tools")?.getAttribute("aria-label")).toBe("Кнопки тетради");
 });
 
 test("the lines are in the manifest's explanation language, or the element's own without one, and the boxes' names in the labels' language", async () => {
@@ -291,7 +293,7 @@ test("the lines are in the manifest's explanation language, or the element's own
   expect(box.getAttribute("aria-label")).toBe("Окошко");
   element.lang = "en-GB";
   expect([box.getAttribute("aria-label"), box.matches(":lang(en)")]).toEqual(["Box", true]);
-  expect(root.querySelector(".tools")?.getAttribute("aria-label")).toBe("Workbook");
+  expect(root.querySelector(".tools")?.getAttribute("aria-label")).toBe("Workbook buttons");
   element.manifest = moduleManifest({ explanation: "ru" });
   expect(text.matches(":lang(ru)")).toBe(true);
   element.manifest = undefined;
@@ -326,7 +328,7 @@ test("a task of the other kind lays the template anew and the work stays, while 
   level(canvas, view(), 700, 100, 300);
   expect([template.getAttribute("aria-hidden"), row.getAttribute("aria-label")]).toEqual([
     "true",
-    "Sheet",
+    "Sheet buttons",
   ]);
 
   element.task = workbookTask(SHORT);
@@ -334,7 +336,7 @@ test("a task of the other kind lays the template anew and the work stays, while 
   expect(print.querySelectorAll('[role="listitem"]')).toHaveLength(SHORT.length);
   expect([template.hasAttribute("aria-hidden"), row.getAttribute("aria-label")]).toEqual([
     false,
-    "Workbook",
+    "Workbook buttons",
   ]);
   expect(probe(element).strokes).toHaveLength(1);
 
@@ -350,7 +352,7 @@ test("a task of the other kind lays the template anew and the work stays, while 
   expect(print.querySelector('[role="list"]')?.children).toHaveLength(0);
   expect([template.getAttribute("aria-hidden"), row.getAttribute("aria-label")]).toEqual([
     "true",
-    "Sheet",
+    "Sheet buttons",
   ]);
   expect(probe(element).strokes).toHaveLength(1);
 });

@@ -32,7 +32,7 @@ const sheet = (width = 400, height?: number, parent: HTMLElement = document.body
 function buttons(element: HTMLElement, names = labelsFor(null).labels) {
   const within = page.elementLocator(element);
   return {
-    row: within.getByRole("toolbar", { name: names.sheet }),
+    row: within.getByRole("toolbar", { name: names.sheetButtons, exact: true }),
     group: within.getByRole("radiogroup", { name: names.tool }),
     pen: within.getByRole("radio", { name: names.pen }),
     eraser: within.getByRole("radio", { name: names.eraser }),
@@ -486,7 +486,7 @@ test("a worked example's row is named so in the element's language and has Next,
     expect(shown()).toHaveLength(7);
     button(element, "Pen").focus();
     element.workedExample = workedExample();
-    expect(row.getAttribute("aria-label")).toBe("Worked example");
+    expect(row.getAttribute("aria-label")).toBe("Worked example buttons");
     expect(shown()).toEqual(["Next", "Demo", "Up", "Down"]);
     expect(page.elementLocator(element).getByRole("radiogroup").elements()).toHaveLength(0);
     expect(focused()).toBe("Next");
@@ -507,13 +507,17 @@ test("a worked example's row is named so in the element's language and has Next,
     element.setAttribute("lang", "ru");
     const russian = labelsFor("ru").labels;
     await expect
-      .element(page.elementLocator(element).getByRole("toolbar", { name: russian.example }))
+      .element(
+        page
+          .elementLocator(element)
+          .getByRole("toolbar", { name: russian.exampleButtons, exact: true }),
+      )
       .toBeVisible();
     expect(shown()).toEqual([russian.next, russian.demo, russian.up, russian.down]);
     // Out of the example the row is the sheet's again, and the stop stays where the focus left it.
     element.workedExample = undefined;
     await settle();
-    expect(row.getAttribute("aria-label")).toBe(russian.sheet);
+    expect(row.getAttribute("aria-label")).toBe(russian.sheetButtons);
     expect(shown()).toHaveLength(7);
     expect(stops()).toEqual([russian.down]);
   } finally {

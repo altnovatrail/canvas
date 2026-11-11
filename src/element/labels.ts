@@ -12,15 +12,20 @@
 // This module is no entry point of the package.
 
 /**
- * What the element says: the row of buttons its own name — the canvas kind's, or a worked
- * example's — the name of the group of tools and each button, a workbook's box its name, and the
- * number of a part of a demo the element tells of. A label with places names them in braces.
+ * What the element says: its scroll container the canvas kind's name, or a worked example's, and
+ * the row of buttons a name of its own, that of the kind's buttons (T93), the name of the group of
+ * tools and each button, a workbook's box its name, and the number of a part of a demo the element
+ * tells of. A label with places names them in braces.
  */
 export interface Labels {
   readonly sheet: string;
   readonly workbook: string;
-  /** The row of a lesson's worked example, which has no tools of writing (R42). */
+  /** A lesson's worked example, whose row has no tools of writing (R42). */
   readonly example: string;
+  /** The row of buttons of each: not the name of the container, which a screen reader shows too. */
+  readonly sheetButtons: string;
+  readonly workbookButtons: string;
+  readonly exampleButtons: string;
   /** The buttons of a worked example's demo: the next part, and the whole demo, shown or hidden. */
   readonly next: string;
   readonly demo: string;
@@ -53,6 +58,9 @@ const ENGLISH: Labels = Object.freeze({
   sheet: "Sheet",
   workbook: "Workbook",
   example: "Worked example",
+  sheetButtons: "Sheet buttons",
+  workbookButtons: "Workbook buttons",
+  exampleButtons: "Worked example buttons",
   next: "Next",
   demo: "Demo",
   tool: "Tool",
@@ -83,6 +91,9 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
       sheet: "Лист",
       workbook: "Тетрадь",
       example: "Пример",
+      sheetButtons: "Кнопки листа",
+      workbookButtons: "Кнопки тетради",
+      exampleButtons: "Кнопки примера",
       next: "Дальше",
       demo: "Показ",
       tool: "Инструмент",

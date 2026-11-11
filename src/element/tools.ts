@@ -5,11 +5,12 @@
 // focus can reach them, marked unavailable: a last undo from the keyboard leaves the focus where it
 // was. Up and Down scroll the sheet with a single pointer, and stand unavailable at the end they
 // scroll to (R33). In pen mode a last button lets a finger write again (R29). The labels are in
-// the element's language (labels.ts), and the row is named by the canvas kind: the sheet or the
-// workbook (R36). A lesson's worked example names it too, and has no tools of writing in it: the
-// learner does not write on its sheet. Its first buttons are its demo's, Next, which opens the next
-// part, and Demo, a disclosure button that hides the whole demo and shows it again (R42). A button
-// that goes gives its stop of Tab and the focus to the first button shown. Each button shows an
+// the element's language (labels.ts), and the row is named by the canvas kind's buttons: the
+// sheet's or the workbook's (R36), for the kind's own name is the scroll container's (T93). A
+// lesson's worked example names it too, and has no tools of writing in it: the learner does not
+// write on its sheet. Its first buttons are its demo's, Next, which opens the next part, and Demo,
+// a disclosure button that hides the whole demo and shows it again (R42). A button that goes gives
+// its stop of Tab and the focus to the first button shown. Each button shows an
 // icon of the set every NovaTrail package of the interface draws from, before its label, which
 // stays its name: the icon says nothing to a screen reader (R46; R78 spec). This module is no entry
 // point of the package.
@@ -240,10 +241,10 @@ export class Tools {
     }
   }
 
-  /** The row's name: the canvas kind's, in the labels' language. */
+  /** The row's name: the canvas kind's buttons, in the labels' language. */
   #name(): void {
     const { labels } = labelsFor(this.#lang ?? null);
-    write(this.element, "aria-label", labels[this.#kind]);
+    write(this.element, "aria-label", labels[`${this.#kind}Buttons`]);
   }
 
   /**

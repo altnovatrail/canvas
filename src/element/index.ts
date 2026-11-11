@@ -31,7 +31,9 @@
 // area as the part opens (T61; R42). A worked example on a workbook lays its lines out as a task's,
 // and a part of its demo that fills a box writes the box's value in it (T85; R61). The types of
 // its contract with app are spec's, of @altnovatrail/spec/canvas: the element implements its CanvasElement, and the package puts the
-// element and its events in the DOM's maps (T69; R07).
+// element and its events in the DOM's maps (T69; R07). The keyboard goes into the sheet and out:
+// a container that scrolls is a region named by the canvas kind, with a stop of Tab of its own and
+// a ring when the keyboard brings the focus there (T93; R33).
 
 import type {
   CanvasElement,
@@ -260,8 +262,16 @@ const STYLE = `
   vertical-align: -0.25em; fill: currentColor;
 }
 .tools:dir(rtl) svg.mirrored { transform: scaleX(-1); }
+.frame {
+  position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
+}
 .viewport {
   flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overflow-anchor: none;
+  outline: none; -webkit-tap-highlight-color: transparent;
+}
+.ring { position: absolute; inset: 0; z-index: 0; pointer-events: none; display: none; }
+.viewport:focus-visible + .ring {
+  display: block; outline: 2px solid var(--novatrail-canvas-ink, ${INK}); outline-offset: -2px;
 }
 .column { position: relative; width: min(100%, ${K_MAX * SHEET.width}px); margin: 0 auto; }
 .statement { padding: 0 0 12px; overflow-wrap: break-word; }
@@ -333,7 +343,7 @@ canvas {
     background: Highlight; color: HighlightText; border-color: Highlight;
   }
   .tools [aria-disabled="true"] { color: GrayText; border-color: GrayText; }
-  .tools button:focus-visible { outline-color: Highlight; }
+  .tools button:focus-visible, .viewport:focus-visible + .ring { outline-color: Highlight; }
 }
 `;
 
@@ -446,7 +456,14 @@ function htmlLayer(name: string): HTMLDivElement {
  * commands undo and clear, which the contract does not name.
  */
 export class NovatrailCanvas extends HTMLElement implements CanvasElement {
+  /**
+   * The wrapper, which does not scroll, of the container that scrolls and of the ring of its focus
+   * over it: an outline of the container itself would stand under the sheet's paper and stage,
+   * which are positioned in it (T93).
+   */
+  readonly #wrapper = document.createElement("div");
   readonly #viewport = document.createElement("div");
+  readonly #ring = document.createElement("div");
   readonly #column = document.createElement("div");
   readonly #sheet = document.createElement("div");
   /** The sheet's visible part, where its layers stand, bottom to top (concepts 8 spec; R23). */
@@ -548,6 +565,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    */
   readonly #resized = (): void => {
     this.#stick();
+    this.#region();
     this.#edges();
   };
   readonly #page = new ResizeObserver(this.#resized);
@@ -639,7 +657,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     super();
     const root = this.attachShadow({ mode: "open" });
     adoptStyle(root);
+    this.#wrapper.className = "frame";
     this.#viewport.className = "viewport";
+    this.#ring.className = "ring";
     this.#column.className = "column";
     this.#sheet.className = "sheet";
     this.#stage.className = "stage";
@@ -662,7 +682,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#sheet.append(this.#stage, this.#parts.spot);
     this.#column.append(this.#statement.element, this.#parts.list, this.#parts.status, this.#sheet);
     this.#viewport.append(this.#column);
-    root.append(this.#tools.element, this.#viewport);
+    this.#wrapper.append(this.#viewport, this.#ring);
+    root.append(this.#tools.element, this.#wrapper);
     this.#lay(NO_TASK);
     this.#refresh();
 
@@ -690,6 +711,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#canvas.addEventListener("transitionend", () => this.#request());
     this.#canvas.addEventListener("transitioncancel", () => this.#request());
     this.#viewport.addEventListener("scroll", () => this.#scrolled(), { passive: true });
+    // A container that has nothing to scroll any more keeps its stop of Tab while it has the focus.
+    this.#viewport.addEventListener("blur", () => this.#region());
 
     attachProbe(this, () => ({
       strokes: this.#work.strokes,
@@ -1064,6 +1087,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    */
   attributeChangedCallback(): void {
     this.#tools.label(this.getAttribute("lang"));
+    this.#nameRegion();
     this.#nameBoxes();
     this.#markBoxes();
   }
@@ -1703,6 +1727,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * frame.
    */
   #layout(): void {
+    // The content of a new size, or the container, may overflow it now, or no more.
+    this.#region();
     const area = this.#area;
     if (area === undefined || area.width === 0) return;
     // The column is as wide as the container up to the cap, and the stage as tall as the visible
@@ -1954,6 +1980,35 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       opens: this.#nextPart() !== undefined,
       expanded: demo?.hidden !== true,
     });
+    this.#nameRegion();
+  }
+
+  /**
+   * The container as a region of its own, a stop of Tab and a name, while its content overflows
+   * it, and the keyboard scrolls it: in Safari a container that nothing in it can take the focus in
+   * scrolls by no key without (R90 spec; WebKit's bug 277290). Without a height of its own the
+   * element scrolls with the page and has no stop of Tab, and neither has one whose task fits. A
+   * container that holds the focus keeps all three till the focus leaves it, not the window (T93).
+   * Its overflow is down alone: across, it hides what overflows.
+   */
+  #region(): void {
+    if (!this.isConnected) return;
+    const viewport = this.#viewport;
+    const scrolls = overflowOf(viewport) > EDGE || this.shadowRoot?.activeElement === viewport;
+    write(viewport, "tabindex", scrolls ? "0" : null);
+    write(viewport, "role", scrolls ? "region" : null);
+    this.#nameRegion();
+  }
+
+  /**
+   * The region's name: the canvas kind's, or a worked example's, in the labels' language, which
+   * the row's buttons are named in. The container takes no `lang` of its own: the statement in it
+   * has the task's (T93).
+   */
+  #nameRegion(): void {
+    const { labels } = labelsFor(this.getAttribute("lang"));
+    const named = this.#viewport.hasAttribute("role");
+    write(this.#viewport, "aria-label", named ? labels[this.#rowKind()] : null);
   }
 
   /** What the row of buttons is of, and is named by: a worked example, or the canvas kind (R42). */
@@ -2290,10 +2345,17 @@ function offsetOf(element: Element, height: number): number {
   return top.endsWith("%") ? (value / 100) * height : value;
 }
 
+/** How far a scroll short of its end, or past it, still counts as at it: half a CSS pixel. */
+const EDGE = 0.5;
+
+/** How far an element's content overflows it down, in CSS pixels: where its scroll ends. */
+function overflowOf(element: Element): number {
+  return element.scrollHeight - element.clientHeight;
+}
+
 /** Whether an element can scroll on down its content, for `onward`, or back up it. */
 function scrollsOn(element: Element, onward: boolean): boolean {
-  const end = element.scrollHeight - element.clientHeight;
-  return onward ? element.scrollTop < end - 0.5 : element.scrollTop > 0.5;
+  return onward ? element.scrollTop < overflowOf(element) - EDGE : element.scrollTop > EDGE;
 }
 
 /** Whether an element holds another in the flat tree, across the borders of shadow trees. */

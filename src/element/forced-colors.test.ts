@@ -185,6 +185,30 @@ test("with forced colours the ring of a button in focus is the system's highligh
   }
 });
 
+test("with forced colours the ring of the sheet's container in focus is the system's highlight (T93)", async () => {
+  const element = document.createElement("novatrail-canvas");
+  element.style.width = "400px";
+  element.style.height = "300px";
+  element.style.setProperty("--novatrail-canvas-ink", "rgb(0, 0, 255)");
+  document.body.append(element);
+  made.push(element);
+  await settle();
+  const root = element.shadowRoot;
+  const viewport = root?.querySelector(".viewport");
+  const ring = root?.querySelector(".ring");
+  if (!viewport || !ring) throw new Error("the element has no container and ring");
+  await userEvent.tab();
+  await userEvent.tab();
+  expect(root?.activeElement).toBe(viewport);
+  const style = getComputedStyle(ring);
+  expect([style.display, style.outlineStyle, style.outlineWidth]).toEqual([
+    "block",
+    "solid",
+    "2px",
+  ]);
+  expect(style.outlineColor).toBe(system("Highlight"));
+});
+
 test("with forced colours a workbook's text and the frames of its boxes are the system's text colour, whatever the consumer's ink, and a filled box's frame and a mark's on it the highlight", async () => {
   const theme = document.createElement("div");
   theme.style.setProperty("--novatrail-canvas-ink", "rgb(0, 0, 255)");
