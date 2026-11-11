@@ -248,12 +248,21 @@ describe("in the page's build", () => {
     throw new Error(`never true: ${expression}`);
   }
 
+  /** Wait for a frame of the page, as the drivers do before each stroke: the element the page was
+   * given is laid out only in a frame, its ResizeObserver's, and until then its canvas is 0 px tall,
+   * so a stroke lands beside it and the sheet holds none (T104 in RUN.md). */
+  async function framed(page: Page): Promise<void> {
+    expect(await page.evaluate(PAINT)).toBe(0);
+    await until(page, PAINTED);
+  }
+
   test("sees the tasks, a stroke, each saved file's text and the workbook's page, and nothing else", async () => {
     const page = await opened(file);
     try {
       expect(await read(page)).toMatchObject({ watched: true, defined: true, tasks: TASKS });
-      // The start, as the drivers go through it (T20): then the sheet is there.
+      // The start, as the drivers go through it (T20): then the sheet is there, laid out a frame on.
       expect(await page.evaluate(START)).toBe(true);
+      await framed(page);
       // The spy on Blob keeps a blob the browser makes a Blob to the page, as the element asks.
       expect(
         await page.evaluate("(async () => (await new Response('a').blob()) instanceof Blob)()"),
@@ -296,8 +305,7 @@ describe("in the page's build", () => {
       await page.evaluate(TO_WORKBOOK);
       await until(page, `document.getElementById("task").value === "${WORKBOOK}"`);
       // A frame rendered after the picker changed: the driver waits for one before the stroke.
-      expect(await page.evaluate(PAINT)).toBe(0);
-      await until(page, PAINTED);
+      await framed(page);
       await draw();
       await markUp();
       await page.click("#save");
@@ -314,6 +322,7 @@ describe("in the page's build", () => {
     const page = await opened(file);
     try {
       expect(await page.evaluate(START)).toBe(true);
+      await framed(page);
       const sheet = async () => JSON.parse(String(await page.evaluate(SHEET))) as SheetNow;
       const box = async (): Promise<Box> => {
         await page.evaluate(
@@ -404,8 +413,7 @@ describe("in the page's build", () => {
         writerAsked: false,
       });
       // As the drivers do: a frame of the element first, then the stroke in the window.
-      await page.evaluate(PAINT);
-      await until(page, PAINTED);
+      await framed(page);
       await page.evaluate(
         'document.querySelector("novatrail-canvas").scrollIntoView({ block: "start" })',
       );
