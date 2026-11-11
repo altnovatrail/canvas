@@ -33,6 +33,7 @@ import { INK_WIDTH } from "../src/core/outline.js";
 import { pageOf } from "../src/core/page.js";
 import {
   type ExportedWork,
+  type Manifest,
   type Mark,
   type NovatrailCanvas,
   TAG,
@@ -86,6 +87,15 @@ interface PageTask {
   readonly bank: string;
   readonly task: Task;
   readonly open: OpenTask;
+  /** The module and version whose manifest and media the task takes, "<ID> <version>" (T101). */
+  readonly module?: string;
+}
+
+/** What the build has of a module: its manifest's open view, and its media by path, each its type
+ * and its bytes in base64. */
+interface PageModule {
+  readonly manifest: Manifest;
+  readonly media: Readonly<Record<string, { readonly type: string; readonly data: string }>>;
 }
 
 /** What scripts/page.ts puts into the build. */
@@ -93,6 +103,7 @@ declare const SAMPLES_PAGE: {
   readonly version: string;
   readonly texts: PageTexts;
   readonly tasks: readonly PageTask[];
+  readonly modules: Readonly<Record<string, PageModule>>;
 };
 
 const data = SAMPLES_PAGE;
@@ -103,7 +114,7 @@ function versionFor(purpose: PurposeKey): string {
   if (version === undefined) throw new TypeError(`the build has no texts for ${purpose}`);
   return version;
 }
-/** Whether a task of the build is a module's: only such a task's sample goes into an eval set. */
+/** Whether a task of the build is a module's: only an eval set takes it, and only it (T101). */
 const ofModule = ({ open }: PageTask) => open.reference.source?.case === "modules";
 const moduleTasks = data.tasks.some(ofModule);
 
@@ -247,10 +258,18 @@ function mount(): void {
   sheet?.remove();
   const element = document.createElement(TAG) as NovatrailCanvas;
   element.lang = "ru";
-  element.task = chosen().task;
-  // The tasks of this build have no media; a task that names one is a page's mistake to see.
+  const { task, module } = chosen();
+  const carried = module === undefined ? undefined : data.modules[module];
+  // A module's manifest gives the height of its digits (R32); tutor's file has none.
+  if (carried) element.manifest = carried.manifest;
+  element.task = task;
+  // A module's task takes the files of its media the build carries; tutor's tasks have none, and a
+  // file the build lacks is a page's mistake to see.
   element.media = async (ref: string) => {
-    throw new TypeError(`this build has no media ${ref}`);
+    const file = carried && Object.hasOwn(carried.media, ref) ? carried.media[ref] : undefined;
+    if (file === undefined) throw new TypeError(`this build has no media ${ref}`);
+    const bytes = Uint8Array.from(atob(file.data), (character) => character.charCodeAt(0));
+    return new Blob([bytes], { type: file.type });
   };
   // Writing after the markup was asked for changes what it is of: it is asked for again.
   element.addEventListener("historychange", () => {
@@ -663,7 +682,8 @@ function save(): void {
   savedAt = sheet?.history.length ?? 0;
   const link = make("a");
   link.href = URL.createObjectURL(new Blob([sample.text], { type: "application/json" }));
-  link.download = `sample-${sample.id}.json`;
+  // Named by its ID alone, as an eval set of a module lays its files out (T101).
+  link.download = `${sample.id}.json`;
   document.body.append(link);
   link.click();
   link.remove();
@@ -838,15 +858,14 @@ function begin(): void {
   byId("ipad-note").hidden = !child;
   byId("summary").hidden = false;
   byId("work").hidden = false;
-  // An eval set takes its own module's tasks alone: the others leave the picker.
-  if (purpose === "evalSet") {
-    for (const option of [...picker.options]) {
-      const task = data.tasks[Number(option.value)];
-      if (!task || !ofModule(task)) option.remove();
-    }
-    for (const group of picker.querySelectorAll("optgroup")) {
-      if (group.children.length === 0) group.remove();
-    }
+  // An eval set takes the tasks of modules alone, and the measurement and a child's session those
+  // of tutor's file alone (T101): the others leave the picker.
+  for (const option of [...picker.options]) {
+    const task = data.tasks[Number(option.value)];
+    if (!task || ofModule(task) !== (purpose === "evalSet")) option.remove();
+  }
+  for (const group of picker.querySelectorAll("optgroup")) {
+    if (group.children.length === 0) group.remove();
   }
   mount();
   picker.focus();
@@ -1025,16 +1044,21 @@ async function opened(): Promise<void> {
 // without its script (В64; the 2026-11-08 amendment to R25 spec; T85) — go.
 byId("no-script").remove();
 words();
-// A group of the picker for each bank, in the build's order (T21).
+// A group of the picker for each bank and each module, in the build's order (T21, T101); a
+// template's instance is named by its seed.
 const banks = new Map<string, HTMLOptGroupElement>();
-for (const [index, { kind, bank, task }] of data.tasks.entries()) {
+for (const [index, { kind, bank, task, open, module }] of data.tasks.entries()) {
   let group = banks.get(bank);
   if (!group) {
-    group = make("optgroup", "", { label: TEXTS.bank(bank) });
+    const label = module === undefined ? TEXTS.bank(bank) : TEXTS.module(module);
+    group = make("optgroup", "", { label });
     banks.set(bank, group);
     picker.append(group);
   }
-  group.append(new Option(TEXTS.task(TEXTS.taskKind[kind], task.id), String(index)));
+  const { seed } = open.reference;
+  const name = TEXTS.taskKind[kind];
+  const text = seed === undefined ? TEXTS.task(name, task.id) : TEXTS.instance(name, task.id, seed);
+  group.append(new Option(text, String(index)));
 }
 picker.addEventListener("change", mount);
 markupButton.addEventListener("click", () => void markUp());

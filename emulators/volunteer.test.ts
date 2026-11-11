@@ -108,7 +108,7 @@ function device(
       const { strokes: events, last, tool, scrolled } = page;
       if (expression === SHEET) return JSON.stringify({ events, last, tool, scrolled });
       if (expression === TEST_START) {
-        return JSON.stringify({ evalSetClosed: true, measurementOpen: true, childOpen: true });
+        return JSON.stringify({ evalSetOpen: true, measurementOpen: true, childOpen: true });
       }
       if (expression === CHILD_START) {
         return JSON.stringify({
@@ -362,7 +362,7 @@ test("the test build's way: its start, a child's session begun with the form's c
   expect(run.verdict()).toBe("ok");
   expect(run.steps.map(({ step }) => step)).toEqual([
     "the element stands and offers the build's tasks",
-    "the test build's start keeps the eval set closed, with why, and opens the measurement and a child's session",
+    "the test build's start opens the eval set, the measurement and a child's session",
     "a new child's code is shown for the form, and begins no session",
     "the start lets the adult begin a child's session with the form's code",
     "in a child's session the child writes, no adult's hand is asked, and the iPad's downloads are named",

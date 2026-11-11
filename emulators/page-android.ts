@@ -60,7 +60,7 @@ import {
 const seen = new Set<string>();
 /** Where Chrome saves a download, and the files of the page's saving in it. */
 const DOWNLOADS = "/sdcard/Download";
-const SAVED = /^sample-[a-z2-7]+(?: \(\d+\))?\.json$/;
+const SAVED = /^[a-z2-7]{12}(?: \(\d+\))?\.json$/;
 
 /** A point of the page's window, in its CSS pixels. */
 type Point = readonly [number, number];
@@ -82,10 +82,22 @@ class Chrome implements Device {
     this.port = port;
   }
 
+  /** The page's saved files in the downloads, by the names it gives them, each quoted for the
+   * shell: nothing else of the folder is touched (T101). */
+  private saved(): string[] {
+    return this.android
+      .shell(`ls ${DOWNLOADS}`)
+      .split("\n")
+      .map((name) => name.trim())
+      .filter((name) => SAVED.test(name))
+      .map((name) => `'${DOWNLOADS}/${name}'`);
+  }
+
   async open(): Promise<boolean> {
     const { run, android } = this;
     // The files of an earlier pass, which would be another opening's, with another writer's code.
-    android.shell(`rm -f ${DOWNLOADS}/sample-*.json`);
+    const old = this.saved();
+    if (old.length > 0) android.shell(`rm -f ${old.join(" ")}`);
     android.view(`http://${HOST}:${this.port}/${this.file}`);
     await android.settle(60);
     android.screenshot("download");
@@ -266,9 +278,14 @@ class Chrome implements Device {
     if (!this.tools) throw new Error("no page");
     let path = "";
     try {
-      path =
-        this.android.shell(`grep -l '"sheet"' ${DOWNLOADS}/sample-*.json`).split("\n")[0]?.trim() ??
-        "";
+      const files = this.saved();
+      if (files.length > 0) {
+        path =
+          this.android
+            .shell(`grep -l '"sheet"' ${files.join(" ")}`)
+            .split("\n")[0]
+            ?.trim() ?? "";
+      }
     } catch {
       // No file of the sheet in the downloads: the page is given the text below.
     }

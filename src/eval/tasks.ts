@@ -93,6 +93,121 @@ export function openTasksOf(
   return tasks;
 }
 
+/**
+ * The open views of tasks of modules the samples page carries (T101; R71): what module-kit open
+ * wrote of a release of modules, with the seeds of the templates' instances, as a copy in
+ * tasks/modules-<tag>/ that ci-licenses holds to what module-kit writes anew, and the SHA-256 of its
+ * open-views.json. A new release of modules or new seeds come in by raising these, the justfile's
+ * and the copy together.
+ */
+export const MODULES_FILE = Object.freeze({
+  tag: "v0.2.4",
+  seeds: Object.freeze(["1", "2", "3", "4", "5"]),
+  sha256: "c5bd573445fc72478e5e9ab0d289a7ca591c25f68436bbd1fd4d2f75a1df9a03",
+});
+
+/** A module of the open views: its ID, version and manifest's open view, and its tasks. */
+export interface ModuleViews {
+  readonly module: string;
+  readonly version: string;
+  /** The open view of its manifest, which the element reads the height of a digit of (R32). */
+  readonly manifest: Readonly<Record<string, unknown>>;
+  /** Its tasks and their instances, in module-kit's order: each open view, and a sample's view. */
+  readonly tasks: readonly {
+    readonly view: Readonly<Record<string, unknown>>;
+    readonly open: OpenTask;
+  }[];
+}
+
+/** A seed of a template's instance, as module-kit writes it: an unsigned integer in decimal digits. */
+const SEED = /^(0|[1-9]\d*)$/;
+
+/**
+ * The tasks of modules of the open views module-kit open wrote, given as the text of its
+ * open-views.json (R43 module-kit). Each task holds the fields of the open view alone, or the file is
+ * refused, as tutor's is, and its digest has to be the one the open view's canonical text gives: so
+ * a sample's digest is module-kit's, which modules' eval-match holds it to (the T59 amendment to R25
+ * modules). The source of a sample is the release of modules that published the package, whose
+ * index holds it (ModuleSource of the contracts), and a template's instance names its seed. A file
+ * of another format, of another version of the module format than the element's, or a task of
+ * another digest is a TypeError.
+ */
+export function openViewsOf(text: string, sha256: (text: string) => string): ModuleViews[] {
+  const file = JSON.parse(text) as {
+    readonly format?: unknown;
+    readonly version?: unknown;
+    readonly module_format_version?: unknown;
+    readonly modules?: unknown;
+  };
+  if (
+    file.format !== "module-kit-open-views" ||
+    file.version !== 0 ||
+    !Array.isArray(file.modules)
+  ) {
+    throw new TypeError(
+      "a file of open views is module-kit-open-views of the version 0, with modules",
+    );
+  }
+  if (file.module_format_version !== FORMAT) {
+    throw new TypeError(`a file of open views is of the module format ${FORMAT}, the element's`);
+  }
+  return file.modules.map((given: Record<string, unknown>) => {
+    const { id: module, version, release, package_digest: packageDigest, manifest, tasks } = given;
+    if (typeof module !== "string" || !MODULE_ID.test(module)) {
+      throw new TypeError("a module of the open views has an ID, <publisher>/<name>");
+    }
+    if (typeof version !== "string" || !VERSION.test(version)) {
+      throw new TypeError(`${module} has no version MAJOR.MINOR.PATCH`);
+    }
+    if (typeof release !== "string" || !TAG.test(release)) {
+      throw new TypeError(`${module} ${version} has no release of modules, vX.Y.Z`);
+    }
+    if (typeof packageDigest !== "string" || !DIGEST.test(packageDigest)) {
+      throw new TypeError(`${module} ${version} has no digest of its package`);
+    }
+    if (given.module_format_version !== FORMAT) {
+      throw new TypeError(`${module} ${version} is not of the module format ${FORMAT}`);
+    }
+    if (manifest === null || typeof manifest !== "object" || Array.isArray(manifest)) {
+      throw new TypeError(`${module} ${version} has no manifest`);
+    }
+    if (!Array.isArray(tasks)) throw new TypeError(`${module} ${version} has no tasks`);
+    const source = { tag: release, module, version, packageDigest };
+    return {
+      module,
+      version,
+      manifest: manifest as Record<string, unknown>,
+      tasks: tasks.map((entry: Record<string, unknown>) => {
+        const { task, open_view_digest: digest, seed } = entry;
+        const id = (task as { readonly id?: unknown } | undefined)?.id;
+        if (typeof id !== "string") throw new TypeError(`a task of ${module} has no ID`);
+        const name =
+          seed === undefined ? `${module} ${id}` : `${module} ${id} of the seed ${String(seed)}`;
+        if (seed !== undefined && (typeof seed !== "string" || !SEED.test(seed))) {
+          throw new TypeError(`${name}: a seed is an unsigned integer in decimal digits`);
+        }
+        const view = openOf(task, TASK, `${name}:`, "refuse");
+        const openViewDigest = `sha256:${sha256(canonicalText(view))}`;
+        if (digest !== openViewDigest) {
+          throw new TypeError(
+            `${name}: its digest is not that of its open view, ${openViewDigest}`,
+          );
+        }
+        const reference = {
+          source: { case: "modules" as const, value: source },
+          task: id,
+          ...(seed === undefined ? {} : { seed }),
+          openViewDigest,
+        };
+        return { view, open: { reference, canvas: canvasOf(view, name) } };
+      }),
+    };
+  });
+}
+
+/** A digest as the module format writes it: `sha256:` and 64 lowercase hexadecimal digits. */
+const DIGEST = /^sha256:[0-9a-f]{64}$/;
+
 /** A module's ID, as the format writes it: `<publisher>/<name>` (schemas/common.schema.json). */
 const MODULE_ID = /^[a-z][a-z0-9]*(-[a-z0-9]+)*\/[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 /** A version, MAJOR.MINOR.PATCH, and a tag of a release, v and a version. */

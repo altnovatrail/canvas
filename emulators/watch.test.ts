@@ -387,11 +387,11 @@ describe("in the page's build", () => {
     }
   }, 60_000);
 
-  test("in the test build: the eval set closed, and a child's session begun with the form's code (T22)", async () => {
+  test("in the test build: the eval set open, and a child's session begun with the form's code (T22, T101)", async () => {
     const page = await opened(tested);
     try {
       expect(JSON.parse(String(await page.evaluate(TEST_START)))).toEqual({
-        evalSetClosed: true,
+        evalSetOpen: true,
         measurementOpen: true,
         childOpen: true,
       });
