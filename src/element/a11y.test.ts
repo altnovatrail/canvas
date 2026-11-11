@@ -85,7 +85,7 @@ test.each([
     const { root, row, pen, up } = rowOf(element);
     await userEvent.tab();
     for (const focused of [pen, up]) {
-      if (focused === up) await userEvent.keyboard("{End}{ArrowLeft}");
+      if (focused === up) await userEvent.keyboard("{End}{ArrowLeft}{ArrowLeft}{ArrowLeft}");
       expect(root.activeElement).toBe(focused);
       expect(focused.matches(":focus-visible")).toBe(true);
       const style = getComputedStyle(focused);

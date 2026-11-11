@@ -27,6 +27,7 @@ import {
   watch,
 } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
+import { PAGE_ZOOM } from "./session.js";
 
 // The parts of a worked example's demo in Chromium (R42): the row's Next opens them one at a time
 // into a numbered list between the statement and the sheet, and Demo hides and shows the whole
@@ -48,6 +49,8 @@ afterEach(() => {
   for (const element of made.splice(0)) element.remove();
   window.scrollTo(0, 0);
   vi.restoreAllMocks();
+  // The page's zoom (T94): the next test starts at the fit.
+  while (PAGE_ZOOM.step(false)) {}
 });
 
 /**
@@ -696,6 +699,31 @@ test("Next brings a picture on an area into sight by its area, not by its item: 
     expect(drawn?.[side]).toBeCloseTo(still?.[side] ?? Number.NaN, 0);
   }
   expect(still?.top).toBeCloseTo(box?.top ?? Number.NaN, 0);
+});
+
+test("on a zoomed sheet Next brings a picture's area on the right into sight across too, and the open part stays at the container's left (T94)", async () => {
+  // Tall enough for the area under the row of three lines that Left and Right make.
+  const { element, root, list, next, viewport } = await demo(400);
+  element.workedExample = onArea({ left: 700, top: 1100, width: 250, height: 200 });
+  await settle();
+  while (PAGE_ZOOM.value < 2) PAGE_ZOOM.step(true);
+  await settle();
+  next.click();
+  const spot = root.querySelector(".spot");
+  const port = viewport.getBoundingClientRect();
+  const box = spot?.getBoundingClientRect();
+  expect(viewport.scrollLeft).toBeGreaterThan(0);
+  expect(box?.left).toBeGreaterThanOrEqual(port.left - 0.5);
+  expect(box?.right).toBeLessThanOrEqual(port.right + 0.5);
+  expect(box?.top).toBeGreaterThanOrEqual(port.top - 0.5);
+  expect(box?.bottom).toBeLessThanOrEqual(port.bottom + 0.5);
+  expect(list.getBoundingClientRect().left).toBeCloseTo(port.left, 0);
+  await settle();
+  const drawn = onTheSheet(root)[0]?.getBoundingClientRect();
+  const still = spot?.getBoundingClientRect();
+  for (const side of ["left", "top", "width", "height"] as const) {
+    expect(drawn?.[side]).toBeCloseTo(still?.[side] ?? Number.NaN, 0);
+  }
 });
 
 test("in a page that scrolls the element, Next brings a picture's area out from under the row stuck at the consumer's offset", async () => {

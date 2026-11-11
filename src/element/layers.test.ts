@@ -90,10 +90,10 @@ test("the sheet is a stack of layers in the order of concepts 8 spec, and of the
   const sheetBox = root.querySelector(".sheet");
   if (!sheetBox) throw new Error("the element has no sheet");
   // The row of the element's own buttons sets no pointer-events of its own either (R28), Up and
-  // Down (R33), the finger's button of pen mode (R29) and a worked example's Next and Demo (R42)
-  // too.
+  // Down (R33), the zoom's pair and Left and Right (T94), the finger's button of pen mode (R29)
+  // and a worked example's Next and Demo (R42) too.
   const buttons = [...root.querySelectorAll(".tools button")];
-  expect(buttons).toHaveLength(9);
+  expect(buttons).toHaveLength(13);
   for (const box of [canvas, stage, sheetBox, viewport, ...buttons]) {
     expect(getComputedStyle(box).pointerEvents).toBe("auto");
   }

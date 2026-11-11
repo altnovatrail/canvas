@@ -1,5 +1,14 @@
 import { describe, expect, test } from "vitest";
-import { type Contact, Hands, PAIR_MS, PALM_PX, PenMode, type Role, SLOP_PX } from "./hands.js";
+import {
+  type Contact,
+  Hands,
+  PAIR_MS,
+  PALM_PX,
+  PenMode,
+  RAIL,
+  type Role,
+  SLOP_PX,
+} from "./hands.js";
 
 const PEN = 1;
 const MOUSE = 2;
@@ -28,9 +37,11 @@ const kindOf = (pointerId: number) =>
 class Bench {
   writing: number | undefined;
   readonly dropped: number[] = [];
-  readonly steps: { readonly dy: number; readonly fresh: boolean }[] = [];
+  readonly steps: { readonly dx: number; readonly dy: number; readonly fresh: boolean }[] = [];
   readonly hands: Hands;
   readonly mode: PenMode;
+  /** Whether the sheet scrolls across: a zoomed one does (T94). */
+  across = true;
 
   constructor(mode = new PenMode()) {
     this.mode = mode;
@@ -45,19 +56,28 @@ class Bench {
           this.dropped.push(pointerId);
           this.writing = undefined;
         },
-        scroll: (dy, fresh) => this.steps.push({ dy, fresh }),
+        scroll: (dx, dy, fresh) => this.steps.push({ dx, dy, fresh }),
+        across: () => this.across,
       },
       mode,
     );
   }
 
-  down(pointerId: number, time: number, at: { y?: number; size?: number } = {}): boolean {
+  down(
+    pointerId: number,
+    time: number,
+    at: { x?: number; y?: number; size?: number } = {},
+  ): boolean {
     const writes = this.hands.down(contact(pointerId, kindOf(pointerId), time, at));
     if (writes) this.writing = pointerId;
     return writes;
   }
 
-  move(pointerId: number, time: number, at: { y?: number; size?: number } = {}): boolean {
+  move(
+    pointerId: number,
+    time: number,
+    at: { x?: number; y?: number; size?: number } = {},
+  ): boolean {
     return this.hands.move(contact(pointerId, kindOf(pointerId), time, at));
   }
 
@@ -219,12 +239,12 @@ describe("two fingers", () => {
     expect(bench.steps).toEqual([]);
     // At 110, 2 past it, and from there on in step with the fingers.
     bench.move(B, 20, { y: 110 });
-    expect(bench.steps).toEqual([{ dy: 2, fresh: true }]);
+    expect(bench.steps).toEqual([{ dx: 0, dy: 2, fresh: true }]);
     bench.move(A, 30, { y: 120 });
     bench.move(B, 30, { y: 123 });
     expect(bench.steps.slice(1)).toEqual([
-      { dy: 5, fresh: false },
-      { dy: 6.5, fresh: false },
+      { dx: 0, dy: 5, fresh: false },
+      { dx: 0, dy: 6.5, fresh: false },
     ]);
     expect(bench.scrolled).toBe((120 + 123) / 2 - 100 - SLOP_PX);
     // A move that leaves the middle where it was is no step.
@@ -239,9 +259,78 @@ describe("two fingers", () => {
     up.move(A, 20, { y: 60 });
     up.move(B, 20, { y: 60 });
     expect(up.steps).toEqual([
-      { dy: -20 + SLOP_PX, fresh: true },
-      { dy: -20, fresh: false },
+      { dx: 0, dy: -20 + SLOP_PX, fresh: true },
+      { dx: 0, dy: -20, fresh: false },
     ]);
+  });
+
+  test(`two fingers that go ${RAIL} times further across than down scroll across alone, and down alone the other way round`, () => {
+    // A's contact is at x 1100 and B's at 1200 unless a move says otherwise: their middle at 1150.
+    const across = new Bench();
+    across.mode.on = true;
+    across.down(A, 0);
+    across.down(B, 10);
+    // The middle goes 10 right and 4 down: past the slop, more than twice as far across, and the
+    // first step is the share of the travel across that is past the slop.
+    across.move(A, 20, { x: 1120, y: 108 });
+    const gone = Math.hypot(10, 4);
+    expect(across.steps).toEqual([{ dx: (10 * (gone - SLOP_PX)) / gone, dy: 0, fresh: true }]);
+    // On the rail, the fingers going down move nothing, and going on across, the sheet follows.
+    across.move(B, 20, { x: 1200, y: 130 });
+    expect(across.steps).toHaveLength(1);
+    across.move(B, 30, { x: 1180, y: 130 });
+    expect(across.steps.slice(1)).toEqual([{ dx: -10, dy: 0, fresh: false }]);
+
+    const down = new Bench();
+    down.mode.on = true;
+    down.down(A, 0);
+    down.down(B, 10);
+    // 4 across and 20 down, as the middle goes: down alone, to the end of the gesture.
+    down.move(A, 20, { x: 1108, y: 140 });
+    down.move(B, 20, { x: 1240, y: 100 });
+    const far = Math.hypot(4, 20);
+    expect(down.steps).toEqual([{ dx: 0, dy: (20 * (far - SLOP_PX)) / far, fresh: true }]);
+
+    // Just past the slop, with less than the slop along the rail: the first step still goes the
+    // way the fingers went.
+    const short = new Bench();
+    short.mode.on = true;
+    short.down(A, 0);
+    short.down(B, 10);
+    short.move(A, 20, { x: 1107, y: 115 });
+    const [first] = short.steps;
+    expect(first?.dx).toBe(0);
+    expect(first?.dy).toBeGreaterThan(0);
+  });
+
+  test("on a sheet that does not scroll across, two fingers go by their travel down alone, however far across they go", () => {
+    const bench = new Bench();
+    bench.across = false;
+    bench.mode.on = true;
+    bench.down(A, 0);
+    bench.down(B, 10);
+    // 20 across and 3 down: within the slop down, so nothing yet; then 12 down, 4 past it.
+    bench.move(A, 20, { x: 1140, y: 106 });
+    expect(bench.steps).toEqual([]);
+    bench.move(B, 20, { x: 1240, y: 118 });
+    expect(bench.steps).toEqual([{ dx: 0, dy: 12 - SLOP_PX, fresh: true }]);
+    bench.move(A, 30, { x: 1180, y: 116 });
+    expect(bench.steps.slice(1)).toEqual([{ dx: 0, dy: 5, fresh: false }]);
+  });
+
+  test("two fingers that go neither way twice as far as the other scroll both ways, without a jump", () => {
+    const bench = new Bench();
+    bench.mode.on = true;
+    bench.down(A, 0);
+    bench.down(B, 10);
+    // The middle goes 9 right and 12 down, 15 in all: 7 past the slop, the same share of each.
+    bench.move(A, 20, { x: 1118, y: 124 });
+    expect(bench.steps).toEqual([{ dx: (9 * 7) / 15, dy: (12 * 7) / 15, fresh: true }]);
+    bench.move(B, 20, { x: 1210, y: 110 });
+    expect(bench.steps.slice(1)).toEqual([{ dx: 5, dy: 5, fresh: false }]);
+    const along = bench.steps.reduce((sum, { dx, dy }) => sum + Math.hypot(dx, dy), 0);
+    // The fingers' middle went from 1150, 100 to 1164, 117: the slop less, the sheet went as far.
+    expect(along).toBeCloseTo(Math.hypot(9, 12) - SLOP_PX + Math.hypot(5, 5));
   });
 
   test("a palm in the pair ends the gesture, and so do a lift, a cancel and a reset", () => {

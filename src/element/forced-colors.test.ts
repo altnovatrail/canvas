@@ -175,7 +175,7 @@ test("with forced colours the ring of a button in focus is the system's highligh
   if (!pen || !up) throw new Error("the element has no row of buttons");
   await userEvent.tab();
   for (const focused of [pen, up]) {
-    if (focused === up) await userEvent.keyboard("{End}{ArrowLeft}");
+    if (focused === up) await userEvent.keyboard("{End}{ArrowLeft}{ArrowLeft}{ArrowLeft}");
     expect(root?.activeElement).toBe(focused);
     expect(focused.matches(":focus-visible")).toBe(true);
     const style = getComputedStyle(focused);

@@ -10,11 +10,12 @@ import { probe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
 
 // The element's own row of buttons in Chromium (R28): a toolbar of the tools the task allows, of
-// undo and clearing, and of Up and Down (R33), found by its roles and names in the element's
-// language, worked with the pointer and with the keyboard, telling of the learner's choice of tool,
-// scrolling what two fingers would, and standing above the statement and the sheet, outside their
-// scrolling. A worked example's row has Up and Down alone (R42). Each button shows its icon before
-// its label, which stays its name (R46; R78 spec).
+// undo and clearing, of Up and Down (R33) and of the zoom's pair (T94), found by its roles and
+// names in the element's language, worked with the pointer and with the keyboard, telling of the
+// learner's choice of tool, scrolling what two fingers would, and standing above the statement and
+// the sheet, outside their scrolling. A worked example's row has Up, Down and the zoom's pair alone
+// (R42). Each button shows its icon before its label, which stays its name (R46; R78 spec). The
+// zoom itself, and Left and Right, are zoom.test.ts's.
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -92,7 +93,8 @@ test("the row is a toolbar of the pen and the eraser, undo and clear, named in E
   await expect.element(found.down).toBeVisible();
   // The order the arrow keys go through, and the language the names are in. A worked example's
   // Next and Demo come first, and a sheet hides them (R42). Up and Down are on every device (R33),
-  // and the last button is pen mode's, which out of it the row hides (R29).
+  // and so are Zoom in and Zoom out, while Left and Right come with a zoomed sheet (T94). The last
+  // button is pen mode's, which out of it the row hides (R29).
   expect([...row.querySelectorAll("button")].map((each) => each.textContent)).toEqual([
     "Next",
     "Demo",
@@ -102,9 +104,13 @@ test("the row is a toolbar of the pen and the eraser, undo and clear, named in E
     "Clear",
     "Up",
     "Down",
+    "Zoom in",
+    "Zoom out",
+    "Left",
+    "Right",
     "Draw with finger",
   ]);
-  expect(row.querySelectorAll("button[hidden]")).toHaveLength(3);
+  expect(row.querySelectorAll("button[hidden]")).toHaveLength(5);
   expect(row.lang).toBe("en");
 });
 
@@ -120,6 +126,10 @@ test("each button shows its icon before its label: an SVG that names nothing, in
     ROW.clear.outline,
     ROW.up.outline,
     ROW.down.outline,
+    ROW.zoomIn.outline,
+    ROW.zoomOut.outline,
+    ROW.left.outline,
+    ROW.right.outline,
     ROW.finger.outline,
   ]);
   for (const one of each) {
@@ -165,6 +175,8 @@ test("in a row that runs right to left, the icons of Next, Undo and a hidden Dem
     Clear: false,
     Up: false,
     Down: false,
+    "Zoom in": false,
+    "Zoom out": false,
   });
   // The arrow that points along the row goes on: the next button stands to the left (R46).
   button(element, "Pen").focus();
@@ -174,11 +186,18 @@ test("in a row that runs right to left, the icons of Next, Undo and a hidden Dem
   expect(root.activeElement?.textContent).toBe("Pen");
   element.workedExample = workedExample();
   await settle();
-  expect(mirrored()).toEqual({ Next: true, Demo: false, Up: false, Down: false });
+  const unturned = { Up: false, Down: false, "Zoom in": false, "Zoom out": false };
+  expect(mirrored()).toEqual({ Next: true, Demo: false, ...unturned });
   button(element, "Demo").click();
   await settle();
   expect(drawn(button(element, "Demo")).name).toBe(ROW.demoHidden.outline);
-  expect(mirrored()).toEqual({ Next: true, Demo: true, Up: false, Down: false });
+  expect(mirrored()).toEqual({ Next: true, Demo: true, ...unturned });
+  // Left and Right point where the sheet goes, whichever way the row runs (T94).
+  button(element, "Zoom in").click();
+  await settle();
+  expect(mirrored()).toMatchObject({ Left: false, Right: false });
+  button(element, "Zoom out").click();
+  await settle();
   // Left to right, nothing is mirrored.
   parent.dir = "ltr";
   expect(Object.values(mirrored()).some(Boolean)).toBe(false);
@@ -202,6 +221,10 @@ test("the labels follow the element's own lang: Russian for ru and its regions, 
     "Очистить",
     "Выше",
     "Ниже",
+    "Крупнее",
+    "Мельче",
+    "Левее",
+    "Правее",
     "Рисовать пальцем",
   ]);
   // A language the labels are not in reads as English, in English: the row says its own.
@@ -319,18 +342,18 @@ test("the row is one stop of Tab, the arrow keys move between its buttons choosi
   await userEvent.keyboard("{ArrowRight}");
   expect(focused()).toBe("Eraser");
   expect(element.tool).toBe("pen");
-  // Undo, Clear and Up are reached while unavailable, the arrows go round the row, Home and End go
-  // to its ends, and a key with Control is not the row's: the keys, and the button they leave
-  // focused.
+  // Undo, Clear, Up and Zoom out are reached while unavailable, the arrows go round the row, Home
+  // and End go to its ends, and a key with Control is not the row's: the keys, and the button they
+  // leave focused.
   const moves: [keys: string, to: string][] = [
     ["{ArrowRight}{ArrowRight}", "Clear"],
     ["{ArrowRight}", "Up"],
-    ["{ArrowRight}{ArrowRight}", "Pen"],
-    ["{ArrowLeft}", "Down"],
+    ["{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}", "Pen"],
+    ["{ArrowLeft}", "Zoom out"],
     ["{Home}", "Pen"],
-    ["{End}", "Down"],
-    ["{Control>}{ArrowLeft}{/Control}", "Down"],
-    ["{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}", "Eraser"],
+    ["{End}", "Zoom out"],
+    ["{Control>}{ArrowLeft}{/Control}", "Zoom out"],
+    ["{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}", "Eraser"],
   ];
   for (const [keys, to] of moves) {
     await userEvent.keyboard(keys);
@@ -432,7 +455,8 @@ test("a task without the eraser has none: no button, no eraser of the pen, no to
   expect(() => {
     element.task = sheetTask({ tools: ["eraser"] });
   }).toThrow(TypeError);
-  expect(root.querySelectorAll("button:not([hidden])")).toHaveLength(5);
+  // Pen, Undo, Clear, Up and Down, Zoom in and Zoom out.
+  expect(root.querySelectorAll("button:not([hidden])")).toHaveLength(7);
 });
 
 test("a new task without the eraser puts the pen back, with no event, and the focus with it; an erasing under way ends as it began", async () => {
@@ -464,7 +488,7 @@ test("a new task without the eraser puts the pen back, with no event, and the fo
   expect(element.tool).toBe("pen");
 });
 
-test("a worked example's row is named so in the element's language and has Next, Demo, Up and Down alone, the stop of Tab and the focus on Next, and leaving it brings the rest back", async () => {
+test("a worked example's row is named so in the element's language and has Next, Demo, Up, Down and the zoom's pair alone, the stop of Tab and the focus on Next, and leaving it brings the rest back", async () => {
   // A device with touch, in pen mode: a worked example's row has no finger's button even so (R42).
   Object.defineProperty(navigator, "maxTouchPoints", { value: 5, configurable: true });
   try {
@@ -483,11 +507,11 @@ test("a worked example's row is named so in the element's language and has Next,
       [...row.querySelectorAll("button:not([hidden])")].map((each) => each.textContent);
     const stops = () =>
       [...root.querySelectorAll('[tabindex="0"]')].map((each) => each.textContent);
-    expect(shown()).toHaveLength(7);
+    expect(shown()).toHaveLength(9);
     button(element, "Pen").focus();
     element.workedExample = workedExample();
     expect(row.getAttribute("aria-label")).toBe("Worked example buttons");
-    expect(shown()).toEqual(["Next", "Demo", "Up", "Down"]);
+    expect(shown()).toEqual(["Next", "Demo", "Up", "Down", "Zoom in", "Zoom out"]);
     expect(page.elementLocator(element).getByRole("radiogroup").elements()).toHaveLength(0);
     expect(focused()).toBe("Next");
     expect(stops()).toEqual(["Next"]);
@@ -496,9 +520,9 @@ test("a worked example's row is named so in the element's language and has Next,
       ["{ArrowRight}", "Up"],
       ["{ArrowLeft}", "Demo"],
       ["{ArrowLeft}", "Next"],
-      ["{ArrowLeft}", "Down"],
+      ["{ArrowLeft}", "Zoom out"],
       ["{Home}", "Next"],
-      ["{End}", "Down"],
+      ["{End}", "Zoom out"],
     ];
     for (const [keys, to] of moves) {
       await userEvent.keyboard(keys);
@@ -513,13 +537,20 @@ test("a worked example's row is named so in the element's language and has Next,
           .getByRole("toolbar", { name: russian.exampleButtons, exact: true }),
       )
       .toBeVisible();
-    expect(shown()).toEqual([russian.next, russian.demo, russian.up, russian.down]);
+    expect(shown()).toEqual([
+      russian.next,
+      russian.demo,
+      russian.up,
+      russian.down,
+      russian.zoomIn,
+      russian.zoomOut,
+    ]);
     // Out of the example the row is the sheet's again, and the stop stays where the focus left it.
     element.workedExample = undefined;
     await settle();
     expect(row.getAttribute("aria-label")).toBe(russian.sheetButtons);
-    expect(shown()).toHaveLength(7);
-    expect(stops()).toEqual([russian.down]);
+    expect(shown()).toHaveLength(9);
+    expect(stops()).toEqual([russian.zoomOut]);
   } finally {
     Reflect.deleteProperty(navigator, "maxTouchPoints");
   }
@@ -549,9 +580,9 @@ test("every button is at least 44 CSS pixels square, in English and in Russian, 
   try {
     const { element, row } = await sheet(400);
     PEN_MODE.on = true;
-    // A sheet's seven buttons, then a worked example's four (R42).
-    for (const count of [7, 4]) {
-      if (count === 4) element.workedExample = workedExample();
+    // A sheet's nine buttons, then a worked example's six (R42).
+    for (const count of [9, 6]) {
+      if (count === 6) element.workedExample = workedExample();
       for (const tag of ["en", "ru"]) {
         element.setAttribute("lang", tag);
         await settle();
