@@ -25,10 +25,11 @@ export async function axeOf(root: Element, incomplete: readonly string[] = []): 
       `${id}: ${nodes.map((node) => `${String(node.target)} — ${node.failureSummary}`).join("; ")}`,
   );
   if (violations.length > 0) throw new Error(`axe finds violations:\n${violations.join("\n")}`);
-  const left = result.incomplete.map(({ id }) => id).sort();
-  if (left.join() !== [...incomplete].sort().join()) {
+  const left = new Set(result.incomplete.map(({ id }) => id));
+  const named = new Set(incomplete);
+  if (left.size !== named.size || [...left].some((id) => !named.has(id))) {
     throw new Error(
-      `axe leaves incomplete ${left.join(", ") || "nothing"}, not ${incomplete.join(", ") || "nothing"}`,
+      `axe leaves incomplete ${[...left].join(", ") || "nothing"}, not ${incomplete.join(", ") || "nothing"}`,
     );
   }
 }
