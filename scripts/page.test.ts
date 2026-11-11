@@ -16,10 +16,22 @@ import { TASKS as EMULATED_TASKS, WORKBOOK as EMULATED_WORKBOOK } from "../emula
 import { viewOf } from "../page/open.ts";
 import { TAGS } from "../src/element/wcag.fixture.ts";
 import { readSample, type Sample } from "../src/eval/sample.ts";
-import { TUTOR_FILE } from "../src/eval/tasks.ts";
+import { MODULES_FILE, TUTOR_FILE } from "../src/eval/tasks.ts";
 import { policy, styleOf } from "./csp.ts";
 import type { Carried } from "./notices.ts";
-import { buildPage, fileName, notices, pageOf, pageTasksOf, TEMPLATE, textsFor } from "./page.ts";
+import { kindOf, OPEN_VIEWS } from "./open-views.ts";
+import {
+  buildPage,
+  fileName,
+  moduleNotices,
+  modulesFolder,
+  moduleTasksFor,
+  notices,
+  pageOf,
+  pageTasksOf,
+  TEMPLATE,
+  textsFor,
+} from "./page.ts";
 
 /** The banks of tutor's file in tasks/, which the build offers whole (T21). */
 const BANKS = (
@@ -32,6 +44,32 @@ const IDS = BANKS.flatMap(({ tasks }) => tasks.map(({ id }) => id));
 /** Where the picker holds the first page of a workbook and the first essay, as values. */
 const WORKBOOK = String(IDS.indexOf("workbook-01"));
 const ESSAY = String(IDS.indexOf("essay-01"));
+
+/** A part of a statement, as the open view holds it. */
+type StatementPart = NonNullable<Parameters<typeof kindOf>[0]["statement"]>[number];
+/** A task of the copy of the open views of modules, as module-kit open wrote it. */
+interface ViewEntry {
+  readonly task: Parameters<typeof kindOf>[0];
+  readonly seed?: string;
+  readonly open_view_digest: string;
+}
+/** The modules of the copy the build carries for an eval set, each with the tasks the page takes of
+ * it, in the build's order, after tutor's (T101). */
+const MODULES = (
+  JSON.parse(readFileSync(join(modulesFolder(MODULES_FILE.tag), OPEN_VIEWS), "utf8")) as {
+    modules: {
+      id: string;
+      version: string;
+      release: string;
+      package_digest: string;
+      manifest: Record<string, unknown>;
+      tasks: ViewEntry[];
+    }[];
+  }
+).modules.map((module) => ({
+  ...module,
+  tasks: module.tasks.filter(({ task }) => kindOf(task) !== undefined),
+}));
 
 /** The part of the legal texts for tests alone, its sets in force (T20, T89; R58, R69). */
 const TEST_PART = "page/sets/test";
@@ -209,6 +247,110 @@ describe("the builder", () => {
     }
   });
 
+  test("offers a module's sheets, essays and pages of a workbook with the media they name, and leaves a tapped choice out (T101)", () => {
+    const reference = { reference: {}, canvas: { sheet: true } } as never;
+    const task = (id: string, binding: string, picture?: string) => ({
+      view: {
+        id,
+        statement: picture === undefined ? [] : [{ picture, alt: "", width: 1, height: 1 }],
+        canvas: { kind: "handwriting_sheet" },
+        items: [
+          { answer_slots: [{ binding, ...(binding === "choice" ? { options: ["a", "b"] } : {}) }] },
+        ],
+      },
+      open: reference,
+    });
+    const asked: string[] = [];
+    const file = (module: string, version: string, path: string) => {
+      asked.push(`${module} ${version} ${path}`);
+      return Buffer.from(path);
+    };
+    const { tasks, modules } = moduleTasksFor(
+      [
+        {
+          module: "a/m",
+          version: "1.0.0",
+          manifest: { module_format_version: "0.4" },
+          tasks: [
+            task("s", "anywhere", "p.png"),
+            task("c", "choice", "q.png"),
+            task("e", "sheet"),
+            task("t", "anywhere", "p.png"),
+          ],
+        },
+        { module: "a/n", version: "2.0.0", manifest: {}, tasks: [task("c", "choice")] },
+      ],
+      file,
+    );
+    expect(tasks.map(({ kind, bank, task, module }) => [kind, bank, task.id, module])).toEqual([
+      ["sheet", "a/m 1.0.0", "s", "a/m 1.0.0"],
+      ["essay", "a/m 1.0.0", "e", "a/m 1.0.0"],
+      ["sheet", "a/m 1.0.0", "t", "a/m 1.0.0"],
+    ]);
+    // A picture once, and none of a task the page leaves out; a module with no task it takes is not
+    // carried at all.
+    expect(asked).toEqual(["a/m 1.0.0 p.png"]);
+    expect(modules).toEqual({
+      "a/m 1.0.0": {
+        manifest: { module_format_version: "0.4" },
+        media: { "p.png": { type: "image/png", data: Buffer.from("p.png").toString("base64") } },
+      },
+    });
+    expect(() =>
+      moduleTasksFor(
+        [
+          {
+            module: "a/m",
+            version: "1.0.0",
+            manifest: {},
+            tasks: [task("g", "anywhere", "p.gif")],
+          },
+        ],
+        file,
+      ),
+    ).toThrow("a/m 1.0.0 g: p.gif is no PNG or WebP picture");
+    for (const path of ["../../LICENSE", "/etc/passwd", "a//b.png", "a\\b.png", "./b.png"]) {
+      expect(() =>
+        moduleTasksFor(
+          [{ module: "a/m", version: "1.0.0", manifest: {}, tasks: [task("g", "anywhere", path)] }],
+          file,
+        ),
+      ).toThrow(`a/m 1.0.0 g: ${path} is no path inside a module's media/`);
+    }
+    expect(
+      kindOf({ id: "w", statement: [], canvas: { kind: "workbook" } as never, items: [] }),
+    ).toBe("workbook");
+  });
+
+  test("names the modules whose tasks it carries by the license their manifests name, with their notices, and a license text once (T101)", () => {
+    const own = readFileSync("LICENSE", "utf8");
+    const copy = modulesFolder(MODULES_FILE.tag);
+    const carried = Object.fromEntries(
+      MODULES.map(({ id, version, manifest }) => [`${id} ${version}`, { manifest }]),
+    );
+    const parts = moduleNotices(carried, own, copy);
+    expect(parts.map((part) => part.split("\n")[0])).toEqual(
+      MODULES.map(
+        ({ id, version }) =>
+          `${id} ${version}, the tasks and pictures of the module — Apache-2.0, the text of the first part`,
+      ),
+    );
+    // What olympiad-math took from MathTrail, under the MIT License, is in its NOTICE.
+    expect(parts.find((part) => part.startsWith("novatrail/olympiad-math"))).toContain(
+      "mathtrail-standalone",
+    );
+    // A LICENSE other than canvas's goes in whole, under the name its manifest gives.
+    const grade3 = { "novatrail/grade-3-math 0.3.0": { manifest: { license: "CC-BY-4.0" } } };
+    const [other] = moduleNotices(grade3, "another license", copy);
+    expect(other?.split("\n")[0]).toBe(
+      "novatrail/grade-3-math 0.3.0, the tasks and pictures of the module — CC-BY-4.0",
+    );
+    expect(other).toContain("Apache License");
+    expect(() =>
+      moduleNotices({ "novatrail/grade-3-math 0.3.0": { manifest: {} } }, own, copy),
+    ).toThrow("novatrail/grade-3-math 0.3.0 names no license");
+  });
+
   test("takes the release file's sets and the draft while the measurement has none, and the part for tests into no version but 0.0.0 (T89)", () => {
     // Every set of legal-1 at v0.14.0 is a draft: the measurement opens by the author's draft
     // alone.
@@ -278,6 +420,8 @@ describe("the file", () => {
     expect(page).toContain("Redistribution and use in source and binary forms");
     expect(page).toContain("Material Symbols");
     expect(page).toContain("NovaTrail canvas — Apache-2.0");
+    expect(page).toContain("novatrail/olympiad-math 0.3.0, the tasks and pictures of the module");
+    expect(page).toContain("mathtrail-standalone");
   });
 });
 
@@ -296,16 +440,21 @@ describe("opened from a file", () => {
       });
       await page.goto(pathToFileURL(built.path).href);
       await page.waitForFunction(() => customElements.get("novatrail-canvas") !== undefined);
-      // Every task of tutor's file, a group for each bank, in the file's order (T21).
-      expect(
-        await page
+      // Every task of tutor's file, a group for each bank, in the file's order (T21), then the
+      // tasks of each module the page takes, a group for each (T101).
+      const groups = () =>
+        page
           .locator("#task optgroup")
           .evaluateAll((groups) =>
             groups.map((group) => [group.getAttribute("label"), group.children.length]),
-          ),
-      ).toEqual(BANKS.map(({ bank, tasks }) => [`Банк ${bank}`, tasks.length]));
+          );
+      const ofBanks = BANKS.map(({ bank, tasks }) => [`Банк ${bank}`, tasks.length]);
+      expect(await groups()).toEqual([
+        ...ofBanks,
+        ...MODULES.map(({ id, version, tasks }) => [`Модуль ${id} ${version}`, tasks.length]),
+      ]);
       const titles = await page.locator("#task option").allTextContents();
-      expect(titles).toHaveLength(56);
+      expect(titles).toHaveLength(56 + 758);
       const at = (id: string) => titles[IDS.indexOf(id)];
       expect([at("equation-1"), at("grasshopper"), at("workbook-01"), at("essay-01")]).toEqual([
         "Лист: equation-1",
@@ -331,6 +480,8 @@ describe("opened from a file", () => {
       expect(await page.isHidden("#work")).toBe(true);
       const code = (await begin(page, "measurement")) ?? "";
       expect(code).toMatch(/^[0-9A-Z]{6,16}$/);
+      // The measurement takes tutor's tasks alone: the modules' leave the picker (T101).
+      expect(await groups()).toEqual(ofBanks);
       expect(await page.textContent("#summary-text")).toContain(code);
       const box = await page.locator("novatrail-canvas").boundingBox();
       if (!box) throw new Error("the element is not shown");
@@ -358,8 +509,10 @@ describe("opened from a file", () => {
         await page.evaluate(() => document.querySelector("novatrail-canvas")?.marks?.marks.length),
       ).toBe(2);
       const [download] = await Promise.all([page.waitForEvent("download"), page.click("#save")]);
-      expect(download.suggestedFilename()).toMatch(/^sample-[a-z2-7]{12}\.json$/);
       const sample = readSample(readFileSync(await download.path(), "utf8"));
+      // Named by its ID alone, as an eval set lays its files out (T101).
+      expect(download.suggestedFilename()).toBe(`${sample.id}.json`);
+      expect(sample.id).toMatch(/^[a-z2-7]{12}$/);
       expect(sample.purpose).toBe(Purpose.MEASUREMENT);
       expect(sample.writer).toBe(Writer.ADULT);
       expect(sample.canvasVersion).toBe("0.0.0");
@@ -524,14 +677,14 @@ describe("opened from a file", () => {
     }
   }, 60_000);
 
-  test("with the part for tests shows the set's gist and English text, asks the form of its version, and keeps the eval set closed in a build of tutor's tasks (T20, T89)", async () => {
+  test("with the part for tests shows the set's gist and English text, and asks the form of its version (T20, T89)", async () => {
     const context = await browser.newContext({ acceptDownloads: true });
     try {
       const page = await context.newPage();
       await page.goto(pathToFileURL(tested.path).href);
-      // A module's eval set takes its own module's tasks alone, and this build has tutor's.
-      expect(await page.isDisabled('input[name="purpose"][value="evalSet"]')).toBe(true);
-      expect(await page.textContent("#purpose-note-evalSet")).toContain("нет задач модулей");
+      // The build carries the tasks of modules, so the eval set is open by its set (T101).
+      expect(await page.isDisabled('input[name="purpose"][value="evalSet"]')).toBe(false);
+      expect(await page.locator("#purpose-note-evalSet").count()).toBe(0);
       expect(await page.locator("#purpose-note-measurement").count()).toBe(0);
       await page.check('input[name="purpose"][value="measurement"]');
       expect(await page.textContent("#notice-title")).toContain("test-measure-1");
@@ -574,6 +727,81 @@ describe("opened from a file", () => {
       await page.evaluate(() => window.scrollTo(0, 0));
       await stroke(page, box, [300, 220], [360, 260]);
       expect(await page.isHidden("#hand-over")).toBe(true);
+    } finally {
+      await context.close();
+    }
+  }, 60_000);
+
+  test("with the part for tests opens the eval set: the modules' tasks alone, a picture of a statement, a template's instance by its seed, and a sample named by its ID (T101)", async () => {
+    const context = await browser.newContext({ acceptDownloads: true });
+    try {
+      const page = await context.newPage();
+      const { outside, errors } = watched(page);
+      await page.goto(pathToFileURL(tested.path).href);
+      await begin(page, "evalSet");
+      expect(
+        await page
+          .locator("#task optgroup")
+          .evaluateAll((groups) => groups.map((group) => group.getAttribute("label"))),
+      ).toEqual(MODULES.map(({ id, version }) => `Модуль ${id} ${version}`));
+      const olympiad = MODULES.find(({ id }) => id === "novatrail/olympiad-math");
+      if (!olympiad) throw new Error("no olympiad-math in the copy");
+      // The picker's values are the tasks' places in the build: tutor's first, then module by module.
+      const before = MODULES.slice(0, MODULES.indexOf(olympiad));
+      const base = IDS.length + before.reduce((sum, { tasks }) => sum + tasks.length, 0);
+      const pictured = olympiad.tasks.findIndex(({ task }) =>
+        (task.statement ?? []).some((part: StatementPart) => part.picture !== undefined),
+      );
+      await page.selectOption("#task", String(base + pictured));
+      // The picture of the statement, from the media the build carries, by a blob: of the page.
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () =>
+              document
+                .querySelector("novatrail-canvas")
+                ?.shadowRoot?.querySelector(".statement .picture img")
+                ?.getAttribute("src") ?? "",
+          ),
+        )
+        .toMatch(/^blob:/);
+      const instance = olympiad.tasks.findIndex(({ seed }) => seed !== undefined);
+      const entry = olympiad.tasks[instance];
+      if (!entry?.seed) throw new Error("no template's instance in the copy");
+      await page.selectOption("#task", String(base + instance));
+      expect(await page.locator("#task option:checked").textContent()).toBe(
+        `Лист: ${entry.task.id}, зерно ${entry.seed}`,
+      );
+      await page.evaluate(() => window.scrollTo(0, 0));
+      const box = await page.locator("novatrail-canvas").boundingBox();
+      if (!box) throw new Error("the element is not shown");
+      await stroke(page, box, [120, 260], [220, 320]);
+      await page.click("#markup");
+      await page.locator('#form li[data-part="0"] textarea').fill("12");
+      await page.check('#form li[data-part="0"] input[data-flag="finalAnswer"]');
+      await page.check("#personal");
+      const [download] = await Promise.all([page.waitForEvent("download"), page.click("#save")]);
+      const sample = readSample(readFileSync(await download.path(), "utf8"));
+      expect(download.suggestedFilename()).toBe(`${sample.id}.json`);
+      expect(sample.id).toMatch(/^[a-z2-7]{12}$/);
+      expect(sample.purpose).toBe(Purpose.EVAL_SET);
+      expect(sample.textSetVersion).toBe("test-eval-set-1");
+      // What modules' eval-match holds the sample to: the release, module and package, the
+      // template's ID, the seed, and module-kit's digest of the instance's open view.
+      expect(sample.task?.source.case).toBe("modules");
+      expect(sample.task?.source.value).toMatchObject({
+        tag: olympiad.release,
+        module: olympiad.id,
+        version: olympiad.version,
+        packageDigest: olympiad.package_digest,
+      });
+      expect([sample.task?.task, sample.task?.seed, sample.task?.openViewDigest]).toEqual([
+        entry.task.id,
+        entry.seed,
+        entry.open_view_digest,
+      ]);
+      expect(outside).toEqual([]);
+      expect(errors).toEqual([]);
     } finally {
       await context.close();
     }

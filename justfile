@@ -34,6 +34,15 @@ module_version := "0.2.0"
 module_package := "tasks/modules-" + modules_tag + "/novatrail-grade-3-math-" + module_version
 essays_package := "tasks/modules-" + modules_tag + "/novatrail-english-essays-0.2.0"
 
+# The release of modules whose tasks the samples page carries for an eval set, the release of
+# module-kit whose open writes their open views, and the seeds of the templates' instances it writes
+# (T101; R71): the copy in tasks/modules-<tag>/ is what that module-kit wrote of that release with
+# those seeds, which just modules-open writes and ci-licenses holds it to. MODULES_FILE in
+# src/eval/tasks.ts has the tag and the seeds too, and scripts/modules.test.ts holds them to these.
+page_modules_tag := "v0.2.4"
+module_kit_tag := "v0.3.0"
+open_seeds := "1 2 3 4 5"
+
 # Run the four checks CI runs, before a pull request.
 ci: ci-lint ci-test ci-vuln ci-licenses
 
@@ -80,7 +89,9 @@ ci-vuln:
 # synthetic set too, which no tree holds: tutor's file of open tasks that it answers is verified
 # first, as a file of a release enters NovaTrail, then the set is written into build/synthetic and
 # each of its files checked (R77 spec; R49); so is spec's file of the legal texts, whose sets the
-# samples page carries (T89; R69). The samples of a module's eval set too: the index of
+# samples page carries (T89; R69), and the copy of the open views of modules the page carries is
+# held to what module-kit open writes anew of the release, every file of it verified first (T101;
+# R71; just modules-open). The samples of a module's eval set too: the index of
 # the release of modules whose package of grade-3-math the tree holds is verified, a sample is
 # written of each of its tasks into build/synthetic-module by the generator's file, built as a
 # release carries it, and sample-check holds them, and the example of a module's sheet, as an eval
@@ -91,6 +102,7 @@ ci-licenses:
     {{ quote(just_executable()) }} -f spec/justfile release-verify-npm package-lock.json
     {{ quote(just_executable()) }} -f spec/justfile release-verify tutor {{ tutor_tag }} tasks/tutor_{{ tutor_tag }}_open-tasks.json
     {{ quote(just_executable()) }} -f spec/justfile release-verify spec {{ spec_tag }} tasks/spec-{{ spec_tag }}/legal-1.tar.gz
+    {{ quote(just_executable()) }} modules-open check
     {{ quote(just_executable()) }} -f spec/justfile sample-check examples/*.json
     {{ quote(just_executable()) }} synthetic build/synthetic > /dev/null
     {{ quote(just_executable()) }} -f spec/justfile sample-check build/synthetic/*.json
@@ -163,6 +175,79 @@ release-files version: build
 # packages are not installed yet.
 synthetic folder list="": _synthetic-build
     cd {{ quote(invocation_directory()) }} && node {{ quote(justfile_directory() / "build/scripts/synthetic.js") }} {{ quote(folder) }} {{ if list == "" { "" } else { quote(list) } }}
+
+# The open views of the tasks of modules the samples page carries, as module-kit open writes them of
+# the release page_modules_tag of modules with the seeds open_seeds (T101; R71; R43 module-kit):
+# check holds the copy in tasks/modules-<tag>/ to them, and copy writes it anew, for a move to
+# another release or other seeds, after which it prints the sum MODULES_FILE takes. Every file
+# comes from its release and enters only once spec's release-verify has accepted it (R77 spec):
+# module-kit's binary for this machine, the index of the release — the copy's, which copy fetches
+# when the copy has none — and of each module the archive of the package that module-kit open
+# takes, which scripts/modules.ts names by the index's entries: its file is named by the package's
+# digest, in the release of the entry (the second 2026-11-02 amendment to R63 spec). The files are
+# kept in build/modules-open/ by their names, which hold their tags or digests, and checked again
+# on every run, and one the check refuses is removed; the packages are unpacked anew. It reads
+# GitHub and Sigstore, and spec/ has to be checked out: ci-licenses runs it, never a build.
+modules-open mode="check": _install
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mode={{ quote(mode) }}
+    if [ "$mode" != check ] && [ "$mode" != copy ]; then
+        echo "modules-open: the mode is check or copy, not $mode" >&2
+        exit 2
+    fi
+    just={{ quote(just_executable()) }}
+    copy=tasks/modules-{{ page_modules_tag }}
+    work=build/modules-open
+    case "$(uname -m)" in
+        x86_64) arch=amd64 ;;
+        aarch64 | arm64) arch=arm64 ;;
+        *) echo "modules-open: module-kit has no binary for $(uname -m)" >&2; exit 2 ;;
+    esac
+    mkdir -p "$work/files"
+    # A file of a release and its bundle into a folder, kept there by name, and verified every time:
+    # one release-verify refuses goes, so that the next run fetches it anew.
+    fetch() {
+        local repository="$1" tag="$2" name="$3" folder="${4:-$work/files}"
+        for file in "$name" "$name.sigstore.json"; do
+            if [ ! -f "$folder/$file" ]; then
+                curl -fsSL --retry 3 -o "$folder/$file.part" \
+                    "https://github.com/altnovatrail/$repository/releases/download/$tag/$file"
+                mv "$folder/$file.part" "$folder/$file"
+            fi
+        done
+        if ! "$just" -f spec/justfile release-verify "$repository" "$tag" "$folder/$name"; then
+            rm -f "$folder/$name" "$folder/$name.sigstore.json"
+            exit 1
+        fi
+    }
+    kit="module-kit_{{ module_kit_tag }}_linux_$arch"
+    fetch module-kit {{ module_kit_tag }} "$kit"
+    chmod +x "$work/files/$kit"
+    # The copy's index is the tree's; a copy of another release fetches its own.
+    if [ "$mode" = copy ]; then mkdir -p "$copy"; fi
+    if [ "$mode" = copy ] || [ -f "$copy/module-index.json" ]; then
+        fetch modules {{ page_modules_tag }} module-index.json "$copy"
+    else
+        echo "modules-open: $copy has no module-index.json; just modules-open copy writes it" >&2
+        exit 1
+    fi
+    rm -rf "$work/packages" "$work/out"
+    folders=()
+    while read -r release package; do
+        fetch modules "$release" "$package.tar.gz"
+        mkdir -p "$work/packages/$package"
+        tar -xzf "$work/files/$package.tar.gz" -C "$work/packages/$package"
+        folders+=("$work/packages/$package")
+    done < <(node scripts/modules.ts packages "$copy/module-index.json")
+    seeds=()
+    for seed in {{ open_seeds }}; do seeds+=(--seed "$seed"); done
+    "$work/files/$kit" open --index "$copy/module-index.json" --latest "$copy/module-index.json" \
+        "${seeds[@]}" --out "$work/out" "${folders[@]}" > /dev/null
+    node scripts/modules.ts "$mode" "$work/out" "$copy"
+    if [ "$mode" = copy ]; then
+        echo "modules-open: the sha256 of MODULES_FILE in src/eval/tasks.ts is $(sha256sum < "$copy/open-views.json" | cut -d ' ' -f 1)"
+    fi
 
 # Write the synthetic samples of a module's eval set into a folder — the module's eval/ — one of each
 # <task>:<seed> called, on the package that module-kit build wrote of the module at the commit the

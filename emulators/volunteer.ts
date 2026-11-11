@@ -215,13 +215,13 @@ async function begin(run: Run, device: Device, way: Way): Promise<boolean> {
     return started;
   }
   const start = await json<{
-    evalSetClosed: boolean;
+    evalSetOpen: boolean;
     measurementOpen: boolean;
     childOpen: boolean;
   }>(device, TEST_START);
   run.record(
-    "the test build's start keeps the eval set closed, with why, and opens the measurement and a child's session",
-    start.evalSetClosed && start.measurementOpen && start.childOpen,
+    "the test build's start opens the eval set, the measurement and a child's session",
+    start.evalSetOpen && start.measurementOpen && start.childOpen,
     JSON.stringify(start),
     "page",
   );

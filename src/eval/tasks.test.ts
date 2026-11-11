@@ -10,7 +10,15 @@ import {
   SERVER,
   taskIn,
 } from "./packages.fixture.js";
-import { canonicalText, moduleTasksOf, type OpenTasks, openTasksOf, TUTOR_FILE } from "./tasks.js";
+import {
+  canonicalText,
+  MODULES_FILE,
+  moduleTasksOf,
+  type OpenTasks,
+  openTasksOf,
+  openViewsOf,
+  TUTOR_FILE,
+} from "./tasks.js";
 
 const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
 /** A digest as the module format writes one: sha256 and 64 hexadecimal digits. */
@@ -308,5 +316,92 @@ test("a sheet of one answer slot anywhere drops its closed fields, and a package
   expect(of(repackaged((view) => delete view.tasks))).toThrow("has no tasks");
   expect(of(repackaged((view) => ((view.tasks as Json).other = null)))).toThrow(
     "the task other of novatrail/grade-3-math is no object",
+  );
+});
+
+/** The copy of the open views of modules the samples page carries (T101). */
+const views = readFileSync(
+  new URL(`../../tasks/modules-${MODULES_FILE.tag}/open-views.json`, import.meta.url),
+);
+
+test("the copy of the open views is the one module-kit wrote: its sum, its modules, and every task's digest its open view's (T101)", () => {
+  expect(createHash("sha256").update(views).digest("hex")).toBe(MODULES_FILE.sha256);
+  const modules = openViewsOf(views.toString("utf8"), sha256);
+  expect(modules.map(({ module, version, tasks }) => [module, version, tasks.length])).toEqual([
+    ["novatrail/english-essays", "0.2.0", 8],
+    ["novatrail/grade-3-math", "0.3.0", 12],
+    ["novatrail/olympiad-math", "0.3.0", 863],
+  ]);
+  const olympiad = modules[2];
+  const instances = olympiad?.tasks.filter(({ open }) => open.reference.seed !== undefined) ?? [];
+  // 22 templates, an instance of each of the five seeds.
+  expect(instances).toHaveLength(22 * MODULES_FILE.seeds.length);
+  expect(new Set(instances.map(({ open }) => open.reference.seed))).toEqual(
+    new Set(MODULES_FILE.seeds),
+  );
+  const [first] = instances;
+  expect(first?.open.reference).toEqual({
+    source: {
+      case: "modules",
+      value: {
+        tag: "v0.2.1",
+        module: "novatrail/olympiad-math",
+        version: "0.3.0",
+        packageDigest: "sha256:e4de172e77b7cde20386b07c1cafbbf08babb41a164d623c62135659eec45786",
+      },
+    },
+    task: "ages",
+    seed: "1",
+    openViewDigest: "sha256:5e8b8e08ed7ffc780db304fd062bed09c7805e9ef1b421a370c82def7d269080",
+  });
+  expect(olympiad?.manifest.module_format_version).toBe("0.4");
+});
+
+test("open views of another format, a closed field, another digest or a seed out of shape are refused (T101)", () => {
+  const file = JSON.parse(views.toString("utf8")) as {
+    format: string;
+    module_format_version: string;
+    modules: {
+      release: string;
+      tasks: { task: Json; seed?: unknown; open_view_digest: string }[];
+    }[];
+  };
+  const refused = (change: (copy: typeof file) => void) => {
+    const copy = structuredClone(file);
+    change(copy);
+    return () => openViewsOf(JSON.stringify(copy), sha256);
+  };
+  expect(refused((copy) => Object.assign(copy, { format: "tutor-open-tasks" }))).toThrow(
+    "module-kit-open-views of the version 0",
+  );
+  expect(refused((copy) => Object.assign(copy, { module_format_version: "0.3" }))).toThrow(
+    "of the module format 0.4",
+  );
+  expect(refused((copy) => Object.assign(copy.modules[0] ?? {}, { release: "main" }))).toThrow(
+    "has no release of modules",
+  );
+  const module = (fields: object) =>
+    refused((copy) => Object.assign(copy.modules[0] ?? {}, fields));
+  expect(module({ id: "english-essays" })).toThrow("a module of the open views has an ID");
+  expect(module({ version: "0.2" })).toThrow("has no version MAJOR.MINOR.PATCH");
+  expect(module({ package_digest: "sha256:0" })).toThrow("has no digest of its package");
+  expect(module({ module_format_version: "0.3" })).toThrow("is not of the module format 0.4");
+  expect(module({ manifest: [] })).toThrow("has no manifest");
+  expect(module({ tasks: {} })).toThrow("has no tasks");
+  expect(
+    refused((copy) => Object.assign(copy.modules[0]?.tasks[0]?.task ?? {}, { id: 7 })),
+  ).toThrow("a task of novatrail/english-essays has no ID");
+  expect(
+    refused((copy) => Object.assign(copy.modules[0]?.tasks[0]?.task ?? {}, { solution: "x" })),
+  ).toThrow("solution is no field of the open view");
+  expect(
+    refused((copy) =>
+      Object.assign(copy.modules[0]?.tasks[0] ?? {}, {
+        open_view_digest: `sha256:${"0".repeat(64)}`,
+      }),
+    ),
+  ).toThrow("its digest is not that of its open view");
+  expect(refused((copy) => Object.assign(copy.modules[2]?.tasks[0] ?? {}, { seed: "01" }))).toThrow(
+    "a seed is an unsigned integer in decimal digits",
   );
 });

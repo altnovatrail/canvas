@@ -15,9 +15,10 @@ import { hash } from "../scripts/csp.ts";
 export const TITLE = "NovaTrail — страница образцов";
 /** The save button's text, as the screen shows it. */
 export const SAVE = "Сохранить образец";
-/** The tasks the build offers — every task of tutor's file (T21) — and the first of the workbook
- * among them, after the banks of sheets (scripts/page.ts). */
-export const TASKS = 56;
+/** The tasks the build offers before the start — every task of tutor's file (T21), then the 758 of
+ * modules the copy of their open views gives a kind (T101) — and the first of the workbook among
+ * them, after the banks of sheets of tutor's file (scripts/page.ts). */
+export const TASKS = 814;
 export const WORKBOOK = "16";
 
 /** The build the workflow's build job wrote with scripts/page.ts. */
@@ -229,13 +230,13 @@ export const AS_CHILD = `(() => {
 })()`;
 
 /** A script that reads the test build's start before anything is chosen (T22; R58, R59): the eval
- * set closed with its reason, for the build has no task of a module, and the measurement and a
- * child's session open, as JSON. */
+ * set open with no note, for the part for tests has its set in force and the build the tasks of
+ * modules (T101), and the measurement and a child's session open, as JSON. */
 export const TEST_START = `JSON.stringify((() => {
   const radio = (value) => document.querySelector('input[name="purpose"][value="' + value + '"]');
   return {
-    evalSetClosed: radio("evalSet")?.disabled === true
-      && (document.getElementById("purpose-note-evalSet")?.textContent ?? "").includes("нет задач модулей"),
+    evalSetOpen: radio("evalSet")?.disabled === false
+      && document.getElementById("purpose-note-evalSet") === null,
     measurementOpen: radio("measurement")?.disabled === false,
     childOpen: radio("child")?.disabled === false,
   };

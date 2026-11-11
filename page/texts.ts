@@ -129,7 +129,11 @@ export const TEXTS = {
     string
   >,
   task: (kind: string, id: string) => `${kind}: ${id}`,
+  /** A template's instance, by its seed (T101). */
+  instance: (kind: string, id: string, seed: string) => `${kind}: ${id}, зерно ${seed}`,
   bank: (path: string) => `Банк ${path}`,
+  /** The group of a module's tasks, which only an eval set takes (T101). */
+  module: (module: string) => `Модуль ${module}`,
   writer: "Кто писал:",
   writerOwn: "взрослый, своим почерком",
   writerChild: "взрослый, подражая детскому почерку",
