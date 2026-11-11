@@ -8,6 +8,8 @@ import {
   workedExample,
 } from "../core/tasks.fixture.js";
 import type { DemoChangeEvent, DemoState, NovatrailCanvas } from "./index.js";
+import { Parts } from "./parts.js";
+import { Pictures } from "./pictures.js";
 import {
   accessibilityTree,
   arrive,
@@ -802,4 +804,12 @@ test("a box the demo fills is told in the labels' language, English without lang
   const values = root.querySelectorAll(".print text[aria-hidden]");
   expect(values).toHaveLength(0);
   expect(root.querySelector(".print rect")?.getAttribute("aria-label")).toBe("Окошко");
+});
+
+test("the list on its own, before an element gives it its words, names a box it fills by the English label, under its own lang", () => {
+  const parts = new Parts({ status: "status", parts: "parts" }, new Pictures());
+  parts.show([{ fill: { line: 1, box: 2 } }], { opened: 1, hidden: false });
+  const item = parts.list.firstElementChild;
+  expect(item?.textContent).toBe("Box 1.2");
+  expect(item?.getAttribute("lang")).toBe("en");
 });
