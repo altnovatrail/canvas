@@ -8,19 +8,26 @@
 // - no label counts a thing, so none has forms of number yet. The first that does takes CLDR's
 //   categories, `other` always among them, chosen by `Intl.PluralRules` of the label's language;
 // - no label tells the learner's gender (R70 spec) or speaks as the AI in the first person (П-15);
-// - the buttons' words are those of the table of words of architecture 6 spec.
+// - the buttons' words are those of the table of words of architecture 6 spec, but for the four of
+//   the page's zoom and of the scroll across, Zoom in and Zoom out, Left and Right, which wait for
+//   it by В76 in RUN.md (T94).
 // This module is no entry point of the package.
 
 /**
- * What the element says: the row of buttons its own name — the canvas kind's, or a worked
- * example's — the name of the group of tools and each button, a workbook's box its name, and the
- * number of a part of a demo the element tells of. A label with places names them in braces.
+ * What the element says: its scroll container the canvas kind's name, or a worked example's, and
+ * the row of buttons a name of its own, that of the kind's buttons (T93), the name of the group of
+ * tools and each button, a workbook's box its name, and the number of a part of a demo the element
+ * tells of. A label with places names them in braces.
  */
 export interface Labels {
   readonly sheet: string;
   readonly workbook: string;
-  /** The row of a lesson's worked example, which has no tools of writing (R42). */
+  /** A lesson's worked example, whose row has no tools of writing (R42). */
   readonly example: string;
+  /** The row of buttons of each: not the name of the container, which a screen reader shows too. */
+  readonly sheetButtons: string;
+  readonly workbookButtons: string;
+  readonly exampleButtons: string;
   /** The buttons of a worked example's demo: the next part, and the whole demo, shown or hidden. */
   readonly next: string;
   readonly demo: string;
@@ -32,6 +39,12 @@ export interface Labels {
   /** The buttons that scroll the sheet back up and on down, with a single pointer (R33). */
   readonly up: string;
   readonly down: string;
+  /** The buttons of the page's zoom, a step larger and a step smaller (T94). */
+  readonly zoomIn: string;
+  readonly zoomOut: string;
+  /** The buttons that scroll a zoomed sheet left and right, with a single pointer (T94). */
+  readonly left: string;
+  readonly right: string;
   /** The button that lets a finger write again, in pen mode (R29). */
   readonly finger: string;
   /** A box of a workbook's line, alone in it (R36). */
@@ -53,6 +66,9 @@ const ENGLISH: Labels = Object.freeze({
   sheet: "Sheet",
   workbook: "Workbook",
   example: "Worked example",
+  sheetButtons: "Sheet buttons",
+  workbookButtons: "Workbook buttons",
+  exampleButtons: "Worked example buttons",
   next: "Next",
   demo: "Demo",
   tool: "Tool",
@@ -62,6 +78,10 @@ const ENGLISH: Labels = Object.freeze({
   clear: "Clear",
   up: "Up",
   down: "Down",
+  zoomIn: "Zoom in",
+  zoomOut: "Zoom out",
+  left: "Left",
+  right: "Right",
   finger: "Draw with finger",
   box: "Box",
   boxAt: "Box {slot}",
@@ -83,6 +103,9 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
       sheet: "Лист",
       workbook: "Тетрадь",
       example: "Пример",
+      sheetButtons: "Кнопки листа",
+      workbookButtons: "Кнопки тетради",
+      exampleButtons: "Кнопки примера",
       next: "Дальше",
       demo: "Показ",
       tool: "Инструмент",
@@ -92,6 +115,10 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
       clear: "Очистить",
       up: "Выше",
       down: "Ниже",
+      zoomIn: "Крупнее",
+      zoomOut: "Мельче",
+      left: "Левее",
+      right: "Правее",
       finger: "Рисовать пальцем",
       box: "Окошко",
       boxAt: "Окошко {slot}",

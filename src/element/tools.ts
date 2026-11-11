@@ -4,15 +4,19 @@
 // through without choosing one. Undo and Clear with nothing to take back or to clear stay where the
 // focus can reach them, marked unavailable: a last undo from the keyboard leaves the focus where it
 // was. Up and Down scroll the sheet with a single pointer, and stand unavailable at the end they
-// scroll to (R33). In pen mode a last button lets a finger write again (R29). The labels are in
-// the element's language (labels.ts), and the row is named by the canvas kind: the sheet or the
-// workbook (R36). A lesson's worked example names it too, and has no tools of writing in it: the
-// learner does not write on its sheet. Its first buttons are its demo's, Next, which opens the next
-// part, and Demo, a disclosure button that hides the whole demo and shows it again (R42). A button
-// that goes gives its stop of Tab and the focus to the first button shown. Each button shows an
-// icon of the set every NovaTrail package of the interface draws from, before its label, which
-// stays its name: the icon says nothing to a screen reader (R46; R78 spec). This module is no entry
-// point of the package.
+// scroll to (R33). Zoom in and Zoom out step the page's zoom of the sheet, from its fit to twice
+// it, each unavailable at its end, and while the sheet is zoomed, Left and Right scroll it across
+// as Up and Down do down it (T94). They come after the zoom's pair: a last Zoom out hides them and
+// moves no button under the pointer. In pen mode a last button lets a finger write again (R29).
+// The labels are in the element's language (labels.ts), and the row is named by the canvas kind's
+// buttons: the sheet's or the workbook's (R36), for the kind's own name is the scroll container's
+// (T93). A lesson's worked example names it too, and has no tools of writing in it: the learner
+// does not write on its sheet. Its first buttons are its demo's, Next, which opens the next part,
+// and Demo, a disclosure button that hides the whole demo and shows it again (R42). A button that
+// goes gives its stop of Tab and the focus to the first button shown. Each button shows an icon of
+// the set every NovaTrail package of the interface draws from, before its label, which stays its
+// name: the icon says nothing to a screen reader (R46; R78 spec). This module is no entry point of
+// the package.
 
 import type { Tool } from "../core/task.js";
 import { SVG, write } from "./attributes.js";
@@ -24,7 +28,8 @@ type Value = keyof typeof ROW;
 
 /**
  * What the row asks of the element: a tool the learner chose — perhaps the one in use — an undo, a
- * clearing, a scroll on down the sheet, for `onward`, or back up it, the finger to write again,
+ * clearing, a scroll on down the sheet, for `onward`, or back up it, a step of the zoom, larger or
+ * smaller, a scroll right across the sheet, for `onward`, or back left, the finger to write again,
  * out of pen mode, and on a worked example the next part of its demo, or the whole demo hidden or
  * shown (R42).
  */
@@ -33,6 +38,8 @@ export interface ToolActions {
   readonly undo: () => void;
   readonly clear: () => void;
   readonly upOrDown: (onward: boolean) => void;
+  readonly zoom: (larger: boolean) => void;
+  readonly leftOrRight: (onward: boolean) => void;
   readonly fingers: () => void;
   readonly next: () => void;
   readonly toggle: () => void;
@@ -51,7 +58,8 @@ export type RowKind = "sheet" | "workbook" | "example";
 
 /**
  * What the row shows: what it is of, the tools the task allows, the one in use, whether undo and
- * clearing have anything to do, whether the finger may be asked to write again, and on a worked
+ * clearing have anything to do, whether the zoom has a larger step and a smaller one, and so
+ * whether the sheet is zoomed, whether the finger may be asked to write again, and on a worked
  * example whether Next has a part to open and whether the demo is shown (R42).
  */
 export interface ToolState {
@@ -60,6 +68,8 @@ export interface ToolState {
   readonly tool: Tool;
   readonly undoable: boolean;
   readonly clearable: boolean;
+  readonly larger: boolean;
+  readonly smaller: boolean;
   readonly finger: boolean;
   readonly opens: boolean;
   readonly expanded: boolean;
@@ -82,6 +92,13 @@ export class Tools {
   readonly #pair = document.createElement("div");
   readonly #up = plainButton("up");
   readonly #down = plainButton("down");
+  /** Zoom in and Zoom out, and Left and Right, two more pairs of the same kind (T94). */
+  readonly #zoomPair = document.createElement("div");
+  readonly #zoomIn = plainButton("zoomIn");
+  readonly #zoomOut = plainButton("zoomOut");
+  readonly #acrossPair = document.createElement("div");
+  readonly #left = plainButton("left");
+  readonly #right = plainButton("right");
   readonly #finger = plainButton("finger");
   /**
    * The buttons with the keys of their labels, in the order the arrow keys go through them: the
@@ -96,6 +113,10 @@ export class Tools {
     [this.#clear, "clear"],
     [this.#up, "up"],
     [this.#down, "down"],
+    [this.#zoomIn, "zoomIn"],
+    [this.#zoomOut, "zoomOut"],
+    [this.#left, "left"],
+    [this.#right, "right"],
     [this.#finger, "finger"],
   ];
   /** The buttons in the order the arrow keys go through them. */
@@ -121,17 +142,25 @@ export class Tools {
     this.#group.append(this.#pen, this.#eraser);
     this.#pair.className = "updown";
     this.#pair.append(this.#up, this.#down);
-    // The finger's button comes last: coming and going, it moves no other button of the row.
+    this.#zoomPair.className = "zoom";
+    this.#zoomPair.append(this.#zoomIn, this.#zoomOut);
+    this.#acrossPair.className = "across";
+    this.#acrossPair.append(this.#left, this.#right);
+    // The finger's button comes last: coming and going, it moves no other button of the row. Left
+    // and Right come after the zoom's pair, for the same reason.
     this.element.append(
       this.#demoPair,
       this.#group,
       this.#undo,
       this.#clear,
       this.#pair,
+      this.#zoomPair,
+      this.#acrossPair,
       this.#finger,
     );
-    // A worked example's buttons and the finger's come with what they are for.
-    for (const hidden of [this.#demoPair, this.#next, this.#demo, this.#finger]) {
+    // A worked example's buttons, Left and Right, and the finger's come with what they are for.
+    const later = [this.#demoPair, this.#next, this.#demo, this.#acrossPair, this.#left];
+    for (const hidden of [...later, this.#right, this.#finger]) {
       hidden.hidden = true;
     }
     // Tab comes to the first button shown, until another has had the focus.
@@ -148,11 +177,15 @@ export class Tools {
     doing(this.#undo, actions.undo);
     doing(this.#clear, actions.clear);
     doing(this.#next, actions.next);
+    doing(this.#zoomIn, () => actions.zoom(true));
+    doing(this.#zoomOut, () => actions.zoom(false));
     this.#demo.addEventListener("click", () => actions.toggle());
-    // Up and Down ask the element anew at every press, unavailable or not: a scroll the element did
-    // not hear may have left either standing as it no longer is.
+    // Up and Down, Left and Right ask the element anew at every press, unavailable or not: a scroll
+    // the element did not hear may have left any of them standing as it no longer is.
     this.#up.addEventListener("click", () => actions.upOrDown(false));
     this.#down.addEventListener("click", () => actions.upOrDown(true));
+    this.#left.addEventListener("click", () => actions.leftOrRight(false));
+    this.#right.addEventListener("click", () => actions.leftOrRight(true));
     this.#finger.addEventListener("click", () => actions.fingers());
     this.element.addEventListener("keydown", (event) => this.#key(event));
     // The button that had the focus last is the one Tab comes back to.
@@ -169,10 +202,13 @@ export class Tools {
    * The row as the sheet now is. Only what has changed is written. A worked example's row has no
    * tools of writing, no undo and no clearing, for the learner does not write on its sheet, and has
    * Next, unavailable while the demo is hidden or open whole, and Demo, expanded while the demo is
-   * shown (R42). The tool in use shows its icon filled, and Demo's icon points down while the demo
-   * is shown, and along the row while it is hidden (R46).
+   * shown (R42). Zoom in and Zoom out stand unavailable at their ends, and Left and Right are there
+   * while the sheet is zoomed (T94). The tool in use shows its icon filled, and Demo's icon points
+   * down while the demo is shown, and along the row while it is hidden (R46).
    */
-  show({ kind, tools, tool, undoable, clearable, finger, opens, expanded }: ToolState): void {
+  show(state: ToolState): void {
+    const { kind, tools, tool, undoable, clearable, larger, smaller, finger, opens, expanded } =
+      state;
     if (kind !== this.#kind) {
       this.#kind = kind;
       this.#name();
@@ -187,6 +223,9 @@ export class Tools {
       [this.#eraser, writes && tools.includes("eraser")],
       [this.#undo, writes],
       [this.#clear, writes],
+      [this.#acrossPair, smaller],
+      [this.#left, smaller],
+      [this.#right, smaller],
       [this.#finger, writes && finger],
     ]);
     write(this.#pen, "aria-checked", String(tool === "pen"));
@@ -194,6 +233,8 @@ export class Tools {
     write(this.#undo, "aria-disabled", undoable ? null : "true");
     write(this.#clear, "aria-disabled", clearable ? null : "true");
     write(this.#next, "aria-disabled", opens ? null : "true");
+    write(this.#zoomIn, "aria-disabled", larger ? null : "true");
+    write(this.#zoomOut, "aria-disabled", smaller ? null : "true");
     write(this.#demo, "aria-expanded", String(expanded));
     draw(this.#pen, "pen", tool === "pen");
     draw(this.#eraser, "eraser", tool === "eraser");
@@ -201,12 +242,15 @@ export class Tools {
   }
 
   /**
-   * Whether anything scrolls back up the sheet, for Up, and on down it, for Down: a button with
-   * nowhere to go stands unavailable. Only what has changed is written.
+   * Whether anything scrolls back up the sheet, for Up, on down it, for Down, back left across it,
+   * for Left, and on right, for Right: a button with nowhere to go stands unavailable. Only what has
+   * changed is written.
    */
-  edges(above: boolean, below: boolean): void {
+  edges(above: boolean, below: boolean, before: boolean, after: boolean): void {
     write(this.#up, "aria-disabled", above ? null : "true");
     write(this.#down, "aria-disabled", below ? null : "true");
+    write(this.#left, "aria-disabled", before ? null : "true");
+    write(this.#right, "aria-disabled", after ? null : "true");
   }
 
   /**
@@ -240,10 +284,10 @@ export class Tools {
     }
   }
 
-  /** The row's name: the canvas kind's, in the labels' language. */
+  /** The row's name: the canvas kind's buttons, in the labels' language. */
   #name(): void {
     const { labels } = labelsFor(this.#lang ?? null);
-    write(this.element, "aria-label", labels[this.#kind]);
+    write(this.element, "aria-label", labels[`${this.#kind}Buttons`]);
   }
 
   /**

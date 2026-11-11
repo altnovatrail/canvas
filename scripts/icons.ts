@@ -36,7 +36,8 @@ export interface Value {
 
 /**
  * The values of the row, as the table of architecture 6 of spec names them, each by its button's
- * key in labels.ts. Demo has two, as the demo is shown or hidden. One thing is left out: the table
+ * key in labels.ts: the four of the page's zoom and of the scroll across wait for the table by
+ * В76 in RUN.md (T94). Demo has two, as the demo is shown or hidden. One thing is left out: the table
  * fills the finger's icon while its mode is on, but the mode hides the button (R29), so the fill
  * would never show and is not embedded (R46).
  */
@@ -50,6 +51,10 @@ export const TABLE: Readonly<Record<string, Value>> = {
   clear: { base: "delete-sweep", filled: false, mirrored: false },
   up: { base: "arrow-upward", filled: false, mirrored: false },
   down: { base: "arrow-downward", filled: false, mirrored: false },
+  zoomIn: { base: "zoom-in", filled: false, mirrored: false },
+  zoomOut: { base: "zoom-out", filled: false, mirrored: false },
+  left: { base: "arrow-left-alt", filled: false, mirrored: false },
+  right: { base: "arrow-right-alt", filled: false, mirrored: false },
   finger: { base: "touch-app", filled: false, mirrored: false },
 };
 

@@ -31,7 +31,11 @@
 // area as the part opens (T61; R42). A worked example on a workbook lays its lines out as a task's,
 // and a part of its demo that fills a box writes the box's value in it (T85; R61). The types of
 // its contract with app are spec's, of @altnovatrail/spec/canvas: the element implements its CanvasElement, and the package puts the
-// element and its events in the DOM's maps (T69; R07).
+// element and its events in the DOM's maps (T69; R07). The keyboard goes into the sheet and out:
+// a container that scrolls is a region named by the canvas kind, with a stop of Tab of its own and
+// a ring when the keyboard brings the focus there (T93; R33). The row's Zoom in and Zoom out step
+// the page's zoom of the sheet from its fit to twice it, and a zoomed sheet scrolls across as well
+// as down, with Left and Right in the row, two fingers and the keys (T94).
 
 import type {
   CanvasElement,
@@ -99,7 +103,7 @@ import { labelsFor, say } from "./labels.js";
 import { Parts } from "./parts.js";
 import { Pictures } from "./pictures.js";
 import { attachProbe } from "./probe.js";
-import { PEN_MODE } from "./session.js";
+import { PAGE_ZOOM, PEN_MODE } from "./session.js";
 import { Statement } from "./statement.js";
 import { type DemoControls, type RowKind, Tools } from "./tools.js";
 
@@ -186,8 +190,13 @@ const UP_DOWN = 4 / 5;
 // The statement and the sheet stand in a column of their own, as wide as the element up to
 // 1000 CSS pixels and in its middle beyond, and scroll in a container of their own, by the
 // browser's own scrolling: the wheel, the scroll bar and the keyboard work as anywhere on a page.
-// The layers of the sheet stand in its visible part, the stage, and each shows what lies there,
-// shifted in the frame the ink is drawn in (R18, R23; architecture 3.2 in docs/architecture.md).
+// The page's zoom widens the column with the sheet, to twice its fit, and the container scrolls
+// it across too, left to right whatever the page's direction, while the statement and a demo's
+// parts stay as wide as the fit and stick to its left, in the element's own direction: they wrap
+// as before, and scroll down alone (T94). Left and Right stand in that order in a row that runs
+// right to left too: they point to the sides of the screen. The layers of the sheet stand in its visible part, the stage, which sticks to the
+// container's top and left, and each shows what lies there, shifted in the frame the ink is drawn
+// in (R18, R23; architecture 3.2 in docs/architecture.md).
 // Above the column, as wide, stands the row of the element's own buttons, outside the container's
 // scrolling: it sticks to the top of whatever scrolls the element, as far down as the consumer's
 // --novatrail-canvas-top says, while the element is in sight, over the sheet as it scrolls by
@@ -230,9 +239,10 @@ const STYLE = `
   background: var(--novatrail-canvas-paper, ${PAPER}); color: var(--novatrail-canvas-ink, ${INK});
 }
 .tools.loose { position: static; }
-.tools .demo, .tools .choice, .tools .updown {
+.tools .demo, .tools .choice, .tools .updown, .tools .zoom, .tools .across {
   display: flex; gap: 8px; margin-inline-end: 16px;
 }
+.tools:dir(rtl) .across { flex-direction: row-reverse; }
 .tools button {
   box-sizing: border-box; min-width: 44px; min-height: 44px; padding: 0 8px; margin: 0;
   font: inherit; color: inherit; background: transparent; cursor: pointer;
@@ -260,10 +270,26 @@ const STYLE = `
   vertical-align: -0.25em; fill: currentColor;
 }
 .tools:dir(rtl) svg.mirrored { transform: scaleX(-1); }
+.frame {
+  position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
+}
 .viewport {
   flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overflow-anchor: none;
+  outline: none; -webkit-tap-highlight-color: transparent;
 }
-.column { position: relative; width: min(100%, ${K_MAX * SHEET.width}px); margin: 0 auto; }
+.viewport.zoomed { overflow-x: auto; direction: ltr; }
+.ring { position: absolute; inset: 0; z-index: 0; pointer-events: none; display: none; }
+.viewport:focus-visible + .ring {
+  display: block; outline: 2px solid var(--novatrail-canvas-ink, ${INK}); outline-offset: -2px;
+}
+.column {
+  position: relative; width: calc(min(100%, ${K_MAX * SHEET.width}px) * var(--zoom));
+  margin: 0 auto;
+}
+.zoomed .statement, .zoomed .parts {
+  position: sticky; left: 0; box-sizing: border-box; width: calc(100% / var(--zoom));
+  direction: var(--direction, ltr);
+}
 .statement { padding: 0 0 12px; overflow-wrap: break-word; }
 .statement:empty { display: none; }
 .statement p { margin: 0 0 8px; }
@@ -287,7 +313,7 @@ const STYLE = `
   background: var(--novatrail-canvas-paper, ${PAPER});
 }
 .stage {
-  position: sticky; top: 0; max-height: 100%; overflow: clip;
+  position: sticky; top: 0; left: 0; max-height: 100%; overflow: clip;
   user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
 }
 .spot { position: absolute; visibility: hidden; }
@@ -333,7 +359,7 @@ canvas {
     background: Highlight; color: HighlightText; border-color: Highlight;
   }
   .tools [aria-disabled="true"] { color: GrayText; border-color: GrayText; }
-  .tools button:focus-visible { outline-color: Highlight; }
+  .tools button:focus-visible, .viewport:focus-visible + .ring { outline-color: Highlight; }
 }
 `;
 
@@ -369,19 +395,27 @@ interface Latch {
   rest: number;
 }
 
-/** An element's client box on the screen, and how much the page scales it down the screen. */
+/**
+ * An element's client box on the screen, and how much the page scales it across the screen and
+ * down it.
+ */
 interface ClientBox {
   readonly left: number;
   readonly top: number;
   readonly right: number;
   readonly bottom: number;
+  readonly across: number;
   readonly down: number;
 }
 
-/** The view of the sheet, with the visible part's top left corner and height on the screen. */
+/** The axes a scroll goes along: across the sheet, for Left and Right, and down it (T94). */
+type Axis = "x" | "y";
+
+/** The view of the sheet, with the visible part's top left corner and size on the screen. */
 interface Screen extends View {
   readonly left: number;
   readonly top: number;
+  readonly width: number;
   readonly height: number;
   /** The part of the canvas the container shows, in client coordinates. */
   readonly shown: {
@@ -446,7 +480,14 @@ function htmlLayer(name: string): HTMLDivElement {
  * commands undo and clear, which the contract does not name.
  */
 export class NovatrailCanvas extends HTMLElement implements CanvasElement {
+  /**
+   * The wrapper, which does not scroll, of the container that scrolls and of the ring of its focus
+   * over it: an outline of the container itself would stand under the sheet's paper and stage,
+   * which are positioned in it (T93).
+   */
+  readonly #wrapper = document.createElement("div");
   readonly #viewport = document.createElement("div");
+  readonly #ring = document.createElement("div");
   readonly #column = document.createElement("div");
   readonly #sheet = document.createElement("div");
   /** The sheet's visible part, where its layers stand, bottom to top (concepts 8 spec; R23). */
@@ -480,7 +521,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       choose: (tool) => this.#choose(tool),
       undo: () => this.undo(),
       clear: () => this.clear(),
-      upOrDown: (onward) => this.#upOrDown(onward),
+      upOrDown: (onward) => this.#step(onward, "y"),
+      zoom: (larger) => this.#zoomBy(larger),
+      leftOrRight: (onward) => this.#step(onward, "x"),
       // The finger writes again on every sheet of the page, with no event: the next pen's touch
       // puts the page back in pen mode (R29).
       fingers: () => {
@@ -521,14 +564,19 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     {
       writer: () => this.#writer(),
       drop: (pointerId) => this.#drop(pointerId),
-      scroll: (dy, fresh) => this.#scroll(dy, fresh),
+      scroll: (dx, dy, fresh) => this.#scroll(dx, dy, fresh),
+      across: () => this.#zoom > 1,
     },
     PEN_MODE,
   );
   /** Whether the row shows the finger's button: it comes and goes between strokes alone. */
   #finger = false;
-  /** What two fingers scroll in the gesture under way, chosen at its first step. */
-  #latch: Latch | undefined;
+  /**
+   * What two fingers scroll in the gesture under way, down and across, each chosen at the first
+   * step that goes along its axis (T94): undefined till then, and null when nothing scrolls so.
+   */
+  #latch: Latch | null | undefined;
+  #latchAcross: Latch | null | undefined;
   /**
    * A scroll of the page, or of an ancestor of the element in the page's own tree, heard on its way
    * down: Up or Down may have come to an end, or left one (R33). Other scrollers are none of theirs.
@@ -548,6 +596,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    */
   readonly #resized = (): void => {
     this.#stick();
+    this.#region();
     this.#edges();
   };
   readonly #page = new ResizeObserver(this.#resized);
@@ -556,6 +605,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /** The row's `top` as the last check of whether it sticks read it: the consumer's offset. */
   #topSeen = "";
   #unwatchPen: (() => void) | undefined;
+  #unwatchZoom: (() => void) | undefined;
+  /** The page's zoom as the sheet is laid out by it (T94). */
+  #zoom = 0;
   #tool: Tool = "pen";
   #task: Task | undefined;
   /** A lesson's worked example as the consumer gave it, and as the element checked it (R42). */
@@ -626,8 +678,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    */
   #k = 0;
   #sheetAt = 0;
-  /** The top of the visible part, in sheet units, kept from the last scroll. */
+  /** The sheet's left in the container's content, as laid out then, in CSS pixels (T94). */
+  #sheetAtX = 0;
+  /** The top and the left of the visible part, in sheet units, kept from the last scroll. */
   #vy = 0;
+  #vx = 0;
   /** The view box the layers were last given, so that a frame without a scroll writes none. */
   #viewBox = "";
   #frame = 0;
@@ -639,7 +694,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     super();
     const root = this.attachShadow({ mode: "open" });
     adoptStyle(root);
+    this.#wrapper.className = "frame";
     this.#viewport.className = "viewport";
+    this.#ring.className = "ring";
     this.#column.className = "column";
     this.#sheet.className = "sheet";
     this.#stage.className = "stage";
@@ -662,7 +719,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#sheet.append(this.#stage, this.#parts.spot);
     this.#column.append(this.#statement.element, this.#parts.list, this.#parts.status, this.#sheet);
     this.#viewport.append(this.#column);
-    root.append(this.#tools.element, this.#viewport);
+    this.#wrapper.append(this.#viewport, this.#ring);
+    root.append(this.#tools.element, this.#wrapper);
+    this.#zoomTo(PAGE_ZOOM.value);
     this.#lay(NO_TASK);
     this.#refresh();
 
@@ -690,6 +749,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#canvas.addEventListener("transitionend", () => this.#request());
     this.#canvas.addEventListener("transitioncancel", () => this.#request());
     this.#viewport.addEventListener("scroll", () => this.#scrolled(), { passive: true });
+    // A container that has nothing to scroll any more keeps its stop of Tab while it has the focus.
+    this.#viewport.addEventListener("blur", () => this.#region());
 
     attachProbe(this, () => ({
       strokes: this.#work.strokes,
@@ -1045,6 +1106,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       unwatch();
       unenlist();
     };
+    // The page's zoom, on every sheet of it (T94): it may have changed while the element was away.
+    this.#zoomTo(PAGE_ZOOM.value);
+    this.#unwatchZoom = PAGE_ZOOM.watch(() => this.#zoomed());
     // A scroll does not bubble, but the document hears every one of its tree on the way down. A
     // page that grows or shrinks scrolls nothing, and neither does a window of another size.
     document.addEventListener("scroll", this.#heard, { capture: true, passive: true });
@@ -1064,6 +1128,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    */
   attributeChangedCallback(): void {
     this.#tools.label(this.getAttribute("lang"));
+    this.#nameRegion();
     this.#nameBoxes();
     this.#markBoxes();
   }
@@ -1142,8 +1207,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#eraser.end();
     this.#hands.reset();
     this.#latch = undefined;
+    this.#latchAcross = undefined;
     this.#unwatchPen?.();
     this.#unwatchPen = undefined;
+    this.#unwatchZoom?.();
+    this.#unwatchZoom = undefined;
     document.removeEventListener("scroll", this.#heard, { capture: true });
     this.#page.disconnect();
     this.#port = null;
@@ -1469,7 +1537,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    */
   #lifted(pointerId: number): void {
     this.#hands.lift(pointerId);
-    if (!this.#hands.scrolling) this.#latch = undefined;
+    if (!this.#hands.scrolling) {
+      this.#latch = undefined;
+      this.#latchAcross = undefined;
+    }
     this.#refresh();
     PEN_MODE.settle();
   }
@@ -1507,8 +1578,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * Where the sheet is on the screen now. The rectangles of the canvas and of the sheet give it:
-   * the canvas is as wide as the sheet, and its top is the top of the visible part. `k` is the one
-   * on the screen, after whatever transform the page puts on the element. The container's
+   * the canvas's top left corner is that of the visible part, and the sheet's width gives `k`, the
+   * one on the screen, after whatever transform the page puts on the element. The container's
    * rectangle gives the part of the canvas it shows: with the statement in sight, the canvas
    * goes on below the container's bottom. The row of buttons above the container hides what it
    * covers, once it sticks over the sheet as the page scrolls the element by (R28); in its place,
@@ -1516,9 +1587,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    */
   #view(): Screen | undefined {
     const canvas = this.#canvas.getBoundingClientRect();
-    if (canvas.width <= 0) return undefined;
-    const k = scaleFor(canvas.width);
     const sheet = this.#sheet.getBoundingClientRect();
+    if (canvas.width <= 0 || sheet.width <= 0) return undefined;
+    const k = scaleFor(sheet.width);
+    const vx = (canvas.left - sheet.left) / k;
     const vy = (canvas.top - sheet.top) / k;
     const port = clientBoxOf(this.#viewport);
     // The row ends where the container begins, unless it sticks over it.
@@ -1529,65 +1601,112 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       right: Math.min(canvas.right, port.right),
       bottom: Math.min(canvas.bottom, port.bottom),
     };
-    return { k, vy, left: canvas.left, top: canvas.top, height: canvas.height, shown };
-  }
-
-  /** The sheet's top in the container's content, in CSS pixels as laid out: under the statement. */
-  #sheetTop(): number {
-    const port = clientBoxOf(this.#viewport);
-    const sheet = this.#sheet.getBoundingClientRect();
-    return (sheet.top - port.top) / port.down + this.#viewport.scrollTop;
+    const { left, top, width, height } = canvas;
+    return { k, vx, vy, left, top, width, height, shown };
   }
 
   /**
-   * The top of the visible part from the scroll and the last layout, without reading the layout
-   * again: the stage sticks to the container's top once the sheet's top has gone past it. Up or
-   * Down may have come to an end of the container, or left one.
+   * The sheet's top in the container's content, in CSS pixels as laid out: under the statement —
+   * or, along `x`, its left: its margin in the middle of a wide container, and none once it is
+   * wider (T94).
+   */
+  #sheetEdge(axis: Axis): number {
+    const port = clientBoxOf(this.#viewport);
+    const sheet = this.#sheet.getBoundingClientRect();
+    return axis === "y"
+      ? (sheet.top - port.top) / port.down + this.#viewport.scrollTop
+      : (sheet.left - port.left) / port.across + this.#viewport.scrollLeft;
+  }
+
+  /**
+   * The top and the left of the visible part from the scroll and the last layout, without reading
+   * the layout again: the stage sticks to the container's top once the sheet's top has gone past
+   * it, and to its left so. Up or Down, Left or Right may have come to an end of the container, or
+   * left one.
    */
   #scrolled(): void {
-    if (this.#k > 0) this.#vy = Math.max(0, this.#viewport.scrollTop - this.#sheetAt) / this.#k;
+    if (this.#k > 0) {
+      this.#vy = Math.max(0, this.#viewport.scrollTop - this.#sheetAt) / this.#k;
+      this.#vx = Math.max(0, this.#viewport.scrollLeft - this.#sheetAtX) / this.#k;
+    }
     this.#request();
     this.#edges();
   }
 
   /**
-   * Up or Down was pressed (R33): what two fingers would scroll that way goes by four fifths of what
-   * it shows in sight. It is chosen anew at every press, so that a container at its end hands the
-   * scroll on at the next. While a pointer writes or erases on a sheet of the page, nothing moves
-   * under it.
+   * Up or Down was pressed (R33), or along `x` Left or Right (T94): what two fingers would scroll
+   * that way goes by four fifths of what it shows in sight. It is chosen anew at every press, so
+   * that a container at its end hands the scroll on at the next. While a pointer writes or erases
+   * on a sheet of the page, nothing moves under it.
    */
-  #upOrDown(onward: boolean): void {
-    const latch = PEN_MODE.writing ? undefined : this.#scrollerFor(onward);
+  #step(onward: boolean, axis: Axis): void {
+    const latch = PEN_MODE.writing ? undefined : this.#scrollerFor(onward, axis);
     if (latch !== undefined) {
-      const step = Math.max(1, Math.round((UP_DOWN * this.#seen(latch.target)) / latch.scale));
-      latch.target.scrollBy({ top: onward ? step : -step, behavior: "instant" });
+      const seen = this.#seen(latch.target, axis);
+      const step = Math.max(1, Math.round((UP_DOWN * seen) / latch.scale));
+      const by = onward ? step : -step;
+      latch.target.scrollBy({ [axis === "y" ? "top" : "left"]: by, behavior: "instant" });
     }
     this.#edges();
+  }
+
+  /**
+   * Zoom in or Zoom out was pressed (T94): the page's zoom goes a step larger or smaller, and every
+   * sheet of the page is laid out by it — but not while a pointer writes or erases on one of them,
+   * for nothing moves under it.
+   */
+  #zoomBy(larger: boolean): void {
+    if (!PEN_MODE.writing) PAGE_ZOOM.step(larger);
+  }
+
+  /**
+   * The page's zoom has changed (T94): the sheet is laid out by it at once, its top left corner in
+   * sight staying where it was on the sheet, and the row shows what the zoom can do now.
+   */
+  #zoomed(): void {
+    if (!this.#zoomTo(PAGE_ZOOM.value)) return;
+    this.#layout();
+    this.#refresh();
+  }
+
+  /**
+   * The column and the container as wide as a zoom asks, and whether that is another than the
+   * last: the column widens with the sheet, and the container scrolls it across while the zoom is
+   * beyond the fit (T94).
+   */
+  #zoomTo(zoom: number): boolean {
+    if (zoom === this.#zoom) return false;
+    this.#zoom = zoom;
+    this.#column.style.setProperty("--zoom", String(zoom));
+    this.#viewport.classList.toggle("zoomed", zoom > 1);
+    this.#keepDirection();
+    return true;
+  }
+
+  /**
+   * The statement and a demo's parts keep the element's own direction while the zoomed container
+   * runs left to right: the direction the element computes, by an attribute or by a style, as the
+   * last layout read it (T94).
+   */
+  #keepDirection(): void {
+    if (this.#zoom <= 1 || !this.isConnected) return;
+    const direction = getComputedStyle(this).direction;
+    if (this.#column.style.getPropertyValue("--direction") !== direction) {
+      this.#column.style.setProperty("--direction", direction);
+    }
   }
 
   /**
    * How much of what a scroller shows is in sight, down the screen: within the ancestors that clip
    * it and the visual viewport, and below the row of buttons while the row sticks over its top, or
    * below the consumer's band, --novatrail-canvas-top, while the row stands in its place in a low
-   * window. A scroller out of sight counts whole.
+   * window. A scroller out of sight counts whole. Across the screen, the row covers nothing (T94).
    */
-  #seen(target: Element | Window): number {
-    const sight = window.visualViewport;
-    let top = sight?.offsetTop ?? 0;
-    let bottom = top + (sight?.height ?? window.innerHeight);
-    let whole = bottom - top;
-    if (target instanceof Element) {
-      const own = clientBoxOf(target);
-      whole = own.bottom - own.top;
-      // The scroller, and every ancestor that clips it, up to the page, whose part is the sight.
-      for (let node: Element | null = target; node !== null; node = parentOf(node)) {
-        if (node === document.documentElement) break;
-        if (node !== target && getComputedStyle(node).overflowY === "visible") continue;
-        const clip = node === target ? own : clientBoxOf(node);
-        top = Math.max(top, clip.top);
-        bottom = Math.min(bottom, clip.bottom);
-      }
-    }
+  #seen(target: Element | Window, axis: Axis = "y"): number {
+    const { start, end, whole } = sightOf(target, axis);
+    if (axis === "x") return end > start ? end - start : whole;
+    const bottom = end;
+    let top = start;
     // The row hides the top while it sticks there, as far down as the consumer's offset puts it. A
     // row that stands in its place, in a low window, leaves the consumer's band over it alone.
     const row = this.#tools.element;
@@ -1640,83 +1759,115 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * Up and Down as the scrolling now is (R33): each stands unavailable while what two fingers would
-   * scroll its way can go no further. The element hears its container, the page and the ancestors
-   * in the page's own tree scroll, and the page and the window change size, but not the scrolling
-   * in another shadow tree: a press asks anew.
+   * Up and Down as the scrolling now is (R33), and Left and Right while the sheet is zoomed (T94):
+   * each stands unavailable while what two fingers would scroll its way can go no further. The
+   * element hears its container, the page and the ancestors in the page's own tree scroll, and the
+   * page and the window change size, but not the scrolling in another shadow tree: a press asks
+   * anew.
    */
   #edges(): void {
     if (!this.isConnected) return;
     const above = this.#scrollerFor(false) !== undefined;
-    this.#tools.edges(above, this.#scrollerFor(true) !== undefined);
+    const below = this.#scrollerFor(true) !== undefined;
+    const zoomed = this.#zoom > 1;
+    const before = zoomed && this.#scrollerFor(false, "x") !== undefined;
+    const after = zoomed && this.#scrollerFor(true, "x") !== undefined;
+    this.#tools.edges(above, below, before, after);
   }
 
   /**
-   * Two fingers moved down the screen by `dy` CSS pixels (R29), and what they scroll goes with
-   * them. A gesture's first step chooses it, for the whole gesture: the sheet's own container if it
-   * can go that way, or else the nearest ancestor of the element that scrolls and can, or else the
-   * page. A container at its end hands the scroll on at the next gesture, not within this one. The
-   * steps of an event add up, and its end scrolls them at once.
+   * Two fingers moved right on the screen by `dx` CSS pixels and down it by `dy` (R29), and what
+   * they scroll goes with them. The gesture's first step down chooses what it scrolls down, for the
+   * whole gesture, and its first step across, while the sheet is zoomed, what it scrolls across
+   * (T94): the sheet's own container if it can go that way, or else the nearest ancestor of the
+   * element that scrolls and can, or else the page. A container at its end hands the scroll on at
+   * the next gesture, not within this one. The steps of an event add up, and its end scrolls them
+   * at once.
    */
-  #scroll(dy: number, fresh: boolean): void {
-    if (fresh) this.#latch = this.#scrollerFor(dy < 0);
-    // The content goes with the fingers: down the screen, the scroll goes back.
-    if (this.#latch !== undefined) this.#latch.rest -= dy / this.#latch.scale;
-  }
-
-  /** The scroll the fingers' moves of an event owe, in whole pixels: the rest waits for the next. */
-  #flush(): void {
-    const latch = this.#latch;
-    if (latch === undefined) return;
-    const step = Math.round(latch.rest);
-    if (step === 0) return;
-    latch.rest -= step;
-    latch.target.scrollBy({ top: step, behavior: "instant" });
-  }
-
-  /** What scrolls on down the content, for `onward`, or back up it. */
-  #scrollerFor(onward: boolean): Latch | undefined {
-    if (scrollsOn(this.#viewport, onward)) {
-      return { target: this.#viewport, scale: scaleOf(this.#viewport), rest: 0 };
+  #scroll(dx: number, dy: number, fresh: boolean): void {
+    if (fresh) {
+      this.#latch = undefined;
+      this.#latchAcross = undefined;
     }
-    const { overflow, fromBody } = pageOverflow();
+    // The content goes with the fingers: down the screen, the scroll goes back.
+    if (dy !== 0 && this.#latch === undefined) this.#latch = this.#scrollerFor(dy < 0) ?? null;
+    if (dx !== 0 && this.#latchAcross === undefined) {
+      this.#latchAcross = this.#zoom > 1 ? (this.#scrollerFor(dx < 0, "x") ?? null) : null;
+    }
+    if (this.#latch) this.#latch.rest -= dy / this.#latch.scale;
+    if (this.#latchAcross) this.#latchAcross.rest -= dx / this.#latchAcross.scale;
+  }
+
+  /**
+   * The scroll the fingers' moves of an event owe, in whole pixels: the rest waits for the next.
+   * One scroller that goes both ways goes both at once.
+   */
+  #flush(): void {
+    const down = owed(this.#latch);
+    const across = owed(this.#latchAcross);
+    if (down !== undefined && across !== undefined && down.target === across.target) {
+      down.target.scrollBy({ left: across.step, top: down.step, behavior: "instant" });
+      return;
+    }
+    if (down !== undefined) down.target.scrollBy({ top: down.step, behavior: "instant" });
+    if (across !== undefined) across.target.scrollBy({ left: across.step, behavior: "instant" });
+  }
+
+  /**
+   * What scrolls on down the content, for `onward`, or back up it — or, along `x`, on right across
+   * it or back left (T94).
+   */
+  #scrollerFor(onward: boolean, axis: Axis = "y"): Latch | undefined {
+    if (scrollsOn(this.#viewport, onward, axis)) {
+      return { target: this.#viewport, scale: scaleOf(this.#viewport, undefined, axis), rest: 0 };
+    }
+    const { overflow, fromBody } = pageOverflow(axis);
     for (let node = parentOf(this); node !== null; node = parentOf(node)) {
       if (isPage(node, fromBody)) break;
       const style = getComputedStyle(node);
-      if (!SCROLLING.test(style.overflowY)) continue;
-      if (scrollsOn(node, onward)) return { target: node, scale: scaleOf(node), rest: 0 };
-      // A container that keeps its scrolling to itself hands none on.
-      if (style.overscrollBehaviorY === "contain" || style.overscrollBehaviorY === "none") {
-        return undefined;
+      if (!SCROLLING.test(axis === "y" ? style.overflowY : style.overflowX)) continue;
+      if (scrollsOn(node, onward, axis)) {
+        return { target: node, scale: scaleOf(node, undefined, axis), rest: 0 };
       }
+      // A container that keeps its scrolling to itself hands none on.
+      const keeps = axis === "y" ? style.overscrollBehaviorY : style.overscrollBehaviorX;
+      if (keeps === "contain" || keeps === "none") return undefined;
     }
     // A page that hides its overflow, as one under a modal does, a finger would not scroll: nor do two.
     if (overflow === "hidden" || overflow === "clip") return undefined;
     const page = document.scrollingElement;
-    if (page === null || !scrollsOn(page, onward)) return undefined;
+    if (page === null || !scrollsOn(page, onward, axis)) return undefined;
     return { target: window, scale: 1, rest: 0 };
   }
 
   /**
    * The stage takes the visible part of the sheet, and the canvas a pixel of its buffer for each
    * device pixel: its size on the screen times the density (R18). The layers follow in the same
-   * frame.
+   * frame. However large the zoom, the canvas is no larger than the container (T94).
    */
   #layout(): void {
+    // The content of a new size, or the container, may overflow it now, or no more.
+    this.#region();
     const area = this.#area;
     if (area === undefined || area.width === 0) return;
-    // The column is as wide as the container up to the cap, and the stage as tall as the visible
-    // part of the sheet.
-    const k = fitScale(area.width);
-    const sheetAt = this.#sheetTop();
-    // A new width scales the sheet, and a statement of a new height moves it: the top of the
-    // visible part stays where it was on the sheet, unless the sheet's top is in sight. A new
-    // height of the container alone moves neither, and a scroll under way goes on.
+    // The column is as wide as the container up to the cap, times the page's zoom, and the stage
+    // as tall and as wide as the visible part of the sheet.
+    const k = fitScale(area.width, this.#zoom);
+    const sheetAt = this.#sheetEdge("y");
+    const sheetAtX = this.#sheetEdge("x");
+    // A new width or zoom scales the sheet, and a statement of a new height moves it: the top left
+    // corner of the visible part stays where it was on the sheet, unless the sheet's top, or its
+    // left, is in sight. A new height of the container alone moves neither, and a scroll under way
+    // goes on.
     if (this.#vy > 0 && (k !== this.#k || Math.abs(sheetAt - this.#sheetAt) > 0.5)) {
       this.#viewport.scrollTop = sheetAt + this.#vy * k;
     }
+    if (this.#vx > 0 && k !== this.#k) this.#viewport.scrollLeft = sheetAtX + this.#vx * k;
     this.#k = k;
     this.#sheetAt = sheetAt;
+    this.#sheetAtX = sheetAtX;
+    this.#keepDirection();
+    this.#stage.style.width = `${Math.min(area.width, SHEET.width * k)}px`;
     this.#stage.style.height = `${Math.min(area.height, SHEET.height * k)}px`;
     const onScreen = this.#canvas.getBoundingClientRect();
     const width = Math.round(onScreen.width * devicePixelRatio);
@@ -1915,9 +2066,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    */
   #bringIntoSight(item: HTMLElement): void {
     item.scrollIntoView({ block: "nearest", behavior: "instant" });
-    // A scroller that comes to its top hands the rest on to the next, as Up does (R33): each of
-    // the chain goes once.
-    const gone = new Set<Element | Window>();
+    // A scroller that comes to its top hands the rest on to the next, as Up does (R33). A scroller
+    // goes again only while each of its scrolls leaves less covered than the last: a row that the
+    // element's bottom pushed up from where it sticks comes back down as the page scrolls, over
+    // what the scroll brought out, and the next brings it out again (T94).
+    const covered = new Map<Element | Window, number>();
     for (;;) {
       const latch = this.#scrollerFor(false);
       // A row in its place, in a low window, covers nothing of it: the consumer's band may, over
@@ -1926,8 +2079,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
         ? this.#tools.element.getBoundingClientRect().bottom
         : this.#band(latch?.target);
       const cover = over - item.getBoundingClientRect().top;
-      if (cover <= 0.5 || latch === undefined || gone.has(latch.target)) return;
-      gone.add(latch.target);
+      if (cover <= EDGE || latch === undefined) return;
+      const last = covered.get(latch.target);
+      if (last !== undefined && cover >= last - EDGE) return;
+      covered.set(latch.target, cover);
       latch.target.scrollBy({ top: -cover / latch.scale, behavior: "instant" });
     }
   }
@@ -1950,10 +2105,44 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       tool: this.#tool,
       undoable: this.#work.undoable,
       clearable: this.#work.strokes.length > 0,
+      larger: PAGE_ZOOM.larger,
+      smaller: PAGE_ZOOM.smaller,
       finger: this.#finger,
       opens: this.#nextPart() !== undefined,
       expanded: demo?.hidden !== true,
     });
+    this.#nameRegion();
+  }
+
+  /**
+   * The container as a region of its own, a stop of Tab and a name, while its content overflows
+   * it, and the keyboard scrolls it: in Safari a container that nothing in it can take the focus in
+   * scrolls by no key without (R90 spec; WebKit's bug 277290). Without a height of its own the
+   * element scrolls with the page and has no stop of Tab, and neither has one whose task fits. A
+   * container that holds the focus keeps all three till the focus leaves it, not the window (T93).
+   * Across, it scrolls while the sheet is zoomed, and an element without a height has a region
+   * then too, if its sheet is wider than it (T94); unzoomed, it hides what overflows across.
+   */
+  #region(): void {
+    if (!this.isConnected) return;
+    const viewport = this.#viewport;
+    const across = this.#zoom > 1 && overflowOf(viewport, "x") > EDGE;
+    const focused = this.shadowRoot?.activeElement === viewport;
+    const scrolls = overflowOf(viewport) > EDGE || across || focused;
+    write(viewport, "tabindex", scrolls ? "0" : null);
+    write(viewport, "role", scrolls ? "region" : null);
+    this.#nameRegion();
+  }
+
+  /**
+   * The region's name: the canvas kind's, or a worked example's, in the labels' language, which
+   * the row's buttons are named in. The container takes no `lang` of its own: the statement in it
+   * has the task's (T93).
+   */
+  #nameRegion(): void {
+    const { labels } = labelsFor(this.getAttribute("lang"));
+    const named = this.#viewport.hasAttribute("role");
+    write(this.#viewport, "aria-label", named ? labels[this.#rowKind()] : null);
   }
 
   /** What the row of buttons is of, and is named by: a worked example, or the canvas kind (R42). */
@@ -1976,9 +2165,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * showing a part of the sheet the others have left.
    */
   #place(screen: Screen): void {
+    const width = screen.width / screen.k;
     const height = screen.height / screen.k;
     if (!(height > 0)) return;
-    const viewBox = `0 ${screen.vy} ${SHEET.width} ${height}`;
+    const viewBox = `${screen.vx} ${screen.vy} ${width} ${height}`;
     if (viewBox === this.#viewBox) return;
     this.#viewBox = viewBox;
     for (const layer of [this.#template, this.#show, this.#sketch, this.#marksLayer]) {
@@ -2091,14 +2281,15 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const context = this.#context;
     const { width, height } = this.#canvas;
     if (context === null || width === 0 || height === 0) return;
-    // Device pixels to a unit, across and down. The canvas is as wide as the sheet, and the ratio
-    // of its rectangles holds under any scale the page puts on the element.
-    const across = width / SHEET.width;
+    // Device pixels to a unit, across and down: the ratio of the canvas's buffer to its rectangle,
+    // which holds under any scale the page puts on the element, times `k`.
+    const across = (width / screen.width) * screen.k;
     const down = (height / screen.height) * screen.k;
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.clearRect(0, 0, width, height);
-    context.setTransform(across, 0, 0, down, 0, -screen.vy * down);
+    context.setTransform(across, 0, 0, down, -screen.vx * across, -screen.vy * down);
     context.fillStyle = colour;
+    const right = screen.vx + screen.width / screen.k;
     const bottom = screen.vy + screen.height / screen.k;
     const erasing = this.#eraser.pending;
     for (const stroke of this.#work.strokes) {
@@ -2106,6 +2297,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       // The outline keeps within half the widest line of the points: twice that is out of sight.
       const box = this.#pointBoxOf(stroke);
       if (box.maxY + 2 * INK_REACH < screen.vy || box.minY - 2 * INK_REACH > bottom) continue;
+      if (box.maxX + 2 * INK_REACH < screen.vx || box.minX - 2 * INK_REACH > right) continue;
       const ink = this.#finished(stroke);
       if (ink.bottom >= screen.vy && ink.top <= bottom) context.fill(ink.path);
     }
@@ -2217,7 +2409,18 @@ function contactOf(event: PointerEvent): Contact {
   };
 }
 
-/** The values of `overflow-y` that make an element scroll its content. */
+/** The scroll an event's fingers owe a scroller, in whole pixels, if any: the rest waits (R29). */
+function owed(
+  latch: Latch | null | undefined,
+): { target: Element | Window; step: number } | undefined {
+  if (!latch) return undefined;
+  const step = Math.round(latch.rest);
+  if (step === 0) return undefined;
+  latch.rest -= step;
+  return { target: latch.target, step };
+}
+
+/** The values of `overflow-y`, or of `overflow-x`, that make an element scroll its content. */
 const SCROLLING = /^(auto|scroll|overlay)$/;
 
 /**
@@ -2230,9 +2433,13 @@ const CONTAINING = /^(auto|scroll|overlay|hidden)$/;
  * The overflow of the page's viewport: the root's, or the body's when the root's is visible (CSS
  * Overflow 3), and then the body scrolls nothing of its own.
  */
-function pageOverflow(): { readonly overflow: string; readonly fromBody: boolean } {
-  const root = getComputedStyle(document.documentElement).overflowY;
-  const body = document.body === null ? "visible" : getComputedStyle(document.body).overflowY;
+function pageOverflow(axis: Axis = "y"): {
+  readonly overflow: string;
+  readonly fromBody: boolean;
+} {
+  const along = (style: CSSStyleDeclaration) => (axis === "y" ? style.overflowY : style.overflowX);
+  const root = along(getComputedStyle(document.documentElement));
+  const body = document.body === null ? "visible" : along(getComputedStyle(document.body));
   const fromBody = root === "visible" && body !== "visible";
   return { overflow: fromBody ? body : root, fromBody };
 }
@@ -2290,10 +2497,71 @@ function offsetOf(element: Element, height: number): number {
   return top.endsWith("%") ? (value / 100) * height : value;
 }
 
-/** Whether an element can scroll on down its content, for `onward`, or back up it. */
-function scrollsOn(element: Element, onward: boolean): boolean {
-  const end = element.scrollHeight - element.clientHeight;
-  return onward ? element.scrollTop < end - 0.5 : element.scrollTop > 0.5;
+/** How far a scroll short of its end, or past it, still counts as at it: half a CSS pixel. */
+const EDGE = 0.5;
+
+/**
+ * How far an element's content overflows it down, or across along `x`, in CSS pixels: where its
+ * scroll ends.
+ */
+function overflowOf(element: Element, axis: Axis = "y"): number {
+  return axis === "y"
+    ? element.scrollHeight - element.clientHeight
+    : element.scrollWidth - element.clientWidth;
+}
+
+/**
+ * How far an element is scrolled from the top of its content, or from its left along `x`: in a
+ * scroller that runs right to left, `scrollLeft` goes from 0 at the right down to minus its
+ * overflow at the left (CSSOM View).
+ */
+function scrolledOf(element: Element, axis: Axis): number {
+  if (axis === "y") return element.scrollTop;
+  // Only one that overflows across reads its direction: it is asked at every scroll.
+  const over = overflowOf(element, "x");
+  if (over <= EDGE) return 0;
+  return getComputedStyle(element).direction === "rtl"
+    ? over + element.scrollLeft
+    : element.scrollLeft;
+}
+
+/**
+ * Whether an element can scroll on down its content, for `onward`, or back up it — or, along `x`,
+ * on right across it or back left.
+ */
+function scrollsOn(element: Element, onward: boolean, axis: Axis = "y"): boolean {
+  const at = scrolledOf(element, axis);
+  return onward ? at < overflowOf(element, axis) - EDGE : at > EDGE;
+}
+
+/**
+ * Where what a scroller shows is in sight down the screen, or across it along `x` (T94): within
+ * the ancestors that clip it and the visual viewport, from `start` to `end` — and how much it
+ * shows whole, for a scroller out of sight.
+ */
+function sightOf(
+  target: Element | Window,
+  axis: Axis,
+): { readonly start: number; readonly end: number; readonly whole: number } {
+  const down = axis === "y";
+  const sight = window.visualViewport;
+  let start = (down ? sight?.offsetTop : sight?.offsetLeft) ?? 0;
+  let end = start + ((down ? sight?.height : sight?.width) ?? (down ? innerHeight : innerWidth));
+  let whole = end - start;
+  if (target instanceof Element) {
+    const own = clientBoxOf(target);
+    whole = down ? own.bottom - own.top : own.right - own.left;
+    // The scroller, and every ancestor that clips it, up to the page, whose part is the sight.
+    for (let node: Element | null = target; node !== null; node = parentOf(node)) {
+      if (node === document.documentElement) break;
+      const style = node === target ? undefined : getComputedStyle(node);
+      if (style !== undefined && (down ? style.overflowY : style.overflowX) === "visible") continue;
+      const clip = node === target ? own : clientBoxOf(node);
+      start = Math.max(start, down ? clip.top : clip.left);
+      end = Math.min(end, down ? clip.bottom : clip.right);
+    }
+  }
+  return { start, end, whole };
 }
 
 /** Whether an element holds another in the flat tree, across the borders of shadow trees. */
@@ -2319,23 +2587,25 @@ function parentOf(element: Element): Element | null {
  */
 function clientBoxOf(element: Element): ClientBox {
   const box = element.getBoundingClientRect();
-  const wide = element instanceof HTMLElement ? element.offsetWidth : 0;
-  const across = wide > 0 ? box.width / wide : 1;
+  const across = scaleOf(element, box, "x");
   const down = scaleOf(element, box);
   const left = box.left + element.clientLeft * across;
   const top = box.top + element.clientTop * down;
   const right = left + element.clientWidth * across;
   const bottom = top + element.clientHeight * down;
-  return { left, top, right, bottom, down };
+  return { left, top, right, bottom, across, down };
 }
 
 /**
- * How much the page scales an element down the screen: 1 unless an ancestor transforms it. `box` is
- * its rectangle on the screen, when the caller has it already.
+ * How much the page scales an element down the screen, or across it along `x` (T94): 1 unless an
+ * ancestor transforms it. `box` is its rectangle on the screen, when the caller has it already.
  */
-function scaleOf(element: Element, box?: DOMRect): number {
-  const tall = element instanceof HTMLElement ? element.offsetHeight : 0;
-  return tall > 0 ? (box ?? element.getBoundingClientRect()).height / tall : 1;
+function scaleOf(element: Element, box?: DOMRect, axis: Axis = "y"): number {
+  const laid =
+    element instanceof HTMLElement ? element[axis === "y" ? "offsetHeight" : "offsetWidth"] : 0;
+  if (laid <= 0) return 1;
+  const shown = box ?? element.getBoundingClientRect();
+  return (axis === "y" ? shown.height : shown.width) / laid;
 }
 
 /**

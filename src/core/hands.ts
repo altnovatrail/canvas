@@ -43,6 +43,14 @@ export const PAIR_MS = 150;
 export const SLOP_PX = 8;
 
 /**
+ * Two fingers that have gone this many times further along one axis than along the other, when
+ * they pass the slop, scroll along that axis alone for the rest of the gesture (T94): a scroll
+ * down a zoomed sheet does not wander sideways, nor one across it up and down. Between, they go
+ * both ways. T22 tries it on devices.
+ */
+export const RAIL = 2;
+
+/**
  * The pen mode (R29): on from a pen's touch on a sheet, off when the learner asks for the finger.
  * While it is on, a finger neither writes nor erases. One is shared by every sheet of a page, and
  * it lives in memory alone: nothing is stored or sent, and a new page starts without it.
@@ -108,10 +116,15 @@ export interface HandsSheet {
   /** The stroke or the erasing of a pointer goes, as on `pointercancel`. */
   drop(pointerId: number): void;
   /**
-   * Two fingers moved down the screen by `dy` CSS pixels, or up for a negative one: the sheet goes
-   * with them. `fresh` marks a gesture's first step.
+   * Two fingers moved right on the screen by `dx` CSS pixels and down it by `dy`, or left and up
+   * for negative ones: the sheet goes with them. `fresh` marks a gesture's first step.
    */
-  scroll(dy: number, fresh: boolean): void;
+  scroll(dx: number, dy: number, fresh: boolean): void;
+  /**
+   * Whether the sheet scrolls across at all now: a zoomed sheet does (T94). A gesture on a sheet
+   * that does not goes by its travel down alone, as before.
+   */
+  across(): boolean;
 }
 
 /**
@@ -131,19 +144,29 @@ interface Hand {
   readonly x0: number;
   readonly y0: number;
   readonly t0: number;
-  /** Where it is now, down the screen. */
+  /** Where it is now on the screen. */
+  x: number;
   y: number;
   /** How far it has been from where it came down, at most. */
   travel: number;
 }
 
+/** A point on the screen, in CSS pixels. */
+interface At {
+  readonly x: number;
+  readonly y: number;
+}
+
 /** Two fingers scrolling. */
 interface Gesture {
   readonly fingers: readonly [number, number];
-  /** Their middle, down the screen, when the gesture began. */
-  readonly from: number;
+  /** Their middle when the gesture began. */
+  readonly from: At;
   /** Their middle at the last step, once it has gone past the slop. */
-  last: number | undefined;
+  last: At | undefined;
+  /** The axes the gesture scrolls along, chosen as it passes the slop (`RAIL`). */
+  across: boolean;
+  down: boolean;
 }
 
 /**
@@ -159,7 +182,8 @@ interface Gesture {
  *   comes later does nothing.
  * - In pen mode a finger writes nothing, and two that come down within `PAIR_MS` scroll.
  * - A third finger does nothing. When one of the two lifts, the other does nothing until it lifts.
- * - Two fingers scroll by the travel of their middle down the screen, past the first `SLOP_PX`.
+ * - Two fingers scroll by the travel of their middle on the screen, past its first `SLOP_PX`: along
+ *   one axis alone if they went `RAIL` times further along it than along the other, or else both.
  * - Any other pointer, a mouse or one of no type, writes when nothing does, whatever the mode.
  */
 export class Hands {
@@ -208,6 +232,7 @@ export class Hands {
       hand.role = "palm";
       return false;
     }
+    hand.x = contact.x;
     hand.y = contact.y;
     hand.travel = Math.max(hand.travel, Math.hypot(contact.x - hand.x0, contact.y - hand.y0));
     if (hand.role === "scrolls") this.#step();
@@ -274,6 +299,7 @@ export class Hands {
       x0: contact.x,
       y0: contact.y,
       t0: contact.time,
+      x: contact.x,
       y: contact.y,
       travel: 0,
     });
@@ -299,7 +325,13 @@ export class Hands {
     if (one === undefined || two === undefined) return;
     one.role = "scrolls";
     two.role = "scrolls";
-    this.#gesture = { fingers: [first, second], from: (one.y + two.y) / 2, last: undefined };
+    this.#gesture = {
+      fingers: [first, second],
+      from: middleOf(one, two),
+      last: undefined,
+      across: true,
+      down: true,
+    };
   }
 
   /** The gesture ends: its fingers do nothing until they lift. */
@@ -313,27 +345,42 @@ export class Hands {
     }
   }
 
-  /** The two fingers' middle has moved: past the slop, the sheet goes with it. */
+  /**
+   * The two fingers' middle has moved: past the slop, the sheet goes with it, along the axes the
+   * gesture chose as it passed it.
+   */
   #step(): void {
     const gesture = this.#gesture;
     if (gesture === undefined) return;
     const one = this.#hands.get(gesture.fingers[0]);
     const two = this.#hands.get(gesture.fingers[1]);
     if (one === undefined || two === undefined) return;
-    const middle = (one.y + two.y) / 2;
+    const middle = middleOf(one, two);
     if (gesture.last === undefined) {
-      const gone = middle - gesture.from;
-      if (Math.abs(gone) <= SLOP_PX) return;
-      // The slop is where the gesture starts: the sheet moves from there, without a jump.
+      // A sheet that does not scroll across counts the travel down alone, as before T94.
+      const dx = this.#sheet.across() ? middle.x - gesture.from.x : 0;
+      const dy = middle.y - gesture.from.y;
+      const gone = Math.hypot(dx, dy);
+      if (gone <= SLOP_PX) return;
+      gesture.across = Math.abs(dx) * RAIL > Math.abs(dy);
+      gesture.down = Math.abs(dy) * RAIL > Math.abs(dx);
       gesture.last = middle;
-      this.#sheet.scroll(gone - Math.sign(gone) * SLOP_PX, true);
+      // The slop is where the gesture starts: the sheet moves from there, without a jump, by the
+      // share of each axis's travel past it, along the axes the gesture goes.
+      const past = (d: number) => (d * (gone - SLOP_PX)) / gone;
+      this.#sheet.scroll(gesture.across ? past(dx) : 0, gesture.down ? past(dy) : 0, true);
       return;
     }
-    if (middle === gesture.last) return;
-    const dy = middle - gesture.last;
+    const dx = gesture.across ? middle.x - gesture.last.x : 0;
+    const dy = gesture.down ? middle.y - gesture.last.y : 0;
     gesture.last = middle;
-    this.#sheet.scroll(dy, false);
+    if (dx !== 0 || dy !== 0) this.#sheet.scroll(dx, dy, false);
   }
+}
+
+/** The middle of two fingers on the screen. */
+function middleOf(one: Hand, two: Hand): At {
+  return { x: (one.x + two.x) / 2, y: (one.y + two.y) / 2 };
 }
 
 /** Whether a touch is too big for a finger: a palm, or the side of a hand. */

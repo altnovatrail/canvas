@@ -309,7 +309,8 @@ test("a third finger does nothing, and when one of the two lifts the other does 
 });
 
 test("a pen takes a finger's stroke away and ends a scroll, and a touch down during its stroke does nothing after it", async () => {
-  const { element, canvas, viewport, view } = await sheet(400, 300);
+  // Tall enough for the pen at 400 under the row of three lines at 400 CSS px (T94).
+  const { element, canvas, viewport, view } = await sheet(400, 400);
   const finger = fingerAt(1, canvas, view(), 200, 200);
   await touches("touchStart", [finger]);
   await touches("touchMove", moved([finger], 20));

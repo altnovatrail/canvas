@@ -71,6 +71,30 @@ export const ICONS = {
       "M11 16.175V5q0-.425.288-.712T12 4t.713.288T13 5v11.175l4.9-4.9q.3-.3.7-.288t.7.313q.275.3.287.7t-.287.7l-6.6 6.6q-.15.15-.325.213t-.375.062t-.375-.062t-.325-.213l-6.6-6.6q-.275-.275-.275-.687T4.7 11.3q.3-.3.713-.3t.712.3z",
     ],
   },
+  "zoom-in-outline-rounded": {
+    viewBox: "0 0 24 24",
+    paths: [
+      "M8.5 10.5h-1q-.425 0-.712-.288T6.5 9.5t.288-.712T7.5 8.5h1v-1q0-.425.288-.712T9.5 6.5t.713.288t.287.712v1h1q.425 0 .713.288t.287.712t-.288.713t-.712.287h-1v1q0 .425-.288.713T9.5 12.5t-.712-.288T8.5 11.5zm1 5.5q-2.725 0-4.612-1.888T3 9.5t1.888-4.612T9.5 3t4.613 1.888T16 9.5q0 1.1-.35 2.075T14.7 13.3l5.6 5.6q.275.275.275.7t-.275.7t-.7.275t-.7-.275l-5.6-5.6q-.75.6-1.725.95T9.5 16m0-2q1.875 0 3.188-1.312T14 9.5t-1.312-3.187T9.5 5T6.313 6.313T5 9.5t1.313 3.188T9.5 14",
+    ],
+  },
+  "zoom-out-outline-rounded": {
+    viewBox: "0 0 24 24",
+    paths: [
+      "M8 10.5q-.425 0-.712-.288T7 9.5t.288-.712T8 8.5h3q.425 0 .713.288T12 9.5t-.288.713T11 10.5zM9.5 16q-2.725 0-4.612-1.888T3 9.5t1.888-4.612T9.5 3t4.613 1.888T16 9.5q0 1.1-.35 2.075T14.7 13.3l5.6 5.6q.275.275.275.7t-.275.7t-.7.275t-.7-.275l-5.6-5.6q-.75.6-1.725.95T9.5 16m0-2q1.875 0 3.188-1.312T14 9.5t-1.312-3.187T9.5 5T6.313 6.313T5 9.5t1.313 3.188T9.5 14",
+    ],
+  },
+  "arrow-left-alt-outline-rounded": {
+    viewBox: "0 0 24 24",
+    paths: [
+      "m7.85 13l2.85 2.85q.3.3.288.7t-.288.7q-.3.3-.712.313t-.713-.288L4.7 12.7q-.3-.3-.3-.7t.3-.7l4.575-4.575q.3-.3.713-.287t.712.312q.275.3.288.7t-.288.7L7.85 11H19q.425 0 .713.288T20 12t-.288.713T19 13z",
+    ],
+  },
+  "arrow-right-alt-outline-rounded": {
+    viewBox: "0 0 24 24",
+    paths: [
+      "M16.15 13H5q-.425 0-.712-.288T4 12t.288-.712T5 11h11.15L13.3 8.15q-.3-.3-.288-.7t.288-.7q.3-.3.713-.312t.712.287L19.3 11.3q.15.15.213.325t.062.375t-.062.375t-.213.325l-4.575 4.575q-.3.3-.712.288t-.713-.313q-.275-.3-.288-.7t.288-.7z",
+    ],
+  },
   "touch-app-outline-rounded": {
     viewBox: "0 0 24 24",
     paths: [
@@ -119,6 +143,26 @@ export const ROW = {
   down: {
     outline: "arrow-downward-outline-rounded",
     filled: "arrow-downward-outline-rounded",
+    mirrored: false,
+  },
+  zoomIn: {
+    outline: "zoom-in-outline-rounded",
+    filled: "zoom-in-outline-rounded",
+    mirrored: false,
+  },
+  zoomOut: {
+    outline: "zoom-out-outline-rounded",
+    filled: "zoom-out-outline-rounded",
+    mirrored: false,
+  },
+  left: {
+    outline: "arrow-left-alt-outline-rounded",
+    filled: "arrow-left-alt-outline-rounded",
+    mirrored: false,
+  },
+  right: {
+    outline: "arrow-right-alt-outline-rounded",
+    filled: "arrow-right-alt-outline-rounded",
     mirrored: false,
   },
   finger: {

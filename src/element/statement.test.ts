@@ -328,11 +328,12 @@ test("the addresses of the pictures' files go when the pictures leave the task o
 
 test("with the statement in sight, the eraser takes nothing below the container's bottom, where the canvas goes on out of sight", async () => {
   const lines = Array.from({ length: 4 }, (_, i) => ({ text: `Line ${i + 1} of the statement.` }));
+  // Tall enough for the row of three lines at 400 CSS px and the stroke at 100 under it (T94).
   const { element, canvas, viewport, view } = await sheet(
     400,
     sheetTask({ statement: lines }),
     undefined,
-    300,
+    400,
   );
   const shownBottom = viewport.getBoundingClientRect().bottom;
   const { top, bottom } = canvas.getBoundingClientRect();
