@@ -5,8 +5,8 @@
 //   node emulators/saved.ts <version> <folder>...
 //
 // Each file must be a sample file the protocol reads (readSample), by a person, of the page's
-// version, with a task and with strokes. A folder of the release build holds the author's own
-// measurement under the draft of texts: an adult's, with its history, one sheet in their own hand
+// version, with a task and with strokes. A folder of the release build holds an adult's
+// measurement under its set in force: an adult's, with its history, one sheet in their own hand
 // and one workbook imitating a child's. A folder of the test build, whose name ends in -test,
 // holds a child's session under the test set: the final geometry and the code typed (T22; R59).
 // Each folder must hold a sheet's and a workbook's, of one code, the code of the page's one
@@ -22,6 +22,10 @@ import { createServer } from "vite";
 import type { Sample } from "../src/eval/sample.ts";
 import { CHILD_CODE } from "./watch.ts";
 
+/** The version of the measurement's set of texts a release build carries: the current one of spec's
+ * legal part at the tag spec/ stands on, which scripts/page.test.ts holds the build to (T102). */
+export const RELEASE_TEXTS = "measure-2";
+
 /** Which build a folder's files came from: the test build's folders end in -test (T22). */
 export type Built = "release" | "test";
 
@@ -31,8 +35,8 @@ export function builtOf(folder: string): Built {
 }
 
 /** What is wrong with one sample of a page of a version; nothing when it is right. A release's is
- * the author's measurement by an adult, in their own hand or imitating a child's, with its history,
- * under the draft of texts; a test build's is of a child's session, its final geometry and the
+ * a measurement by an adult, in their own hand or imitating a child's, with its history, under the
+ * measurement's set in force; a test build's is of a child's session, its final geometry and the
  * code the adult typed, under the test set (R59). */
 export function problemsOf(sample: Sample, version: string, built: Built = "release"): string[] {
   const problems: string[] = [];
@@ -49,7 +53,7 @@ export function problemsOf(sample: Sample, version: string, built: Built = "rele
       sample.writer === Writer.ADULT || sample.writer === Writer.ADULT_AS_CHILD,
       "not by an adult",
     );
-    want(sample.textSetVersion === "draft-0", "not of the draft of texts");
+    want(sample.textSetVersion === RELEASE_TEXTS, `not of the texts ${RELEASE_TEXTS}`);
     want(Boolean(sample.writerCode), "no writer's code");
     want(
       sample.ink.case === "history" && sample.ink.value.events.length > 0,

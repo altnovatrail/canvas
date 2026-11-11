@@ -5,8 +5,8 @@
 //   node scripts/page.ts <folder> <version> [--texts <part>]
 //
 // writes <folder>/samples-page_v<version>.html, with the current sets of texts of spec's release
-// file of the legal texts in tasks/, held to its sum (T89; R69; scripts/legal.ts), and, while the
-// measurement has none, the author's draft, page/sets/draft-0.json (R11). --texts names a part of
+// file of the legal texts in tasks/, held to its sum (T89, T102; R69; scripts/legal.ts): a purpose
+// with no current set is closed. --texts names a part of
 // the legal texts for tests instead, whose sets begin with test-, and only into a page of version
 // 0.0.0, which no release has (T20; R58). It builds from the tree alone — no spec/, no git, no
 // token, no network — in the toolchain stage, as release-files will take it (T75). Vite's API
@@ -29,7 +29,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { build, createServer } from "vite";
-import { draftOf, type PageTexts } from "../page/sets.ts";
+import type { PageTexts } from "../page/sets.ts";
 import type { TaskKind } from "../page/texts.ts";
 import type { ModuleViews, OpenTask, OpenTasks } from "../src/eval/tasks.ts";
 import { policy, styleOf } from "./csp.ts";
@@ -45,18 +45,14 @@ const POLICY_HOLE = "<!-- policy -->";
 const SCRIPT_HOLE = '<script src="main.ts"></script>';
 const NOTICES_HOLE = "<!-- notices -->";
 
-/** The author's draft of the measurement, which a build carries while the measurement has no
- * current set (R11). */
-export const DRAFT = "page/sets/draft-0.json";
-
 /** The prefix of the IDs of the sets of a part for tests: test-measure, test-eval-set and
  * test-child-sample. */
 const TEST_PREFIX = "test-";
 
 /** The texts of a page of a version: each purpose's current set in the release file of spec's legal
  * texts — or, given a part for tests, in that part, for a page of version 0.0.0 alone, which no
- * release of canvas has (contracts/README.md of spec) — and the draft while the measurement has no
- * set. Both are read against the schema the release file carries. */
+ * release of canvas has (contracts/README.md of spec), read against the schema the release file
+ * carries. */
 export function textsFor(version: string, part?: string): PageTexts {
   if (part !== undefined && version !== "0.0.0") {
     throw new Error(`the texts of ${part} are for tests: they go into no page but 0.0.0`);
@@ -65,7 +61,7 @@ export function textsFor(version: string, part?: string): PageTexts {
     part === undefined ? pageSetsOf(folder, schema) : pageSetsOf(part, schema, TEST_PREFIX),
   );
   return {
-    measurement: measurement ?? draftOf(JSON.parse(readFileSync(DRAFT, "utf8"))),
+    ...(measurement ? { measurement } : {}),
     ...(evalSet ? { evalSet } : {}),
     ...(child ? { child } : {}),
   };

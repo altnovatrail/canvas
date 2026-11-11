@@ -228,10 +228,10 @@ describe("an essay's markup (T21)", () => {
 });
 
 describe("the examples of the page", () => {
-  // A sample as the page saves it: the author's own measurement, a person's, of the draft of
-  // texts, with a fixed ID and code, so that the file is the same at each run.
+  // A sample as the page saves it: an adult's measurement, a person's, of the measurement's set in
+  // force (T102), with a fixed ID and code, so that the file is the same at each run.
   const page = { purpose: Purpose.MEASUREMENT, writer: Writer.ADULT, writerCode: "PAGE2345" };
-  const origin = { person: { textSetVersion: "draft-0", canvasVersion: "0.0.0" } };
+  const origin = { person: { textSetVersion: "measure-2", canvasVersion: "0.0.0" } };
   // The digests of each bank of tutor v0.1.1 and of its first task's open view, as spec's examples
   // name them: sheet-measurement.json, sheet-essay.json and workbook-child.json.
   const DIGESTS: Record<string, { bank: string; task: string }> = {

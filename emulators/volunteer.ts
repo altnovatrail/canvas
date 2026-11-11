@@ -6,7 +6,7 @@
 // how the save button is pressed. Its own steps are the device's, which earn the run one more pass
 // when they fail; the steps here are the page's, which fail it.
 //
-// Two builds, two ways (T22; R65). The release's goes the author's measurement with the moves of
+// Two builds, two ways (T22; R65). The release's goes an adult's measurement with the moves of
 // T22's checklist on the sheet — a stroke the browser cancels, the eraser and undo, two fingers that
 // scroll — and the workbook written as an adult imitating a child; then the page is opened anew
 // and the sheet's file opened in it (T87). The test build's goes its start, the eval set closed and
@@ -205,13 +205,13 @@ async function json<T>(device: Device, expression: string): Promise<T> {
   return JSON.parse(String(await device.evaluate(expression))) as T;
 }
 
-/** The start of the way: under the release's draft, the author's measurement (T20); under the test
- * set, the eval set closed with its reason and a child's session begun with the form's code, a new
+/** The start of the way: under the release's sets in force, an adult's measurement (T20, T102);
+ * under the test set, every purpose open and a child's session begun with the form's code, a new
  * code beginning none (T84; R59). Whether the sheet is there then. */
 async function begin(run: Run, device: Device, way: Way): Promise<boolean> {
   if (way === "release") {
     const started = (await device.evaluate(START)) === true;
-    run.record("the start lets the author begin the measurement", started, "", "page");
+    run.record("the start lets an adult begin the measurement", started, "", "page");
     return started;
   }
   const start = await json<{

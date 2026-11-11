@@ -67,7 +67,7 @@ import {
 } from "./markup.js";
 import { noticeNodes } from "./notice.js";
 import { type Field, type Line, type SampleView, viewOf } from "./open.js";
-import { type AuthorDraft, isDraft, type LegalSet, type PageTexts } from "./sets.js";
+import type { LegalSet, PageTexts } from "./sets.js";
 import {
   codeOf,
   handOverOf,
@@ -749,9 +749,8 @@ function purposeChoices(): void {
 }
 
 /** A purpose's notice: a legal text's gist in Russian, then its English text, which is the one in
- * force (privacy 7 spec); the author's draft, paragraph by paragraph. */
-function noticeOf(own: LegalSet | AuthorDraft): HTMLElement[] {
-  if (isDraft(own)) return own.notice.map((paragraph) => make("p", paragraph));
+ * force (privacy 7 spec). */
+function noticeOf(own: LegalSet): HTMLElement[] {
   const english = make("div", "", { lang: "en", class: "legal" });
   english.append(...noticeNodes(own.notice));
   return [make("p", TEXTS.gist(own.gist)), make("p", TEXTS.inEnglish), english];
