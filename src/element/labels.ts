@@ -1,13 +1,20 @@
 // The labels of the element's own buttons, of a workbook's boxes and of the parts of a worked
-// example's demo, in the languages of its interface (R28, R29, R33, R36, R37, R42): English and
-// Russian, as О-2 recommends, until app's T07 gives the shared scheme of translations of the packages
-// of the interface. The language is the element's own `lang`, looked up as RFC 4647 does it. This
-// module is no entry point of the package.
+// example's demo, in the languages of the interface, English and Russian (R92 spec), by the shared
+// rules of the packages' translations (R91 spec; R28, R29, R33, R36, R37, R42; T91 in RUN.md):
+// - the language is the element's own `lang`, looked up as RFC 4647 does it, and English stands for
+//   any other, under a `lang` of its own;
+// - a label with a number or a word in it is one string with named places, «Часть {n} из {total}.»,
+//   never pieces glued together: languages put their words in other orders;
+// - no label counts a thing, so none has forms of number yet. The first that does takes CLDR's
+//   categories, `other` always among them, chosen by `Intl.PluralRules` of the label's language;
+// - no label tells the learner's gender (R70 spec) or speaks as the AI in the first person (П-15);
+// - the buttons' words are those of the table of words of architecture 6 spec.
+// This module is no entry point of the package.
 
 /**
  * What the element says: the row of buttons its own name — the canvas kind's, or a worked
  * example's — the name of the group of tools and each button, a workbook's box its name, and the
- * number of a part of a demo the element tells of.
+ * number of a part of a demo the element tells of. A label with places names them in braces.
  */
 export interface Labels {
   readonly sheet: string;
@@ -27,13 +34,18 @@ export interface Labels {
   readonly down: string;
   /** The button that lets a finger write again, in pen mode (R29). */
   readonly finger: string;
-  /** A box of a workbook's line, numbered when the line has more than one (R36). */
+  /** A box of a workbook's line, alone in it (R36). */
   readonly box: string;
-  /** What a filled box's name adds (R37). */
+  /** A box among several of its line, by its slot: {slot} (R36). */
+  readonly boxAt: string;
+  /** A box a demo fills, by its line and its slot in it: {line} and {slot} (R42). */
+  readonly boxIn: string;
+  /** A box's {name} when the box is filled (R37). */
   readonly filled: string;
-  /** The number of a part of a demo the element tells of, of so many: «Part 2 of 4» (R42). */
+  /** A box's {name} and the {value} a demo wrote in it (R42). */
+  readonly valued: string;
+  /** The part of a demo the element tells of, {n}, of so many, {total} (R42). */
   readonly part: string;
-  readonly of: string;
 }
 
 /** The labels in English, the code's own language: those of any language the table has not. */
@@ -52,9 +64,11 @@ const ENGLISH: Labels = Object.freeze({
   down: "Down",
   finger: "Draw with finger",
   box: "Box",
-  filled: "filled",
-  part: "Part",
-  of: "of",
+  boxAt: "Box {slot}",
+  boxIn: "Box {line}.{slot}",
+  filled: "{name}, filled",
+  valued: "{name}: {value}",
+  part: "Part {n} of {total}.",
 });
 
 /**
@@ -80,12 +94,17 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
       down: "Ниже",
       finger: "Рисовать пальцем",
       box: "Окошко",
-      filled: "заполнено",
-      part: "Часть",
-      of: "из",
+      boxAt: "Окошко {slot}",
+      boxIn: "Окошко {line}.{slot}",
+      filled: "{name}, заполнено",
+      valued: "{name}: {value}",
+      part: "Часть {n} из {total}.",
     }),
   ],
 ]);
+
+/** Every language the table has, by its tag: the tests hold each to English's places. */
+export const LANGUAGES: readonly string[] = [...LABELS.keys()];
 
 /**
  * The labels for a language tag, and the language they are in. The tag is looked up as RFC 4647,
@@ -104,4 +123,24 @@ export function labelsFor(tag: string | null): { readonly lang: string; readonly
     range = cut > 0 ? range.slice(0, cut) : "";
   }
   return { lang: "en", labels: ENGLISH };
+}
+
+/** A place of a label: a name of Latin letters, digits and underscores in braces. */
+const PLACE = /\{(\w+)\}/g;
+
+/** The places a label names, each once, in the order it names them. */
+export function placesOf(label: string): string[] {
+  return [...new Set([...label.matchAll(PLACE)].map(([, name]) => String(name)))];
+}
+
+/**
+ * A label with its places filled by name. A place the values do not give is a TypeError: a label
+ * never shows its braces.
+ */
+export function say(label: string, values: Readonly<Record<string, string | number>>): string {
+  return label.replace(PLACE, (_, name: string) => {
+    const value = Object.hasOwn(values, name) ? values[name] : undefined;
+    if (value === undefined) throw new TypeError(`the label "${label}" has no value for {${name}}`);
+    return String(value);
+  });
 }

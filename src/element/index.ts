@@ -95,7 +95,7 @@ import {
 } from "../core/task.js";
 import { nextIdOf, resumeOf, Work } from "../core/work.js";
 import { placeOver, SVG, write } from "./attributes.js";
-import { labelsFor } from "./labels.js";
+import { labelsFor, say } from "./labels.js";
 import { Parts } from "./parts.js";
 import { Pictures } from "./pictures.js";
 import { attachProbe } from "./probe.js";
@@ -1039,9 +1039,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   #nameBoxes(tag: string | null = this.getAttribute("lang")): void {
     const { lang, labels } = labelsFor(tag);
     this.#parts.fillWords = (part) => {
-      const name = `${labels.box} ${part.fill.line}.${part.fill.box}`;
+      const name = say(labels.boxIn, { line: part.fill.line, slot: part.fill.box });
       const value = this.#example === undefined ? "" : fillValue(this.#example, part);
-      return { number: value === "" ? name : `${name}: ${value}`, lang };
+      return { number: value === "" ? name : say(labels.valued, { name, value }), lang };
     };
   }
 
@@ -1270,12 +1270,12 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       if (cell === undefined) continue;
       const several = (this.#laid?.items[cell.item - 1]?.boxes.length ?? 0) > 1;
       const filled = this.#filled?.[cell.item - 1]?.[cell.slot - 1] === true;
-      const name = several ? `${labels.box} ${cell.slot}` : labels.box;
+      const name = several ? say(labels.boxAt, { slot: cell.slot }) : labels.box;
       // A worked example's box says what its demo wrote in it: the text itself says nothing.
       const value = this.#fills.get(`${cell.item}.${cell.slot}`);
       rect.classList.toggle("filled", filled);
-      let label = filled ? `${name}, ${labels.filled}` : name;
-      if (value !== undefined) label = `${name}: ${value}`;
+      let label = filled ? say(labels.filled, { name }) : name;
+      if (value !== undefined) label = say(labels.valued, { name, value });
       write(rect, "aria-label", label);
       write(rect, "lang", lang);
     }
@@ -1740,7 +1740,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const target = this.#parts.target(opened);
     if (target !== undefined) this.#bringIntoSight(target);
     const { lang, labels } = labelsFor(this.getAttribute("lang"));
-    const number = `${labels.part} ${opened} ${labels.of} ${example.demo.length}.`;
+    const number = say(labels.part, { n: opened, total: example.demo.length });
     this.#parts.tell(part, { number, lang });
     this.#demoChanged();
   }
