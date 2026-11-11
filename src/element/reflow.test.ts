@@ -100,7 +100,21 @@ test("in a wide low window a row of one line sticks, until the consumer's offset
   expect(row.getBoundingClientRect().height).toBeCloseTo(60, 0);
   expect(position(row)).toBe("sticky");
   // 60 px over a quarter of 256 − 40: the offset changes no size, and the next scroll hears it.
+  // A scroller that holds nothing of the element, fixed so that the page keeps its size.
+  const other = document.createElement("div");
+  other.style.cssText =
+    "position: fixed; top: 0; left: 0; width: 50px; height: 50px; overflow: auto;";
+  const tall = document.createElement("div");
+  tall.style.height = "200px";
+  other.append(tall);
+  document.body.append(other);
+  made.push(other);
+  await settle();
   element.style.setProperty("--novatrail-canvas-top", "40px");
+  // Its scroll tells the element nothing.
+  other.scrollTop = 30;
+  await settle();
+  expect(position(row)).toBe("sticky");
   window.scrollTo({ top: 10, behavior: "instant" });
   await settle();
   expect(position(row)).toBe("static");
@@ -123,6 +137,11 @@ test.each(["auto", "hidden"])(
     await settle();
     expect(position(row)).toBe("static");
     scroller.style.height = `${5 * tall}px`;
+    await settle();
+    expect(position(row)).toBe("sticky");
+    // An ancestor that no longer contains it hands the row to the window, 896 px tall: it sticks.
+    scroller.style.overflow = "visible";
+    scroller.style.height = `${3 * tall}px`;
     await settle();
     expect(position(row)).toBe("sticky");
   },
@@ -202,4 +221,30 @@ test("with the row in its place in a panel of its own, Down handed on to the pag
   await settle();
   expect(position(row)).toBe("static");
   downByWindow(row);
+});
+
+test("an offset in percent counts of the window, and an offset of auto counts nothing", async () => {
+  await windowOf(1024, 256);
+  const { element, row } = await placed(made, 1000, undefined, { task: sheetTask() });
+  // 10 % of 256 is 25.6 px, and 4 × 60 is more than the 230.4 px below it.
+  element.style.setProperty("--novatrail-canvas-top", "10%");
+  await windowOf(1024, 257);
+  expect(position(row)).toBe("static");
+  await windowOf(1024, 256);
+  expect(position(row)).toBe("static");
+  element.style.setProperty("--novatrail-canvas-top", "auto");
+  await windowOf(1024, 257);
+  expect(position(row)).toBe("sticky");
+});
+
+test("a hidden element, whose row has no height, leaves the row as it was, and shown again it stands as before", async () => {
+  await windowOf(320, 256);
+  const { element, row } = await placed(made, 304, undefined, { task: sheetTask() });
+  expect(position(row)).toBe("static");
+  element.hidden = true;
+  await settle();
+  expect(row.classList.contains("loose")).toBe(true);
+  element.hidden = false;
+  await settle();
+  expect(position(row)).toBe("static");
 });

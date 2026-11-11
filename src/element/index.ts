@@ -1607,10 +1607,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * the consumer's offset. In a lower window, or once it wraps over more of it, it stands in its
    * place, above the statement, and goes with the scrolling, as WCAG's technique C34 un-fixes a
    * sticky header (1.4.10, 2.4.11). Its place and its size are the same either way, so the choice
-   * changes nothing it is made from. The scroller it sticks in is watched for its size.
+   * changes nothing it is made from. The scroller it sticks in is watched for its size. Only an
+   * element on the page asks: what calls this goes when the element leaves it.
    */
   #stick(): void {
-    if (!this.isConnected) return;
     const room = roomOf(this.#tools.element);
     if (room.port !== this.#port) {
       if (this.#port !== null) this.#page.unobserve(this.#port);
@@ -2248,9 +2248,10 @@ function isPage(node: Element, fromBody: boolean): boolean {
  */
 function stickyPortOf(element: Element): Element | null {
   const { fromBody } = pageOverflow();
-  for (let node = parentOf(element); node !== null; node = parentOf(node)) {
-    if (isPage(node, fromBody)) return null;
+  let node = parentOf(element);
+  while (node !== null && !isPage(node, fromBody)) {
     if (CONTAINING.test(getComputedStyle(node).overflowY)) return node;
+    node = parentOf(node);
   }
   return null;
 }
