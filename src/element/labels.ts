@@ -187,3 +187,23 @@ export function say(label: string, values: Readonly<Record<string, string | numb
     return String(value);
   });
 }
+
+/**
+ * A label with its places filled by name but one, which it is cut at: what comes before that place
+ * and what comes after it, for a node of its own to stand between them (T107). A label that names
+ * the place not once is a TypeError, and so is a place the values do not give, as with `say`.
+ */
+export function sayAround(
+  label: string,
+  place: string,
+  values: Readonly<Record<string, string | number>>,
+): readonly [string, string] {
+  const parts = label.split(`{${place}}`);
+  const [before, after] = parts;
+  if (parts.length !== 2 || before === undefined || after === undefined) {
+    throw new TypeError(`the label "${label}" names {${place}} not once`);
+  }
+  // The label whole first, so that a place with no value is named in it, not in a cut of it.
+  say(label, { ...values, [place]: "" });
+  return [say(before, values), say(after, values)];
+}

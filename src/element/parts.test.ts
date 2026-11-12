@@ -7,6 +7,7 @@ import {
   sheetTask,
   workedExample,
 } from "../core/tasks.fixture.js";
+import { axeOf, WORKBOOK_INCOMPLETE } from "./axe.fixture.js";
 import type { DemoChangeEvent, DemoState, NovatrailCanvas } from "./index.js";
 import { Parts } from "./parts.js";
 import { Pictures } from "./pictures.js";
@@ -762,13 +763,13 @@ test("Next brings a picture on an area taller than what is in sight into sight b
   expect(top()).toBeCloseTo(viewport.getBoundingClientRect().top, 0);
 });
 
-test("on a workbook the demo fills the example's boxes with their values as its parts open: a value in the middle of its box, at the width of its text, its box named with it, the item of the list the box and its value; hidden with a hidden demo, gone when the consumer gives fewer (T85)", async () => {
+test("on a workbook the demo fills the example's boxes with their values as its parts open: a value in the middle of its box, at the width of its text, after its box, which keeps its name; the item of the list the box and its value; hidden with a hidden demo, gone when the consumer gives fewer (T85, T107)", async () => {
   const { element, root } = await placed(made, 400);
   element.lang = "ru";
   element.workedExample = REMAINDERS;
   await settle();
   const boxes = () => [...root.querySelectorAll<SVGRectElement>(".print rect")];
-  const values = () => [...root.querySelectorAll<SVGTextElement>(".print text[aria-hidden]")];
+  const values = () => [...root.querySelectorAll<SVGTextElement>(".print text.value")];
   expect(boxes()).toHaveLength(2);
   expect(values()).toEqual([]);
   expect(boxes().map((rect) => rect.getAttribute("aria-label"))).toEqual(["Окошко 1", "Окошко 2"]);
@@ -784,10 +785,9 @@ test("on a workbook the demo fills the example's boxes with their values as its 
   expect(width).toBe(16);
   const left = Number(box.getAttribute("x"));
   expect(Number(five.getAttribute("x"))).toBe(left + Math.floor((100 - width) / 2));
-  expect(boxes().map((rect) => rect.getAttribute("aria-label"))).toEqual([
-    "Окошко 1: 5",
-    "Окошко 2",
-  ]);
+  // The value is no part of its box's name, and no screen reader is kept from it (T107).
+  expect(boxes().map((rect) => rect.getAttribute("aria-label"))).toEqual(["Окошко 1", "Окошко 2"]);
+  expect(five.hasAttribute("aria-hidden")).toBe(false);
   const list = root.querySelector("ol.parts");
   expect(list?.lastElementChild?.textContent).toBe("Окошко 1.1: 5");
   await next.click();
@@ -818,18 +818,19 @@ test("a box the demo fills is told in the labels' language, English without lang
   await settle();
   await page.elementLocator(element).getByRole("button", { name: "Next" }).click();
   const item = () => root.querySelector("ol.parts li");
+  const box = () => item()?.firstElementChild;
   // No lang: the element's own labels, English, in the item and the region alike.
   expect(item()?.textContent).toBe("Box 1.1: 5");
-  expect(item()?.getAttribute("lang")).toBe("en");
+  expect(box()?.getAttribute("lang")).toBe("en");
   expect(root.querySelector('[role="status"]')?.textContent).toBe("Part 1 of 1. Box 1.1: 5");
   // In the labels' language, which is not the list's, the module's.
   element.lang = "ru";
   expect(item()?.textContent).toBe("Окошко 1.1: 5");
-  expect(item()?.getAttribute("lang")).toBe("ru");
+  expect(box()?.getAttribute("lang")).toBe("ru");
   expect(root.querySelector("ol.parts")?.getAttribute("lang")).toBe("en");
   // Another example on the same page: no value of the last one stays in its box or its name.
   element.workedExample = remainders("6");
-  const values = root.querySelectorAll(".print text[aria-hidden]");
+  const values = root.querySelectorAll(".print text.value");
   expect(values).toHaveLength(0);
   expect(root.querySelector(".print rect")?.getAttribute("aria-label")).toBe("Окошко");
 });
@@ -839,5 +840,100 @@ test("the list on its own, before an element gives it its words, names a box it 
   parts.show([{ fill: { line: 1, box: 2 } }], { opened: 1, hidden: false });
   const item = parts.list.firstElementChild;
   expect(item?.textContent).toBe("Box 1.2");
-  expect(item?.getAttribute("lang")).toBe("en");
+  expect(item?.hasAttribute("lang")).toBe(false);
+  expect(item?.firstElementChild?.getAttribute("lang")).toBe("en");
+});
+
+/** A worked example on a workbook whose one box the demo fills with a word. */
+const worded = (value: string) => ({
+  statement: [{ text: "Say the number in words." }],
+  canvas: { kind: "workbook" as const },
+  lines: [{ line: [{ text: "5 is" }, { binding: "box", value }] }],
+  demo: [{ fill: { line: 1, box: 1 } }],
+});
+
+/** The language of a node as the page has it, by `:lang()`, among those the test speaks of. */
+const langOf = (node: Element | null | undefined) =>
+  ["ru", "en", "de"].find((tag) => node?.matches(`:lang(${tag})`));
+
+/** Each span of a node, its text and its language. */
+const spans = (node: Element | null | undefined) =>
+  [...(node?.querySelectorAll("span") ?? [])].map((span) => [span.textContent, langOf(span)]);
+
+test("a value the demo writes in a box is a node of its own in the lines' language — in the box, in the item of the list and in the region — while the box and the words around it are in the labels'; in Chromium's own tree too, and with no violation axe finds (T107; 3.1.2)", async () => {
+  const { element, root } = await placed(made, 400);
+  element.lang = "ru";
+  element.manifest = moduleManifest({ explanation: "en" });
+  element.workedExample = worded("five");
+  await settle();
+  await page.elementLocator(element).getByRole("button", { name: "Дальше" }).click();
+  const rect = root.querySelector(".print rect");
+  const value = () => root.querySelector(".print text.value");
+  const item = () => root.querySelector("ol.parts li");
+  const status = root.querySelector('[role="status"]');
+  // In the box: the box by its name in the labels' language, the value its own text in the lines'.
+  expect(rect?.getAttribute("aria-label")).toBe("Окошко");
+  expect(langOf(rect)).toBe("ru");
+  expect(value()?.textContent).toBe("five");
+  expect(value()?.hasAttribute("lang")).toBe(false);
+  expect(langOf(value())).toBe("en");
+  // In the item and the region: the labels' words in theirs, and the value in a span of its own.
+  expect(item()?.hasAttribute("lang")).toBe(false);
+  expect(spans(item())).toEqual([
+    ["Окошко 1.1: ", "ru"],
+    ["five", "en"],
+  ]);
+  expect(spans(status)).toEqual([
+    ["Часть 1 из 1.", "ru"],
+    ["Окошко 1.1: ", "ru"],
+    ["five", "en"],
+  ]);
+  // Chromium reads the value as a text of its own: after the box in the line, after the box's
+  // words in the item and the region.
+  const nodes = await accessibilityTree();
+  const byId = new Map(nodes.map((node) => [node.nodeId, node]));
+  const heard: string[] = [];
+  const walk = (id: string): void => {
+    const node = byId.get(id);
+    if (node === undefined) return;
+    const role = node.role?.value;
+    if (!node.ignored && (role === "StaticText" || role === "image")) {
+      // Trimmed: whether a name keeps the space after the box's words is Chromium's to choose.
+      heard.push(`${role} ${String(node.name?.value ?? "").trim()}`);
+      return;
+    }
+    for (const child of node.childIds ?? []) walk(child);
+  };
+  const top = nodes[0];
+  if (top !== undefined) walk(top.nodeId);
+  const after = (first: string) => heard[heard.indexOf(first) + 1];
+  expect(heard.filter((said) => said === "StaticText five")).toHaveLength(3);
+  expect(after("image Окошко")).toBe("StaticText five");
+  expect(heard.filter((said) => said === "StaticText Окошко 1.1:")).toHaveLength(2);
+  expect(
+    heard.filter((said) => said.startsWith("image Окошко") && said !== "image Окошко"),
+  ).toEqual([]);
+  await axeOf(element, WORKBOOK_INCOMPLETE);
+  // A new language of the module reaches the value in the box and in the item, which inherit it.
+  element.manifest = moduleManifest({ explanation: "de" });
+  expect(langOf(value())).toBe("de");
+  expect(spans(item())).toEqual([
+    ["Окошко 1.1: ", "ru"],
+    ["five", "de"],
+  ]);
+  // Without a manifest the value is in the element's own language, and for a lang the labels are
+  // not in, the column's (T106), while the box's words are in English.
+  element.manifest = undefined;
+  expect(langOf(value())).toBe("ru");
+  element.lang = "de";
+  expect(langOf(value())).toBe("de");
+  expect(spans(item())).toEqual([
+    ["Box 1.1: ", "en"],
+    ["five", "de"],
+  ]);
+  expect(rect?.getAttribute("aria-label")).toBe("Box");
+  // A hidden demo takes the value out of the box; the box keeps its name.
+  await page.elementLocator(element).getByRole("button", { name: "Demo" }).click();
+  expect(value()).toBeNull();
+  expect(rect?.getAttribute("aria-label")).toBe("Box");
 });

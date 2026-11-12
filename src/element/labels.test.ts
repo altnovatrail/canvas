@@ -4,7 +4,7 @@
 // architecture 6 spec; a language the table has not is English, under its own tag.
 
 import { expect, test } from "vitest";
-import { knows, LANGUAGES, labelsFor, placesOf, say } from "./labels.js";
+import { knows, LANGUAGES, labelsFor, placesOf, say, sayAround } from "./labels.js";
 
 const english = labelsFor("en").labels;
 
@@ -48,6 +48,35 @@ test("a label is filled by name: one string, its places in its own order", () =>
 test("a place with no value is a TypeError, never a brace on the screen", () => {
   expect(() => say(english.part, { n: 2 })).toThrow(/no value for \{total\}/);
   expect(() => say("{constructor}", {})).toThrow(TypeError);
+});
+
+test("a label cut at the place of a value fills the rest, in every language, which names the value once (T107)", () => {
+  for (const tag of LANGUAGES) {
+    const { labels } = labelsFor(tag);
+    expect(
+      placesOf(labels.valued).filter((place) => place === "value"),
+      tag,
+    ).toHaveLength(1);
+    const name = say(labels.boxIn, { line: 1, slot: 1 });
+    const [before, after] = sayAround(labels.valued, "value", { name });
+    expect(`${before}5${after}`).toBe(say(labels.valued, { name, value: "5" }));
+  }
+  expect(sayAround(labelsFor("ru").labels.valued, "value", { name: "Окошко 1.1" })).toEqual([
+    "Окошко 1.1: ",
+    "",
+  ]);
+  // A language that puts the value first has it at the start.
+  expect(sayAround("{value} в {name}", "value", { name: "окошке" })).toEqual(["", " в окошке"]);
+  // Braces in a value given for another place are no places.
+  expect(sayAround(english.valued, "value", { name: "{value}" })).toEqual(["{value}: ", ""]);
+});
+
+test("a label that names the place to cut at not once, or a place with no value, is a TypeError", () => {
+  expect(() => sayAround(english.boxIn, "value", { line: 1, slot: 1 })).toThrow(/not once/);
+  expect(() => sayAround("{value} {value}", "value", {})).toThrow(/not once/);
+  expect(() => sayAround(english.valued, "value", {})).toThrow(
+    'the label "{name}: {value}" has no value for {name}',
+  );
 });
 
 test("the buttons say the words of the table of architecture 6 spec", () => {

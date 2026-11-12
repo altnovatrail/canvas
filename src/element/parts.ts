@@ -7,8 +7,9 @@
 // in words till then. A picture on an area of the sheet is read by its words here, while the
 // picture itself stands on the layer of the author's demo, stretched over its area, the later part
 // over the earlier, and nothing stands there till its file is decoded (T61). A box of a workbook
-// the demo fills is read as the box and its value, which the element writes in the box itself
-// (T85). This module is no entry point of the package.
+// the demo fills is read as the box, in the labels' language, and its value, a node of its own in
+// the parts' language, which the element writes in the box itself too (T85, T107). This module is
+// no entry point of the package.
 
 import {
   type AreaPicture,
@@ -30,6 +31,21 @@ export interface Told {
   /** The number of the part, of so many, in the labels' language: «Часть 2 из 4.». */
   readonly number: string;
   /** The language of the labels the number is in. */
+  readonly lang: string;
+}
+
+/**
+ * What a part that fills a box says: the box, in the labels' language, around the value the demo
+ * wrote in it, which is in the parts' own (T107). Without a value the box is `before` alone.
+ */
+export interface FillWords {
+  /** The labels' words before the value: "Box 1.2: ". */
+  readonly before: string;
+  /** The value, in the parts' language, or "" for none. */
+  readonly value: string;
+  /** The labels' words after the value, most often none. */
+  readonly after: string;
+  /** The language of the labels the words around the value are in. */
   readonly lang: string;
 }
 
@@ -62,17 +78,18 @@ export class Parts {
   /** The open items of parts that fill a box, which a new language words anew. */
   readonly #fills = new Map<HTMLLIElement, FillPart>();
   /**
-   * What a part that fills a box says, and in what language: the box, in the labels' language, and
-   * its value. The element sets it with each example and as its language changes; `words` says the
-   * open items again in the new one.
+   * What a part that fills a box says: the box, in the labels' language, around its value. The
+   * element sets it with each example and as its language changes; `fillWords` says the open items
+   * again in the new one. On its own, the list says the box by the English label, and no value.
    */
-  #fillWords: (part: FillPart) => Told = ({ fill }) => {
+  #fillWords: (part: FillPart) => FillWords = ({ fill }) => {
     const { lang, labels } = labelsFor(null);
-    return { number: say(labels.boxIn, { line: fill.line, slot: fill.box }), lang };
+    const before = say(labels.boxIn, { line: fill.line, slot: fill.box });
+    return { before, value: "", after: "", lang };
   };
 
   /** What a part that fills a box says from now on, the items already open too. */
-  set fillWords(words: (part: FillPart) => Told) {
+  set fillWords(words: (part: FillPart) => FillWords) {
     this.#fillWords = words;
     for (const [item, part] of this.#fills) this.#sayFill(item, part);
   }
@@ -155,16 +172,11 @@ export class Parts {
    * has its number alone.
    */
   tell(part: ExamplePart, told: Told): void {
-    const number = document.createElement("span");
-    number.lang = told.lang;
-    number.textContent = told.number;
-    const said = document.createElement("span");
+    const number = spanOf(told.number, told.lang);
     if (isFill(part)) {
-      // A box and its value, in the labels' language, as its item says them.
-      const { number: words, lang } = this.#fillWords(part);
-      said.lang = lang;
-      said.textContent = words;
-      this.status.replaceChildren(number, " ", said);
+      // The box in the labels' language and its value in the parts', as its item says them.
+      const nodes = this.#fillNodes(part, this.list.getAttribute("lang"));
+      this.status.replaceChildren(number, " ", ...nodes);
       return;
     }
     const words = "text" in part ? part.text : part.alt;
@@ -173,10 +185,7 @@ export class Parts {
       return;
     }
     // The parts' language, which the list has, or none: then the element's own, as the list's.
-    const lang = this.list.getAttribute("lang");
-    if (lang !== null) said.lang = lang;
-    said.textContent = words;
-    this.status.replaceChildren(number, " ", said);
+    this.status.replaceChildren(number, " ", spanOf(words, this.list.getAttribute("lang")));
   }
 
   /** The region is empty: what it told is no more, and the same words may be told again. */
@@ -184,11 +193,26 @@ export class Parts {
     this.status.replaceChildren();
   }
 
-  /** An item of a part that fills a box says the box and its value, in the labels' language. */
+  /**
+   * An item of a part that fills a box says the box, in the labels' language, and its value, in the
+   * list's, which the item and the value inherit: a new language of the parts reaches them too.
+   */
   #sayFill(item: HTMLLIElement, part: FillPart): void {
-    const { number, lang } = this.#fillWords(part);
-    item.lang = lang;
-    item.textContent = number;
+    item.replaceChildren(...this.#fillNodes(part, null));
+  }
+
+  /**
+   * What a part that fills a box says, as nodes (T107; 3.1.2): the labels' words, each run a span
+   * in their language, and the value a span of its own between them, in the language given, or
+   * with none, the one it inherits.
+   */
+  #fillNodes(part: FillPart, valueLang: string | null): HTMLSpanElement[] {
+    const { before, value, after, lang } = this.#fillWords(part);
+    const nodes: HTMLSpanElement[] = [];
+    if (before !== "") nodes.push(spanOf(before, lang));
+    if (value !== "") nodes.push(spanOf(value, valueLang));
+    if (after !== "") nodes.push(spanOf(after, lang));
+    return nodes;
   }
 
   /** An item leaving the list takes its picture off, once, and is no fill's any more. */
@@ -250,4 +274,12 @@ export class Parts {
       image.remove();
     };
   }
+}
+
+/** A span of text, in a language given, or with none, in the one it inherits. */
+function spanOf(text: string, lang: string | null): HTMLSpanElement {
+  const span = document.createElement("span");
+  if (lang !== null) span.lang = lang;
+  span.textContent = text;
+  return span;
 }
