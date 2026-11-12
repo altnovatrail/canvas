@@ -36,10 +36,10 @@ export interface Value {
 
 /**
  * The values of the row, as the table of architecture 6 of spec names them, each by its button's
- * key in labels.ts: the four of the page's zoom and of the scroll across wait for the table by
- * В76 in RUN.md (T94). Demo has two, as the demo is shown or hidden. One thing is left out: the table
- * fills the finger's icon while its mode is on, but the mode hides the button (R29), so the fill
- * would never show and is not embedded (R46).
+ * key in labels.ts, the four of the page's zoom and of the scroll across among them since spec
+ * took them by В76 (T94; Д219 spec). Demo has two, as the demo is shown or hidden. One thing is
+ * left out: the table fills the finger's icon while its mode is on, but the mode hides the button
+ * (R29), so the fill would never show and is not embedded (R46).
  */
 export const TABLE: Readonly<Record<string, Value>> = {
   next: { base: "arrow-forward", filled: false, mirrored: true },

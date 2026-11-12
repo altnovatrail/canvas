@@ -21,7 +21,7 @@ tutor_tag := "v0.1.22"
 # The release of spec whose file of the legal texts, in tasks/spec-<tag>/, the samples page takes
 # its sets of texts from (T89; R69): the tag spec/ stands on, and LEGAL_FILE's in scripts/legal.ts,
 # which scripts/legal.test.ts holds this to. ci-licenses verifies the file.
-spec_tag := "v0.15.1"
+spec_tag := "v0.16.3"
 legal_file := "legal-2.tar.gz"
 
 # The release of modules whose package of grade-3-math, in tasks/modules-<tag>/, ci-licenses writes

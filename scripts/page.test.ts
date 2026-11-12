@@ -356,7 +356,7 @@ describe("the builder", () => {
   test("takes the release file's sets in force, and the part for tests into no version but 0.0.0 (T89, T102)", {
     timeout: budget(1_726),
   }, () => {
-    // At v0.15.1 the measurement's and the eval set's sets are in force, and a child's is a draft.
+    // At v0.16.3 the measurement's and the eval set's sets are in force, and a child's is a draft.
     expect(textsFor("1.0.0")).toEqual({
       measurement: expect.objectContaining({ version: RELEASE_TEXTS }),
       evalSet: expect.objectContaining({ version: "eval-set-1" }),
