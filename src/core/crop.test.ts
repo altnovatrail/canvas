@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { budget } from "./budget.fixture.js";
 import {
   cropTo,
   type FinalStroke,
@@ -433,7 +434,9 @@ function reference(strokes: readonly Stroke[], groups: readonly Group[], digit: 
 }
 
 describe("the rule written out once more", () => {
-  test("gives the numbers the crop gives, on crowded sheets, at every height of digit", () => {
+  test("gives the numbers the crop gives, on crowded sheets, at every height of digit", {
+    timeout: budget(1_034),
+  }, () => {
     for (const seed of Array.from({ length: 200 }, (_, n) => n + 1)) {
       const strokes = crowd(seed);
       const groups = groupsOf(strokes);

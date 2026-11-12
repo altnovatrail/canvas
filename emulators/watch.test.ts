@@ -13,6 +13,7 @@ import { type Browser, chromium, type Page } from "playwright";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { hash, policy, styleOf } from "../scripts/csp.ts";
 import { buildPage } from "../scripts/page.ts";
+import { budget } from "../src/core/budget.fixture.ts";
 import {
   asked,
   type Box,
@@ -220,7 +221,7 @@ describe("in the page's build", () => {
     file = (await buildPage(folder, "0.0.0")).path;
     tested = (await buildPage(join(folder, "test"), "0.0.0", "page/sets/test")).path;
     browser = await chromium.launch();
-  }, 120_000);
+  }, budget(3_800));
 
   afterAll(async () => {
     await browser?.close();
@@ -256,7 +257,9 @@ describe("in the page's build", () => {
     await until(page, PAINTED);
   }
 
-  test("sees the tasks, a stroke, each saved file's text and the workbook's page, and nothing else", async () => {
+  test("sees the tasks, a stroke, each saved file's text and the workbook's page, and nothing else", {
+    timeout: budget(1_518),
+  }, async () => {
     const page = await opened(file);
     try {
       expect(await read(page)).toMatchObject({ watched: true, defined: true, tasks: TASKS });
@@ -316,9 +319,11 @@ describe("in the page's build", () => {
     } finally {
       await page.close();
     }
-  }, 60_000);
+  });
 
-  test("goes T22's moves on the sheet, the page opened anew and the file opened in it (R65)", async () => {
+  test("goes T22's moves on the sheet, the page opened anew and the file opened in it (R65)", {
+    timeout: budget(922),
+  }, async () => {
     const page = await opened(file);
     try {
       expect(await page.evaluate(START)).toBe(true);
@@ -394,9 +399,11 @@ describe("in the page's build", () => {
     } finally {
       await page.close();
     }
-  }, 60_000);
+  });
 
-  test("in the test build: the eval set open, and a child's session begun with the form's code (T22, T101)", async () => {
+  test("in the test build: the eval set open, and a child's session begun with the form's code (T22, T101)", {
+    timeout: budget(736),
+  }, async () => {
     const page = await opened(tested);
     try {
       expect(JSON.parse(String(await page.evaluate(TEST_START)))).toEqual({
@@ -435,9 +442,11 @@ describe("in the page's build", () => {
     } finally {
       await page.close();
     }
-  }, 60_000);
+  });
 
-  test("written into a copy of the page, sees a request its own script makes first thing", async () => {
+  test("written into a copy of the page, sees a request its own script makes first thing", {
+    timeout: budget(535),
+  }, async () => {
     // The page's own script asks for the network first thing: the failure T78 must catch. Its
     // policy is worked out again, as the builder does, so that the script still runs.
     const built = readFileSync(file, "utf8");
@@ -464,5 +473,5 @@ describe("in the page's build", () => {
     } finally {
       await page.close();
     }
-  }, 60_000);
+  });
 });

@@ -1,4 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
+import { budget } from "../core/budget.fixture.js";
 import { gridPath } from "../core/grid.js";
 import { moduleManifest, sheetTask, workedExample } from "../core/tasks.fixture.js";
 import type { HistoryChange, WorkedExample } from "./index.js";
@@ -161,7 +162,9 @@ test("an example equal to the one shown changes nothing, and another changes its
   expect(root.querySelector(".statement")?.textContent).toBe("How many posts are there?");
 });
 
-test("a worked example's canvas takes no input: a finger on the sheet scrolls it as the browser does, and a pen, a mouse and a script's event write nothing nor put the page in pen mode", async () => {
+test("a worked example's canvas takes no input: a finger on the sheet scrolls it as the browser does, and a pen, a mouse and a script's event write nothing nor put the page in pen mode", {
+  timeout: budget(824),
+}, async () => {
   const { element, root, canvas, viewport, view, told } = await sheet(300);
   element.workedExample = workedExample();
   await settle();

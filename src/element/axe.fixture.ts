@@ -7,11 +7,11 @@
 // build leaves this module out, and the package never has it.
 
 import axe from "axe-core";
-import { expect } from "vitest";
+import { expect, vi } from "vitest";
 import { SHORT } from "../core/pages.fixture.js";
 import { DEMO, REMAINDERS, sheetTask, workbookTask, workedExample } from "../core/tasks.fixture.js";
 import type { NovatrailCanvas, WorkedExample } from "./index.js";
-import { level, placed, quarters, settle, sheetWork } from "./pointer.fixture.js";
+import { arrive, level, placed, quarters, settle, sheetWork } from "./pointer.fixture.js";
 import { TAGS } from "./wcag.fixture.js";
 
 /**
@@ -64,15 +64,27 @@ export interface Kind {
   readonly incomplete: readonly string[];
 }
 
-/** The consumer's media: every picture the same file of four colours. */
-const media = () => quarters();
+/** The consumer's media, a new one for each element: every picture the same file of four colours,
+ * and every call kept, so that the files given can be waited for. */
+const media = () => vi.fn(() => quarters());
 
-/** The pictures an element shows once their files have come: as many images, HTML and SVG, as
- * given, and the frames they were drawn in. */
+/**
+ * The pictures an element shows once their files have come: as many images, HTML and SVG, as
+ * given, and the frames they were drawn in. It waits for the files and their decodes themselves,
+ * not for a time: under load a file of the consumer's can take longer than any time a test would
+ * guess (R75). The decodes are those a spy on `HTMLImageElement.prototype.decode` records, which
+ * the test's file puts before each test, as arrive() asks.
+ */
 async function pictured(element: NovatrailCanvas, images: number): Promise<void> {
-  const root = element.shadowRoot;
-  await expect.poll(() => root?.querySelectorAll("img, image").length).toBe(images);
-  await settle();
+  // The loads first, however long the consumer's media takes: a file a canvas encodes may come
+  // after the first task, and arrive() waits only for the decodes of files that have come.
+  await new Promise((resolve) => setTimeout(resolve));
+  const given = element.media;
+  if (!vi.isMockFunction(given)) throw new Error("pictured waits for the files a mock gave");
+  if (images > 0 && given.mock.calls.length === 0) throw new Error("the element asked for no file");
+  await Promise.allSettled(given.mock.results.map(({ value }) => value));
+  await arrive();
+  expect(element.shadowRoot?.querySelectorAll("img, image").length).toBe(images);
 }
 
 /** A sheet put on the page, 400 CSS px wide, with a level stroke on it. */
@@ -88,7 +100,7 @@ async function written(made: HTMLElement[]) {
 function example(given: WorkedExample, images = 0) {
   return async (made: HTMLElement[]) => {
     const { element } = await placed(made, 400);
-    element.media = media;
+    element.media = media();
     element.workedExample = given;
     element.demoState = { opened: given.demo.length, hidden: false };
     await pictured(element, images);
@@ -115,7 +127,7 @@ export const KINDS: readonly Kind[] = [
         { picture: "pictures/clock.png", alt: "A clock at three", width: 120, height: 60 },
       ];
       const { element } = await placed(made, 400);
-      element.media = media;
+      element.media = media();
       element.task = sheetTask({ statement });
       await pictured(element, 2);
       return element;

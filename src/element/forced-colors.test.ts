@@ -1,4 +1,4 @@
-import { afterEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 import { CROP } from "../core/crop.js";
 import { pageOf } from "../core/page.js";
@@ -26,6 +26,10 @@ import { probe } from "./probe.js";
 // colours. vitest.config.ts runs this file alone, in a project of its own.
 
 const made: HTMLElement[] = [];
+// The decodes the element asks for, which arrive() and the kinds with pictures wait for.
+beforeEach(() => {
+  vi.spyOn(HTMLImageElement.prototype, "decode");
+});
 afterEach(() => {
   for (const element of made.splice(0)) element.remove();
   vi.restoreAllMocks();
@@ -286,8 +290,6 @@ test("with forced colours a worked example's Demo draws its icon in the colour o
 });
 
 test("with forced colours a picture on an area of the sheet keeps the colours of its file, as a picture does (T61)", async () => {
-  // The decodes the element asks for, which arrive() waits for.
-  vi.spyOn(HTMLImageElement.prototype, "decode");
   const element = document.createElement("novatrail-canvas");
   element.style.width = "400px";
   element.workedExample = workedExample({

@@ -6,6 +6,7 @@ import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
+import { budget } from "../src/core/budget.fixture.ts";
 import {
   ESSAYS,
   type Json,
@@ -30,7 +31,9 @@ function packageWith(change: (view: Json) => void, module?: string): string {
   return folder;
 }
 
-test("a module's samples are written one file to a seed, and a seed of the same task again", () => {
+test("a module's samples are written one file to a seed, and a seed of the same task again", {
+  timeout: budget(1_516),
+}, () => {
   const folder = temporary("eval");
   const lines = writeModuleSamples(PACKAGE, "v0.2.0", folder, [
     "times-tables-d1:201",
@@ -50,9 +53,11 @@ test("a module's samples are written one file to a seed, and a seed of the same 
   writeFileSync(join(folder, "synthetic-201.json"), first);
   writeModuleSamples(PACKAGE, "v0.2.0", folder, ["times-tables-d1:201"]);
   expect(readFileSync(join(folder, "synthetic-201.json"), "utf8")).toBe(first);
-}, 30_000);
+});
 
-test("a call that names another task's seed, a task the generator draws none of, or none, writes nothing", () => {
+test("a call that names another task's seed, a task the generator draws none of, or none, writes nothing", {
+  timeout: budget(661),
+}, () => {
   const folder = temporary("eval");
   writeModuleSamples(PACKAGE, "v0.2.0", folder, ["times-tables-d1:201"]);
   const before = readFileSync(join(folder, "synthetic-201.json"), "utf8");
@@ -100,7 +105,7 @@ test("a call that names another task's seed, a task the generator draws none of,
   expect(readFileSync(join(folder, "synthetic-201.json"), "utf8")).toBe(before);
 });
 
-test("a person's sample of the same task is never written over", () => {
+test("a person's sample of the same task is never written over", { timeout: budget(675) }, () => {
   const folder = temporary("eval");
   writeModuleSamples(PACKAGE, "v0.2.0", folder, ["times-tables-d1:207"]);
   const path = join(folder, "synthetic-207.json");
@@ -144,7 +149,9 @@ const TASKS = [
   "times-tables-d5",
 ];
 
-test("a task's digest is the one its sample names, a line to a task in the order named", () => {
+test("a task's digest is the one its sample names, a line to a task in the order named", {
+  timeout: budget(2_775),
+}, () => {
   const folder = temporary("eval");
   writeModuleSamples(
     PACKAGE,
@@ -160,7 +167,7 @@ test("a task's digest is the one its sample names, a line to a task in the order
   expect(moduleDigests(PACKAGE, order)).toEqual({ lines: [...named].reverse(), wrong: [] });
   expect(named.every((line) => /\tsha256:[0-9a-f]{64}$/.test(line))).toBe(true);
   // Twelve drawn, workbooks among them: a time of its own, as the generator's tests have.
-}, 60_000);
+});
 
 test("a task the generator draws none of has a digest, but a template or a task not there is named", () => {
   const choice = packageWith((view) => {

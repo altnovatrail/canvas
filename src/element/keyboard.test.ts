@@ -1,5 +1,6 @@
 import { afterEach, expect, test } from "vitest";
 import { userEvent } from "vitest/browser";
+import { budget } from "../core/budget.fixture.js";
 import { SHORT } from "../core/pages.fixture.js";
 import { sheetTask, workbookTask, workedExample } from "../core/tasks.fixture.js";
 import { contrast } from "./axe.fixture.js";
@@ -114,7 +115,9 @@ test.each(KINDS)(
   },
 );
 
-test("the keys scroll the container in focus as the browser scrolls one, and the layers go with it: Page Down, End, Home, the arrow down, Page Up and space", async () => {
+test("the keys scroll the container in focus as the browser scrolls one, and the layers go with it: Page Down, End, Home, the arrow down, Page Up and space", {
+  timeout: budget(1_247),
+}, async () => {
   const { element, viewport } = await put((each) => {
     each.task = sheetTask();
   }, 300);
@@ -211,8 +214,57 @@ test("the region and the row are named in the element's language, by the kind it
   expect(names()).toEqual(["Пример", "Кнопки примера"]);
   element.setAttribute("lang", "de");
   expect(names()).toEqual(["Worked example", "Worked example buttons"]);
-  // The container takes no language of its own: the statement in it has the task's.
-  expect(viewport.hasAttribute("lang")).toBe(false);
+  // The name is English, and the container is said in English: what it holds, in German.
+  expect(viewport.matches(":lang(en)")).toBe(true);
+});
+
+test("for a lang the labels are not in, the container is in theirs and the column, the statement, a workbook's lines and a demo's parts in the element's, of every kind and through every change; a lang they are in, and none, give neither a lang of its own (T106)", async () => {
+  const { element, root, viewport } = await put((each) => {
+    each.task = sheetTask();
+  }, 300);
+  const column = root.querySelector<HTMLElement>(".column");
+  if (column?.parentElement !== viewport) throw new Error("the container holds no column");
+  const langs = () => [viewport.getAttribute("lang"), column.getAttribute("lang")];
+  /** Whether what a selector finds in the column is in German, as the element is. */
+  const german = (selector: string) => {
+    const found = column.querySelector(selector);
+    if (!found) throw new Error(`the column has no ${selector}`);
+    return found.matches(":lang(de)");
+  };
+  /** The container in English, named in it, and the column, all it holds, in the element's tag. */
+  const apart = (tag: string, name: string) => {
+    expect(langs()).toEqual(["en", tag]);
+    expect([...viewport.children]).toEqual([column]);
+    expect(viewport.getAttribute("aria-label")).toBe(name);
+    expect(viewport.matches(":lang(en)")).toBe(true);
+  };
+  expect(langs()).toEqual([null, null]);
+  element.setAttribute("lang", "de-CH");
+  apart("de-CH", "Sheet");
+  expect([german(".statement"), german(".sheet")]).toEqual([true, true]);
+  element.task = workbookTask(SHORT);
+  await settle();
+  apart("de-CH", "Workbook");
+  expect(german(".print [role='list']")).toBe(true);
+  element.task = undefined;
+  element.workedExample = workedExample();
+  await settle();
+  apart("de-CH", "Worked example");
+  expect(german(".parts")).toBe(true);
+  element.setAttribute("lang", "fr");
+  apart("fr", "Worked example");
+  // A lang of no language is out of the table too: the column keeps it, as the element has it.
+  element.setAttribute("lang", "");
+  apart("", "Worked example");
+  for (const tag of ["ru-RU", "en-GB", "ru"]) {
+    element.setAttribute("lang", tag);
+    expect(langs()).toEqual([null, null]);
+    expect(viewport.matches(`:lang(${tag})`)).toBe(true);
+  }
+  element.setAttribute("lang", "de");
+  apart("de", "Worked example");
+  element.removeAttribute("lang");
+  expect(langs()).toEqual([null, null]);
 });
 
 test.each([

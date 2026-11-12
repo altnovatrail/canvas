@@ -33,7 +33,8 @@
 // its contract with app are spec's, of @altnovatrail/spec/canvas: the element implements its CanvasElement, and the package puts the
 // element and its events in the DOM's maps (T69; R07). The keyboard goes into the sheet and out:
 // a container that scrolls is a region named by the canvas kind, with a stop of Tab of its own and
-// a ring when the keyboard brings the focus there (T93; R33). The row's Zoom in and Zoom out step
+// a ring when the keyboard brings the focus there (T93; R33); for a `lang` the labels are not in,
+// the container is in theirs and the column in the element's (T106; R74). The row's Zoom in and Zoom out step
 // the page's zoom of the sheet from its fit to twice it, and a zoomed sheet scrolls across as well
 // as down, with Left and Right in the row, two fingers and the keys (T94).
 
@@ -99,7 +100,7 @@ import {
 } from "../core/task.js";
 import { nextIdOf, resumeOf, Work } from "../core/work.js";
 import { placeOver, SVG, write } from "./attributes.js";
-import { labelsFor, say } from "./labels.js";
+import { knows, labelsFor, say, sayAround } from "./labels.js";
 import { Parts } from "./parts.js";
 import { Pictures } from "./pictures.js";
 import { attachProbe } from "./probe.js";
@@ -624,10 +625,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   #cells: readonly Cell[] = [];
   #rects: readonly SVGRectElement[] = [];
   /**
-   * The values a worked example's demo has written in its boxes, by line and box from 1, and their
-   * texts on the page, one for each frame that has had one (T85; R60).
+   * The texts of the values a worked example's demo has written in its boxes, one for each frame
+   * that has had one (T85; R60).
    */
-  #fills: ReadonlyMap<string, string> = new Map();
   #values: (SVGTextElement | undefined)[] = [];
   #taken = new WeakMap<Stroke, number>();
   /** Which answer slots are filled, the same array until one changes, or null (R37, R42). */
@@ -1134,15 +1134,18 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The demo's list says a box it fills in the labels' language, and its value: «Окошко 1.2: 5»;
-   * its open items too, anew. Without `lang` the labels are English, as the element's own.
+   * The demo's list says a box it fills in the labels' language, around its value, which is a node
+   * of its own in the parts' language: "Box 1.2: " and "5" (T107); its open items too, anew.
+   * Without `lang` the labels are English, as the element's own.
    */
   #nameBoxes(tag: string | null = this.getAttribute("lang")): void {
     const { lang, labels } = labelsFor(tag);
     this.#parts.fillWords = (part) => {
       const name = say(labels.boxIn, { line: part.fill.line, slot: part.fill.box });
       const value = this.#example === undefined ? "" : fillValue(this.#example, part);
-      return { number: value === "" ? name : say(labels.valued, { name, value }), lang };
+      if (value === "") return { before: name, value, after: "", lang };
+      const [before, after] = sayAround(labels.valued, "value", { name });
+      return { before, value, after, lang };
     };
   }
 
@@ -1366,7 +1369,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /**
    * Each box of the lines as it now is (R36, R37): its frame, thicker when it is filled, and its
    * name in the labels' language, by the element's `lang` — "Box" alone in its line, numbered by
-   * its slot among several, and "filled" when it is. Only what has changed is written.
+   * its slot among several, and "filled" when it is. A value a worked example's demo wrote in it is
+   * no part of its name: its text after the frame says it, in the lines' language (T107). Only
+   * what has changed is written.
    */
   #markBoxes(): void {
     const { lang, labels } = labelsFor(this.getAttribute("lang"));
@@ -1376,12 +1381,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       const several = (this.#laid?.items[cell.item - 1]?.boxes.length ?? 0) > 1;
       const filled = this.#filled?.[cell.item - 1]?.[cell.slot - 1] === true;
       const name = several ? say(labels.boxAt, { slot: cell.slot }) : labels.box;
-      // A worked example's box says what its demo wrote in it: the text itself says nothing.
-      const value = this.#fills.get(`${cell.item}.${cell.slot}`);
       rect.classList.toggle("filled", filled);
-      let label = filled ? say(labels.filled, { name }) : name;
-      if (value !== undefined) label = say(labels.valued, { name, value });
-      write(rect, "aria-label", label);
+      write(rect, "aria-label", filled ? say(labels.filled, { name }) : name);
       write(rect, "lang", lang);
     }
   }
@@ -2001,18 +2002,17 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /**
    * The values a worked example's demo has written in the boxes of its workbook (T85; R60): each in
    * the middle of its box, on the line's baseline, at the width the layout gives its text, as the
-   * lines' texts are; none while the demo is hidden. Only what changed is written.
+   * lines' texts are; none while the demo is hidden. A value is a text of its own just after its
+   * box's frame, which a screen reader reads after the box, in the lines' language, as the lines'
+   * texts are (T107; 3.1.2). Only what changed is written.
    */
   #showFills(fills: ReadonlyMap<string, string>): void {
-    this.#fills = fills;
     const page = this.#laid;
     if (page === undefined) return;
-    let changed = false;
     for (const [c, cell] of this.#cells.entries()) {
       const value = fills.get(`${cell.item}.${cell.slot}`);
       let text = this.#values[c];
       if (value === (text?.textContent ?? undefined)) continue;
-      changed = true;
       if (value === undefined) {
         text?.remove();
         this.#values[c] = undefined;
@@ -2023,7 +2023,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       if (box === undefined || rect === undefined) continue;
       if (text === undefined) {
         text = document.createElementNS(SVG, "text");
-        text.setAttribute("aria-hidden", "true");
+        text.setAttribute("class", "value");
         text.setAttribute("lengthAdjust", "spacingAndGlyphs");
         rect.after(text);
         this.#values[c] = text;
@@ -2037,7 +2037,6 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       text.setAttribute("textLength", String(width));
       text.textContent = value;
     }
-    if (changed) this.#markBoxes();
   }
 
   /** Whoever listens hears of the demo's new state, which the learner chose (R42). */
@@ -2136,13 +2135,21 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * The region's name: the canvas kind's, or a worked example's, in the labels' language, which
-   * the row's buttons are named in. The container takes no `lang` of its own: the statement in it
-   * has the task's (T93).
+   * the row's buttons are named in. For a `lang` the labels are not in, the container is in
+   * theirs, English, and the column, all the container holds, in the element's: the name is said
+   * in the language it is in, and the statement, the parts and the sheet as before (T106; R74).
+   * With a `lang` the labels are in, the name is in the element's language already; without one,
+   * the element's language is the page's, which no attribute of the column could name. Neither
+   * then has a `lang` of its own.
    */
   #nameRegion(): void {
-    const { labels } = labelsFor(this.getAttribute("lang"));
+    const tag = this.getAttribute("lang");
+    const { lang, labels } = labelsFor(tag);
+    const apart = tag !== null && !knows(tag);
     const named = this.#viewport.hasAttribute("role");
     write(this.#viewport, "aria-label", named ? labels[this.#rowKind()] : null);
+    write(this.#viewport, "lang", apart ? lang : null);
+    write(this.#column, "lang", apart ? tag : null);
   }
 
   /** What the row of buttons is of, and is named by: a worked example, or the canvas kind (R42). */

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { budget } from "../core/budget.fixture.js";
 import { CROP, type Crop, cropOf } from "../core/crop.js";
 import { boxOf, tenths } from "../core/geometry.js";
 import { groupsOf } from "../core/groups.js";
@@ -147,8 +148,10 @@ function moved(step: number): number {
   return most;
 }
 
-test("the step is the largest of 0.25, 0.5 and 1 units at which no pixel of a crop moves by more than a quarter of the grey scale, and the crops' numbers stay the same", () => {
+test("the step is the largest of 0.25, 0.5 and 1 units at which no pixel of a crop moves by more than a quarter of the grey scale, and the crops' numbers stay the same", {
+  timeout: budget(3_206),
+}, () => {
   const quarter = 255 / 4;
   const steps = [0.25, 0.5, 1].filter((step) => moved(step) <= quarter);
   expect(steps.at(-1)).toBe(STEP);
-}, 60_000);
+});

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { BOX_RULE, type BoxRule, type Cell, cellOf, cellsOf, filledOf, tableOf } from "./boxes.js";
+import { budget } from "./budget.fixture.js";
 import { type FinalStroke, strokesOf, vectorsOf } from "./contracts.fixture.js";
 import type { Stroke } from "./ink.js";
 import type { CellPlace } from "./marks.js";
@@ -246,7 +247,9 @@ function corpus(density: (typeof DENSITIES)[number]): Workbook[] {
 describe("the rule on the corpus of the sweep (R37)", () => {
   const books = DENSITIES.map(corpus);
 
-  test("at every density of points it loses no answer, cuts no character and takes two strokes of draft, the same two", () => {
+  test("at every density of points it loses no answer, cuts no character and takes two strokes of draft, the same two", {
+    timeout: budget(685),
+  }, () => {
     for (const set of books) {
       expect(judge(set, BOX_RULE)).toEqual({
         lost: [],
@@ -262,7 +265,9 @@ describe("the rule on the corpus of the sweep (R37)", () => {
     expect(places?.filter((place) => place === "draft")).toHaveLength(896);
   });
 
-  test("the rules beside it each break something, at points every 2 units", () => {
+  test("the rules beside it each break something, at points every 2 units", {
+    timeout: budget(378),
+  }, () => {
     const set = books[2] ?? [];
     // A narrower margin loses the «=» pushed past a box's top.
     expect(judge(set, { margin: 80, limit: 1600 }).lost).toHaveLength(1);
@@ -307,7 +312,9 @@ function reference(s: Stroke, cells: readonly Cell[], { margin, limit }: BoxRule
   return ranked[0]?.c ?? -1;
 }
 
-test("the rule is its words: a second writing of it, in BigInt, agrees on the corpus, on crowds and on boxes that overlap", () => {
+test("the rule is its words: a second writing of it, in BigInt, agrees on the corpus, on crowds and on boxes that overlap", {
+  timeout: budget(2_796),
+}, () => {
   const rules: BoxRule[] = [
     BOX_RULE,
     { margin: 0, limit: 1000 },
@@ -332,10 +339,8 @@ test("the rule is its words: a second writing of it, in BigInt, agrees on the co
       }
     }
   }
-  // Every rule on the corpus, 200 crowds and the boxes that overlap, each stroke placed twice, takes
-  // about half a second here, and more on a CI runner, with the coverage of the tests on and the
-  // browsers of the other projects beside it: past Vitest's default of five seconds.
-}, 30_000);
+  // Every rule on the corpus, 200 crowds and the boxes that overlap, each stroke placed twice.
+});
 
 /** A case of spec's vectors of the boxes (contracts/README.md, section 12). */
 interface BoxCase {

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { type Cell, tableOf } from "./boxes.js";
+import { budget } from "./budget.fixture.js";
 import { CROP, cropOf } from "./crop.js";
 import { groupsOf } from "./groups.js";
 import type { Stroke } from "./ink.js";
@@ -28,7 +29,9 @@ function stored<T>(value: T): T {
   return JSON.parse(JSON.stringify(value));
 }
 
-test("is the crop's PNG and the context of its submission, as the rules make them", () => {
+test("is the crop's PNG and the context of its submission, as the rules make them", {
+  timeout: budget(1_450),
+}, () => {
   for (const make of SHEETS) {
     const { name, work } = make();
     const strokes = work.strokes;
@@ -94,7 +97,9 @@ describe("the work of a workbook", () => {
   // Box 1.2 written before box 1.1, and a stroke of draft far from every box.
   const STROKES = [one(1, 350, 150), one(2, 140, 150), one(3, 160, 150), one(4, 700, 900)];
 
-  test("is the crop of each filled box and the context of its submission, as the rules make them", () => {
+  test("is the crop of each filled box and the context of its submission, as the rules make them", {
+    timeout: budget(6_439),
+  }, () => {
     for (const make of WORKBOOKS) {
       for (const density of [DENSITIES[0], DENSITIES[2]]) {
         const { name, work, cells } = make(density);
@@ -122,9 +127,8 @@ describe("the work of a workbook", () => {
       }
     }
     // Every workbook at two densities, each filled box drawn at every height of eval and drawn
-    // again by the crop's own rule, takes about a second here, and more on a CI runner, where the
-    // browsers of the other projects run beside it: past Vitest's default of five seconds.
-  }, 30_000);
+    // again by the crop's own rule.
+  });
 
   test("goes in the task's order, whatever order the boxes were written in, and leaves the draft", () => {
     const checked = cellsForCheck(STROKES, CELLS, CROP.digit);

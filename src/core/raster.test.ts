@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
+import { budget } from "./budget.fixture.js";
 import { type Crop, cropOf } from "./crop.js";
 import { groupsOf } from "./groups.js";
 import type { Stroke } from "./ink.js";
@@ -62,7 +63,9 @@ const SMALL: readonly [() => { work: { strokes: readonly Stroke[] }; name: strin
 ];
 
 describe("the pixels", () => {
-  test("are white but for the ink: black within the line, white past its edge", () => {
+  test("are white but for the ink: black within the line, white past its edge", {
+    timeout: budget(766),
+  }, () => {
     for (const [make, digit] of SMALL) {
       const { name, work } = make();
       const crop = cropAt(work.strokes, digit);
@@ -81,7 +84,7 @@ describe("the pixels", () => {
     }
   });
 
-  test("hold nothing of what was erased", () => {
+  test("hold nothing of what was erased", { timeout: budget(747) }, () => {
     // The staircase's 5 was erased and a 6 written where it was: what of the 5 lies clear of the
     // 6's ink, and of every other stroke's, is white.
     const { work } = staircase();
@@ -124,10 +127,9 @@ describe("the pixels", () => {
     }
   });
 
-  // Every pixel of every sheet at three sizes: 2.5 s alone, and past the default 5 s while the
-  // browser tests of the page build and run beside it (T20).
+  // Every pixel of every sheet at three sizes.
   test("of each group lie within its frame, every pixel its ink shades", {
-    timeout: 20_000,
+    timeout: budget(3_615),
   }, () => {
     for (const make of [...SHEETS, ...CROP_SHEETS]) {
       const { name, work } = make();
@@ -176,7 +178,9 @@ describe("the pixels", () => {
     }
   });
 
-  test("leave the margin white, but for the line's half and its edge", () => {
+  test("leave the margin white, but for the line's half and its edge", {
+    timeout: budget(1_166),
+  }, () => {
     for (const make of [...SHEETS, ...CROP_SHEETS]) {
       const { name, work } = make();
       for (const digit of [16, 32, 48]) {
@@ -205,7 +209,9 @@ describe("the pixels", () => {
     }
   });
 
-  test("are the same bytes for the same strokes, in any order, each drawn either way", () => {
+  test("are the same bytes for the same strokes, in any order, each drawn either way", {
+    timeout: budget(696),
+  }, () => {
     for (const make of [staircase, whole]) {
       const strokes = make().work.strokes;
       const crop = cropAt(strokes, 32);

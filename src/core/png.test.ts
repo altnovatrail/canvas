@@ -1,5 +1,6 @@
 import { inflateSync, crc32 as zlibCrc32 } from "node:zlib";
 import { describe, expect, test } from "vitest";
+import { budget } from "./budget.fixture.js";
 import { cropOf } from "./crop.js";
 import { groupsOf } from "./groups.js";
 import { adler32, crc32, encodePNG } from "./png.js";
@@ -166,7 +167,9 @@ describe("the PNG", () => {
     for (const [symbol, length] of matches) if (symbol === 284) expect(length).toBeLessThan(258);
   });
 
-  test("reads back the same by both readers, for a crop of each synthetic sheet", () => {
+  test("reads back the same by both readers, for a crop of each synthetic sheet", {
+    timeout: budget(920),
+  }, () => {
     for (const make of [...SHEETS, ...CROP_SHEETS]) {
       const { name, work } = make();
       const crop = cropOf(work.strokes, groupsOf(work.strokes), 32);

@@ -2,11 +2,12 @@
 // that spec's release file carries gives exactly what it says (section 7 of the legal part's
 // README), every text of the file is shown, the file is held to its sum and to the tag spec/ stands
 // on, and the sets the build takes — the measurement's and the eval set's in the release of
-// v0.15.0, all three in the part for tests (T102).
+// v0.15.1, the same as in v0.15.0's, and all three in the part for tests (T102, T109).
 
 import { copyFileSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
+import { budget } from "../src/core/budget.fixture.ts";
 import { temporary } from "./folders.fixture.ts";
 import {
   blocksOf,
@@ -52,7 +53,9 @@ describe("the release file", () => {
     expect(() => withLegalFile(() => 0, renamed)).toThrow("named as no file of the legal texts");
   });
 
-  test("gives every vector of reading what the vector says, by the schema and by each rule", () => {
+  test("gives every vector of reading what the vector says, by the schema and by each rule", {
+    timeout: budget(428),
+  }, () => {
     const outcomes = new Set<string>();
     let cases = 0;
     withLegalFile((folder, schema) => {
@@ -85,13 +88,15 @@ describe("the release file", () => {
     ]);
   });
 
-  test("shows every text it holds, a translation too, and gives the measurement and the eval set their sets in force, the child's session none (T102)", () => {
+  test("shows every text it holds, a translation too, and gives the measurement and the eval set their sets in force, the child's session none (T102)", {
+    timeout: budget(4_804),
+  }, () => {
     withLegalFile((folder, schema) => {
       const part = partIn(folder);
       const reading = readingOf(validatorOf(schema), part);
       if (!("current" in reading)) throw new Error("spec's part is refused");
-      // At v0.15.0 the sets of the adults are in force, and the child's is still a draft (R139
-      // spec, R141 spec).
+      // At v0.15.1, as at v0.15.0, the sets of the adults are in force, and the child's is still
+      // a draft (R139 spec, R141 spec).
       expect(reading.current.sets).toEqual({ measure: 2, "eval-set": 1 });
       expect(Object.keys(part.files)).toContain("texts/privacy-policy/2.ru.md");
       for (const [file, bytes] of Object.entries(part.files)) {
@@ -103,8 +108,8 @@ describe("the release file", () => {
       expect(sets.measurement?.version).toBe("measure-2");
       expect(sets.evalSet?.version).toBe("eval-set-1");
     });
-    // It reads all seventeen files twice: under 1 s alone, and past Vitest's 5 s on a loaded machine.
-  }, 30_000);
+    // It reads all seventeen files twice.
+  });
 });
 
 describe("the part for tests", () => {

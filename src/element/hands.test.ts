@@ -5,6 +5,7 @@ import type { HistoryEvent } from "../core/history.js";
 import type { View } from "../core/screen.js";
 import { sheetTask } from "../core/tasks.fixture.js";
 import "./index.js";
+import { budget } from "../core/budget.fixture.js";
 import type { HistoryChange, Task } from "./index.js";
 import { labelsFor } from "./labels.js";
 import { at, type Finger, input, placed, settle, spacer, touches } from "./pointer.fixture.js";
@@ -108,7 +109,9 @@ async function twoFingers(
 const ids = (element: HTMLElement) => probe(element).strokes.map((each) => each.id);
 const roles = (element: HTMLElement) => [...probe(element).roles.values()].sort();
 
-test("a pen's touch puts the page in pen mode: a finger then writes nothing, and a mouse writes as before", async () => {
+test("a pen's touch puts the page in pen mode: a finger then writes nothing, and a mouse writes as before", {
+  timeout: budget(803),
+}, async () => {
   const { element, canvas, view } = await sheet();
   await swipe(canvas, view, 100, 100);
   expect(ids(element)).toEqual([1]);
@@ -125,7 +128,9 @@ test("a pen's touch puts the page in pen mode: a finger then writes nothing, and
   expect(ids(element)).toEqual([1, 2, 3]);
 });
 
-test("the finger's button comes when a pen's stroke ends, named in the element's language; pressing it lets a finger write, gives the focus to Pen, and the next pen brings it back", async () => {
+test("the finger's button comes when a pen's stroke ends, named in the element's language; pressing it lets a finger write, gives the focus to Pen, and the next pen brings it back", {
+  timeout: budget(775),
+}, async () => {
   const { element, root, canvas, finger, view } = await sheet();
   const named = () =>
     page.elementLocator(element).getByRole("button", { name: "Draw with finger" });
@@ -192,7 +197,9 @@ test("every row of the page waits for the end of a pen's stroke: the sheet above
   expect(below.canvas.getBoundingClientRect().top).toBeGreaterThan(top);
 });
 
-test("a palm writes nothing; a finger that grows into a palm, or that the device cancels, loses its stroke with no historychange, and its ID stays used", async () => {
+test("a palm writes nothing; a finger that grows into a palm, or that the device cancels, loses its stroke with no historychange, and its ID stays used", {
+  timeout: budget(1_132),
+}, async () => {
   const { element, canvas, view } = await sheet();
   const told: HistoryChange[] = [];
   element.addEventListener("historychange", (event) => told.push(event.detail));
@@ -222,7 +229,9 @@ test("a palm writes nothing; a finger that grows into a palm, or that the device
   expect(ids(element)).toEqual([3]);
 });
 
-test("two fingers scroll the sheet of an element with a height by their travel past the slop, and the view follows", async () => {
+test("two fingers scroll the sheet of an element with a height by their travel past the slop, and the view follows", {
+  timeout: budget(901),
+}, async () => {
   const { element, viewport, view } = await sheet(400, 300);
   const k = view().k;
   await twoFingers(viewport, -60);
@@ -235,7 +244,9 @@ test("two fingers scroll the sheet of an element with a height by their travel p
   expect(viewport.scrollTop).toBeCloseTo(60 - SLOP_PX - (30 - SLOP_PX), 0);
 });
 
-test("without a height two fingers scroll the page, and a gesture keeps what it began to scroll: the container at its end hands on at the next gesture", async () => {
+test("without a height two fingers scroll the page, and a gesture keeps what it began to scroll: the container at its end hands on at the next gesture", {
+  timeout: budget(1_451),
+}, async () => {
   const free = await sheet(400);
   spacer(made);
   await twoFingers(free.viewport, -100);
@@ -256,7 +267,9 @@ test("without a height two fingers scroll the page, and a gesture keeps what it 
   expect(held.viewport.scrollTop).toBeCloseTo(end, 0);
 });
 
-test("a second finger soon after the first takes its stroke away, and one after the window or after the first went past the slop leaves the stroke be", async () => {
+test("a second finger soon after the first takes its stroke away, and one after the window or after the first went past the slop leaves the stroke be", {
+  timeout: budget(1_067),
+}, async () => {
   const { element, canvas, view } = await sheet();
   // The events' own times, from a moment ahead of the page's clock.
   let clock = Date.now() / 1000 + 1;
@@ -308,7 +321,9 @@ test("a third finger does nothing, and when one of the two lifts the other does 
   expect(probe(element).roles.size).toBe(0);
 });
 
-test("a pen takes a finger's stroke away and ends a scroll, and a touch down during its stroke does nothing after it", async () => {
+test("a pen takes a finger's stroke away and ends a scroll, and a touch down during its stroke does nothing after it", {
+  timeout: budget(786),
+}, async () => {
   // Tall enough for the pen at 400 under the row of three lines at 400 CSS px (T94).
   const { element, canvas, viewport, view } = await sheet(400, 400);
   const finger = fingerAt(1, canvas, view(), 200, 200);
@@ -345,7 +360,9 @@ test("under a scaled ancestor two fingers scroll the sheet by their travel on th
   expect(viewport.scrollTop).toBeCloseTo((60 - SLOP_PX) / 1.5, 0);
 });
 
-test("a history given while two fingers scroll lets them go on, and a sheet taken off the page and back keeps no gesture", async () => {
+test("a history given while two fingers scroll lets them go on, and a sheet taken off the page and back keeps no gesture", {
+  timeout: budget(867),
+}, async () => {
   const { element, viewport } = await sheet(400, 300);
   PEN_MODE.on = true;
   const [one, two] = await twoFingers(viewport, -20, { stay: true });
@@ -388,7 +405,9 @@ test("the row, wrapped once the finger's button comes, moves the sheet only afte
   expect(canvas.getBoundingClientRect().top).toBeGreaterThan(top);
 });
 
-test("with the consumer's pointer-events: none two fingers start no scroll, and one finger on the statement scrolls it as the browser does", async () => {
+test("with the consumer's pointer-events: none two fingers start no scroll, and one finger on the statement scrolls it as the browser does", {
+  timeout: budget(1_166),
+}, async () => {
   const task = sheetTask({
     statement: [{ text: "Write the numbers from one to twenty, one under another. ".repeat(4) }],
   });
@@ -443,7 +462,9 @@ test("a pen that came down writing nothing and lifted beyond the element leaves 
   expect(probe(element).roles.size).toBe(0);
 });
 
-test("two fingers scroll no page that hides its overflow, and the page whose body's overflow is the viewport's", async () => {
+test("two fingers scroll no page that hides its overflow, and the page whose body's overflow is the viewport's", {
+  timeout: budget(893),
+}, async () => {
   const { viewport } = await sheet(400);
   spacer(made);
   const root = document.documentElement;
