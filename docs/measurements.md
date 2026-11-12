@@ -78,3 +78,4 @@ A row is `just -f spec/justfile tokens-report --since <start> --until <end> --ro
 | Window, UTC | What | Sessions | Calls, main / subagents | Context of a call, k, main / subagents | Compactions | Cost at API prices |
 |---|---|---|---|---|---|---|
 | 2026-10-13T00:00 … 2026-11-12T14:27 | before E13 — measurements 1.9 spec | 37 | 12,565 / 7,897 | 369.1 / 114.8 | 99 | $2,040.66 |
+| 2026-11-12T20:15 … 2026-11-12T22:00 | E13: the session of T110 — the move, the rebuild and the translation of `docs/` by 17 subagents and its blind reading by 4 —, until its pull request | 1 | 286 / 635 | 222.8 / 98.1 | 1 | $66.94 |
