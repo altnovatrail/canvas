@@ -4,6 +4,7 @@ import { PartKind, SampleSchema } from "@altnovatrail/contracts/novatrail/eval/v
 import { Unreadable } from "@altnovatrail/contracts/novatrail/observation/v1/observation_pb.js";
 import { equals } from "@bufbuild/protobuf";
 import { beforeAll, describe, expect, test } from "vitest";
+import { budget } from "../core/budget.fixture.js";
 import { Purpose, readSample, type Sample, sampleText, Writer } from "./sample.js";
 import {
   type Entry,
@@ -27,7 +28,7 @@ const tasks: OpenTasks = openTasksOf(JSON.parse(file), TUTOR_FILE.tag, TUTOR_FIL
 let set: Synthetic[];
 beforeAll(() => {
   set = syntheticSet(tasks);
-});
+}, budget(2_300));
 
 /** The sample of a scenario, the first of the set's. */
 const of = (scenario: string): Sample => {
@@ -47,7 +48,7 @@ const truth = (sample: Sample) => sample.markup?.truth?.answerSlots[0]?.read.val
 const parts = (sample: Sample) =>
   sample.markup?.writing.case === "parts" ? sample.markup.writing.value : undefined;
 
-test("a seed gives its sample byte for byte, and its ID", () => {
+test("a seed gives its sample byte for byte, and its ID", { timeout: budget(3_523) }, () => {
   const again = syntheticSet(tasks);
   expect(again.map(({ sample }) => sampleText(sample))).toEqual(
     set.map(({ sample }) => sampleText(sample)),
@@ -63,7 +64,7 @@ test("a seed gives its sample byte for byte, and its ID", () => {
     expect(sample.textSetVersion).toBe("none");
     expect(equals(SampleSchema, readSample(sampleText(sample)), sample)).toBe(true);
   }
-}, 30_000);
+});
 
 test("the set holds every composition on a sheet and on a workbook, and every writer", () => {
   const composition = ({ sample }: Synthetic) =>
@@ -212,7 +213,9 @@ test("a scenario of the other surface, or a bank with no task, is refused", () =
   expect(() => syntheticSample(entry({ bank: "eval/none.json" }), tasks)).toThrow(RangeError);
 });
 
-test("a module's sample is one of its eval set by an adult, of the task given, its scenario the seed's (T86)", () => {
+test("a module's sample is one of its eval set by an adult, of the task given, its scenario the seed's (T86)", {
+  timeout: budget(4_190),
+}, () => {
   const folder = new URL(
     "../../tasks/modules-v0.2.0/novatrail-grade-3-math-0.2.0/",
     import.meta.url,
@@ -259,5 +262,5 @@ test("a module's sample is one of its eval set by an adult, of the task given, i
   expect(() => moduleSample(page, -1)).toThrow("is no seed");
   // Its generator takes 32 bits of a seed: one above would draw another seed's sample.
   expect(() => moduleSample(page, 2 ** 32 + 301)).toThrow("from 0 to 4294967295");
-  // Twelve drawn twice, workbooks among them: past 5 s on a loaded machine (T97).
-}, 30_000);
+  // Twelve drawn twice, workbooks among them.
+});

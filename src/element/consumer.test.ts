@@ -10,6 +10,7 @@ import type {
 import type * as open from "@altnovatrail/spec/formatv0/open";
 import { afterEach, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
+import { budget } from "../core/budget.fixture.js";
 import { type Anchor, SHEET } from "../core/index.js";
 import { type Marks, NovatrailCanvas, type Task } from "./index.js";
 
@@ -279,7 +280,9 @@ function marksOf(submission: Submission, name: string, at: Anchor = { group: "A"
   return JSON.parse(JSON.stringify({ submission, marks: [{ kind: "frame", at, name }] }));
 }
 
-test("app's path: write, erase, undo and clear with the sheet's buttons, keep the history as it is told, give it back, check, and take the tutor's marks", async () => {
+test("app's path: write, erase, undo and clear with the sheet's buttons, keep the history as it is told, give it back, check, and take the tutor's marks", {
+  timeout: budget(813),
+}, async () => {
   const { sheet, store, chosen } = await app();
   const onDocument: Event[] = [];
   const listen = (event: Event) => onDocument.push(event);

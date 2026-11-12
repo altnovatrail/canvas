@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { budget } from "./budget.fixture.js";
 import {
   type Contact,
   Hands,
@@ -417,7 +418,9 @@ describe("two fingers", () => {
   });
 });
 
-test("every sequence of five touches, pens, mice and switches keeps the rules of the hands", () => {
+test("every sequence of five touches, pens, mice and switches keeps the rules of the hands", {
+  timeout: budget(1_855),
+}, () => {
   const steps = [
     ["pen down", PEN],
     ["pen up", PEN],
@@ -503,6 +506,6 @@ test("every sequence of five touches, pens, mice and switches keeps the rules of
       }
     }
   }
-  // All 248,832 sequences take a quarter of a second here: a check for each rule, and one expect.
+  // All 248,832 sequences, a check for each rule and one expect: the time is the hands' own.
   expect(broken).toEqual([]);
 });

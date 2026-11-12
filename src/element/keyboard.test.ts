@@ -1,5 +1,6 @@
 import { afterEach, expect, test } from "vitest";
 import { userEvent } from "vitest/browser";
+import { budget } from "../core/budget.fixture.js";
 import { SHORT } from "../core/pages.fixture.js";
 import { sheetTask, workbookTask, workedExample } from "../core/tasks.fixture.js";
 import { contrast } from "./axe.fixture.js";
@@ -114,7 +115,9 @@ test.each(KINDS)(
   },
 );
 
-test("the keys scroll the container in focus as the browser scrolls one, and the layers go with it: Page Down, End, Home, the arrow down, Page Up and space", async () => {
+test("the keys scroll the container in focus as the browser scrolls one, and the layers go with it: Page Down, End, Home, the arrow down, Page Up and space", {
+  timeout: budget(1_247),
+}, async () => {
   const { element, viewport } = await put((each) => {
     each.task = sheetTask();
   }, 300);

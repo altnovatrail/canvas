@@ -9,6 +9,7 @@ import type { MessageInitShape } from "@bufbuild/protobuf";
 import { clone, create, equals } from "@bufbuild/protobuf";
 import { describe, expect, test } from "vitest";
 import { tableOf } from "../core/boxes.js";
+import { budget } from "../core/budget.fixture.js";
 import { cropOf } from "../core/crop.js";
 import { extentOf } from "../core/geometry.js";
 import { groupsOf } from "../core/groups.js";
@@ -204,7 +205,7 @@ describe("what a sample holds, by its purpose and its writer", () => {
     expect(sample.license).toBe("Apache-2.0");
   });
 
-  test("a child's keeps the final geometry and the writer's code", () => {
+  test("a child's keeps the final geometry and the writer's code", { timeout: budget(324) }, () => {
     const sample = sampleOf(workbookSample(Purpose.MEASUREMENT, Writer.CHILD, "3"));
     expect(sample.ink.case).toBe("geometry");
     expect(sample.writerCode).toBe("S7NTH3T1C");
@@ -312,7 +313,9 @@ describe("the final geometry", () => {
     }
   });
 
-  test("gives the same numbers of the crops as the history, its groups and its markup on the new numbers", () => {
+  test("gives the same numbers of the crops as the history, its groups and its markup on the new numbers", {
+    timeout: budget(317),
+  }, () => {
     const history = sampleOf(sheetSample(Purpose.MEASUREMENT, Writer.ADULT, "1"));
     const geometry = sampleOf(sheetSample(Purpose.EVAL_SET, Writer.ADULT, "2"));
     if (history.surface.case !== "sheet" || geometry.surface.case !== "sheet")
@@ -434,7 +437,9 @@ describe("the crops", () => {
 });
 
 describe("the file", () => {
-  test("reads back to the same sample and writes the same text again; a field it does not know and another protocol are TypeErrors", () => {
+  test("reads back to the same sample and writes the same text again; a field it does not know and another protocol are TypeErrors", {
+    timeout: budget(1_098),
+  }, () => {
     for (const [, make] of EXAMPLES) {
       const sample = sampleOf(make());
       const text = sampleText(sample);
@@ -450,17 +455,20 @@ describe("the file", () => {
     expect(() => readSample("[]")).toThrow(TypeError);
   });
 
-  test("of one seed is the same file, byte for byte, and holds no key, solution or trap", () => {
+  test("of one seed is the same file, byte for byte, and holds no key, solution or trap", {
+    timeout: budget(2_139),
+  }, () => {
     for (const [, make] of EXAMPLES) {
       const text = sampleText(sampleOf(make()));
       expect(sampleText(sampleOf(make()))).toBe(text);
       expect(text).not.toMatch(/"(key|check|solution|traps?|expected|outcome)"/);
     }
-    // Every example drawn twice, crops and all: past 5 s on a loaded machine (T97).
-  }, 30_000);
+    // Every example drawn twice, crops and all.
+  });
 
   test.each(EXAMPLES.map(([name, make]) => [name, make] as const))(
     "examples/%s.json is the sample its synthetic input gives, as spec's sample-check holds it in CI",
+    { timeout: budget(310) },
     async (name, make) => {
       await expect(sampleText(sampleOf(make()))).toMatchFileSnapshot(`../../examples/${name}.json`);
     },

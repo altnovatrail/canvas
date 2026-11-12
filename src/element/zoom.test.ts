@@ -1,5 +1,6 @@
 import { afterEach, expect, test } from "vitest";
 import { userEvent } from "vitest/browser";
+import { budget } from "../core/budget.fixture.js";
 import { SLOP_PX } from "../core/hands.js";
 import { LAYOUT } from "../core/page.js";
 import { SHORT } from "../core/pages.fixture.js";
@@ -282,7 +283,9 @@ test("an element without a height whose zoomed sheet is wider than it is a regio
   expect(viewport.hasAttribute("tabindex")).toBe(false);
 });
 
-test("two fingers scroll a zoomed sheet across by their travel past the slop, and down alone on the rail of a scroll down", async () => {
+test("two fingers scroll a zoomed sheet across by their travel past the slop, and down alone on the rail of a scroll down", {
+  timeout: budget(1_374),
+}, async () => {
   const { element, canvas, viewport, view } = await placed(made, 400, 400);
   spacer(made);
   await zoomTo(element, 2);

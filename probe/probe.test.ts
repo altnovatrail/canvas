@@ -11,6 +11,7 @@ import { pathToFileURL } from "node:url";
 import { type Browser, type BrowserContext, chromium, type Page } from "playwright";
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
 import { hash, policy, styleOf } from "../scripts/csp.ts";
+import { budget } from "../src/core/budget.fixture.ts";
 import { build, CSP, OPEN, PAGE, pages, SCRIPT } from "./build.ts";
 
 /** What a report may hold, and nothing else: T29 names the fields. */
@@ -144,7 +145,9 @@ describe("the files", () => {
 });
 
 describe("opened from a file", () => {
-  test("with the policy, the script runs in a secure context and every request is blocked by the policy", async () => {
+  test("with the policy, the script runs in a secure context and every request is blocked by the policy", {
+    timeout: budget(490),
+  }, async () => {
     const { page, requests } = await open(paths.csp);
     const seen = await report(page);
     expect(seen).toMatchObject({
@@ -167,7 +170,9 @@ describe("opened from a file", () => {
     expect(outside(requests).map(({ ended }) => ended)).toEqual(["csp", "csp"]);
   });
 
-  test("without the policy, the same requests fail on the network, and no event of the policy comes", async () => {
+  test("without the policy, the same requests fail on the network, and no event of the policy comes", {
+    timeout: budget(489),
+  }, async () => {
     const { page, requests } = await open(paths.open);
     const seen = await report(page);
     expect(seen).toMatchObject({
@@ -194,7 +199,9 @@ describe("opened from a file", () => {
     ]);
   });
 
-  test("the storage keeps what a file wrote across a reload, and the pointer is counted by type", async () => {
+  test("the storage keeps what a file wrote for the file opened again, and the pointer is counted by type", {
+    timeout: budget(681),
+  }, async () => {
     const { page } = await open(paths.csp);
     expect((await report(page)).storage).toEqual([]);
     await page.click("#store");
@@ -210,12 +217,22 @@ describe("opened from a file", () => {
     const drawn = await report(page);
     expect(drawn.pointers.mouse?.events).toBeGreaterThanOrEqual(7);
     expect(drawn.pointers.mouse?.coalesced).toBeGreaterThanOrEqual(5);
-    await page.reload();
-    await page.waitForFunction(() => document.getElementById("report")?.textContent !== "");
-    expect((await report(page)).storage).toEqual([CSP]);
+    // The file opened again in a page of its own, as a volunteer comes back to it, not reloaded: on a
+    // loaded machine the first document after a reload of a file in Chrome Headless Shell may read
+    // the storage empty, and keep reading it so, while another page of the file reads the write
+    // (R75). The page that wrote is closed first, so that nothing of it keeps the write alive. The
+    // probe itself reloads on the devices (T29, T74).
+    const context = page.context();
+    await page.close();
+    const again = await context.newPage();
+    await again.goto(pathToFileURL(paths.csp).href);
+    await again.waitForFunction(() => document.getElementById("report")?.textContent !== "");
+    expect((await report(again)).storage).toEqual([CSP]);
   });
 
-  test("the file's name keeps no folder, even one an Android address encodes, and a bad escape stops nothing", async () => {
+  test("the file's name keeps no folder, even one an Android address encodes, and a bad escape stops nothing", {
+    timeout: budget(349),
+  }, async () => {
     const { page } = await open(paths.csp);
     // fileName is a function of the page's classic script, so the page's global object has it.
     const names = await page.evaluate(() =>
@@ -229,7 +246,9 @@ describe("opened from a file", () => {
     expect(names).toEqual(["t29-probe-csp.html", "t29-probe-csp.html", "1234", "bad%E0%A4%A.html"]);
   });
 
-  test("the report saves as a file through a link to a blob, and holds only the fields it may", async () => {
+  test("the report saves as a file through a link to a blob, and holds only the fields it may", {
+    timeout: budget(458),
+  }, async () => {
     const { page } = await open(paths.csp);
     const [download] = await Promise.all([page.waitForEvent("download"), page.click("#save")]);
     expect(download.suggestedFilename()).toBe("report-t29-probe-csp.json");

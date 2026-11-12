@@ -1,4 +1,6 @@
+import { isDeepStrictEqual } from "node:util";
 import { describe, expect, test } from "vitest";
+import { budget } from "./budget.fixture.js";
 import { Clock } from "./clock.js";
 import { type HistoryEvent, replay } from "./history.js";
 import type { Stroke } from "./ink.js";
@@ -334,19 +336,33 @@ describe("with the recorder", () => {
   });
 });
 
-test("every sequence of six writes, erasings, clears and undos agrees with a stack of snapshots, and its history replays to the sheet", () => {
+test("every sequence of six writes, erasings, clears and undos agrees with a stack of snapshots, and its history replays to the sheet", {
+  timeout: budget(3_100),
+}, () => {
   const steps = ["write", "erase every second", "erase the last", "clear", "undo"] as const;
-  for (let sequence = 0; sequence < steps.length ** 6; sequence++) {
+  const length = 6;
+  const same = isDeepStrictEqual;
+  const ascending = (list: readonly number[]) => [...list].sort((a, b) => a - b);
+  // The rules a sequence broke, by its steps: a check for each, without an expect for each.
+  const broken: string[] = [];
+  for (let sequence = 0; sequence < steps.length ** length && broken.length < 10; sequence++) {
     const clock = new Clock();
     const work = new Work(clock);
     const recorder = new Recorder((finished) => work.write(finished), clock);
     // The sheet after each action still in force, the latest last.
     const snapshots: number[][] = [[]];
+    const done: string[] = [];
+    const breaks = (rule: string) => broken.push(`${done.join(", ")}: ${rule}`);
     let written = 0;
     let code = sequence;
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < length; i++) {
       const step = steps[code % steps.length];
+      if (step === undefined) throw new Error(`no step ${code % steps.length}`);
       code = Math.floor(code / steps.length);
+      done.push(step);
+      // The sheet after the first steps is the same in every sequence that begins with them, so it
+      // is checked once, in the first of them: the one whose steps after these all write.
+      const first = sequence < steps.length ** (i + 1);
       const now = snapshots[snapshots.length - 1] ?? [];
       const before = work.history.length;
       // The page's time of the step: 10 ms after the one before.
@@ -361,48 +377,59 @@ test("every sequence of six writes, erasings, clears and undos agrees with a sta
         next = [...now, written];
       } else if (step === "erase every second") {
         const erased = now.filter((_, at) => at % 2 === 0);
-        expect(work.erase(erased, time)).toBe(erased.length > 0);
+        if (work.erase(erased, time) !== erased.length > 0) breaks("the erasing tells wrongly");
         if (erased.length > 0) next = now.filter((_, at) => at % 2 === 1);
       } else if (step === "erase the last") {
-        expect(work.erase(now.slice(-1), time)).toBe(now.length > 0);
+        if (work.erase(now.slice(-1), time) !== now.length > 0) breaks("the erasing tells wrongly");
         if (now.length > 0) next = now.slice(0, -1);
       } else if (step === "clear") {
-        expect(work.clear(time)).toBe(now.length > 0);
+        if (work.clear(time) !== now.length > 0) breaks("the clearing tells wrongly");
         if (now.length > 0) next = [];
       } else {
         undone = snapshots.length > 1;
-        expect(work.undo(time)).toBe(undone);
+        if (work.undo(time) !== undone) breaks("the undo tells wrongly");
         if (undone) {
           snapshots.pop();
           const back = snapshots[snapshots.length - 1] ?? [];
           // The undo says what it took off and what it brought back.
-          expect(work.history.at(-1)).toMatchObject({
-            kind: "undo",
-            removed: now.filter((id) => !back.includes(id)),
-            restored: back.filter((id) => !now.includes(id)),
-          });
+          const event = work.history.at(-1);
+          if (
+            event?.kind !== "undo" ||
+            !same(
+              event.removed,
+              now.filter((id) => !back.includes(id)),
+            ) ||
+            !same(
+              event.restored,
+              back.filter((id) => !now.includes(id)),
+            )
+          ) {
+            breaks("the undo tells wrongly what it took off and brought back");
+          }
         }
       }
       if (next !== undefined) snapshots.push(next);
+      if (!first) continue;
       // An action that changed the sheet is one event, and one that changed nothing is none.
-      expect(work.history.length).toBe(before + (next !== undefined || undone ? 1 : 0));
-
-      const sheet = snapshots[snapshots.length - 1];
-      expect(ids(work)).toEqual(sheet);
-      expect(idsOf(replay(work.history))).toEqual(sheet);
-      expect(idsOf(everything(work)).sort((a, b) => a - b)).toEqual(
-        [...(sheet ?? [])].sort((a, b) => a - b),
-      );
+      if (work.history.length !== before + (next !== undefined || undone ? 1 : 0)) {
+        breaks("the history has another number of events");
+      }
+      const sheet = snapshots[snapshots.length - 1] ?? [];
+      if (!same(ids(work), sheet)) breaks("the sheet is not the stack's");
+      if (!same(idsOf(replay(work.history)), sheet)) breaks("the history replays to another sheet");
+      if (!same(ascending(idsOf(everything(work))), ascending(sheet))) {
+        breaks("the index finds other strokes");
+      }
       const times = work.history.map((event) => event.t);
-      expect(times).toEqual([...times].sort((a, b) => a - b));
+      if (!same(times, ascending(times))) breaks("the history's times go back");
       // Given back through JSON, the history is the same sheet and the same history.
       const back = Work.restore(JSON.parse(JSON.stringify(work.history)), new Clock());
-      expect(back.strokes).toEqual(work.strokes);
-      expect(back.history).toEqual(work.history);
+      if (!same(back.strokes, work.strokes)) breaks("given back, it is another sheet");
+      if (!same(back.history, work.history)) breaks("given back, it is another history");
     }
     // The history is plain data: as JSON it replays to the same sheet.
     const parsed = JSON.parse(JSON.stringify(work.history)) as HistoryEvent[];
-    expect(idsOf(replay(parsed))).toEqual(ids(work));
+    if (!same(idsOf(replay(parsed)), ids(work))) breaks("as JSON it replays to another sheet");
     // And it rebuilds the stack: every undo after it takes back what the sheet's own would. The
     // two clocks count from other moments, so the times of these undos are left aside.
     const restored = Work.restore(parsed, new Clock());
@@ -411,16 +438,21 @@ test("every sequence of six writes, erasings, clears and undos agrees with a sta
     for (let k = 0; ; k++) {
       const time = 1000 + 10 * k;
       const undone = work.undo(time);
-      expect(restored.undo(time)).toBe(undone);
-      expect(restored.strokes).toEqual(work.strokes);
-      expect(untimed(restored.history)).toEqual(untimed(work.history));
+      if (restored.undo(time) !== undone) breaks(`its undo ${k + 1} tells otherwise`);
+      if (!same(restored.strokes, work.strokes)) breaks(`its undo ${k + 1} leaves another sheet`);
+      if (!same(untimed(restored.history), untimed(work.history))) {
+        breaks(`its undo ${k + 1} leaves another history`);
+      }
       if (!undone) break;
     }
   }
-  // All 15,625 sequences, each history given back at every step, take three and a half seconds
-  // here, and more on a CI runner, where the browsers of the other projects run beside them: past
-  // Vitest's default of five.
-}, 30_000);
+  expect(broken).toEqual([]);
+  // Of all 15,625 sequences of six steps, each checks the stack it ends with, and each of the
+  // 19,530 sheets their first steps make is checked once: an expect for every check, at every step
+  // of every sequence, took most of the time, past thirty seconds on a loaded runner. The time of
+  // its timeout is an estimate till a green run of CI gives its line: 1.2 s in a free container,
+  // times 2.6, the runner's time to the container's for the sweep before.
+});
 
 describe("a history given to the sheet", () => {
   /** A sheet of three strokes, one erased and back, cleared and back, the last undone. */

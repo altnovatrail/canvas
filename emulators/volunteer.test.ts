@@ -293,9 +293,7 @@ test("a page whose start does not let the author begin is the page's failure, an
   expect(page.closed).toBe(1);
 });
 
-test("a page whose markup does not let it save is the page's failure", {
-  timeout: 40_000,
-}, async () => {
+test("a page whose markup does not let it save is the page's failure", async () => {
   await volunteer(run, device(run, { mark: true }), { keep: false }, clock());
   expect(run.verdict()).toBe("page");
   expect(
@@ -303,7 +301,7 @@ test("a page whose markup does not let it save is the page's failure", {
   ).toBe(false);
 });
 
-test("a page that hands no file over is the page's failure", { timeout: 40_000 }, async () => {
+test("a page that hands no file over is the page's failure", async () => {
   await volunteer(run, device(run, { save: true }), { keep: false }, clock());
   expect(run.verdict()).toBe("page");
 });

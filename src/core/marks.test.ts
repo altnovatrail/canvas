@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { Cell } from "./boxes.js";
+import { budget } from "./budget.fixture.js";
 import {
   cropTo,
   type FinalStroke,
@@ -878,7 +879,9 @@ function boxesAbout(crop: Crop): Fractions[] {
 }
 
 describe("the rule written out once more", () => {
-  test("takes the strokes the snapping takes, on crowded sheets, at every height of digit", () => {
+  test("takes the strokes the snapping takes, on crowded sheets, at every height of digit", {
+    timeout: budget(2_022),
+  }, () => {
     for (const seed of Array.from({ length: 200 }, (_, n) => n + 1)) {
       const strokes = crowd(seed);
       const next = random(seed + 2000);
@@ -896,7 +899,9 @@ describe("the rule written out once more", () => {
     }
   });
 
-  test("takes them on the synthetic sheets, by the frames of their groups and boxes about them", () => {
+  test("takes them on the synthetic sheets, by the frames of their groups and boxes about them", {
+    timeout: budget(485),
+  }, () => {
     for (const make of [...SHEETS_OF_THE_MARKS, whole, answer, limit]) {
       const { name, work } = make();
       for (const digit of DIGITS) {

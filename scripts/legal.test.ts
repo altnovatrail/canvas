@@ -7,6 +7,7 @@
 import { copyFileSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
+import { budget } from "../src/core/budget.fixture.ts";
 import { temporary } from "./folders.fixture.ts";
 import {
   blocksOf,
@@ -52,7 +53,9 @@ describe("the release file", () => {
     expect(() => withLegalFile(() => 0, renamed)).toThrow("named as no file of the legal texts");
   });
 
-  test("gives every vector of reading what the vector says, by the schema and by each rule", () => {
+  test("gives every vector of reading what the vector says, by the schema and by each rule", {
+    timeout: budget(428),
+  }, () => {
     const outcomes = new Set<string>();
     let cases = 0;
     withLegalFile((folder, schema) => {
@@ -85,7 +88,9 @@ describe("the release file", () => {
     ]);
   });
 
-  test("shows every text it holds, a translation too, and gives the measurement and the eval set their sets in force, the child's session none (T102)", () => {
+  test("shows every text it holds, a translation too, and gives the measurement and the eval set their sets in force, the child's session none (T102)", {
+    timeout: budget(4_804),
+  }, () => {
     withLegalFile((folder, schema) => {
       const part = partIn(folder);
       const reading = readingOf(validatorOf(schema), part);
@@ -103,8 +108,8 @@ describe("the release file", () => {
       expect(sets.measurement?.version).toBe("measure-2");
       expect(sets.evalSet?.version).toBe("eval-set-1");
     });
-    // It reads all seventeen files twice: under 1 s alone, and past Vitest's 5 s on a loaded machine.
-  }, 30_000);
+    // It reads all seventeen files twice.
+  });
 });
 
 describe("the part for tests", () => {

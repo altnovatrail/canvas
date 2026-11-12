@@ -15,6 +15,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { RELEASE_TEXTS } from "../emulators/saved.ts";
 import { TASKS as EMULATED_TASKS, WORKBOOK as EMULATED_WORKBOOK } from "../emulators/watch.ts";
 import { viewOf } from "../page/open.ts";
+import { budget } from "../src/core/budget.fixture.ts";
 import { TAGS } from "../src/element/wcag.fixture.ts";
 import { readSample, type Sample } from "../src/eval/sample.ts";
 import { MODULES_FILE, TUTOR_FILE } from "../src/eval/tasks.ts";
@@ -86,7 +87,7 @@ beforeAll(async () => {
   built = await buildPage(folder, "0.0.0");
   tested = await buildPage(join(folder, "test"), "0.0.0", TEST_PART);
   browser = await chromium.launch();
-}, 120_000);
+}, budget(4_500));
 
 /** The start gone through on a page (T20, T84): a purpose, for the measurement a new writer's code
  * or one typed, for a child's session the code typed, and every statement ticked; the writer's
@@ -112,7 +113,7 @@ async function begin(
     await tick.check();
   }
   await page.click("#begin");
-  await expect.poll(() => page.locator("novatrail-canvas").count()).toBe(1);
+  await page.locator("novatrail-canvas").waitFor({ state: "attached" });
   // The focus moved to the picker of tasks, which may scroll: the tests draw from the top.
   await page.evaluate(() => window.scrollTo(0, 0));
   return code;
@@ -352,7 +353,9 @@ describe("the builder", () => {
     ).toThrow("novatrail/grade-3-math 0.3.0 names no license");
   });
 
-  test("takes the release file's sets in force, and the part for tests into no version but 0.0.0 (T89, T102)", () => {
+  test("takes the release file's sets in force, and the part for tests into no version but 0.0.0 (T89, T102)", {
+    timeout: budget(1_726),
+  }, () => {
     // At v0.15.0 the measurement's and the eval set's sets are in force, and a child's is a draft.
     expect(textsFor("1.0.0")).toEqual({
       measurement: expect.objectContaining({ version: RELEASE_TEXTS }),
@@ -387,7 +390,9 @@ describe("the file", () => {
     expect(page.match(/<script/g)).toHaveLength(1);
   });
 
-  test("of a release's version is the same bytes on every build, by its name, with the sets in force (T75, T102)", async () => {
+  test("of a release's version is the same bytes on every build, by its name, with the sets in force (T75, T102)", {
+    timeout: budget(6_106),
+  }, async () => {
     const once = await buildPage(join(folder, "release"), "1.2.3");
     // The other build in a process of its own, as release-files runs the builder.
     const again =
@@ -407,7 +412,7 @@ describe("the file", () => {
     // (README of spec's legal part, section 2).
     expect(page).toContain("what happens to your samples");
     expect(page).not.toMatch(/child-sample-\d/);
-  }, 60_000);
+  });
 
   test("names every package it carries, with its license's text, and the icons' set", () => {
     const page = readFileSync(built.path, "utf8");
@@ -430,7 +435,9 @@ describe("the file", () => {
 });
 
 describe("opened from a file", () => {
-  test("shows the element and its tasks, asks for nothing outside the file, keeps the policy, and saves a sample that reads back", async () => {
+  test("shows the element and its tasks, asks for nothing outside the file, keeps the policy, and saves a sample that reads back", {
+    timeout: budget(2_060),
+  }, async () => {
     const context = await browser.newContext({ acceptDownloads: true });
     try {
       const page = await context.newPage();
@@ -500,7 +507,9 @@ describe("opened from a file", () => {
       expect(await page.locator("#form li[data-part]").count()).toBe(2);
       await page.locator('#form li[data-part="1"] textarea').fill("x = 2");
       await page.click('#form li[data-part="0"] [data-act="join"]');
-      await expect.poll(() => page.locator("#form li[data-part]").count()).toBe(1);
+      await page.waitForFunction(
+        () => document.querySelectorAll("#form li[data-part]").length === 1,
+      );
       expect(await page.inputValue('#form li[data-part="0"] textarea')).toBe("x = 2");
       await page.check('#form li[data-part="0"] input[data-flag="finalAnswer"]');
       expect(await page.inputValue("#answer")).toBe("x = 2");
@@ -582,9 +591,11 @@ describe("opened from a file", () => {
     } finally {
       await context.close();
     }
-  }, 60_000);
+  });
 
-  test("marks an essay up by its text as written, and saves it with no mark of a criterion (T21)", async () => {
+  test("marks an essay up by its text as written, and saves it with no mark of a criterion (T21)", {
+    timeout: budget(1_198),
+  }, async () => {
     const context = await browser.newContext({ acceptDownloads: true });
     try {
       const page = await context.newPage();
@@ -617,9 +628,11 @@ describe("opened from a file", () => {
     } finally {
       await context.close();
     }
-  }, 60_000);
+  });
 
-  test("has no violation that axe finds: the start of both builds, a notice of each, writing and the markup (T90)", async () => {
+  test("has no violation that axe finds: the start of both builds, a notice of each, writing and the markup (T90)", {
+    timeout: budget(2_988),
+  }, async () => {
     const context = await browser.newContext();
     try {
       const page = await context.newPage();
@@ -639,7 +652,9 @@ describe("opened from a file", () => {
       if (!box) throw new Error("the element is not shown");
       await stroke(page, box, [120, 220], [220, 280]);
       await page.click("#markup");
-      await expect.poll(() => page.locator("#form li[data-part]").count()).toBe(1);
+      await page.waitForFunction(
+        () => document.querySelectorAll("#form li[data-part]").length === 1,
+      );
       expect(await axeFinds(page)).toEqual([]);
       // And axe does look: a button of no name, put on the page, is a violation.
       await page.evaluate(() => document.body.append(document.createElement("button")));
@@ -647,9 +662,11 @@ describe("opened from a file", () => {
     } finally {
       await context.close();
     }
-  }, 60_000);
+  });
 
-  test("remembers nothing of the start when opened anew: no purpose, no code, no statement, and no storage used (R11)", async () => {
+  test("remembers nothing of the start when opened anew: no purpose, no code, no statement, and no storage used (R11)", {
+    timeout: budget(981),
+  }, async () => {
     const context = await browser.newContext();
     try {
       const page = await context.newPage();
@@ -679,9 +696,11 @@ describe("opened from a file", () => {
     } finally {
       await context.close();
     }
-  }, 60_000);
+  });
 
-  test("with the part for tests shows the set's gist and English text, and asks the form of its version (T20, T89)", async () => {
+  test("with the part for tests shows the set's gist and English text, and asks the form of its version (T20, T89)", {
+    timeout: budget(1_054),
+  }, async () => {
     const context = await browser.newContext({ acceptDownloads: true });
     try {
       const page = await context.newPage();
@@ -734,9 +753,11 @@ describe("opened from a file", () => {
     } finally {
       await context.close();
     }
-  }, 60_000);
+  });
 
-  test("with the part for tests opens the eval set: the modules' tasks alone, a picture of a statement, a template's instance by its seed, and a sample named by its ID (T101)", async () => {
+  test("with the part for tests opens the eval set: the modules' tasks alone, a picture of a statement, a template's instance by its seed, and a sample named by its ID (T101)", {
+    timeout: budget(1_187),
+  }, async () => {
     const context = await browser.newContext({ acceptDownloads: true });
     try {
       const page = await context.newPage();
@@ -809,9 +830,11 @@ describe("opened from a file", () => {
     } finally {
       await context.close();
     }
-  }, 60_000);
+  });
 
-  test("with the part for tests leads a child's session: the code of the form typed, the child writing, a sample of measurement by a child (T84)", async () => {
+  test("with the part for tests leads a child's session: the code of the form typed, the child writing, a sample of measurement by a child (T84)", {
+    timeout: budget(1_335),
+  }, async () => {
     const context = await browser.newContext({ acceptDownloads: true });
     try {
       const page = await context.newPage();
@@ -858,7 +881,7 @@ describe("opened from a file", () => {
     } finally {
       await context.close();
     }
-  }, 60_000);
+  });
 });
 
 /** How many crops a sample's file holds: the sheet's, or every filled box's. */
@@ -869,7 +892,9 @@ function cropsOf({ surface }: Sample): number {
 }
 
 describe("a sample file opened on the page (T87)", () => {
-  test("shows each composition's strokes, crops and markup from the file alone, the erased apart, and keeps and sends nothing", async () => {
+  test("shows each composition's strokes, crops and markup from the file alone, the erased apart, and keeps and sends nothing", {
+    timeout: budget(3_124),
+  }, async () => {
     const context = await browser.newContext();
     try {
       const page = await context.newPage();
@@ -889,7 +914,7 @@ describe("a sample file opened on the page (T87)", () => {
         const path = join("examples", `${name}.json`);
         const sample = readSample(readFileSync(path, "utf8"));
         await page.setInputFiles("#open-file", path);
-        await expect.poll(() => page.isVisible("#view")).toBe(true);
+        await page.locator("#view").waitFor({ state: "visible" });
         expect(await page.isHidden("#start")).toBe(true);
         // Every stroke the file holds is drawn: what the sheet showed at the end, and apart what the
         // history did not show, which the examples erased.
@@ -953,7 +978,7 @@ describe("a sample file opened on the page (T87)", () => {
       expect(await storage()).toEqual([0, 0, "", 0]);
       // Back to the start is the page opened anew, with nothing of the file.
       await page.click("#open-back");
-      await expect.poll(() => page.isVisible("#start")).toBe(true);
+      await page.locator("#start").waitFor({ state: "visible" });
       expect(await page.isHidden("#view")).toBe(true);
       expect(await page.isHidden("#open-back")).toBe(true);
       expect(outside).toEqual([]);
@@ -961,5 +986,5 @@ describe("a sample file opened on the page (T87)", () => {
     } finally {
       await context.close();
     }
-  }, 60_000);
+  });
 });

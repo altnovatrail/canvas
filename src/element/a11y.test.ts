@@ -4,7 +4,7 @@
 // layer of input covers: their contrast is this test's own. The same kinds in forced colours are
 // forced-colors.test.ts's.
 
-import { afterEach, expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 import { sheetTask } from "../core/tasks.fixture.js";
 import { axeOf, contrast, KINDS } from "./axe.fixture.js";
@@ -12,8 +12,14 @@ import { placed, settle } from "./pointer.fixture.js";
 
 const made: HTMLElement[] = [];
 
+// The decodes the element asks for, which the kinds with pictures wait for.
+beforeEach(() => {
+  vi.spyOn(HTMLImageElement.prototype, "decode");
+});
+
 afterEach(() => {
   for (const element of made.splice(0)) element.remove();
+  vi.restoreAllMocks();
 });
 
 test.each(KINDS)("$name has no violation that axe finds", async ({ put, incomplete }) => {

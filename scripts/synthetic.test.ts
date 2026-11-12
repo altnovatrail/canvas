@@ -1,11 +1,14 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vitest";
+import { budget } from "../src/core/budget.fixture.ts";
 import { TUTOR_FILE } from "../src/eval/tasks.js";
 import { temporary } from "./folders.fixture.ts";
 import { listOf, writeSet } from "./synthetic.ts";
 
-test("the set is written one file to a sample, named by its ID, and a line printed for each", () => {
+test("the set is written one file to a sample, named by its ID, and a line printed for each", {
+  timeout: budget(1_599),
+}, () => {
   const folder = temporary("synthetic");
   // A file of an older set goes; anything else in the folder stays.
   writeFileSync(join(folder, "synthetic-1.json"), "{}");
@@ -27,7 +30,7 @@ test("the set is written one file to a sample, named by its ID, and a line print
   ]);
   const text = readFileSync(join(folder, `${ids[0]}.json`), "utf8");
   expect(JSON.parse(text)).toMatchObject({ id: ids[0], protocol: "novatrail.eval.v1" });
-}, 30_000);
+});
 
 test("ci-licenses verifies the release of tutor the samples answer", () => {
   expect(readFileSync("justfile", "utf8")).toContain(`\ntutor_tag := "${TUTOR_FILE.tag}"\n`);

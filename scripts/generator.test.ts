@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, expect, test } from "vitest";
+import { budget } from "../src/core/budget.fixture.ts";
 import { PACKAGE as MODULE_PACKAGE } from "../src/eval/packages.fixture.ts";
 import { temporary } from "./folders.fixture.ts";
 import { buildGenerator, fileName, header } from "./generator.ts";
@@ -43,7 +44,7 @@ beforeAll(async () => {
   copyFileSync(built.path, file);
   text = readFileSync(file, "utf8");
   packages = built.packages.map(({ name }) => name);
-}, 120_000);
+});
 
 /** The folders that outlive one test — the build's, which every test of the file reads, and those
  * the file runs from —, gone after the last. */
@@ -73,7 +74,9 @@ test("names the file by a version X.Y.Z, and refuses another", () => {
   expect(() => fileName("v1.2.3")).toThrow("no version X.Y.Z");
 });
 
-test("of a version is the same bytes on every build, the other build in a process of its own", () => {
+test("of a version is the same bytes on every build, the other build in a process of its own", {
+  timeout: budget(528),
+}, () => {
   const folder = temporary("generator");
   const again =
     execFileSync(process.execPath, ["scripts/generator.ts", folder, "1.2.3"], {
@@ -81,7 +84,7 @@ test("of a version is the same bytes on every build, the other build in a proces
     }).split("\n")[0] ?? "";
   expect(again).toBe(join(folder, "synthetic-module_v1.2.3.mjs"));
   expect(readFileSync(again, "utf8")).toBe(text);
-}, 60_000);
+});
 
 test("imports nothing but Node's own modules, and opens with what it is and its notices", () => {
   // Any form that names a module — an import or a re-export over any lines, an import for its
@@ -112,7 +115,9 @@ test("imports nothing but Node's own modules, and opens with what it is and its 
   expect(() => header("1.2.3", "a\r\nb", [])).toThrow("carriage return");
 });
 
-test("writes a module's samples as writeModuleSamples does, byte for byte, and prints the same lines", () => {
+test("writes a module's samples as writeModuleSamples does, byte for byte, and prints the same lines", {
+  timeout: budget(3_995),
+}, () => {
   const ours = temporary("ours");
   const lines = writeModuleSamples(PACKAGE, "v0.2.0", ours, CALLS);
   const theirs = temporary("theirs");
@@ -125,7 +130,7 @@ test("writes a module's samples as writeModuleSamples does, byte for byte, and p
   for (const name of names) {
     expect(readFileSync(join(theirs, name), "utf8")).toBe(readFileSync(join(ours, name), "utf8"));
   }
-}, 60_000);
+});
 
 test("prints the digests of the tasks' open views as moduleDigests does, and exits 1 naming a task without one (T97)", () => {
   const tasks = ["times-tables-d5", "comparing-fractions-d1"];
@@ -139,9 +144,11 @@ test("prints the digests of the tasks' open views as moduleDigests does, and exi
     err: "no-such-task: novatrail/grade-3-math has no task no-such-task\n",
     status: 1,
   });
-}, 60_000);
+});
 
-test("exits 2 on a call out of form and 1 on a call it refuses, writing nothing", () => {
+test("exits 2 on a call out of form and 1 on a call it refuses, writing nothing", {
+  timeout: budget(336),
+}, () => {
   const usage =
     "usage: node synthetic-module_v1.2.3.mjs --module <package> <tag> <folder> <task>:<seed>...\n" +
     "       node synthetic-module_v1.2.3.mjs --digest <package> <task>...\n";
@@ -153,4 +160,4 @@ test("exits 2 on a call out of form and 1 on a call it refuses, writing nothing"
   expect(refused.status).toBe(1);
   expect(refused.err).toContain("no-such-task:1: novatrail/grade-3-math has no task no-such-task");
   expect(readdirSync(folder)).toEqual([]);
-}, 60_000);
+});
