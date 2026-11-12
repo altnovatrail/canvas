@@ -2,5 +2,5 @@
 
 The package embeds icons of Material Symbols, by Google, under the Apache License, Version 2.0,
 the license in LICENSE: https://github.com/google/material-design-icons. They come from the npm
-package @iconify-json/material-symbols 1.2.97, and the package holds only the icons of its
+package @iconify-json/material-symbols 1.2.98, and the package holds only the icons of its
 own buttons.
