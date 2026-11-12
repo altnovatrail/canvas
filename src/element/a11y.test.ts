@@ -38,6 +38,24 @@ test.each(KINDS)(
   },
 );
 
+test.each(KINDS)(
+  "$name, of that height, in a lang its labels are not in, has none either: the container is in English, which it is named in, and the column in German (T106)",
+  async ({ put, incomplete }) => {
+    const element = await put(made);
+    element.style.height = "300px";
+    element.setAttribute("lang", "de");
+    await settle();
+    const viewport = element.shadowRoot?.querySelector(".viewport");
+    expect([viewport?.getAttribute("role"), viewport?.getAttribute("lang")]).toEqual([
+      "region",
+      "en",
+    ]);
+    expect(viewport?.firstElementChild?.getAttribute("lang")).toBe("de");
+    expect(["Sheet", "Workbook", "Worked example"]).toContain(viewport?.getAttribute("aria-label"));
+    await axeOf(element, incomplete);
+  },
+);
+
 test.each(KINDS.filter(({ incomplete }) => incomplete.includes("color-contrast")))(
   "$name: its printed lines stand out from its paper, as axe cannot tell",
   async ({ put }) => {

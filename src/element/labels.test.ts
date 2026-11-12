@@ -4,7 +4,7 @@
 // architecture 6 spec; a language the table has not is English, under its own tag.
 
 import { expect, test } from "vitest";
-import { LANGUAGES, labelsFor, placesOf, say } from "./labels.js";
+import { knows, LANGUAGES, labelsFor, placesOf, say } from "./labels.js";
 
 const english = labelsFor("en").labels;
 
@@ -98,4 +98,9 @@ test("no label speaks in the first person: a learner reads no AI's «I» or «we
 test("a language the table has not is English, under its own tag", () => {
   for (const tag of ["de", "fr-CA", "", null]) expect(labelsFor(tag).lang).toBe("en");
   expect(labelsFor("ru-RU").lang).toBe("ru");
+});
+
+test("the table knows a tag it has labels for, and no other: English that stands for one is not its language", () => {
+  for (const tag of ["de", "fr-CA", "", "-ru", "x-ru", null]) expect(knows(tag)).toBe(false);
+  for (const tag of ["en", "en-GB", "ru", "ru-RU", "RU-latn"]) expect(knows(tag)).toBe(true);
 });

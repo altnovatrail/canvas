@@ -33,7 +33,8 @@
 // its contract with app are spec's, of @altnovatrail/spec/canvas: the element implements its CanvasElement, and the package puts the
 // element and its events in the DOM's maps (T69; R07). The keyboard goes into the sheet and out:
 // a container that scrolls is a region named by the canvas kind, with a stop of Tab of its own and
-// a ring when the keyboard brings the focus there (T93; R33). The row's Zoom in and Zoom out step
+// a ring when the keyboard brings the focus there (T93; R33); for a `lang` the labels are not in,
+// the container is in theirs and the column in the element's (T106; R74). The row's Zoom in and Zoom out step
 // the page's zoom of the sheet from its fit to twice it, and a zoomed sheet scrolls across as well
 // as down, with Left and Right in the row, two fingers and the keys (T94).
 
@@ -99,7 +100,7 @@ import {
 } from "../core/task.js";
 import { nextIdOf, resumeOf, Work } from "../core/work.js";
 import { placeOver, SVG, write } from "./attributes.js";
-import { labelsFor, say } from "./labels.js";
+import { knows, labelsFor, say } from "./labels.js";
 import { Parts } from "./parts.js";
 import { Pictures } from "./pictures.js";
 import { attachProbe } from "./probe.js";
@@ -2136,13 +2137,21 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * The region's name: the canvas kind's, or a worked example's, in the labels' language, which
-   * the row's buttons are named in. The container takes no `lang` of its own: the statement in it
-   * has the task's (T93).
+   * the row's buttons are named in. For a `lang` the labels are not in, the container is in
+   * theirs, English, and the column, all the container holds, in the element's: the name is said
+   * in the language it is in, and the statement, the parts and the sheet as before (T106; R74).
+   * With a `lang` the labels are in, the name is in the element's language already; without one,
+   * the element's language is the page's, which no attribute of the column could name. Neither
+   * then has a `lang` of its own.
    */
   #nameRegion(): void {
-    const { labels } = labelsFor(this.getAttribute("lang"));
+    const tag = this.getAttribute("lang");
+    const { lang, labels } = labelsFor(tag);
+    const apart = tag !== null && !knows(tag);
     const named = this.#viewport.hasAttribute("role");
     write(this.#viewport, "aria-label", named ? labels[this.#rowKind()] : null);
+    write(this.#viewport, "lang", apart ? lang : null);
+    write(this.#column, "lang", apart ? tag : null);
   }
 
   /** What the row of buttons is of, and is named by: a worked example, or the canvas kind (R42). */

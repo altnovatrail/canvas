@@ -133,13 +133,29 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
 /** Every language the table has, by its tag: the tests hold each to English's places. */
 export const LANGUAGES: readonly string[] = [...LABELS.keys()];
 
+/** Labels, and the language they are in. */
+type Labelled = { readonly lang: string; readonly labels: Labels };
+
 /**
  * The labels for a language tag, and the language they are in. The tag is looked up as RFC 4647,
  * section 3.4, does it: in lower case, cut subtag by subtag from its end until the table has what
  * is left, a single-letter subtag going with the subtag after it. English stands for any other
  * tag, and for none.
  */
-export function labelsFor(tag: string | null): { readonly lang: string; readonly labels: Labels } {
+export function labelsFor(tag: string | null): Labelled {
+  return lookup(tag) ?? { lang: "en", labels: ENGLISH };
+}
+
+/**
+ * Whether the table has labels in the language of a tag, as `labelsFor` looks it up: the English
+ * that stands for a tag it has not is in no language of the tag's (R74).
+ */
+export function knows(tag: string | null): boolean {
+  return lookup(tag) !== undefined;
+}
+
+/** The labels the table has for a tag, by RFC 4647, section 3.4, or none. */
+function lookup(tag: string | null): Labelled | undefined {
   let range = (tag ?? "").toLowerCase();
   while (range !== "") {
     const labels = LABELS.get(range);
@@ -149,7 +165,7 @@ export function labelsFor(tag: string | null): { readonly lang: string; readonly
     if (cut >= 2 && range[cut - 2] === "-") cut -= 2;
     range = cut > 0 ? range.slice(0, cut) : "";
   }
-  return { lang: "en", labels: ENGLISH };
+  return undefined;
 }
 
 /** A place of a label: a name of Latin letters, digits and underscores in braces. */
