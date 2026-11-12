@@ -4,7 +4,7 @@
 # the runner as a release of GitHub does, and lets the browser download and open them; screenshots,
 # trees and reports are its artifact. Android runs in the toolchain stage of
 # .devcontainer/Dockerfile; the runners of macOS have no Docker, so their jobs take the Dockerfile's
-# Node through setup-node. The pen, the palm and iCloud need real tablets: debt Д7 in RUN.md.
+# Node through setup-node. The pen, the palm and iCloud need real tablets: debt Д7 in DEBT.md.
 name: Emulators
 
 on:

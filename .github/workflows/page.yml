@@ -8,7 +8,7 @@
 # sees that the page asked for nothing and broke no rule of its policy; the saved files are then
 # read as sample files and held to the protocol by spec's sample-check (T81). The strokes are the
 # code's: no handwriting goes into a run. The pen, the palm and iCloud need real tablets: debt Д7
-# in RUN.md.
+# in DEBT.md.
 #
 # The workflow runs on every pull request, with Android alone, and with the iPad too on a push to
 # main, of the same paths, and by hand (T20): main holds the cache of the toolchain stage every pull

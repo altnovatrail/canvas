@@ -127,7 +127,7 @@ export function blobAt(index: number): string {
  * of the window to another, of a pointer's type: what the iPad's driver draws with, for WebDriver's
  * actions in Safari of the simulator reached a window other than the session's, or hung (T81). The
  * element takes them as it takes a finger's; what a real pen or palm does is the hardware's to
- * show (Д7 in RUN.md). It gives the strokes the sheet holds then. */
+ * show (Д7 in DEBT.md). It gives the strokes the sheet holds then. */
 export function strokeBy(
   from: readonly [number, number],
   to: readonly [number, number],

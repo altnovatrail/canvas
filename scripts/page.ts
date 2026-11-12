@@ -16,7 +16,7 @@
 // bundle: a page has no synchronous hash for openTasksOf. Every task of the file goes in, bank by
 // bank (T21; R62): openTasksOf refuses a task with a field outside the open view, so no key,
 // solution or trap reaches the file a release carries, and a task that names a picture stops the
-// build, since tutor's file carries no media for it (Д4 in RUN.md). So do the tasks of modules, for
+// build, since tutor's file carries no media for it (Д4 in DEBT.md). So do the tasks of modules, for
 // an eval set, of the copy of what module-kit open wrote in tasks/modules-<tag>/, held to its sum
 // (T101; R71; scripts/modules.ts): each module's sheets of one answer slot anywhere or on the whole
 // sheet and its pages of a workbook, with the files of media/ their statements name, inline, and its

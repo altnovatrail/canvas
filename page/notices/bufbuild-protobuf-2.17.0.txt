@@ -1,9 +1,9 @@
-@bufbuild/protobuf 2.16.0 is published under (Apache-2.0 AND BSD-3-Clause), and its npm package
-carries no file of its license. These texts are taken from its repository at the tag v2.16.0,
-commit b3b232f7f466eda27c66e8f63c82f930578b6cc6:
-- the Apache License 2.0: https://github.com/bufbuild/protobuf-es/blob/b3b232f7f466eda27c66e8f63c82f930578b6cc6/LICENSE
+@bufbuild/protobuf 2.17.0 is published under (Apache-2.0 AND BSD-3-Clause), and its npm package
+carries no file of its license. These texts are taken from its repository at the tag v2.17.0,
+commit 01a8c3b7c95d17758c641b2b9e8ee2f14a3ee9d7:
+- the Apache License 2.0: https://github.com/bufbuild/protobuf-es/blob/01a8c3b7c95d17758c641b2b9e8ee2f14a3ee9d7/LICENSE
 - the BSD-3-Clause notice of the code derived from Google's protobuf, as the header of
-  https://github.com/bufbuild/protobuf-es/blob/b3b232f7f466eda27c66e8f63c82f930578b6cc6/packages/protobuf/src/wire/varint.ts
+  https://github.com/bufbuild/protobuf-es/blob/01a8c3b7c95d17758c641b2b9e8ee2f14a3ee9d7/packages/protobuf/src/wire/varint.ts
 
 --------
 

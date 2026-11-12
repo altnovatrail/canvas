@@ -1,7 +1,8 @@
 {
   "claudeMdExcludes": [
     "**/canvas/spec/CLAUDE.md",
-    "**/canvas/spec/**/CLAUDE.md"
+    "**/canvas/spec/**/CLAUDE.md",
+    "**/canvas/spec/.claude/rules/**"
   ],
   "autoCompactWindow": 400000,
   "disableClaudeAiConnectors": true,

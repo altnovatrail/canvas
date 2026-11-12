@@ -8,9 +8,8 @@
 // - no label counts a thing, so none has forms of number yet. The first that does takes CLDR's
 //   categories, `other` always among them, chosen by `Intl.PluralRules` of the label's language;
 // - no label tells the learner's gender (R70 spec) or speaks as the AI in the first person (П-15);
-// - the buttons' words are those of the table of words of architecture 6 spec, but for the four of
-//   the page's zoom and of the scroll across, Zoom in and Zoom out, Left and Right, which wait for
-//   it by В76 in RUN.md (T94).
+// - the buttons' words are those of the table of words of architecture 6 spec, the four of the
+//   page's zoom and of the scroll across among them since spec took them by В76 (T94; Д219 spec).
 // This module is no entry point of the package.
 
 /**

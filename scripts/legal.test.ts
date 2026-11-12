@@ -2,7 +2,7 @@
 // that spec's release file carries gives exactly what it says (section 7 of the legal part's
 // README), every text of the file is shown, the file is held to its sum and to the tag spec/ stands
 // on, and the sets the build takes — the measurement's and the eval set's in the release of
-// v0.15.1, the same as in v0.15.0's, and all three in the part for tests (T102, T109).
+// v0.16.3, the same as in v0.15.0's, and all three in the part for tests (T102, T109, T110).
 
 import { copyFileSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -95,7 +95,7 @@ describe("the release file", () => {
       const part = partIn(folder);
       const reading = readingOf(validatorOf(schema), part);
       if (!("current" in reading)) throw new Error("spec's part is refused");
-      // At v0.15.1, as at v0.15.0, the sets of the adults are in force, and the child's is still
+      // At v0.16.3, as at v0.15.0, the sets of the adults are in force, and the child's is still
       // a draft (R139 spec, R141 spec).
       expect(reading.current.sets).toEqual({ measure: 2, "eval-set": 1 });
       expect(Object.keys(part.files)).toContain("texts/privacy-policy/2.ru.md");
