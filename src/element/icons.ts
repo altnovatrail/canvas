@@ -1,4 +1,4 @@
-// Written by scripts/icons.ts — `just icons` — from @iconify-json/material-symbols 1.2.97:
+// Written by scripts/icons.ts — `just icons` — from @iconify-json/material-symbols 1.2.98:
 // Material Symbols by Google, under the Apache License 2.0 (R46 in docs/decisions.md; R78 spec).
 // ci-lint fails unless it is what the script writes, so it is never edited by hand. This module is
 // no entry point of the package.

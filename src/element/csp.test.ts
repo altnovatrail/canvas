@@ -6,14 +6,20 @@ import { arrive, file, level, placed, settle, sheetWork } from "./pointer.fixtur
 // The element under app's content security policy, in Chromium (R51; the second amendment of
 // 2026-11-02 to R36 spec): no inline style, and images only from blob: addresses. The policy goes
 // into this frame's head once the file's modules have loaded, so that from then on the frame loads
-// nothing else, as app's page; the runner, loaded already, keeps working. Each test file has a
+// nothing else but the runner's scripts, as app's page; the runner keeps working. Each test file has a
 // frame of its own, so no other file runs under it. Whatever the policy blocks, the page hears of
 // by a securitypolicyviolation event, and the tests ask that there be none: the row, the
 // statement and its pictures, the grid, the ink, the marks, the workbook's print and a worked
 // example's pictures beside the sheet and on it all come under it, styled by the adopted sheet.
 
-/** app's policy (R09 app), as the amendment to R36 spec names it. */
-const POLICY = "default-src 'none'; style-src 'self'; img-src blob:";
+/**
+ * app's policy (R09 app), as the amendment to R36 spec names it, with the runner's scripts from
+ * this origin: after the tests the runner imports the module that takes the file's coverage again,
+ * and Chrome Headless Shell 158 holds that import to the policy, where 156 did not. Sources with a
+ * path, the runner's own, do not admit it; the origin does. The element imports no script once
+ * loaded, so it is the styles and images that the tests hold to the policy.
+ */
+const POLICY = "default-src 'none'; style-src 'self'; img-src blob:; script-src 'self'";
 
 /** What the policy blocked, as its events tell it: the directive and the address. */
 const blocked: string[] = [];
