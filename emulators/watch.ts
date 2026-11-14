@@ -15,10 +15,10 @@ import { hash } from "../scripts/csp.ts";
 export const TITLE = "NovaTrail — страница образцов";
 /** The save button's text, as the screen shows it. */
 export const SAVE = "Сохранить образец";
-/** The tasks the build offers before the start — every task of tutor's file (T21), then the 758 of
+/** The tasks the build offers before the start — every task of tutor's file (T21), then the 769 of
  * modules the copy of their open views gives a kind (T101) — and the first of the workbook among
  * them, after the banks of sheets of tutor's file (scripts/page.ts). */
-export const TASKS = 814;
+export const TASKS = 825;
 export const WORKBOOK = "16";
 
 /** The build the workflow's build job wrote with scripts/page.ts. */

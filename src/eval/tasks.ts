@@ -101,9 +101,9 @@ export function openTasksOf(
  * and the copy together.
  */
 export const MODULES_FILE = Object.freeze({
-  tag: "v0.2.4",
+  tag: "v0.2.7",
   seeds: Object.freeze(["1", "2", "3", "4", "5"]),
-  sha256: "c5bd573445fc72478e5e9ab0d289a7ca591c25f68436bbd1fd4d2f75a1df9a03",
+  sha256: "00459377255128463c6a0038da524f4ece620584ee7dc82f7d666c496d5a862d",
 });
 
 /** A module of the open views: its ID, version and manifest's open view, and its tasks. */

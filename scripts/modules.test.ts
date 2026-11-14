@@ -21,7 +21,7 @@ test("the justfile's release of modules and seeds are MODULES_FILE's, and so is 
   expect(justfile).toContain(`\npage_modules_tag := "${MODULES_FILE.tag}"\n`);
   expect(justfile).toContain(`\nopen_seeds := "${MODULES_FILE.seeds.join(" ")}"\n`);
   expect(justfile).toContain("\n    {{ quote(just_executable()) }} modules-open check\n");
-  expect(modulesFolder(MODULES_FILE.tag)).toBe("tasks/modules-v0.2.4");
+  expect(modulesFolder(MODULES_FILE.tag)).toBe("tasks/modules-v0.2.7");
 });
 
 test("module-kit open takes of each module its newest version of the element's format, not withdrawn", () => {
