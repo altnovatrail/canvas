@@ -3,7 +3,7 @@ import { line } from "../core/pages.fixture.js";
 import { sheetTask, workbookTask, workedExample } from "../core/tasks.fixture.js";
 import { arrive, file, level, placed, settle, sheetWork } from "./pointer.fixture.js";
 
-// The element under app's content security policy, in Chromium (R51; the second amendment of
+// The element under app's content security policy, in a browser (R51; the second amendment of
 // 2026-11-02 to R36 spec): no inline style, and images only from blob: addresses. The policy goes
 // into this frame's head once the file's modules have loaded, so that from then on the frame loads
 // nothing else but the runner's scripts, as app's page; the runner keeps working. Each test file has a

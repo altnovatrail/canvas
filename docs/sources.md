@@ -436,6 +436,16 @@ At the tag [v0.1.12](https://github.com/altnovatrail/.github/tree/v0.1.12), comm
 - `just new-repo-draft canvas typescript 3.2 v0.16.3` in a temporary clone of `spec` at the tag gives the `.devcontainer/` of `canvas` byte for byte, and the template's `.claude/settings.json` differs from that of `canvas` only in what holds R15: the `deny` rules on the folder of the samples made by hand;
 - `module-kit` on `main` (`gh api repos/altnovatrail/module-kit/commits`) moved to v0.16.3 at 2026-11-12 20:54Z, by its own decision R54 module-kit, without rebuilding its documents, and the pilot, row 7.1 of COORDINATION.md spec, is the task T43 module-kit outside an epic, with no «Сделано»: not begun.
 
+### 6.11. The move to `spec` v0.17.4
+
+(architecture 3.3, 3.7 and 3.10; R78; T111), read 2026-11-14:
+
+- `gh release list -R altnovatrail/spec` — v0.17.4 of 2026-11-14 04:17Z, the last, after v0.17.3, v0.17.2, v0.17.1 and v0.17.0 of 2026-11-13 and 14; `gh release verify v0.17.4 -R altnovatrail/spec` — "Release v0.17.4 verified!", the tag is the commit 33149be; `npm view @altnovatrail/spec version` — 0.17.4, and so is `@altnovatrail/contracts`, whose dependencies are still `{ '@bufbuild/protobuf': '2.17.0' }`;
+- `legal-3.tar.gz` of the release v0.17.4 — sha256 `32304dca472d941304ffdb0849ed3efa02eff043162889e182bb26d41bed0cdf`, its bundle `d195bca80e900e4523003514ade180ea9324b0b8f4030da8eeaa65537127b895`; `release-verify spec v0.17.4` — "legal-3.tar.gz: spec v0.17.4, signed by spec's release.yml". It holds 20 files under `texts/`, among them version 3 of the privacy policy, `in_force_since: "2026-11-27"`, and the sets `measure` 1 of 2026-11-10 and 2 of 2026-11-11, `eval-set` 1 of 2026-11-10 and `child-sample` 1, a draft;
+- the README of the part `legal` at the tag: "The day a part is read on is a date in UTC: `api` reads it on the day of each request, the build of the samples page on the day of its build, and the check on the day it runs. A version applies from the start of its day, 00:00 UTC", and "A set, and a text shown on the samples page or on a form, applies from the day it was approved: no screen shows it ahead";
+- `just new-repo-draft canvas typescript 3.2 v0.17.4` in a temporary clone of `spec` at the tag gives a `.devcontainer/` that differs from that of `canvas` at v0.16.3 by the WebKit 2388 and Firefox 1572 of the image `mcr.microsoft.com/playwright:v1.65.0-noble` with their libraries and fonts, and by `--network-alias=canvas`; `node_modules/playwright-core/browsers.json` of Playwright 1.65.0 names the same revisions, `chromium-headless-shell` 1254, `webkit` 2388 and `firefox` 1572. The template's `.claude/settings.json` and AGENTS.md are those of `canvas`, but for the `deny` rules of R15;
+- the cache of GitHub Actions of `canvas` (`gh api repos/altnovatrail/canvas/actions/cache/usage`) — 18 entries, 9906 MiB, every one an image of the `toolchain` stage, 548–554 MiB, of the three versions of the Dockerfile before this one.
+
 ## 7. Tools, packages and CI
 
 ### 7.1. GitHub Packages

@@ -1,4 +1,4 @@
-// axe-core over the element's shadow tree, in the tests in Chromium (T90 in RUN.md; R70 in
+// axe-core over the element's shadow tree, in the tests in a browser (T90 in RUN.md; R70 in
 // docs/decisions.md): app's CI does not look into the canvas's element, so canvas's own does (R90
 // spec). The rules are those of WCAG 2.0, 2.1 and 2.2 at levels A and AA (wcag.fixture.ts). Its
 // target-size measures 2.5.8, 24 × 24 CSS px; the 44 × 44 of 2.5.5, which R90 spec asks of canvas
@@ -14,16 +14,34 @@ import type { NovatrailCanvas, WorkedExample } from "./index.js";
 import { arrive, level, placed, quarters, settle, sheetWork } from "./pointer.fixture.js";
 import { TAGS } from "./wcag.fixture.js";
 
+/** A pair of colours a node of color-contrast is in, its text's and its background's, as axe's
+ * failure data gives them: #rrggbb. */
+export type Pair = readonly [foreground: string, background: string];
+
 /**
  * Run axe over a root — the element, whose open shadow root it enters — and throw, naming each rule
- * and node, on any violation, and on incomplete rules other than those named.
+ * and node, on any violation, and on incomplete rules other than those named. A node of
+ * color-contrast in one of the system's pairs is none of the element's: in forced colours its text
+ * and background are the system's, of a pair it defines for the node's role (T111).
  */
-export async function axeOf(root: Element, incomplete: readonly string[] = []): Promise<void> {
+export async function axeOf(
+  root: Element,
+  incomplete: readonly string[] = [],
+  system: readonly Pair[] = [],
+): Promise<void> {
   const result = await axe.run(root, { runOnly: { type: "tag", values: [...TAGS] } });
-  const violations = result.violations.map(
-    ({ id, nodes }) =>
-      `${id}: ${nodes.map((node) => `${String(node.target)} — ${node.failureSummary}`).join("; ")}`,
-  );
+  const ours = (id: string, node: axe.NodeResult) => {
+    const data = node.any[0]?.data as { fgColor?: string; bgColor?: string } | undefined;
+    const pair = [data?.fgColor, data?.bgColor];
+    return id !== "color-contrast" || !system.some(([fg, bg]) => pair[0] === fg && pair[1] === bg);
+  };
+  const violations = result.violations
+    .map(({ id, nodes }) => ({ id, nodes: nodes.filter((node) => ours(id, node)) }))
+    .filter(({ nodes }) => nodes.length > 0)
+    .map(
+      ({ id, nodes }) =>
+        `${id}: ${nodes.map((node) => `${String(node.target)} — ${node.failureSummary}`).join("; ")}`,
+    );
   if (violations.length > 0) throw new Error(`axe finds violations:\n${violations.join("\n")}`);
   const left = new Set(result.incomplete.map(({ id }) => id));
   const named = new Set(incomplete);

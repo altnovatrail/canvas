@@ -7,7 +7,7 @@ import { toScreen, type View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
 import { workForCheck } from "../core/submission.js";
 import { workbookTask, workedExample } from "../core/tasks.fixture.js";
-import { axeOf, KINDS } from "./axe.fixture.js";
+import { axeOf, KINDS, type Pair } from "./axe.fixture.js";
 import "./index.js";
 import {
   arrive,
@@ -321,9 +321,32 @@ test("with forced colours a picture on an area of the sheet keeps the colours of
   expect(sameColours(shown, QUARTERS)).toEqual([true, true, true, true]);
 });
 
+/**
+ * The system's pairs of a selected control, Highlight on HighlightText, as axe names colours: one
+ * when both are opaque, rgb() of whole channels, and none when either is not — axe blends a
+ * translucent colour with what lies under it, as Chromium's Highlight is, and reports no such pair.
+ */
+function highlight(): Pair[] {
+  const probe = document.createElement("div");
+  probe.style.cssText = "background-color: Highlight; color: HighlightText";
+  document.body.append(probe);
+  const { color, backgroundColor } = getComputedStyle(probe);
+  probe.remove();
+  const hex = (rgb: string) =>
+    /^rgb\((\d+), (\d+), (\d+)\)$/
+      .exec(rgb)
+      ?.slice(1)
+      .map((n) => Number(n).toString(16).padStart(2, "0"))
+      .join("");
+  const [fg, bg] = [hex(color), hex(backgroundColor)];
+  return fg === undefined || bg === undefined ? [] : [[`#${fg}`, `#${bg}`]];
+}
+
 test.each(KINDS)(
   "$name has no violation that axe finds in forced colours either (T90)",
   async ({ put, incomplete }) => {
-    await axeOf(await put(made), incomplete);
+    // The selected tool is in the system's Highlight and HighlightText, whose contrast is the
+    // system's, in every engine: Firefox's own palette has them 2.94 to 1, white on #3399ff (T111).
+    await axeOf(await put(made), incomplete, highlight());
   },
 );

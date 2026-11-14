@@ -9,6 +9,7 @@ import { labelsFor } from "./labels.js";
 import {
   accessibilityTree,
   at,
+  devtools,
   input,
   placed,
   screenshot,
@@ -94,13 +95,15 @@ test.each(KINDS)(
     expect(viewport.scrollHeight).toBeGreaterThan(viewport.clientHeight);
     expect(regionOf(viewport)).toEqual(["0", "region", region]);
     expect(row.getAttribute("aria-label")).toBe(rowName);
-    const nodes = await accessibilityTree();
-    const named = (role: string) =>
-      nodes
-        .filter((node) => node.role?.value === role && !node.ignored)
-        .map((node) => node.name?.value);
-    expect(named("region")).toEqual([region]);
-    expect(named("toolbar")).toEqual([rowName]);
+    if (devtools) {
+      const nodes = await accessibilityTree();
+      const named = (role: string) =>
+        nodes
+          .filter((node) => node.role?.value === role && !node.ignored)
+          .map((node) => node.name?.value);
+      expect(named("region")).toEqual([region]);
+      expect(named("toolbar")).toEqual([rowName]);
+    }
     await userEvent.tab();
     expect(row.contains(root.activeElement)).toBe(true);
     await userEvent.tab();
@@ -134,15 +137,18 @@ test("the keys scroll the container in focus as the browser scrolls one, and the
     ["{PageUp}", (top) => top === 0],
     [" ", (top) => top > 100],
   ];
-  // Chromium scrolls from the keyboard smoothly: the next key comes once the scroll has come to
-  // rest, or a second has gone by without one.
+  // The browsers scroll from the keyboard smoothly: the next key comes once the place the key
+  // scrolls to has held for three frames, not after a time, which a loaded host outlasts, nor on a
+  // scrollend, which the scroll of the key before may send late (R75; T111). A key that never gets
+  // there stops the waiting after 600 frames, and the check says where it is.
   for (const [keys, check] of steps) {
-    const rested = new Promise((resolve) => {
-      viewport.addEventListener("scrollend", resolve, { once: true });
-      setTimeout(resolve, 1000);
-    });
     await userEvent.keyboard(keys);
-    await rested;
+    for (let still = 0, last = Number.NaN, frames = 0; still < 3 && frames < 600; frames++) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      const top = viewport.scrollTop;
+      still = top === last && check(top) ? still + 1 : 0;
+      last = top;
+    }
     expect(check(viewport.scrollTop), `${keys} at ${viewport.scrollTop} of ${end}`).toBe(true);
   }
   await settle();
@@ -218,7 +224,7 @@ test("the region and the row are named in the element's language, by the kind it
   expect(viewport.matches(":lang(en)")).toBe(true);
 });
 
-test("for a lang the labels are not in, the container is in theirs and the column, the statement, a workbook's lines and a demo's parts in the element's, of every kind and through every change; a lang they are in, and none, give neither a lang of its own (T106)", async () => {
+test("for a lang the labels are not in, the container is in theirs and the column, the statement, a workbook's lines and a demo's parts in the element's, of every kind and through every change; a lang they are in gives both the element's, and none neither a lang of its own (T106, T111)", async () => {
   const { element, root, viewport } = await put((each) => {
     each.task = sheetTask();
   }, 300);
@@ -256,9 +262,11 @@ test("for a lang the labels are not in, the container is in theirs and the colum
   // A lang of no language is out of the table too: the column keeps it, as the element has it.
   element.setAttribute("lang", "");
   apart("", "Worked example");
+  // A lang the labels are in: both have it, for Firefox gives a shadow tree no language of its host,
+  // and WebKit takes no new one into it (T111).
   for (const tag of ["ru-RU", "en-GB", "ru"]) {
     element.setAttribute("lang", tag);
-    expect(langs()).toEqual([null, null]);
+    expect(langs()).toEqual([tag, tag]);
     expect(viewport.matches(`:lang(${tag})`)).toBe(true);
   }
   element.setAttribute("lang", "de");
@@ -310,27 +318,30 @@ test.each([
   },
 );
 
-test("a press on the sheet takes the focus to the container without a ring, and scrolls neither the page nor the container", async () => {
-  const {
-    root,
-    viewport,
-    canvas,
-    view,
-    ring: shown,
-  } = await put((each) => {
-    each.task = sheetTask();
-  }, 300);
-  spacer(made);
-  window.scrollTo({ top: 40, behavior: "instant" });
-  viewport.scrollTop = 120;
-  await settle();
-  const scrolled = [window.scrollY, viewport.scrollTop];
-  const point = at(canvas, view(), 500, view().vy + 100);
-  await input("mousePressed", point);
-  await input("mouseReleased", point);
-  await settle();
-  expect(root.activeElement).toBe(viewport);
-  expect(viewport.matches(":focus-visible")).toBe(false);
-  expect(getComputedStyle(shown).display).toBe("none");
-  expect([window.scrollY, viewport.scrollTop]).toEqual(scrolled);
-});
+test.runIf(devtools)(
+  "a press on the sheet takes the focus to the container without a ring, and scrolls neither the page nor the container",
+  async () => {
+    const {
+      root,
+      viewport,
+      canvas,
+      view,
+      ring: shown,
+    } = await put((each) => {
+      each.task = sheetTask();
+    }, 300);
+    spacer(made);
+    window.scrollTo({ top: 40, behavior: "instant" });
+    viewport.scrollTop = 120;
+    await settle();
+    const scrolled = [window.scrollY, viewport.scrollTop];
+    const point = at(canvas, view(), 500, view().vy + 100);
+    await input("mousePressed", point);
+    await input("mouseReleased", point);
+    await settle();
+    expect(root.activeElement).toBe(viewport);
+    expect(viewport.matches(":focus-visible")).toBe(false);
+    expect(getComputedStyle(shown).display).toBe("none");
+    expect([window.scrollY, viewport.scrollTop]).toEqual(scrolled);
+  },
+);

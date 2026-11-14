@@ -1,14 +1,14 @@
-// The pointer of the element's tests in Chromium: a sheet put on the page, the client point over a
-// point of it, a level stroke that a script makes, real input through the DevTools protocol — a
-// mouse, a pen and touches (R29) — the pixels of a screenshot, Chromium's own accessibility tree
-// and an element given its properties before it was upgraded; and for the pictures, a picture's
+// The pointer of the element's tests in Chromium, WebKit and Firefox: a sheet put on the page, the
+// client point over a point of it, a level stroke that a script makes, real input through
+// Chromium's DevTools protocol — a mouse, a pen and touches (R29) — the pixels of a screenshot,
+// Chromium's own accessibility tree and an element given its properties before it was upgraded; and for the pictures, a picture's
 // file — an SVG, or a PNG of four colours — a load the test settles, the wait for the files that
 // came, and what changes in a node (R23, R42). The tests take them from here rather than each
 // keeping a copy. Like the tests, the build leaves this module out (tsconfig.build.json), and the
 // package never has it.
 
 import { vi } from "vitest";
-import { cdp, page } from "vitest/browser";
+import { cdp, page, server } from "vitest/browser";
 import { toScreen, type View } from "../core/screen.js";
 import "./index.js";
 import { type ExportedSheet, NovatrailCanvas, type Task } from "./index.js";
@@ -20,6 +20,14 @@ export async function sheetWork(element: NovatrailCanvas): Promise<ExportedSheet
   if (work === null || !("png" in work)) throw new Error("the sheet gave no work for checking");
   return work;
 }
+
+/**
+ * Whether the test runs in Chromium, the one engine with the DevTools protocol: real input — a
+ * mouse, a pen with its pressure, touches of several fingers — and Chromium's own accessibility
+ * tree come through it alone, so a test of them is `test.runIf(devtools)`, and a test that only
+ * also reads the tree reads it `if (devtools)`. WebKit and Firefox run the rest (R13, R79 spec).
+ */
+export const devtools = server.browser === "chromium";
 
 /** Two frames: one for the element's layout, one for its drawing. */
 export async function settle(): Promise<void> {

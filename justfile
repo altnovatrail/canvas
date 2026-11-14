@@ -21,8 +21,8 @@ tutor_tag := "v0.1.22"
 # The release of spec whose file of the legal texts, in tasks/spec-<tag>/, the samples page takes
 # its sets of texts from (T89; R69): the tag spec/ stands on, and LEGAL_FILE's in scripts/legal.ts,
 # which scripts/legal.test.ts holds this to. ci-licenses verifies the file.
-spec_tag := "v0.16.3"
-legal_file := "legal-2.tar.gz"
+spec_tag := "v0.17.4"
+legal_file := "legal-3.tar.gz"
 
 # The release of modules whose package of grade-3-math, in tasks/modules-<tag>/, ci-licenses writes
 # synthetic samples of a module's eval set on (T86; R63): ci-licenses verifies the index, and holds
@@ -59,10 +59,12 @@ ci-lint: _install
     node scripts/icons.ts --check
 
 # Build the package, run the tests in Node and in Chromium with their coverage, which .github's
-# TypeScript wrapper sends to Codecov from coverage/lcov.info (R43), and check the package the way
-# a consumer takes it.
+# TypeScript wrapper sends to Codecov from coverage/lcov.info (R43), then in WebKit and Firefox
+# without it — Vitest's v8 coverage works in Chromium alone, and a browser instance's name ends in
+# its engine (vitest.config.ts) —, and check the package the way a consumer takes it.
 ci-test: build
-    {{ bin }}/vitest run --coverage
+    {{ bin }}/vitest run --coverage --project node --project '* chromium'
+    {{ bin }}/vitest run --project '* webkit' --project '* firefox'
     node scripts/package.ts
 
 # Fail on a published advisory, high or above, for a package the package ships with. Of the tools
@@ -139,7 +141,8 @@ build: _install
 # nothing of the machine or the time, and two builds of the page or of the generator are the same
 # bytes (R66, R68), so a
 # build of the same commit gives the same sums, and the sums are printed for whoever builds it
-# again to compare.
+# again to compare. The page reads spec's legal texts on the day it is built: a build on another
+# day repeats the release's with SOURCE_DATE_EPOCH at the release's time (R78).
 release-files version: build
     #!/usr/bin/env bash
     set -euo pipefail

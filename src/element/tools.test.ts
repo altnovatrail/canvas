@@ -5,11 +5,11 @@ import { sheetTask, workedExample } from "../core/tasks.fixture.js";
 import { ROW } from "./icons.js";
 import { NovatrailCanvas, type ToolChange } from "./index.js";
 import { labelsFor } from "./labels.js";
-import { at, iconOf, input, level, placed, settle, spacer } from "./pointer.fixture.js";
+import { at, devtools, iconOf, input, level, placed, settle, spacer } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
 
-// The element's own row of buttons in Chromium (R28): a toolbar of the tools the task allows, of
+// The element's own row of buttons in a browser (R28): a toolbar of the tools the task allows, of
 // undo and clearing, of Up and Down (R33) and of the zoom's pair (T94), found by its roles and
 // names in the element's language, worked with the pointer and with the keyboard, telling of the
 // learner's choice of tool, scrolling what two fingers would, and standing above the statement and
@@ -722,18 +722,21 @@ test("without a height, Down stands unavailable on a page no taller than the win
   expect(window.scrollY).toBeCloseTo(Math.round(0.8 * sight), 0);
 });
 
-test("a press of Up or Down while a pointer writes moves nothing under it, and one after the stroke scrolls", async () => {
-  const { element, canvas, viewport, view } = await sheet(400, 300);
-  const { down } = upAndDown(element);
-  await input("mousePressed", at(canvas, view(), 100, 100));
-  await input("mouseMoved", at(canvas, view(), 300, 100));
-  down.click();
-  expect(viewport.scrollTop).toBe(0);
-  await input("mouseReleased", at(canvas, view(), 300, 100));
-  expect(probe(element).strokes).toHaveLength(1);
-  down.click();
-  expect(viewport.scrollTop).toBeGreaterThan(0);
-});
+test.runIf(devtools)(
+  "a press of Up or Down while a pointer writes moves nothing under it, and one after the stroke scrolls",
+  async () => {
+    const { element, canvas, viewport, view } = await sheet(400, 300);
+    const { down } = upAndDown(element);
+    await input("mousePressed", at(canvas, view(), 100, 100));
+    await input("mouseMoved", at(canvas, view(), 300, 100));
+    down.click();
+    expect(viewport.scrollTop).toBe(0);
+    await input("mouseReleased", at(canvas, view(), 300, 100));
+    expect(probe(element).strokes).toHaveLength(1);
+    down.click();
+    expect(viewport.scrollTop).toBeGreaterThan(0);
+  },
+);
 
 test("with a height, the row stays where it is while the statement and the sheet scroll under it", async () => {
   const { element, row, viewport } = await sheet(400, 300);
@@ -778,34 +781,40 @@ test("without a height, the row sticks to the top of the page's scrolling, as fa
   expect(row.getBoundingClientRect().top).toBeCloseTo(40, 3);
 });
 
-test("a press on the row starts no stroke, and a stroke let go over a button clicks none", async () => {
-  const { element, canvas, view } = await sheet(400);
-  await press(button(element, "Eraser"));
-  expect(element.tool).toBe("eraser");
-  await press(button(element, "Pen"));
-  expect(element.tool).toBe("pen");
-  expect(probe(element).strokes).toEqual([]);
-  // A stroke from the sheet up over Clear: it lands, and Clear stays unpressed.
-  level(canvas, view(), 300, 100, 200);
-  await input("mousePressed", at(canvas, view(), 100, 100));
-  await input("mouseMoved", at(canvas, view(), 300, 100));
-  await input("mouseMoved", middle(button(element, "Clear")));
-  await input("mouseReleased", middle(button(element, "Clear")));
-  expect(probe(element).strokes).toHaveLength(2);
-});
+test.runIf(devtools)(
+  "a press on the row starts no stroke, and a stroke let go over a button clicks none",
+  async () => {
+    const { element, canvas, view } = await sheet(400);
+    await press(button(element, "Eraser"));
+    expect(element.tool).toBe("eraser");
+    await press(button(element, "Pen"));
+    expect(element.tool).toBe("pen");
+    expect(probe(element).strokes).toEqual([]);
+    // A stroke from the sheet up over Clear: it lands, and Clear stays unpressed.
+    level(canvas, view(), 300, 100, 200);
+    await input("mousePressed", at(canvas, view(), 100, 100));
+    await input("mouseMoved", at(canvas, view(), 300, 100));
+    await input("mouseMoved", middle(button(element, "Clear")));
+    await input("mouseReleased", middle(button(element, "Clear")));
+    expect(probe(element).strokes).toHaveLength(2);
+  },
+);
 
-test("with the consumer's pointer-events: none the buttons take no pointer, and their keys still work", async () => {
-  const { element, viewport } = await sheet(400, 300);
-  element.style.pointerEvents = "none";
-  await press(button(element, "Eraser"));
-  expect(element.tool).toBe("pen");
-  button(element, "Eraser").focus();
-  await userEvent.keyboard(" ");
-  expect(element.tool).toBe("eraser");
-  // Down's key scrolls the sheet, though two fingers would start no gesture then (R29, R33).
-  await press(button(element, "Down"));
-  expect(viewport.scrollTop).toBe(0);
-  button(element, "Down").focus();
-  await userEvent.keyboard("{Enter}");
-  expect(viewport.scrollTop).toBeGreaterThan(0);
-});
+test.runIf(devtools)(
+  "with the consumer's pointer-events: none the buttons take no pointer, and their keys still work",
+  async () => {
+    const { element, viewport } = await sheet(400, 300);
+    element.style.pointerEvents = "none";
+    await press(button(element, "Eraser"));
+    expect(element.tool).toBe("pen");
+    button(element, "Eraser").focus();
+    await userEvent.keyboard(" ");
+    expect(element.tool).toBe("eraser");
+    // Down's key scrolls the sheet, though two fingers would start no gesture then (R29, R33).
+    await press(button(element, "Down"));
+    expect(viewport.scrollTop).toBe(0);
+    button(element, "Down").focus();
+    await userEvent.keyboard("{Enter}");
+    expect(viewport.scrollTop).toBeGreaterThan(0);
+  },
+);

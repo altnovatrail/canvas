@@ -2,11 +2,11 @@ import { afterEach, expect, test, vi } from "vitest";
 import type { View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
 import { NovatrailCanvas, type Tool } from "./index.js";
-import { at, input, level } from "./pointer.fixture.js";
+import { at, devtools, input, level } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
 
-// The sheet's input in Chromium (R18): events that a script makes, with their coalesced points,
+// The sheet's input in a browser (R18): events that a script makes, with their coalesced points,
 // and real input through the DevTools protocol — a mouse, and a pen with its pressure.
 
 const made: HTMLElement[] = [];
@@ -85,33 +85,36 @@ test("pointer events on the canvas, with their coalesced points, make a stroke i
   expect(inkAt(canvas, view(), 150, 300)).toBe(0);
 });
 
-test("a real mouse drag, captured beyond the canvas, writes on to the sheet's edge", async () => {
-  const { element, canvas, view } = await sheet(400);
-  // A mouse of the protocol presses with the force it is given, 0 unless told; a real one with
-  // 0.5 while its button is down, and with 0 once it is up.
-  const pressed = { force: 0.5 };
-  await input("mousePressed", at(canvas, view(), 100, 100), pressed);
-  await input("mouseMoved", at(canvas, view(), 300, 100), pressed);
-  // Below the canvas, and so below the sheet: the canvas holds the pointer, and the point is
-  // clamped to the sheet's bottom edge.
-  const below = {
-    ...at(canvas, view(), 300, 0),
-    clientY: canvas.getBoundingClientRect().bottom + 100,
-  };
-  await input("mouseMoved", below, pressed);
-  await input("mouseReleased", below, { force: 0 });
+test.runIf(devtools)(
+  "a real mouse drag, captured beyond the canvas, writes on to the sheet's edge",
+  async () => {
+    const { element, canvas, view } = await sheet(400);
+    // A mouse of the protocol presses with the force it is given, 0 unless told; a real one with
+    // 0.5 while its button is down, and with 0 once it is up.
+    const pressed = { force: 0.5 };
+    await input("mousePressed", at(canvas, view(), 100, 100), pressed);
+    await input("mouseMoved", at(canvas, view(), 300, 100), pressed);
+    // Below the canvas, and so below the sheet: the canvas holds the pointer, and the point is
+    // clamped to the sheet's bottom edge.
+    const below = {
+      ...at(canvas, view(), 300, 0),
+      clientY: canvas.getBoundingClientRect().bottom + 100,
+    };
+    await input("mouseMoved", below, pressed);
+    await input("mouseReleased", below, { force: 0 });
 
-  const [stroke] = probe(element).strokes;
-  expect(stroke?.kind).toBe("mouse");
-  const points = stroke?.points ?? [];
-  expect(points[0]?.x).toBeCloseTo(100, 0);
-  expect(points[0]?.y).toBeCloseTo(100, 0);
-  expect(points.at(-1)?.y).toBe(SHEET.height);
-  // The last point keeps the pressure of the drag, not pointerup's 0.
-  expect(points.map((point) => point.p)).toEqual(points.map(() => 0.5));
-});
+    const [stroke] = probe(element).strokes;
+    expect(stroke?.kind).toBe("mouse");
+    const points = stroke?.points ?? [];
+    expect(points[0]?.x).toBeCloseTo(100, 0);
+    expect(points[0]?.y).toBeCloseTo(100, 0);
+    expect(points.at(-1)?.y).toBe(SHEET.height);
+    // The last point keeps the pressure of the drag, not pointerup's 0.
+    expect(points.map((point) => point.p)).toEqual(points.map(() => 0.5));
+  },
+);
 
-test("a real pen writes with its pressure", async () => {
+test.runIf(devtools)("a real pen writes with its pressure", async () => {
   const { element, canvas, view } = await sheet(400);
   const pen = (force: number) => ({ pointerType: "pen" as const, force });
   await input("mousePressed", at(canvas, view(), 100, 200), pen(0.8));
@@ -297,46 +300,52 @@ test("a stroke under way stays through undo() and lands after the strokes left",
 
 // A consumer stops the writing with a style of its own, as the board would while it checks
 // (R20): pointer-events inherits into the shadow tree, and a real pointer then hits nothing of it.
-test("pointer-events: none on the element lets no real pointer write, and one historychange comes for each stroke", async () => {
-  const { element, canvas, view } = await sheet(400);
-  let heard = 0;
-  element.addEventListener("historychange", () => heard++);
-  const drag = async () => {
+test.runIf(devtools)(
+  "pointer-events: none on the element lets no real pointer write, and one historychange comes for each stroke",
+  async () => {
+    const { element, canvas, view } = await sheet(400);
+    let heard = 0;
+    element.addEventListener("historychange", () => heard++);
+    const drag = async () => {
+      const pressed = { force: 0.5 };
+      await input("mousePressed", at(canvas, view(), 100, 100), pressed);
+      await input("mouseMoved", at(canvas, view(), 300, 100), pressed);
+      await input("mouseReleased", at(canvas, view(), 300, 100), { force: 0 });
+      await settle();
+    };
+
+    element.style.pointerEvents = "none";
+    await drag();
+    expect(probe(element).strokes).toEqual([]);
+    expect(heard).toBe(0);
+
+    element.style.pointerEvents = "";
+    await drag();
+    expect(probe(element).strokes).toHaveLength(1);
+    // The pointer's capture goes after its pointerup, and that ends no second stroke.
+    expect(heard).toBe(1);
+  },
+);
+
+test.runIf(devtools)(
+  "a stroke under way when pointer-events: none comes goes on to its end: the canvas holds its pointer",
+  async () => {
+    const { element, canvas, view } = await sheet(400);
+    let heard = 0;
+    element.addEventListener("historychange", () => heard++);
     const pressed = { force: 0.5 };
     await input("mousePressed", at(canvas, view(), 100, 100), pressed);
+    await input("mouseMoved", at(canvas, view(), 200, 100), pressed);
+    element.style.pointerEvents = "none";
     await input("mouseMoved", at(canvas, view(), 300, 100), pressed);
     await input("mouseReleased", at(canvas, view(), 300, 100), { force: 0 });
     await settle();
-  };
-
-  element.style.pointerEvents = "none";
-  await drag();
-  expect(probe(element).strokes).toEqual([]);
-  expect(heard).toBe(0);
-
-  element.style.pointerEvents = "";
-  await drag();
-  expect(probe(element).strokes).toHaveLength(1);
-  // The pointer's capture goes after its pointerup, and that ends no second stroke.
-  expect(heard).toBe(1);
-});
-
-test("a stroke under way when pointer-events: none comes goes on to its end: the canvas holds its pointer", async () => {
-  const { element, canvas, view } = await sheet(400);
-  let heard = 0;
-  element.addEventListener("historychange", () => heard++);
-  const pressed = { force: 0.5 };
-  await input("mousePressed", at(canvas, view(), 100, 100), pressed);
-  await input("mouseMoved", at(canvas, view(), 200, 100), pressed);
-  element.style.pointerEvents = "none";
-  await input("mouseMoved", at(canvas, view(), 300, 100), pressed);
-  await input("mouseReleased", at(canvas, view(), 300, 100), { force: 0 });
-  await settle();
-  const [stroke, ...more] = probe(element).strokes;
-  expect(more).toEqual([]);
-  expect(stroke?.points.at(-1)?.x).toBeCloseTo(300, 0);
-  expect(heard).toBe(1);
-});
+    const [stroke, ...more] = probe(element).strokes;
+    expect(more).toEqual([]);
+    expect(stroke?.points.at(-1)?.x).toBeCloseTo(300, 0);
+    expect(heard).toBe(1);
+  },
+);
 
 test("the work for checking outlines no stroke: its crop is a raster of its own (R25)", async () => {
   const { element, canvas, view } = await sheet(400);
@@ -500,23 +509,26 @@ test("one pointer at a time writes or erases, and a press goes on as it began wh
   expect(element.history.map((event) => event.kind)).toEqual(["write", "write", "erase"]);
 });
 
-test("a real mouse erases with the tool, and pointer-events: none on the element lets it erase nothing", async () => {
-  const { element, canvas, view } = await sheet(400);
-  level(canvas, view(), 300, 100, 300);
-  element.tool = "eraser";
-  const drag = async () => {
-    const pressed = { force: 0.5 };
-    await input("mousePressed", at(canvas, view(), 200, 250), pressed);
-    await input("mouseMoved", at(canvas, view(), 200, 350), pressed);
-    await input("mouseReleased", at(canvas, view(), 200, 350), { force: 0 });
-  };
-  element.style.pointerEvents = "none";
-  await drag();
-  expect(idsOn(element)).toEqual([1]);
-  element.style.pointerEvents = "";
-  await drag();
-  expect(idsOn(element)).toEqual([]);
-});
+test.runIf(devtools)(
+  "a real mouse erases with the tool, and pointer-events: none on the element lets it erase nothing",
+  async () => {
+    const { element, canvas, view } = await sheet(400);
+    level(canvas, view(), 300, 100, 300);
+    element.tool = "eraser";
+    const drag = async () => {
+      const pressed = { force: 0.5 };
+      await input("mousePressed", at(canvas, view(), 200, 250), pressed);
+      await input("mouseMoved", at(canvas, view(), 200, 350), pressed);
+      await input("mouseReleased", at(canvas, view(), 200, 350), { force: 0 });
+    };
+    element.style.pointerEvents = "none";
+    await drag();
+    expect(idsOn(element)).toEqual([1]);
+    element.style.pointerEvents = "";
+    await drag();
+    expect(idsOn(element)).toEqual([]);
+  },
+);
 
 test("the tool is the pen until it is switched, is the pen or the eraser alone, and one given before the element is upgraded goes through its accessor", () => {
   const element = document.createElement("novatrail-canvas");

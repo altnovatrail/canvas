@@ -2138,9 +2138,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * the row's buttons are named in. For a `lang` the labels are not in, the container is in
    * theirs, English, and the column, all the container holds, in the element's: the name is said
    * in the language it is in, and the statement, the parts and the sheet as before (T106; R74).
-   * With a `lang` the labels are in, the name is in the element's language already; without one,
-   * the element's language is the page's, which no attribute of the column could name. Neither
-   * then has a `lang` of its own.
+   * With a `lang` the labels are in, the name is in the element's language already, and both are
+   * in it, by an attribute of their own: Firefox gives a shadow tree no language of its host, and
+   * WebKit takes no new one into the tree, though HTML has a node whose parent is a shadow root
+   * take its host's (T111). Without a `lang` the element's language is the page's, which no
+   * attribute could name, and neither has one.
    */
   #nameRegion(): void {
     const tag = this.getAttribute("lang");
@@ -2148,8 +2150,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const apart = tag !== null && !knows(tag);
     const named = this.#viewport.hasAttribute("role");
     write(this.#viewport, "aria-label", named ? labels[this.#rowKind()] : null);
-    write(this.#viewport, "lang", apart ? lang : null);
-    write(this.#column, "lang", apart ? tag : null);
+    write(this.#viewport, "lang", apart ? lang : tag);
+    write(this.#column, "lang", tag);
   }
 
   /** What the row of buttons is of, and is named by: a worked example, or the canvas kind (R42). */

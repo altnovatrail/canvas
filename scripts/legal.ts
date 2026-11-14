@@ -13,6 +13,12 @@
 // legal.in-force-unchanged is spec's own history, which its CI checked against the release before
 // when it made the file the signature binds. The reader still knows the rule, and its vectors
 // with it.
+//
+// From version 3 of the part a version in force applies from its day, in_force_since, and a reader
+// reads the part on a day of its own, a date in UTC: the build of the samples page on the day of its
+// build (section 2). The current version is the newest in force whose day has come, and the next
+// one the version that becomes current on the nearest day still to come; a set applies from the day
+// it was approved, so the page takes the current set alone.
 
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -20,7 +26,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import type { Legal, TextPlace } from "@altnovatrail/spec/legalv2";
+import type { Legal, TextPlace } from "@altnovatrail/spec/legalv3";
 import { Ajv2020, type ErrorObject, type ValidateFunction } from "ajv/dist/2020.js";
 import type { PhrasingContent, RootContent } from "mdast";
 import { fromMarkdown } from "mdast-util-from-markdown";
@@ -38,9 +44,9 @@ import type { Block, Inline, LegalSet } from "../page/sets.ts";
  * the file together.
  */
 export const LEGAL_FILE = Object.freeze({
-  tag: "v0.16.3",
-  name: "legal-2.tar.gz",
-  sha256: "5c9e3b9568bc60e146d3bc031fcc71b8b5cd478333989f2b5b64e44f0222371a",
+  tag: "v0.17.4",
+  name: "legal-3.tar.gz",
+  sha256: "32304dca472d941304ffdb0849ed3efa02eff043162889e182bb26d41bed0cdf",
 });
 
 /** Where the file lies in the tree: a folder of its tag, for release-verify knows a file of spec by
@@ -61,15 +67,17 @@ export interface Part {
   readonly files: Readonly<Record<string, string | Uint8Array>>;
 }
 
-/** What a reader gives a part: the current version of every text and set that has one, by its ID;
- * or the step that refuses it and the names it gives, in the order of code units. */
+/** Versions of texts and of sets, each by its ID. */
+export interface Versions {
+  readonly texts: Readonly<Record<string, number>>;
+  readonly sets: Readonly<Record<string, number>>;
+}
+
+/** What a reader gives a part on its day: the current and the next version of every text and set
+ * that has one, by its ID; or the step that refuses it and the names it gives, in the order of code
+ * units. */
 export type Reading =
-  | {
-      readonly current: {
-        readonly texts: Readonly<Record<string, number>>;
-        readonly sets: Readonly<Record<string, number>>;
-      };
-    }
+  | { readonly current: Versions; readonly next: Versions }
   | { readonly refused_by: string; readonly names: readonly string[] };
 
 /** The step of the schema, and the rules of section 5 in the order of its table. */
@@ -79,10 +87,17 @@ export const RULES = [
   "legal.versions",
   "legal.set-texts",
   "legal.markdown",
+  "legal.operator",
   "legal.in-force-unchanged",
 ] as const;
 
 const IN_FORCE = "in_force";
+/** The privacy policy, whose section "Who we are" names the operator, and that section's heading,
+ * of the second level (R115 spec; section 5). */
+export const POLICY = "privacy-policy";
+const WHO_WE_ARE = "Who we are";
+/** A day as a reader reads the part on it. */
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
 /** Where the notice and the form of a set stand (section 4). */
 const SET_PLACES: readonly (readonly ["notice" | "form", TextPlace])[] = [
   ["notice", "samples_page"],
@@ -263,7 +278,7 @@ function versionBreaches(passport: Legal): string[] {
 }
 
 /** legal.set-texts: a version of a set names versions that exist, of texts of the places of its
- * notice and its form, and a version in force names versions in force. */
+ * notice and its form, and a version in force names versions in force that apply by its own day. */
 function setTextBreaches(passport: Legal): string[] {
   const names: string[] = [];
   for (const [id, { versions }] of Object.entries(passport.sets)) {
@@ -272,8 +287,12 @@ function setTextBreaches(passport: Legal): string[] {
         const { text: textId, version } = set[field];
         const text = Object.hasOwn(passport.texts, textId) ? passport.texts[textId] : undefined;
         const named = text?.versions.find((each) => each.version === version);
+        // YYYY-MM-DD compares as text.
+        const later = (named?.in_force_since ?? "") > (set.in_force_since ?? "");
         return (
-          !named || text?.place !== place || (set.status === IN_FORCE && named.status !== IN_FORCE)
+          !named ||
+          text?.place !== place ||
+          (set.status === IN_FORCE && (named.status !== IN_FORCE || later))
         );
       }),
     );
@@ -293,6 +312,38 @@ function markdownBreaches({ files }: Part, passport: Legal): string[] {
         if (source !== undefined && markdownProblem(source)) names.push(file);
       }
     }
+  }
+  return names;
+}
+
+/** Whether a text has a heading of the second level that reads "Who we are", its text alone, as
+ * CommonMark reads it. */
+export function hasWhoWeAre(source: string | Uint8Array): boolean {
+  return treeOf(textOf(source)).children.some(
+    (node) =>
+      node.type === "heading" &&
+      node.depth === 2 &&
+      node.children.length === 1 &&
+      node.children[0]?.type === "text" &&
+      node.children[0].value === WHO_WE_ARE,
+  );
+}
+
+/** legal.operator: the part has the privacy policy, at the place app, with a version whose day has
+ * come, and every version of it, a draft too, has the section "Who we are" (R115 spec). The policy
+ * is named by its ID when it is missing, elsewhere or not yet in force, and a version without the
+ * section by its file; a translation needs no such heading. legal.files has held, so every version
+ * has its file. */
+function operatorBreaches({ files }: Part, passport: Legal, today: string): string[] {
+  const policy = Object.hasOwn(passport.texts, POLICY) ? passport.texts[POLICY] : undefined;
+  const versions = policy?.versions ?? [];
+  const names: string[] = [];
+  if (policy?.place !== "app" || currentOf(inForceOf(versions), today) === undefined) {
+    names.push(`texts.${POLICY}`);
+  }
+  for (const { version } of versions) {
+    const source = files[fileOf(POLICY, version)];
+    if (source !== undefined && !hasWhoWeAre(source)) names.push(fileOf(POLICY, version));
   }
   return names;
 }
@@ -337,28 +388,76 @@ function changedBreaches(part: Part, passport: Legal, previous: Part): string[] 
   return names;
 }
 
-/** The current version of each text or set: its version in force with the highest number; one with
- * no version in force has none. */
-function currentOf(
-  map: Readonly<Record<string, { readonly versions: readonly Versioned[] }>>,
-): Record<string, number> {
-  const current: Record<string, number> = {};
-  for (const id of Object.keys(map).sort(byCodeUnits)) {
-    const numbers = (map[id]?.versions ?? [])
-      .filter(({ status }) => status === IN_FORCE)
-      .map(({ version }) => version);
-    if (numbers.length) current[id] = Math.max(...numbers);
-  }
-  return current;
+/** The versions in force of a text or a set. */
+function inForceOf(versions: readonly Versioned[]): Versioned[] {
+  return versions.filter(({ status }) => status === IN_FORCE);
 }
 
-/** A part read as section 5 gives, with validate the passport's schema and previous the part of
- * the release before, or null when there is none to read. */
+/** The highest number of some versions, or undefined when there are none. */
+function highest(versions: readonly Versioned[]): number | undefined {
+  return versions.length ? Math.max(...versions.map(({ version }) => version)) : undefined;
+}
+
+/** The current version of a text or a set on a day, of its versions in force: the one with the
+ * highest number whose day has come. legal.versions has held, so the higher the number, the later
+ * or the same its day. YYYY-MM-DD compares as text. */
+function currentOf(inForce: readonly Versioned[], today: string): number | undefined {
+  return highest(inForce.filter(({ in_force_since: day }) => (day ?? "") <= today));
+}
+
+/** The next version of a text or a set on a day, of its versions in force: the one that becomes
+ * current on the nearest day still to come, the highest number among those of that day. */
+function nextOf(inForce: readonly Versioned[], today: string): number | undefined {
+  const ahead = inForce.filter(({ in_force_since: day }) => (day ?? "") > today);
+  const nearest = ahead.reduce<string | undefined>(
+    (least, { in_force_since: day = "" }) => (least === undefined || day < least ? day : least),
+    undefined,
+  );
+  return highest(ahead.filter(({ in_force_since: day }) => day === nearest));
+}
+
+/** The version pick gives of each text or set on a day, by ID in the order of code units; one with
+ * no such version has none. */
+function versionsOf(
+  map: Readonly<Record<string, { readonly versions: readonly Versioned[] }>>,
+  today: string,
+  pick: (inForce: readonly Versioned[], today: string) => number | undefined,
+): Record<string, number> {
+  const found: Record<string, number> = {};
+  for (const id of Object.keys(map).sort(byCodeUnits)) {
+    const number = pick(inForceOf(map[id]?.versions ?? []), today);
+    if (number !== undefined) found[id] = number;
+  }
+  return found;
+}
+
+/** Whether a text is a day of the calendar, YYYY-MM-DD. */
+function isDay(text: string): boolean {
+  if (!DAY.test(text)) return false;
+  const [year, month, day] = text.split("-").map(Number) as [number, number, number];
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  return (
+    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+  );
+}
+
+/** The day in UTC, YYYY-MM-DD, that a build reads the part on (section 2). */
+export function todayInUtc(now = new Date()): string {
+  return now.toISOString().slice(0, 10);
+}
+
+/** A part read as section 5 gives on the day today, YYYY-MM-DD, with validate the passport's schema
+ * and previous the part of the release before, or null when there is none to read. */
 export function readingOf(
   validate: ValidateFunction,
   part: Part,
-  previous: Part | null = null,
+  previous: Part | null,
+  today: string,
 ): Reading {
+  if (!isDay(today)) {
+    throw new RangeError(`a part is read on a day, YYYY-MM-DD, and ${today} is none`);
+  }
   if (!validate(part.passport)) {
     return { refused_by: SCHEMA, names: namesOf(validate.errors ?? []) };
   }
@@ -368,13 +467,21 @@ export function readingOf(
     ["legal.versions", () => versionBreaches(passport)],
     ["legal.set-texts", () => setTextBreaches(passport)],
     ["legal.markdown", () => markdownBreaches(part, passport)],
+    ["legal.operator", () => operatorBreaches(part, passport, today)],
     ["legal.in-force-unchanged", () => (previous ? changedBreaches(part, passport, previous) : [])],
   ];
   for (const [rule, breaches] of steps) {
     const names = breaches();
     if (names.length) return { refused_by: rule, names: [...new Set(names)].sort(byCodeUnits) };
   }
-  return { current: { texts: currentOf(passport.texts), sets: currentOf(passport.sets) } };
+  const { texts, sets } = passport;
+  return {
+    current: {
+      texts: versionsOf(texts, today, currentOf),
+      sets: versionsOf(sets, today, currentOf),
+    },
+    next: { texts: versionsOf(texts, today, nextOf), sets: versionsOf(sets, today, nextOf) },
+  };
 }
 
 /** A YAML file's value, by YAML 1.2 under its Core schema, as the module format reads its files
@@ -472,16 +579,17 @@ export function blocksOf(markdown: string): Block[] {
   return shownTreeOf(markdown).children.map(blockOf);
 }
 
-/** The current set of each purpose in a part that its reader accepts, under the IDs of
- * PURPOSE_SETS with prefix before each: a purpose whose set has no version in force has none. A
- * part that the reader refuses stops the build. */
+/** The current set of each purpose in a part that its reader accepts on the day today, under the
+ * IDs of PURPOSE_SETS with prefix before each: a purpose whose set has no current version has none.
+ * A part that the reader refuses stops the build. */
 export function pageSetsOf(
   folder: string,
   schema: unknown,
   prefix = "",
+  today = todayInUtc(),
 ): { -readonly [K in keyof typeof PURPOSE_SETS]?: LegalSet } {
   const part = partIn(folder);
-  const reading = readingOf(validatorOf(schema), part);
+  const reading = readingOf(validatorOf(schema), part, null, today);
   if ("refused_by" in reading) {
     throw new Error(`${folder} is refused by ${reading.refused_by}: ${reading.names.join(", ")}`);
   }
