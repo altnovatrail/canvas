@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "vitest";
-import { userEvent } from "vitest/browser";
+import { server, userEvent } from "vitest/browser";
 import { budget } from "../core/budget.fixture.js";
 import { SLOP_PX } from "../core/hands.js";
 import { LAYOUT } from "../core/page.js";
@@ -7,11 +7,21 @@ import { SHORT } from "../core/pages.fixture.js";
 import type { View } from "../core/screen.js";
 import { sheetTask, workbookTask } from "../core/tasks.fixture.js";
 import { axeOf } from "./axe.fixture.js";
-import { at, level, placed, press, settle, sheetWork, spacer, touches } from "./pointer.fixture.js";
+import {
+  at,
+  devtools,
+  level,
+  placed,
+  press,
+  settle,
+  sheetWork,
+  spacer,
+  touches,
+} from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 import { PAGE_ZOOM, PEN_MODE } from "./session.js";
 
-// The page's zoom of the sheet in Chromium (T94; R90 spec): Zoom in and Zoom out step it from the
+// The page's zoom of the sheet in a browser (T94; R90 spec): Zoom in and Zoom out step it from the
 // sheet's fit to twice it, for every sheet of the page, and a zoomed sheet scrolls across as well
 // as down — with Left and Right, two fingers and the keys — its statement staying as wide as the
 // fit. The workbook's printed lines grow with it, as 1.4.4 asks; the canvas stays as small as the
@@ -120,23 +130,30 @@ test("a zoom keeps the top left corner in sight where it was on the sheet, and a
   await settle();
   const { vy } = view();
   expect(vy).toBeGreaterThan(0);
+  // Where the corner is, to half a unit, and in WebKit to a device pixel of the screen at the zoom
+  // shown: WebKit scrolls by whole pixels, so the corner the element asks for lands within one
+  // (T111).
+  const near = (got: number, want: number) =>
+    expect(Math.abs(got - want)).toBeLessThanOrEqual(
+      server.browser === "webkit" ? 1 / (devicePixelRatio * view().k) : 0.5,
+    );
   await zoomTo(element, 1.5);
   expect(view().vx).toBe(0);
-  expect(view().vy).toBeCloseTo(vy, 0);
+  near(view().vy, vy);
   viewport.scrollLeft = 120;
   await settle();
   const { vx } = view();
   expect(vx).toBeCloseTo(120 / 0.6, 0);
   await zoomTo(element, 2);
-  expect(view().vx).toBeCloseTo(vx, 0);
-  expect(view().vy).toBeCloseTo(vy, 0);
+  near(view().vx, vx);
+  near(view().vy, vy);
   await zoomTo(element, 1.25);
-  expect(view().vx).toBeCloseTo(vx, 0);
-  expect(view().vy).toBeCloseTo(vy, 0);
+  near(view().vx, vx);
+  near(view().vy, vy);
   await zoomTo(element, 1);
   expect(viewport.scrollLeft).toBe(0);
   expect(view().vx).toBe(0);
-  expect(view().vy).toBeCloseTo(vy, 0);
+  near(view().vy, vy);
 });
 
 test("a stroke on a zoomed sheet scrolled across lands in sheet units, with its ink, and the eraser takes nothing out of sight to the left", async () => {
@@ -283,70 +300,74 @@ test("an element without a height whose zoomed sheet is wider than it is a regio
   expect(viewport.hasAttribute("tabindex")).toBe(false);
 });
 
-test("two fingers scroll a zoomed sheet across by their travel past the slop, and down alone on the rail of a scroll down", {
-  timeout: budget(1_374),
-}, async () => {
-  const { element, canvas, viewport, view } = await placed(made, 400, 400);
-  spacer(made);
-  await zoomTo(element, 2);
-  PEN_MODE.on = true;
-  const one = { id: 1, ...at(canvas, view(), 300, 100) };
-  const two = { ...one, id: 2, clientY: one.clientY + 60 };
-  const down = Date.now() / 1000;
-  await touches("touchStart", [one], down);
-  await touches("touchStart", [one, two], down + 0.01);
-  for (let step = 1; step <= 5; step++) {
-    const dx = (-60 * step) / 5;
-    await touches(
-      "touchMove",
-      [one, two].map((each) => ({ ...each, clientX: each.clientX + dx })),
-    );
-  }
-  await touches("touchEnd", []);
-  await settle();
-  expect(viewport.scrollLeft).toBeCloseTo(60 - SLOP_PX, 0);
-  expect(viewport.scrollTop).toBe(0);
-  // Down, with a little sideways in it: the sheet goes down alone.
-  const left = viewport.scrollLeft;
-  await touches("touchStart", [one], down + 1);
-  await touches("touchStart", [one, two], down + 1.01);
-  for (let step = 1; step <= 5; step++) {
-    const moved = { x: (-6 * step) / 5, y: (-60 * step) / 5 };
-    await touches(
-      "touchMove",
-      [one, two].map((each) => ({
-        ...each,
-        clientX: each.clientX + moved.x,
-        clientY: each.clientY + moved.y,
-      })),
-    );
-  }
-  await touches("touchEnd", []);
-  await settle();
-  expect(viewport.scrollLeft).toBe(left);
-  expect(viewport.scrollTop).toBeCloseTo(60 - SLOP_PX, 0);
-  // Up and to the left alike: both ways at once, by the share of each past the slop.
-  const top = viewport.scrollTop;
-  await touches("touchStart", [one], down + 2);
-  await touches("touchStart", [one, two], down + 2.01);
-  for (let step = 1; step <= 5; step++) {
-    const by = (-30 * step) / 5;
-    await touches(
-      "touchMove",
-      [one, two].map((each) => ({
-        ...each,
-        clientX: each.clientX + by,
-        clientY: each.clientY + by,
-      })),
-    );
-  }
-  await touches("touchEnd", []);
-  await settle();
-  const each = 30 - SLOP_PX / Math.SQRT2;
-  expect(Math.abs(viewport.scrollLeft - left - each)).toBeLessThan(1);
-  expect(Math.abs(viewport.scrollTop - top - each)).toBeLessThan(1);
-  expect(window.scrollY).toBe(0);
-});
+test.runIf(devtools)(
+  "two fingers scroll a zoomed sheet across by their travel past the slop, and down alone on the rail of a scroll down",
+  {
+    timeout: budget(1_374),
+  },
+  async () => {
+    const { element, canvas, viewport, view } = await placed(made, 400, 400);
+    spacer(made);
+    await zoomTo(element, 2);
+    PEN_MODE.on = true;
+    const one = { id: 1, ...at(canvas, view(), 300, 100) };
+    const two = { ...one, id: 2, clientY: one.clientY + 60 };
+    const down = Date.now() / 1000;
+    await touches("touchStart", [one], down);
+    await touches("touchStart", [one, two], down + 0.01);
+    for (let step = 1; step <= 5; step++) {
+      const dx = (-60 * step) / 5;
+      await touches(
+        "touchMove",
+        [one, two].map((each) => ({ ...each, clientX: each.clientX + dx })),
+      );
+    }
+    await touches("touchEnd", []);
+    await settle();
+    expect(viewport.scrollLeft).toBeCloseTo(60 - SLOP_PX, 0);
+    expect(viewport.scrollTop).toBe(0);
+    // Down, with a little sideways in it: the sheet goes down alone.
+    const left = viewport.scrollLeft;
+    await touches("touchStart", [one], down + 1);
+    await touches("touchStart", [one, two], down + 1.01);
+    for (let step = 1; step <= 5; step++) {
+      const moved = { x: (-6 * step) / 5, y: (-60 * step) / 5 };
+      await touches(
+        "touchMove",
+        [one, two].map((each) => ({
+          ...each,
+          clientX: each.clientX + moved.x,
+          clientY: each.clientY + moved.y,
+        })),
+      );
+    }
+    await touches("touchEnd", []);
+    await settle();
+    expect(viewport.scrollLeft).toBe(left);
+    expect(viewport.scrollTop).toBeCloseTo(60 - SLOP_PX, 0);
+    // Up and to the left alike: both ways at once, by the share of each past the slop.
+    const top = viewport.scrollTop;
+    await touches("touchStart", [one], down + 2);
+    await touches("touchStart", [one, two], down + 2.01);
+    for (let step = 1; step <= 5; step++) {
+      const by = (-30 * step) / 5;
+      await touches(
+        "touchMove",
+        [one, two].map((each) => ({
+          ...each,
+          clientX: each.clientX + by,
+          clientY: each.clientY + by,
+        })),
+      );
+    }
+    await touches("touchEnd", []);
+    await settle();
+    const each = 30 - SLOP_PX / Math.SQRT2;
+    expect(Math.abs(viewport.scrollLeft - left - each)).toBeLessThan(1);
+    expect(Math.abs(viewport.scrollTop - top - each)).toBeLessThan(1);
+    expect(window.scrollY).toBe(0);
+  },
+);
 
 test("every layer shows the zoomed sheet by the canvas's one view, scrolled across and down", async () => {
   const { element, root, canvas, viewport, view } = await placed(made, 400, 300);

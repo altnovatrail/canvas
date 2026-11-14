@@ -3,11 +3,21 @@ import { budget } from "../core/budget.fixture.js";
 import { gridPath } from "../core/grid.js";
 import { moduleManifest, sheetTask, workedExample } from "../core/tasks.fixture.js";
 import type { HistoryChange, WorkedExample } from "./index.js";
-import { at, input, level, placed, press, settle, touches, upgraded } from "./pointer.fixture.js";
+import {
+  at,
+  devtools,
+  input,
+  level,
+  placed,
+  press,
+  settle,
+  touches,
+  upgraded,
+} from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
 
-// A lesson's worked example on the element, in Chromium (R42): the property workedExample, which
+// A lesson's worked example on the element, in a browser (R42): the property workedExample, which
 // the element takes instead of a task, and the mode in which the learner does not write — the
 // canvas takes no input, a finger on the sheet scrolls it as the browser does, and there is no work
 // to give, to check or to mark. Its row is tools.test.ts's, its layers layers.test.ts's.
@@ -162,64 +172,71 @@ test("an example equal to the one shown changes nothing, and another changes its
   expect(root.querySelector(".statement")?.textContent).toBe("How many posts are there?");
 });
 
-test("a worked example's canvas takes no input: a finger on the sheet scrolls it as the browser does, and a pen, a mouse and a script's event write nothing nor put the page in pen mode", {
-  timeout: budget(824),
-}, async () => {
-  const { element, root, canvas, viewport, view, told } = await sheet(300);
-  element.workedExample = workedExample();
-  await settle();
-  const style = getComputedStyle(canvas);
-  expect([style.pointerEvents, style.touchAction]).toEqual(["none", "auto"]);
-  const point = at(canvas, view(), 500, 250);
-  expect(root.elementFromPoint(point.clientX, point.clientY)).toBe(root.querySelector(".stage"));
-  // A finger: the browser scrolls the container, as on the statement (R23).
-  const finger = { id: 1, ...point };
-  await touches("touchStart", [finger]);
-  for (let step = 1; step <= 10; step++) {
-    await touches("touchMove", [{ ...finger, clientY: finger.clientY - 10 * step }]);
-  }
-  await touches("touchEnd", []);
-  await settle();
-  expect(viewport.scrollTop).toBeGreaterThan(0);
-  // A pen and a mouse, through the browser's input, in the middle of what the container shows, and
-  // a pen's event a script sends the canvas.
-  const box = viewport.getBoundingClientRect();
-  const from = { clientX: box.left + 100, clientY: (box.top + box.bottom) / 2 };
-  const to = { ...from, clientX: from.clientX + 100 };
-  for (const pointerType of ["pen", "mouse"] as const) {
-    await input("mousePressed", from, { pointerType, force: 0.5 });
-    await input("mouseMoved", to, { pointerType, force: 0.5 });
-    await input("mouseReleased", to, { pointerType, force: 0 });
-  }
-  canvas.dispatchEvent(
-    new PointerEvent("pointerdown", {
-      ...from,
-      pointerId: 7,
-      pointerType: "pen",
-      button: 0,
-      buttons: 1,
-      pressure: 0.5,
-      bubbles: true,
-    }),
-  );
-  expect(PEN_MODE.on).toBe(false);
-  expect(probe(element).roles.size).toBe(0);
-  expect(probe(element).strokes).toEqual([]);
-  expect(told.history).toEqual([]);
-});
+test.runIf(devtools)(
+  "a worked example's canvas takes no input: a finger on the sheet scrolls it as the browser does, and a pen, a mouse and a script's event write nothing nor put the page in pen mode",
+  {
+    timeout: budget(824),
+  },
+  async () => {
+    const { element, root, canvas, viewport, view, told } = await sheet(300);
+    element.workedExample = workedExample();
+    await settle();
+    const style = getComputedStyle(canvas);
+    expect([style.pointerEvents, style.touchAction]).toEqual(["none", "auto"]);
+    const point = at(canvas, view(), 500, 250);
+    expect(root.elementFromPoint(point.clientX, point.clientY)).toBe(root.querySelector(".stage"));
+    // A finger: the browser scrolls the container, as on the statement (R23).
+    const finger = { id: 1, ...point };
+    await touches("touchStart", [finger]);
+    for (let step = 1; step <= 10; step++) {
+      await touches("touchMove", [{ ...finger, clientY: finger.clientY - 10 * step }]);
+    }
+    await touches("touchEnd", []);
+    await settle();
+    expect(viewport.scrollTop).toBeGreaterThan(0);
+    // A pen and a mouse, through the browser's input, in the middle of what the container shows, and
+    // a pen's event a script sends the canvas.
+    const box = viewport.getBoundingClientRect();
+    const from = { clientX: box.left + 100, clientY: (box.top + box.bottom) / 2 };
+    const to = { ...from, clientX: from.clientX + 100 };
+    for (const pointerType of ["pen", "mouse"] as const) {
+      await input("mousePressed", from, { pointerType, force: 0.5 });
+      await input("mouseMoved", to, { pointerType, force: 0.5 });
+      await input("mouseReleased", to, { pointerType, force: 0 });
+    }
+    canvas.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        ...from,
+        pointerId: 7,
+        pointerType: "pen",
+        button: 0,
+        buttons: 1,
+        pressure: 0.5,
+        bubbles: true,
+      }),
+    );
+    expect(PEN_MODE.on).toBe(false);
+    expect(probe(element).roles.size).toBe(0);
+    expect(probe(element).strokes).toEqual([]);
+    expect(told.history).toEqual([]);
+  },
+);
 
-test("a palm on the sheet when a worked example comes is let go: the hands hold nothing on a sheet that takes no input", async () => {
-  const { element, canvas, view } = await sheet(300);
-  const palm = { id: 1, ...at(canvas, view(), 500, 250), radius: 60 };
-  await touches("touchStart", [palm]);
-  expect([...probe(element).roles.values()]).toEqual(["palm"]);
-  element.workedExample = workedExample();
-  expect(probe(element).roles.size).toBe(0);
-  await touches("touchMove", [{ ...palm, clientY: palm.clientY - 40 }]);
-  await touches("touchEnd", []);
-  expect(probe(element).roles.size).toBe(0);
-  expect(element.history).toEqual([]);
-});
+test.runIf(devtools)(
+  "a palm on the sheet when a worked example comes is let go: the hands hold nothing on a sheet that takes no input",
+  async () => {
+    const { element, canvas, view } = await sheet(300);
+    const palm = { id: 1, ...at(canvas, view(), 500, 250), radius: 60 };
+    await touches("touchStart", [palm]);
+    expect([...probe(element).roles.values()]).toEqual(["palm"]);
+    element.workedExample = workedExample();
+    expect(probe(element).roles.size).toBe(0);
+    await touches("touchMove", [{ ...palm, clientY: palm.clientY - 40 }]);
+    await touches("touchEnd", []);
+    expect(probe(element).roles.size).toBe(0);
+    expect(element.history).toEqual([]);
+  },
+);
 
 test("undefined takes the worked example off: the sheet is one with no task again, which takes the pointer and writes", async () => {
   const { element, root, canvas, view } = await sheet();

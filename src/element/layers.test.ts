@@ -10,7 +10,7 @@ import { NovatrailCanvas } from "./index.js";
 import { at, level, screenshot, sheetWork } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
-// The sheet's layers in Chromium (R23): the stack in the order of concepts 8 spec, one view for
+// The sheet's layers in a browser (R23): the stack in the order of concepts 8 spec, one view for
 // every layer at any width and scroll — the author's demo too (T61) — the cap of k, the task's
 // grid, the theme, and the task as a property. A worked example's canvas takes no pointer (R42).
 

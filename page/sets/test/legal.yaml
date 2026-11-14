@@ -1,8 +1,19 @@
 # A part of the legal texts for tests alone (T89 in RUN.md; R58, R69 in docs/decisions.md), in the
 # layout of spec's legal/ (its README, section 3): its sets are in force, so that the test build of
-# the samples page, of version 0.0.0 alone, opens every purpose; no sample is made under them.
-format: 2
+# the samples page, of version 0.0.0 alone, opens every purpose; no sample is made under them. From
+# version 3 of the part, legal.operator wants the privacy policy at the place app, in force, with its
+# section "Who we are" (R115 spec): the page shows no text of the place app, so it is a stub.
+format: 3
 texts:
+  privacy-policy:
+    place: app
+    versions:
+      - version: 1
+        status: in_force
+        in_force_since: "2026-11-10"
+        summary:
+          en: "A test text, not a policy: the privacy policy that legal.operator wants of every part."
+          ru: "Тестовый текст, не политика: политика конфиденциальности, которую legal.operator требует от каждой части."
   test-measure-notice:
     place: samples_page
     versions:

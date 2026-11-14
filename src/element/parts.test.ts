@@ -16,6 +16,7 @@ import {
   arrive,
   type Colour,
   deferred,
+  devtools,
   file,
   placed,
   QUARTERS,
@@ -30,7 +31,7 @@ import {
 import { probe } from "./probe.js";
 import { PAGE_ZOOM } from "./session.js";
 
-// The parts of a worked example's demo in Chromium (R42): the row's Next opens them one at a time
+// The parts of a worked example's demo in a browser (R42): the row's Next opens them one at a time
 // into a numbered list between the statement and the sheet, and Demo hides and shows the whole
 // demo; demoState tells how far the learner has gone, and demochange tells of the learner's own
 // presses alone. A polite region tells a screen reader of the part just opened, the list keeps its
@@ -328,39 +329,43 @@ test("demochange goes up from the element and out of a consumer's shadow tree, w
   expect(event?.detail).toBe(element.demoState);
 });
 
-test("a screen reader reads the row, the statement and the list of the open parts in that order, in Chromium's own tree, a picture on an area of the sheet by its words, and not the picture itself on the sheet", async () => {
-  const { root: shadow, next } = await pictured();
-  for (let n = 0; n < 3; n++) next.click();
-  expect(onTheSheet(shadow)[0]?.getAttribute("href")).toMatch(/^blob:/);
-  const nodes = await accessibilityTree();
-  const byId = new Map(nodes.map((node) => [node.nodeId, node]));
-  const order: typeof nodes = [];
-  const walk = (id: string): void => {
-    const node = byId.get(id);
-    if (node === undefined) return;
-    if (!node.ignored) order.push(node);
-    for (const child of node.childIds ?? []) walk(child);
-  };
-  const root = nodes[0];
-  if (root !== undefined) walk(root.nodeId);
-  const at = (found: (node: (typeof nodes)[number]) => boolean) => order.findIndex(found);
-  const role = (node: (typeof nodes)[number]) => node.role?.value;
-  const toolbar = at((node) => role(node) === "toolbar");
-  const statement = at(
-    (node) => role(node) === "StaticText" && String(node.name?.value).startsWith("A path is 20 m"),
-  );
-  const list = at((node) => role(node) === "list");
-  expect(toolbar).toBeGreaterThanOrEqual(0);
-  expect(statement).toBeGreaterThan(toolbar);
-  expect(list).toBeGreaterThan(statement);
-  const items = order.filter((node) => role(node) === "listitem");
-  expect(items).toHaveLength(3);
-  const pictures = order.filter((node) => role(node) === "image").map((node) => node.name?.value);
-  expect(pictures).toEqual([
-    "A lamp.",
-    "A line for the path, cut into 4 equal gaps of 5 m, with a lamp at every mark.",
-  ]);
-});
+test.runIf(devtools)(
+  "a screen reader reads the row, the statement and the list of the open parts in that order, in Chromium's own tree, a picture on an area of the sheet by its words, and not the picture itself on the sheet",
+  async () => {
+    const { root: shadow, next } = await pictured();
+    for (let n = 0; n < 3; n++) next.click();
+    expect(onTheSheet(shadow)[0]?.getAttribute("href")).toMatch(/^blob:/);
+    const nodes = await accessibilityTree();
+    const byId = new Map(nodes.map((node) => [node.nodeId, node]));
+    const order: typeof nodes = [];
+    const walk = (id: string): void => {
+      const node = byId.get(id);
+      if (node === undefined) return;
+      if (!node.ignored) order.push(node);
+      for (const child of node.childIds ?? []) walk(child);
+    };
+    const root = nodes[0];
+    if (root !== undefined) walk(root.nodeId);
+    const at = (found: (node: (typeof nodes)[number]) => boolean) => order.findIndex(found);
+    const role = (node: (typeof nodes)[number]) => node.role?.value;
+    const toolbar = at((node) => role(node) === "toolbar");
+    const statement = at(
+      (node) =>
+        role(node) === "StaticText" && String(node.name?.value).startsWith("A path is 20 m"),
+    );
+    const list = at((node) => role(node) === "list");
+    expect(toolbar).toBeGreaterThanOrEqual(0);
+    expect(statement).toBeGreaterThan(toolbar);
+    expect(list).toBeGreaterThan(statement);
+    const items = order.filter((node) => role(node) === "listitem");
+    expect(items).toHaveLength(3);
+    const pictures = order.filter((node) => role(node) === "image").map((node) => node.name?.value);
+    expect(pictures).toEqual([
+      "A lamp.",
+      "A line for the path, cut into 4 equal gaps of 5 m, with a lamp at every mark.",
+    ]);
+  },
+);
 
 test("with the sheet scrolled into sight Next brings the part into sight above it, where it stays once the frames have run, and Demo keeps the sheet where it was", async () => {
   const { element, list, next, demo: shown, viewport } = await demo(300);
@@ -860,6 +865,33 @@ const langOf = (node: Element | null | undefined) =>
 const spans = (node: Element | null | undefined) =>
   [...(node?.querySelectorAll("span") ?? [])].map((span) => [span.textContent, langOf(span)]);
 
+/** What Chromium's own tree reads of a workbook's demo with the value "five" in its first box. */
+async function heardInChromium(): Promise<void> {
+  const nodes = await accessibilityTree();
+  const byId = new Map(nodes.map((node) => [node.nodeId, node]));
+  const heard: string[] = [];
+  const walk = (id: string): void => {
+    const node = byId.get(id);
+    if (node === undefined) return;
+    const role = node.role?.value;
+    if (!node.ignored && (role === "StaticText" || role === "image")) {
+      // Trimmed: whether a name keeps the space after the box's words is Chromium's to choose.
+      heard.push(`${role} ${String(node.name?.value ?? "").trim()}`);
+      return;
+    }
+    for (const child of node.childIds ?? []) walk(child);
+  };
+  const top = nodes[0];
+  if (top !== undefined) walk(top.nodeId);
+  const after = (first: string) => heard[heard.indexOf(first) + 1];
+  expect(heard.filter((said) => said === "StaticText five")).toHaveLength(3);
+  expect(after("image Окошко")).toBe("StaticText five");
+  expect(heard.filter((said) => said === "StaticText Окошко 1.1:")).toHaveLength(2);
+  expect(
+    heard.filter((said) => said.startsWith("image Окошко") && said !== "image Окошко"),
+  ).toEqual([]);
+}
+
 test("a value the demo writes in a box is a node of its own in the lines' language — in the box, in the item of the list and in the region — while the box and the words around it are in the labels'; in Chromium's own tree too, and with no violation axe finds (T107; 3.1.2)", async () => {
   const { element, root } = await placed(made, 400);
   element.lang = "ru";
@@ -890,29 +922,7 @@ test("a value the demo writes in a box is a node of its own in the lines' langua
   ]);
   // Chromium reads the value as a text of its own: after the box in the line, after the box's
   // words in the item and the region.
-  const nodes = await accessibilityTree();
-  const byId = new Map(nodes.map((node) => [node.nodeId, node]));
-  const heard: string[] = [];
-  const walk = (id: string): void => {
-    const node = byId.get(id);
-    if (node === undefined) return;
-    const role = node.role?.value;
-    if (!node.ignored && (role === "StaticText" || role === "image")) {
-      // Trimmed: whether a name keeps the space after the box's words is Chromium's to choose.
-      heard.push(`${role} ${String(node.name?.value ?? "").trim()}`);
-      return;
-    }
-    for (const child of node.childIds ?? []) walk(child);
-  };
-  const top = nodes[0];
-  if (top !== undefined) walk(top.nodeId);
-  const after = (first: string) => heard[heard.indexOf(first) + 1];
-  expect(heard.filter((said) => said === "StaticText five")).toHaveLength(3);
-  expect(after("image Окошко")).toBe("StaticText five");
-  expect(heard.filter((said) => said === "StaticText Окошко 1.1:")).toHaveLength(2);
-  expect(
-    heard.filter((said) => said.startsWith("image Окошко") && said !== "image Окошко"),
-  ).toEqual([]);
+  if (devtools) await heardInChromium();
   await axeOf(element, WORKBOOK_INCOMPLETE);
   // A new language of the module reaches the value in the box and in the item, which inherit it.
   element.manifest = moduleManifest({ explanation: "de" });

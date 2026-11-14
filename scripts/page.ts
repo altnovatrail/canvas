@@ -5,8 +5,9 @@
 //   node scripts/page.ts <folder> <version> [--texts <part>]
 //
 // writes <folder>/samples-page_v<version>.html, with the current sets of texts of spec's release
-// file of the legal texts in tasks/, held to its sum (T89, T102; R69; scripts/legal.ts): a purpose
-// with no current set is closed. --texts names a part of
+// file of the legal texts in tasks/, held to its sum (T89, T102; R69; scripts/legal.ts), on the day
+// of the build, or of SOURCE_DATE_EPOCH to repeat a build of another day (R78): a purpose with no
+// current set is closed. --texts names a part of
 // the legal texts for tests instead, whose sets begin with test-, and only into a page of version
 // 0.0.0, which no release has (T20; R58). It builds from the tree alone — no spec/, no git, no
 // token, no network — in the toolchain stage, as release-files will take it (T75). Vite's API
@@ -33,7 +34,7 @@ import type { PageTexts } from "../page/sets.ts";
 import type { TaskKind } from "../page/texts.ts";
 import type { ModuleViews, OpenTask, OpenTasks } from "../src/eval/tasks.ts";
 import { policy, styleOf } from "./csp.ts";
-import { pageSetsOf, withLegalFile } from "./legal.ts";
+import { pageSetsOf, todayInUtc, withLegalFile } from "./legal.ts";
 import { bundleOf, type Carried, NOTICE_SEPARATOR, noticeParts } from "./notices.ts";
 import { kindOf, OPEN_VIEWS, pictureType, type ViewTask } from "./open-views.ts";
 
@@ -49,16 +50,33 @@ const NOTICES_HOLE = "<!-- notices -->";
  * test-child-sample. */
 const TEST_PREFIX = "test-";
 
-/** The texts of a page of a version: each purpose's current set in the release file of spec's legal
- * texts — or, given a part for tests, in that part, for a page of version 0.0.0 alone, which no
- * release of canvas has (contracts/README.md of spec), read against the schema the release file
- * carries. */
-export function textsFor(version: string, part?: string): PageTexts {
+/**
+ * The day in UTC the build reads the legal texts on: the day of SOURCE_DATE_EPOCH, the seconds of
+ * a build that is to repeat another, or else today (R78). Two builds of one tree on one day are the
+ * same bytes, and so are a release's and a rebuild of its tree on another day given the day of the
+ * release: a set whose day came between them would differ otherwise.
+ */
+export function buildDay(env: NodeJS.ProcessEnv = process.env): string {
+  const epoch = env.SOURCE_DATE_EPOCH;
+  if (epoch === undefined || epoch === "") return todayInUtc();
+  if (!/^\d{1,12}$/.test(epoch)) {
+    throw new RangeError(`SOURCE_DATE_EPOCH is whole seconds since 1970, and ${epoch} is none`);
+  }
+  return todayInUtc(new Date(Number(epoch) * 1000));
+}
+
+/** The texts of a page of a version: each purpose's current set on the day in the release file of
+ * spec's legal texts — or, given a part for tests, in that part, for a page of version 0.0.0 alone,
+ * which no release of canvas has (contracts/README.md of spec), read against the schema the release
+ * file carries. */
+export function textsFor(version: string, part?: string, day = buildDay()): PageTexts {
   if (part !== undefined && version !== "0.0.0") {
     throw new Error(`the texts of ${part} are for tests: they go into no page but 0.0.0`);
   }
   const { measurement, evalSet, child } = withLegalFile((folder, schema) =>
-    part === undefined ? pageSetsOf(folder, schema) : pageSetsOf(part, schema, TEST_PREFIX),
+    part === undefined
+      ? pageSetsOf(folder, schema, "", day)
+      : pageSetsOf(part, schema, TEST_PREFIX, day),
   );
   return {
     ...(measurement ? { measurement } : {}),

@@ -1,8 +1,8 @@
 import { afterEach, expect, test } from "vitest";
-import { page } from "vitest/browser";
+import { page, server } from "vitest/browser";
 import { cellsOf } from "../core/boxes.js";
 import type { Box } from "../core/geometry.js";
-import { isBox, type Page, type PageBox, type PageText, pageOf } from "../core/page.js";
+import { isBox, LAYOUT, type Page, type PageBox, type PageText, pageOf } from "../core/page.js";
 import { PAGES, SHORT, shortLines } from "../core/pages.fixture.js";
 import type { View } from "../core/screen.js";
 import { cellsForCheck } from "../core/submission.js";
@@ -12,6 +12,7 @@ import type { ExportedWork, Filled, Mark, Task } from "./index.js";
 import {
   accessibilityTree,
   at,
+  devtools,
   level,
   placed,
   press,
@@ -20,7 +21,7 @@ import {
 } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
-// The workbook in Chromium (R34, R35, R36): its lines on the template where the layout puts them,
+// The workbook in a browser (R34, R35, R36): its lines on the template where the layout puts them,
 // whatever the font and the styles the element inherits; its boxes over the ink they take; a list a
 // screen reader reads, in the DOM and in Chromium's own tree; the theme; the way between the kinds
 // of canvas; the boxes filled (R37); the work for checking, the crop of each filled box (R38); and
@@ -92,6 +93,7 @@ test("every piece of text starts and ends where the layout puts it, on its basel
   parent.setAttribute("style", HOSTILE);
   document.body.append(parent);
   const shown = PAGES.filter(({ fonts, refused }) => fonts && refused === undefined);
+  const drawn = server.browser === "firefox" ? LAYOUT.size / 5 : 3;
   expect(shown.length).toBeGreaterThan(10);
   const { element, print } = await workbook(SHORT, 414, undefined, parent);
   for (const family of ["Liberation Sans", "Liberation Serif", "Liberation Mono"]) {
@@ -114,10 +116,12 @@ test("every piece of text starts and ends where the layout puts it, on its basel
         expect(Math.abs(first.y - baseline), where).toBeLessThan(0.05);
         expect(Math.abs(last.x - (left + width)), where).toBeLessThan(0.05);
         expect(Math.abs(last.y - baseline), where).toBeLessThan(0.05);
-        // What is drawn: the glyphs' boxes, which a small scale rounds by a unit or two.
+        // What is drawn: the glyphs' boxes, which a small scale rounds by a unit or two, and which
+        // Firefox takes by its own extents of the glyphs, a "(" alone a seventh of the size wider
+        // than its advance (T111).
         const box = text.getBBox();
         expect(Math.abs(box.x - left), where).toBeLessThan(3);
-        expect(Math.abs(box.width - width), where).toBeLessThan(3);
+        expect(Math.abs(box.width - width), where).toBeLessThan(drawn);
         expect(box.y < baseline && box.y + box.height > baseline, where).toBe(true);
       }
     }
@@ -269,11 +273,13 @@ test("a screen reader reads the lines as a list in the task's order, each item i
   const pairs = laid.items.filter(({ boxes }) => boxes.length === 2).length;
   expect(pairs).toBeGreaterThan(0);
   expect(within.getByRole("img", { name: "Окошко 2", exact: true }).all()).toHaveLength(pairs);
-  const read = await listOf();
-  expect(read).toEqual(heard(laid, "Окошко"));
-  // Each name as it is, not only as the rule makes it: a box alone, and two in a line.
-  expect(read[0]).toEqual(["1.", "7 ×", "Окошко", "= 56"]);
-  expect(read[3]).toEqual(["4.", "47 ÷ 6 =", "Окошко 1", "r", "Окошко 2"]);
+  if (devtools) {
+    const read = await listOf();
+    expect(read).toEqual(heard(laid, "Окошко"));
+    // Each name as it is, not only as the rule makes it: a box alone, and two in a line.
+    expect(read[0]).toEqual(["1.", "7 ×", "Окошко", "= 56"]);
+    expect(read[3]).toEqual(["4.", "47 ÷ 6 =", "Окошко 1", "r", "Окошко 2"]);
+  }
   // The panel is named by the canvas kind, in the labels' language.
   expect(within.getByRole("toolbar", { name: "Кнопки тетради", exact: true }).all()).toHaveLength(
     1,
@@ -301,23 +307,31 @@ test("the lines are in the manifest's explanation language, or the element's own
   expect(text.matches(":lang(en-GB)")).toBe(true);
 });
 
-test("an item at the bottom of the page that is brought into view stands in the container's visible part two frames later, under the row, in a page of any writing mode", async () => {
+test("an item at the bottom of the page that is brought into view, or its text, stands in the container's visible part two frames later, under the row, in a page of any writing mode", async () => {
+  // Firefox brings an SVG group of no transform into view as if it lay at its origin, and so
+  // scrolls to the item not at all: its text it brings (T111; measurements 1.5).
+  const targets = server.browser === "firefox" ? ["text"] : ["item", "text"];
   for (const writing of ["horizontal-tb", "vertical-rl"]) {
-    const parent = document.createElement("div");
-    parent.style.writingMode = writing;
-    document.body.append(parent);
-    const { element, viewport, row, print } = await workbook(shortLines(20), 414, 500, parent);
-    const last = print.querySelector('[role="list"]')?.lastElementChild;
-    if (!last) throw new Error("the list has no items");
-    last.scrollIntoView({ block: "nearest" });
-    await settle();
-    const item = last.getBoundingClientRect();
-    const port = viewport.getBoundingClientRect();
-    expect(viewport.scrollTop, writing).toBeGreaterThan(0);
-    const top = Math.max(port.top, row.getBoundingClientRect().bottom);
-    expect(item.top, writing).toBeGreaterThanOrEqual(top - 0.5);
-    expect(item.bottom, writing).toBeLessThanOrEqual(port.bottom + 0.5);
-    element.remove();
+    for (const target of targets) {
+      const parent = document.createElement("div");
+      parent.style.writingMode = writing;
+      document.body.append(parent);
+      const { element, viewport, row, print } = await workbook(shortLines(20), 414, 500, parent);
+      const last = print.querySelector('[role="list"]')?.lastElementChild;
+      const text = last?.querySelector("text");
+      if (!last || !text) throw new Error("the list has no items");
+      const brought = target === "item" ? last : text;
+      brought.scrollIntoView({ block: "nearest" });
+      await settle();
+      const item = brought.getBoundingClientRect();
+      const port = viewport.getBoundingClientRect();
+      const where = `${writing}, ${target}`;
+      expect(viewport.scrollTop, where).toBeGreaterThan(0);
+      const top = Math.max(port.top, row.getBoundingClientRect().bottom);
+      expect(item.top, where).toBeGreaterThanOrEqual(top - 0.5);
+      expect(item.bottom, where).toBeLessThanOrEqual(port.bottom + 0.5);
+      element.remove();
+    }
   }
 });
 
@@ -496,8 +510,10 @@ test("a filled box's frame is three CSS pixels of ink on whole device pixels, an
     "Окошко, заполнено",
     "Окошко",
   ]);
-  const read = await listOf();
-  expect(read[0]).toEqual(["1.", "7 ×", "Окошко, заполнено", "= 56"]);
+  if (devtools) {
+    const read = await listOf();
+    expect(read[0]).toEqual(["1.", "7 ×", "Окошко, заполнено", "= 56"]);
+  }
   element.lang = "en";
   expect(filled.getAttribute("aria-label")).toBe("Box, filled");
 });

@@ -2,9 +2,10 @@
 // that spec's release file carries gives exactly what it says (section 7 of the legal part's
 // README), every text of the file is shown, the file is held to its sum and to the tag spec/ stands
 // on, and the sets the build takes — the measurement's and the eval set's in the release of
-// v0.16.3, the same as in v0.15.0's, and all three in the part for tests (T102, T109, T110).
+// v0.17.4, the same as in v0.15.0's, and all three in the part for tests (T102, T109, T110, T111).
+// From version 3 of the part a reading is on a day (T111).
 
-import { copyFileSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { budget } from "../src/core/budget.fixture.ts";
@@ -19,15 +20,20 @@ import {
   partIn,
   type Reading,
   readingOf,
+  todayInUtc,
+  type Versions,
   validatorOf,
   withLegalFile,
   yamlOf,
 } from "./legal.ts";
 
-/** A case of a vector of reading: a part, perhaps the part before, and what the reader gives. */
+/** A case of a vector of reading: a part, its day, perhaps the part before, and what the reader
+ * gives. */
 interface Case extends Part {
+  readonly today: string;
   readonly previous?: Part;
-  readonly current?: Extract<Reading, { current: unknown }>["current"];
+  readonly current?: Versions;
+  readonly next?: Versions;
   readonly refused_by?: string;
   readonly names?: readonly string[];
 }
@@ -66,10 +72,10 @@ describe("the release file", () => {
           cases: Case[];
         };
         for (const each of vector.cases) {
-          const got = readingOf(validate, each, each.previous ?? null);
-          const want = each.current
-            ? { current: each.current }
-            : { refused_by: each.refused_by, names: each.names };
+          const got = readingOf(validate, each, each.previous ?? null, each.today);
+          const want: Reading = each.current
+            ? { current: each.current, next: each.next ?? { texts: {}, sets: {} } }
+            : { refused_by: each.refused_by ?? "", names: each.names ?? [] };
           expect(got, `${name}, case ${cases}`).toEqual(want);
           outcomes.add(each.refused_by ?? "accepted");
           cases++;
@@ -82,10 +88,46 @@ describe("the release file", () => {
       "legal.files",
       "legal.in-force-unchanged",
       "legal.markdown",
+      "legal.operator",
       "legal.set-texts",
       "legal.versions",
       "schema",
     ]);
+  });
+
+  // The runner's time by the ratio of the test below, 776 ms here to 4 804 ms there, until the log
+  // of CI gives its own line (T111).
+  test("is read on a day: version 3 of the policy is the next until 2026-11-27, then the current", {
+    timeout: budget(8_700),
+  }, () => {
+    withLegalFile((folder, schema) => {
+      const validate = validatorOf(schema);
+      const part = partIn(folder);
+      const on = (today: string) => readingOf(validate, part, null, today);
+      expect(on("2026-11-26")).toMatchObject({
+        current: { texts: { "privacy-policy": 2 } },
+        next: { texts: { "privacy-policy": 3 } },
+      });
+      const after = on("2026-11-27");
+      expect(after).toMatchObject({ current: { texts: { "privacy-policy": 3 } } });
+      expect("next" in after && after.next).toEqual({ texts: {}, sets: {} });
+      // A set applies from the day it was approved: before it, its version before is the current.
+      expect(on("2026-11-10")).toMatchObject({ current: { sets: { measure: 1, "eval-set": 1 } } });
+      expect(pageSetsOf(folder, schema, "", "2026-11-10").measurement?.version).toBe("measure-1");
+      // Before its first policy applied, the part is refused.
+      expect(on("2026-11-09")).toEqual({
+        refused_by: "legal.operator",
+        names: ["texts.privacy-policy"],
+      });
+      for (const day of ["2026-02-30", "2026-11-1", "today"]) {
+        expect(() => on(day), day).toThrow(`a part is read on a day, YYYY-MM-DD, and ${day}`);
+      }
+    });
+  });
+
+  test("is read by the build on the day in UTC", () => {
+    expect(todayInUtc(new Date("2026-11-26T23:59:59-05:00"))).toBe("2026-11-27");
+    expect(todayInUtc(new Date("2026-11-27T00:00:00Z"))).toBe("2026-11-27");
   });
 
   test("shows every text it holds, a translation too, and gives the measurement and the eval set their sets in force, the child's session none (T102)", {
@@ -93,9 +135,9 @@ describe("the release file", () => {
   }, () => {
     withLegalFile((folder, schema) => {
       const part = partIn(folder);
-      const reading = readingOf(validatorOf(schema), part);
+      const reading = readingOf(validatorOf(schema), part, null, todayInUtc());
       if (!("current" in reading)) throw new Error("spec's part is refused");
-      // At v0.16.3, as at v0.15.0, the sets of the adults are in force, and the child's is still
+      // At v0.17.4, as at v0.15.0, the sets of the adults are in force, and the child's is still
       // a draft (R139 spec, R141 spec).
       expect(reading.current.sets).toEqual({ measure: 2, "eval-set": 1 });
       expect(Object.keys(part.files)).toContain("texts/privacy-policy/2.ru.md");
@@ -108,7 +150,7 @@ describe("the release file", () => {
       expect(sets.measurement?.version).toBe("measure-2");
       expect(sets.evalSet?.version).toBe("eval-set-1");
     });
-    // It reads all seventeen files twice.
+    // It reads all twenty files twice.
   });
 });
 
@@ -135,13 +177,23 @@ describe("the part for tests", () => {
     }
     // No texts/: every version lacks its file.
     expect(() => withLegalFile((_, schema) => pageSetsOf(dir, schema, "test-"))).toThrow(
-      /is refused by legal\.files: texts\/test-child-sample-form\/1\.md/,
+      /is refused by legal\.files: texts\/privacy-policy\/1\.md, texts\/test-child-sample-form\/1\.md/,
     );
     writeFileSync(join(dir, "VERSION"), "01\n");
     expect(() => partIn(dir)).toThrow("is no integer from 1 and a newline");
     // A part of another version than its passport's format.
-    writeFileSync(join(dir, "VERSION"), "3\n");
-    expect(() => partIn(dir)).toThrow("is of format 2, and VERSION says 3");
+    writeFileSync(join(dir, "VERSION"), "4\n");
+    expect(() => partIn(dir)).toThrow("is of format 3, and VERSION says 4");
+  });
+
+  test('without its privacy policy\'s section "Who we are", is refused by legal.operator', () => {
+    const dir = temporary("canvas-legal-operator");
+    cpSync("page/sets/test", dir, { recursive: true });
+    const policy = join(dir, "texts/privacy-policy/1.md");
+    writeFileSync(policy, readFileSync(policy, "utf8").replace("## Who we are", "## Who we were"));
+    expect(() => withLegalFile((_, schema) => pageSetsOf(dir, schema, "test-"))).toThrow(
+      /is refused by legal\.operator: texts\/privacy-policy\/1\.md$/,
+    );
   });
 });
 
