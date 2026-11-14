@@ -778,7 +778,7 @@ describe("opened from a file", () => {
   });
 
   test("with the part for tests opens the eval set: the modules' tasks alone, a picture of a statement, a template's instance by its seed, a sample named by its ID, and a sheet of the board module (T101, T112)", {
-    timeout: budget(2_007),
+    timeout: budget(1_448),
   }, async () => {
     const context = await browser.newContext({ acceptDownloads: true });
     try {
