@@ -324,15 +324,38 @@ const views = readFileSync(
   new URL(`../../tasks/modules-${MODULES_FILE.tag}/open-views.json`, import.meta.url),
 );
 
-test("the copy of the open views is the one module-kit wrote: its sum, its modules, and every task's digest its open view's (T101)", () => {
+test("the copy of the open views is the one module-kit wrote: its sum, its modules, and every task's digest its open view's (T101, T112)", () => {
   expect(createHash("sha256").update(views).digest("hex")).toBe(MODULES_FILE.sha256);
   const modules = openViewsOf(views.toString("utf8"), sha256);
   expect(modules.map(({ module, version, tasks }) => [module, version, tasks.length])).toEqual([
+    ["novatrail/check-board", "0.1.0", 11],
     ["novatrail/english-essays", "0.2.0", 8],
     ["novatrail/grade-3-math", "0.3.0", 12],
     ["novatrail/olympiad-math", "0.3.0", 863],
   ]);
-  const olympiad = modules[2];
+  // The board module of tutor's check board (T112): eleven sheets, each with its one place anywhere,
+  // published by the release the page takes.
+  const board = modules[0];
+  expect(
+    board?.tasks.map(({ view }) => [
+      view.canvas,
+      (view.items as { answer_slots: unknown }[]).map(({ answer_slots }) => answer_slots),
+    ]),
+  ).toEqual(Array(11).fill([{ kind: "handwriting_sheet" }, [[{ binding: "anywhere" }]]]));
+  expect(board?.tasks[0]?.open.reference).toEqual({
+    source: {
+      case: "modules",
+      value: {
+        tag: "v0.2.7",
+        module: "novatrail/check-board",
+        version: "0.1.0",
+        packageDigest: "sha256:28893a0f82709a2526d13950826ef8cb442608ad85d9c824f53a235122846f56",
+      },
+    },
+    task: "album",
+    openViewDigest: "sha256:ba7c27a522fc72921c87924d8a4db497b8d6495a7552fc83d6e3404770ce74c1",
+  });
+  const olympiad = modules[3];
   const instances = olympiad?.tasks.filter(({ open }) => open.reference.seed !== undefined) ?? [];
   // 22 templates, an instance of each of the five seeds.
   expect(instances).toHaveLength(22 * MODULES_FILE.seeds.length);
@@ -362,6 +385,7 @@ test("open views of another format, a closed field, another digest or a seed out
     format: string;
     module_format_version: string;
     modules: {
+      id: string;
       release: string;
       tasks: { task: Json; seed?: unknown; open_view_digest: string }[];
     }[];
@@ -382,7 +406,7 @@ test("open views of another format, a closed field, another digest or a seed out
   );
   const module = (fields: object) =>
     refused((copy) => Object.assign(copy.modules[0] ?? {}, fields));
-  expect(module({ id: "english-essays" })).toThrow("a module of the open views has an ID");
+  expect(module({ id: "check-board" })).toThrow("a module of the open views has an ID");
   expect(module({ version: "0.2" })).toThrow("has no version MAJOR.MINOR.PATCH");
   expect(module({ package_digest: "sha256:0" })).toThrow("has no digest of its package");
   expect(module({ module_format_version: "0.3" })).toThrow("is not of the module format 0.4");
@@ -390,7 +414,7 @@ test("open views of another format, a closed field, another digest or a seed out
   expect(module({ tasks: {} })).toThrow("has no tasks");
   expect(
     refused((copy) => Object.assign(copy.modules[0]?.tasks[0]?.task ?? {}, { id: 7 })),
-  ).toThrow("a task of novatrail/english-essays has no ID");
+  ).toThrow("a task of novatrail/check-board has no ID");
   expect(
     refused((copy) => Object.assign(copy.modules[0]?.tasks[0]?.task ?? {}, { solution: "x" })),
   ).toThrow("solution is no field of the open view");
@@ -401,7 +425,9 @@ test("open views of another format, a closed field, another digest or a seed out
       }),
     ),
   ).toThrow("its digest is not that of its open view");
-  expect(refused((copy) => Object.assign(copy.modules[2]?.tasks[0] ?? {}, { seed: "01" }))).toThrow(
+  const instance = (copy: typeof file) =>
+    copy.modules.find(({ id }) => id === "novatrail/olympiad-math")?.tasks.find(({ seed }) => seed);
+  expect(refused((copy) => Object.assign(instance(copy) ?? {}, { seed: "01" }))).toThrow(
     "a seed is an unsigned integer in decimal digits",
   );
 });

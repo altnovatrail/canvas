@@ -73,6 +73,13 @@ const MODULES = (
   ...module,
   tasks: module.tasks.filter(({ task }) => kindOf(task) !== undefined),
 }));
+/** The picker's value of a module's first task: the tasks' places in the build are tutor's first,
+ * then module by module. */
+const placeOf = (module: (typeof MODULES)[number]) =>
+  MODULES.slice(0, MODULES.indexOf(module)).reduce(
+    (sum, { tasks }) => sum + tasks.length,
+    IDS.length,
+  );
 
 /** The part of the legal texts for tests alone, its sets in force (T20, T89; R58, R69). */
 const TEST_PART = "page/sets/test";
@@ -480,7 +487,7 @@ describe("opened from a file", () => {
         ...MODULES.map(({ id, version, tasks }) => [`Модуль ${id} ${version}`, tasks.length]),
       ]);
       const titles = await page.locator("#task option").allTextContents();
-      expect(titles).toHaveLength(56 + 758);
+      expect(titles).toHaveLength(56 + 769);
       const at = (id: string) => titles[IDS.indexOf(id)];
       expect([at("equation-1"), at("grasshopper"), at("workbook-01"), at("essay-01")]).toEqual([
         "Лист: equation-1",
@@ -770,8 +777,8 @@ describe("opened from a file", () => {
     }
   });
 
-  test("with the part for tests opens the eval set: the modules' tasks alone, a picture of a statement, a template's instance by its seed, and a sample named by its ID (T101)", {
-    timeout: budget(1_187),
+  test("with the part for tests opens the eval set: the modules' tasks alone, a picture of a statement, a template's instance by its seed, a sample named by its ID, and a sheet of the board module (T101, T112)", {
+    timeout: budget(1_448),
   }, async () => {
     const context = await browser.newContext({ acceptDownloads: true });
     try {
@@ -786,9 +793,7 @@ describe("opened from a file", () => {
       ).toEqual(MODULES.map(({ id, version }) => `Модуль ${id} ${version}`));
       const olympiad = MODULES.find(({ id }) => id === "novatrail/olympiad-math");
       if (!olympiad) throw new Error("no olympiad-math in the copy");
-      // The picker's values are the tasks' places in the build: tutor's first, then module by module.
-      const before = MODULES.slice(0, MODULES.indexOf(olympiad));
-      const base = IDS.length + before.reduce((sum, { tasks }) => sum + tasks.length, 0);
+      const base = placeOf(olympiad);
       const pictured = olympiad.tasks.findIndex(({ task }) =>
         (task.statement ?? []).some((part: StatementPart) => part.picture !== undefined),
       );
@@ -839,6 +844,32 @@ describe("opened from a file", () => {
         entry.task.id,
         entry.seed,
         entry.open_view_digest,
+      ]);
+      // A sheet of the board module, a task of tutor's check board, whose eval set the author writes
+      // (T112): no template, so no seed, and the release that published the package.
+      const board = MODULES.find(({ id }) => id === "novatrail/check-board");
+      const sheet = board?.tasks[0];
+      if (!board || !sheet) throw new Error("no board module in the copy");
+      await page.selectOption("#task", String(placeOf(board)));
+      expect(await page.locator("#task option:checked").textContent()).toBe(
+        `Лист: ${sheet.task.id}`,
+      );
+      await page.evaluate(() => window.scrollTo(0, 0));
+      const sheetBox = await page.locator("novatrail-canvas").boundingBox();
+      if (!sheetBox) throw new Error("the board's sheet is not shown");
+      await stroke(page, sheetBox, [120, 260], [220, 320]);
+      const ofBoard = await markAndSave(page, "98");
+      expect(ofBoard.task?.source.case).toBe("modules");
+      expect(ofBoard.task?.source.value).toMatchObject({
+        tag: board.release,
+        module: board.id,
+        version: board.version,
+        packageDigest: board.package_digest,
+      });
+      expect([ofBoard.task?.task, ofBoard.task?.seed, ofBoard.task?.openViewDigest]).toEqual([
+        sheet.task.id,
+        undefined,
+        sheet.open_view_digest,
       ]);
       expect(outside).toEqual([]);
       expect(errors).toEqual([]);

@@ -40,7 +40,7 @@ essays_package := "tasks/modules-" + modules_tag + "/novatrail-english-essays-0.
 # (T101; R71): the copy in tasks/modules-<tag>/ is what that module-kit wrote of that release with
 # those seeds, which just modules-open writes and ci-licenses holds it to. MODULES_FILE in
 # src/eval/tasks.ts has the tag and the seeds too, and scripts/modules.test.ts holds them to these.
-page_modules_tag := "v0.2.4"
+page_modules_tag := "v0.2.7"
 module_kit_tag := "v0.3.0"
 open_seeds := "1 2 3 4 5"
 
