@@ -40,17 +40,18 @@ build() {
 }
 
 # WebDriverAgent started from a build for testing of the pinned commit, in the background, its log
-# into the file named, and whether it answered within four minutes; one that did not is stopped,
-# its runner on the simulator too, so that no stale agent holds the port.
+# into the file named, and whether it answered within ten minutes, by the clock (the T83 amendment
+# to R54): on a loaded runner xcodebuild itself has taken 8 minutes to its first line. One that did
+# not answer is stopped, its runner on the simulator too, so that no stale agent holds the port.
 start() {
   local log=$1 xctestrun
   [[ "$(cat "$products/commit.txt" 2> /dev/null)" == "$wda_commit" ]] || return 1
   xctestrun=$(find "$products" -maxdepth 1 -name '*.xctestrun' | head -n 1)
   [[ -n "$xctestrun" ]] || return 1
   xcodebuild -xctestrun "$xctestrun" -destination "id=$udid" test-without-building > "$log" 2>&1 &
-  local agent=$!
-  for _ in $(seq 1 120); do
-    curl --silent --fail http://127.0.0.1:8100/status > /dev/null && return 0
+  local agent=$! until=$((SECONDS + 600))
+  while ((SECONDS < until)); do
+    curl --silent --fail --max-time 5 http://127.0.0.1:8100/status > /dev/null && return 0
     kill -0 "$agent" 2> /dev/null || break
     sleep 2
   done
