@@ -466,6 +466,18 @@ At the tag [v0.1.12](https://github.com/altnovatrail/.github/tree/v0.1.12), comm
 - `gh api repos/altnovatrail/.github/compare/v0.1.22...v0.1.24`: of the workflows that `canvas` calls, only `release.yml` and `scorecard.yml` changed, each in comments alone — `(architecture 4)` became `(measurements 5.11)` and `(sources 8.3)` in `release.yml` and `(sources 6.1)` in `scorecard.yml`, the records of `.github`; `typescript.yml`, `documents.yml`, `codeql.yml`, `secrets.yml` and `dco.yml` did not change, and neither did the inputs, outputs, jobs or permissions of any of the seven. The rest of the diff is `go.yml`, which `canvas` does not call, and `.github`'s own documents, rules and container;
 - architecture 3.3 of `.github` at v0.1.24, the template of `.github/dependabot.yml`: "The references to the shared workflows go as one group, `shared-workflows`: all in one pull request, to one release, not a pull request per file (the 2026-11-08 amendment to R04; Д88 in RUN.md `spec`)", with the group `shared-workflows`, `patterns: ["altnovatrail/.github/*"]`, under `github-actions`.
 
+### 6.14. `.github` v0.1.30
+
+(architecture 3.4 and 3.7; the T116 amendments to R12, R43, R57 and R78; T116), read 2026-11-16:
+
+- `gh release list -R altnovatrail/.github` — v0.1.30 of 2026-11-16 11:09Z, Latest, after v0.1.25–v0.1.29 of the same day, the tasks T60–T65 of `.github`'s epic E21; `gh release verify v0.1.30 -R altnovatrail/.github` — "Resolved tag v0.1.30 to sha1:8311cbfc01082e9b196c0af8d7b49192115cc84c", "Release v0.1.30 verified!";
+- `git diff --stat v0.1.24 v0.1.30 -- .github/workflows` in a clone of `.github`: `codeql.yml`, `documents.yml`, `go.yml`, `release.yml`, `self-ci.yml` and `typescript.yml` changed; `secrets.yml`, `dco.yml` and `scorecard.yml` did not;
+- `typescript.yml` has the input `engines`, "Run the tests in WebKit and Firefox by the recipe ci-engines, as the check "TypeScript / engines" (R19).", `type: boolean`, `default: false`; with it the matrix is `["lint", "test", "engines", "vuln", "licenses"]`, and `engines` runs under `--init` and `--ipc=host` as `test` does. A new job `toolchain` restores `${{ runner.temp }}/novatrail-toolchain.tar` by the key `toolchain-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.devcontainer/Dockerfile') }}` with `lookup-only: true`, and on a miss builds the image `novatrail-toolchain` alone and hands it to the checks as an artifact of the run; "Only a push to main saves the file into the cache". The checks restore the same path, then the artifact, and build only without either. No new output and no new permission;
+- `documents.yml`: the same path and key; "Only a push to main saves the file", and a run that saves nothing is not handed `TOOLCHAIN_IMAGE_FILE` without a file from the cache;
+- `release.yml`: no new input or output; the files are signed eight at once, `AT_ONCE: "8"`, each with a TUF cache of its own, and "Verify the release" holds each file to the sha256 of a subject of the one attestation `gh release verify --format json` prints;
+- `codeql.yml`: only the analysis of `go` changed — Go from go.dev's archive by `ARG GO_VERSION` and `ARG GO_SHA256_AMD64`, without building the stage; `canvas` analyses `actions` and `javascript-typescript`;
+- R19 `.github`, the amendment of 2026-11-16: "The caller puts the check into its ruleset of `main` once it has first come to `main` (architecture 3.3)"; the consequence: "`app` and `canvas` take it by their tasks of rows 7.22 and 7.23: the reference to a release with the input, `engines: true`, `ci-engines`, and `ci-test` without WebKit and Firefox, in one pull request — an older release rejects an unknown input —, then "TypeScript / engines" into the ruleset".
+
 ## 7. Tools, packages and CI
 
 ### 7.1. GitHub Packages

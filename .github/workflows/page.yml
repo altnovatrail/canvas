@@ -34,6 +34,7 @@ on:
       - "package-lock.json"
       - ".devcontainer/Dockerfile"
       - "emulators/**"
+      - "spec"
       - ".github/workflows/page.yml"
   workflow_dispatch:
 
@@ -47,7 +48,8 @@ concurrency:
 
 jobs:
   # What goes into the page — the package's code, the page's own, its builder, the tasks, the
-  # packages and the toolchain stage — and what checks it: the drivers and this file.
+  # packages and the toolchain stage — and what checks it: the drivers, spec/ — whose sample-check
+  # reads the saved files and whose toolchain.sh builds the stage — and this file.
   # The same list is on.push's paths above: a path added here goes there too.
   changes:
     name: Changes
@@ -73,7 +75,7 @@ jobs:
             exit 0
           fi
           changed=$(git diff --name-only "$BASE...$HEAD" -- src page scripts/page.ts scripts/legal.ts \
-              scripts/csp.ts tasks package.json package-lock.json .devcontainer/Dockerfile emulators \
+              scripts/csp.ts tasks package.json package-lock.json .devcontainer/Dockerfile emulators spec \
               .github/workflows/page.yml)
           echo "$changed"
           echo "page=$([[ -n "$changed" ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
@@ -101,29 +103,41 @@ jobs:
 
       # The toolchain stage from the cache, by the Dockerfile's sha256 (R57): the Dockerfile pins
       # everything it installs by exact version, digest, sha256 and snapshot, so the image the cache
-      # holds is the one it builds. A pull request's cache is its own, and only a push to main writes
-      # the one every pull request reads. Saved as soon as it is built, so that a run whose emulator
-      # fails later still fills it.
+      # holds is the one it builds. The key, the file and the image novatrail-toolchain are those of
+      # .github's shared workflows and spec's toolchain.sh, which builds it here too, so that every
+      # workflow keeps one entry (R42 .github; the T116 amendment to R57). Only a push to main saves
+      # it, the entry every pull request reads; a pull request's would serve its own re-runs alone.
+      # Saved as soon as it is built, so that a run whose emulator fails later still fills it.
       - name: Toolchain image from the cache
         id: toolchain
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: build/toolchain.tar
+          path: ${{ runner.temp }}/novatrail-toolchain.tar
           key: toolchain-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.devcontainer/Dockerfile') }}
 
+      # spec's script loads the image from the file, or builds the stage and, with the variable
+      # set, writes the file. A run that saves nothing is not handed the variable without a file
+      # from the cache, and only builds.
       - name: Toolchain image
-        run: bash emulators/toolchain.sh
+        env:
+          TOOLCHAIN_IMAGE_FILE: ${{ runner.temp }}/novatrail-toolchain.tar
+          SAVE: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        run: |
+          if [ "$SAVE" != true ] && [ ! -f "$TOOLCHAIN_IMAGE_FILE" ]; then
+              unset TOOLCHAIN_IMAGE_FILE
+          fi
+          spec/tools/toolchain/toolchain.sh build
 
       - name: Toolchain image into the cache
-        if: steps.toolchain.outputs.cache-hit != 'true'
+        if: steps.toolchain.outputs.cache-hit != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: build/toolchain.tar
+          path: ${{ runner.temp }}/novatrail-toolchain.tar
           key: ${{ steps.toolchain.outputs.cache-primary-key }}
 
       # The image is in Docker, and the emulator wants the disk.
       - name: Toolchain image's file removed
-        run: rm -f build/toolchain.tar
+        run: rm -f -- "$RUNNER_TEMP/novatrail-toolchain.tar"
 
       # Both builds and their servers: the release's on 8080, the test build's on 8081, its file
       # named apart, for Chrome keeps both downloads in one list (T22).
@@ -132,13 +146,13 @@ jobs:
           mkdir -p build/page-android build/page-android-test
           docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp \
               --volume "$PWD:/work" --workdir /work \
-              toolchain bash -c "npm ci --no-audit --no-fund && bash emulators/builds.sh"
+              novatrail-toolchain bash -c "npm ci --no-audit --no-fund && bash emulators/builds.sh"
           docker run --detach --name page-server --network host --user "$(id -u):$(id -g)" \
               --env HOME=/tmp --volume "$PWD:/work" --workdir /work \
-              toolchain sh -c "node emulators/serve.ts build/page 8080 > build/page-android/server.txt 2>&1"
+              novatrail-toolchain sh -c "node emulators/serve.ts build/page 8080 > build/page-android/server.txt 2>&1"
           docker run --detach --name page-test-server --network host --user "$(id -u):$(id -g)" \
               --env HOME=/tmp --volume "$PWD:/work" --workdir /work \
-              toolchain sh -c "node emulators/serve.ts build/page-test-served 8081 > build/page-android-test/server.txt 2>&1"
+              novatrail-toolchain sh -c "node emulators/serve.ts build/page-test-served 8081 > build/page-android-test/server.txt 2>&1"
 
       # As the action's README asks, for the emulator to use KVM.
       - name: Enable KVM
@@ -168,7 +182,7 @@ jobs:
         run: |
           docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp \
               --volume "$PWD:/work" --workdir /work \
-              toolchain bash -c "node emulators/saved.ts 0.0.0 build/page-android build/page-android-test \
+              novatrail-toolchain bash -c "node emulators/saved.ts 0.0.0 build/page-android build/page-android-test \
                 && just -f spec/justfile sample-check build/page-android/saved/*.json build/page-android-test/saved/*.json"
 
       - name: Screenshots, reports and saved files
@@ -294,28 +308,38 @@ jobs:
         id: toolchain
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: build/toolchain.tar
+          path: ${{ runner.temp }}/novatrail-toolchain.tar
           key: toolchain-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.devcontainer/Dockerfile') }}
 
+      # spec's script loads the image from the file, or builds the stage and, with the variable
+      # set, writes the file. A run that saves nothing is not handed the variable without a file
+      # from the cache, and only builds.
       - name: Toolchain image
-        run: bash emulators/toolchain.sh
+        env:
+          TOOLCHAIN_IMAGE_FILE: ${{ runner.temp }}/novatrail-toolchain.tar
+          SAVE: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        run: |
+          if [ "$SAVE" != true ] && [ ! -f "$TOOLCHAIN_IMAGE_FILE" ]; then
+              unset TOOLCHAIN_IMAGE_FILE
+          fi
+          spec/tools/toolchain/toolchain.sh build
 
       - name: Toolchain image into the cache
-        if: steps.toolchain.outputs.cache-hit != 'true'
+        if: steps.toolchain.outputs.cache-hit != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: build/toolchain.tar
+          path: ${{ runner.temp }}/novatrail-toolchain.tar
           key: ${{ steps.toolchain.outputs.cache-primary-key }}
 
       # The image is in Docker, and the emulator wants the disk.
       - name: Toolchain image's file removed
-        run: rm -f build/toolchain.tar
+        run: rm -f -- "$RUNNER_TEMP/novatrail-toolchain.tar"
 
       - name: Sample files
         run: |
           docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp \
               --volume "$PWD:/work" --workdir /work \
-              toolchain bash -c "just -f spec/justfile sample-check build/page-ipad-26.5/saved/*.json build/page-ipad-26.5-test/saved/*.json"
+              novatrail-toolchain bash -c "just -f spec/justfile sample-check build/page-ipad-26.5/saved/*.json build/page-ipad-26.5-test/saved/*.json"
 
   # The one check main requires: every job above went right, or was skipped because the pull
   # request changes nothing they check.

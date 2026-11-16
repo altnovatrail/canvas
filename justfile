@@ -1,4 +1,4 @@
-# canvas's own recipes: the package's build, and the four checks .github's typescript.yml runs in
+# canvas's own recipes: the package's build, and the five checks .github's typescript.yml runs in
 # CI, one job each, in a new container of the toolchain stage of .devcontainer/Dockerfile — as the
 # runner's user, with HOME=/tmp and with CI from the step's environment (R19 .github; R12 in
 # docs/decisions.md). Only ci-licenses reads spec/: it runs spec's recipes licenses-check-repo,
@@ -44,8 +44,8 @@ page_modules_tag := "v0.2.7"
 module_kit_tag := "v0.3.0"
 open_seeds := "1 2 3 4 5"
 
-# Run the four checks CI runs, before a pull request.
-ci: ci-lint ci-test ci-vuln ci-licenses
+# Run the five checks CI runs, before a pull request.
+ci: ci-lint ci-test ci-engines ci-vuln ci-licenses
 
 # Fail on code Biome would format or flag, on a type error in any of the three programs — the
 # DOM-free part sees neither the DOM nor Node, the element sees the DOM, and the scripts, the
@@ -59,13 +59,18 @@ ci-lint: _install
     node scripts/icons.ts --check
 
 # Build the package, run the tests in Node and in Chromium with their coverage, which .github's
-# TypeScript wrapper sends to Codecov from coverage/lcov.info (R43), then in WebKit and Firefox
-# without it — Vitest's v8 coverage works in Chromium alone, and a browser instance's name ends in
-# its engine (vitest.config.ts) —, and check the package the way a consumer takes it.
+# TypeScript wrapper sends to Codecov from coverage/lcov.info (R43), and check the package the way
+# a consumer takes it.
 ci-test: build
     {{ bin }}/vitest run --coverage --project node --project '* chromium'
-    {{ bin }}/vitest run --project '* webkit' --project '* firefox'
     node scripts/package.ts
+
+# Run the tests in WebKit and Firefox, without coverage: Vitest's v8 coverage works in Chromium
+# alone, and a browser instance's name ends in its engine (vitest.config.ts). The wrapper runs it as
+# the check "TypeScript / engines", beside ci-test (R78; R19 .github). The tests import the sources,
+# not the build.
+ci-engines: _install
+    {{ bin }}/vitest run --project '* webkit' --project '* firefox'
 
 # Fail on a published advisory, high or above, for a package the package ships with. Of the tools
 # of development, Dependabot's alerts tell (R12). npm audit reads the lock file and asks the
