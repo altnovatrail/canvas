@@ -68,8 +68,19 @@ export interface PageBox {
   readonly height: number;
 }
 
-/** An item on the page: its number, its line in the order it is read, and its boxes by slot. */
+/**
+ * An item on the page: its place and size, its number, its line in the order it is read, and its
+ * boxes by slot.
+ */
 export interface PageItem {
+  /**
+   * Its place and size, in page units: its column's left edge, its row's top, its column's width or
+   * the page's within its margins, and the height of its lines.
+   */
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
   readonly number: PageText;
   readonly line: readonly (PageText | PageBox)[];
   /** The boxes of the line, the same objects as in `line`: slot 1 first. */
@@ -127,8 +138,11 @@ interface Measures {
   readonly numbers: number;
   /** Where a line starts after its number, from the item's left. */
   readonly indent: number;
-  /** The width of a column of short lines, and of a line across the page. */
+  /**
+   * The width of a column of short lines, of the page within its margins, and of a line across it.
+   */
   readonly column: number;
+  readonly content: number;
   readonly full: number;
   /** Where the second column starts. */
   readonly second: number;
@@ -147,6 +161,7 @@ function measuresOf(layout: Layout): Measures {
     numbers,
     indent,
     column,
+    content,
     full: content - indent,
     second: layout.margin + column + layout.gutter,
     floor: SHEET.height - layout.margin,
@@ -196,19 +211,28 @@ export function pageOf(items: readonly WorkbookItem[], layout: Layout = LAYOUT):
     if (short(i)) {
       const cells = short(i + 1) && i + 1 < MOST ? [i, i + 1] : [i];
       const laid = cells.map((n, c) =>
-        itemOf([lineOf(n)], n, c === 0 ? layout.margin : measures.second, top, measures),
+        itemOf(
+          [lineOf(n)],
+          n,
+          c === 0 ? layout.margin : measures.second,
+          measures.column,
+          top,
+          measures,
+        ),
       );
-      const height = Math.max(...laid.map(({ height }) => height));
+      const height = Math.max(...laid.map((item) => item.height));
       if (height > room) throw new TypeError(noRoom(i, measures));
-      placed.push(...laid.map(({ item }) => item));
+      placed.push(...laid);
       bottom = top + height;
       i += cells.length;
     } else {
       const wrapped = linesOf(lineOf(i), measures, room);
       const laid =
-        wrapped === undefined ? undefined : itemOf(wrapped, i, layout.margin, top, measures);
+        wrapped === undefined
+          ? undefined
+          : itemOf(wrapped, i, layout.margin, measures.content, top, measures);
       if (laid === undefined || laid.height > room) throw new TypeError(noRoom(i, measures));
-      placed.push(laid.item);
+      placed.push(laid);
       bottom = top + laid.height;
       i += 1;
     }
@@ -387,16 +411,17 @@ function runsOf(entries: readonly Entry[]): Entry[][] {
 }
 
 /**
- * An item laid out from its lines at a place on the page: its parts in their places, its number on
- * the first line's baseline, right in the column of the numbers, and its height.
+ * An item laid out from its lines at a place on the page, `width` wide: its parts in their places,
+ * its number on the first line's baseline, right in the column of the numbers, and its height.
  */
 function itemOf(
   lines: readonly (readonly Entry[])[],
   n: number,
   left: number,
+  width: number,
   top: number,
   measures: Measures,
-): { readonly item: PageItem; readonly height: number } {
+): PageItem {
   const { layout } = measures;
   const line: (PageText | PageBox)[] = [];
   const baselines: number[] = [];
@@ -422,15 +447,15 @@ function itemOf(
     boxed = hasBox;
   }
   const label = `${n + 1}.`;
-  const width = textWidth(layout, wordWidth(label));
+  const span = textWidth(layout, wordWidth(label));
   const number = {
     text: label,
-    left: left + measures.numbers - width,
+    left: left + measures.numbers - span,
     baseline: baselines[0] ?? top + Math.floor(layout.line / 2) + Math.floor(layout.size / 3),
-    width,
+    width: span,
   };
   const height = Math.max(y - top, lines.length === 0 ? layout.line : 0);
-  return { item: { number, line, boxes: line.filter(isBox) }, height };
+  return { left, top, width, height, number, line, boxes: line.filter(isBox) };
 }
 
 function deepFreeze<T>(value: T): T {

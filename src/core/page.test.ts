@@ -199,6 +199,40 @@ describe("the layout of a workbook's page", () => {
     }
   });
 
+  test("gives each item its place and size, its column's or the page's, which all its parts lie within", () => {
+    for (const [name, page] of FITTING) {
+      for (const item of page.items) {
+        expect([40, 520], name).toContain(item.left);
+        expect(item.left === 40 ? [440, 920] : [440], name).toContain(item.width);
+        // Two items of a row share it, each in its column.
+        const paired = page.items.some((other) => other !== item && other.top === item.top);
+        if (paired) expect(item.width, name).toBe(440);
+        const right = item.left + item.width;
+        const bottom = item.top + item.height;
+        expect(item.number.left, name).toBeGreaterThanOrEqual(item.left);
+        for (const part of item.line) {
+          expect(part.left, name).toBeGreaterThanOrEqual(item.left);
+          expect(part.left + part.width, name).toBeLessThanOrEqual(right);
+          const [high, low] = isBox(part)
+            ? [part.top, part.top + part.height]
+            : [part.baseline, part.baseline];
+          expect(high, name).toBeGreaterThanOrEqual(item.top);
+          expect(low, name).toBeLessThanOrEqual(bottom);
+        }
+      }
+    }
+    const page = pageOf(corpus("times-ten").items);
+    expect(
+      page.items.slice(8, 10).map(({ left, top, width, height }) => [left, top, width, height]),
+    ).toEqual([
+      [40, 568, 440, 100],
+      [520, 568, 440, 100],
+    ]);
+    // A short line alone in the left column keeps the column's width; a long one takes the page's.
+    const [, , third, long] = pageOf(corpus("workbook-page").items).items;
+    expect([third?.width, long?.width]).toEqual([440, 920]);
+  });
+
   test("gives the boxes of an item by slot, the same objects its line has, in the order they are read", () => {
     for (const [, page] of FITTING) {
       for (const { line, boxes } of page.items) expect(boxes).toEqual(line.filter(isBox));

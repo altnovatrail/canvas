@@ -6,7 +6,10 @@
 /** The namespace of the SVG elements the element makes: its layers, and the row's icons. */
 export const SVG = "http://www.w3.org/2000/svg";
 
-/** An SVG shape — a workbook's box, a demo's picture — set over a box in its layer's units. */
+/**
+ * An SVG shape — a workbook's item or box, a demo's picture — set over a box in its layer's
+ * units.
+ */
 export function placeOver(
   shape: SVGElement,
   { left, top, width, height }: { left: number; top: number; width: number; height: number },

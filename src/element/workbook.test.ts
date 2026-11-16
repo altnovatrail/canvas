@@ -61,6 +61,28 @@ function textsOf(page: Page): PageText[] {
   ]);
 }
 
+/** A point of a shape's own coordinates in the print's, which are the page's units. */
+function inPrint(print: SVGGElement, shape: SVGGraphicsElement, x: number, y: number): DOMPoint {
+  const from = shape.getScreenCTM();
+  const to = print.getScreenCTM();
+  if (from === null || to === null) throw new Error("the print has no matrix to the screen");
+  return new DOMPoint(x, y).matrixTransform(to.inverse().multiply(from));
+}
+
+/**
+ * What an element of the print shows on the screen: an item, by its parts, for Firefox gives an
+ * inner `<svg>` a box that is not its item's (measurements 1.6).
+ */
+function shownOf(element: Element): { top: number; bottom: number } {
+  const boxes = [...(element.children.length > 0 ? element.children : [element])].map((part) =>
+    part.getBoundingClientRect(),
+  );
+  return {
+    top: Math.min(...boxes.map(({ top }) => top)),
+    bottom: Math.max(...boxes.map(({ bottom }) => bottom)),
+  };
+}
+
 /** A page's boxes in the order the template draws them. */
 function boxesOf(page: Page): PageBox[] {
   return page.items.flatMap((item) => item.boxes);
@@ -108,8 +130,11 @@ test("every piece of text starts and ends where the layout puts it, on its basel
       ).toEqual(expected.map(({ text }) => text));
       for (const [n, text] of texts.entries()) {
         const { left, baseline, width } = expected[n] as PageText;
-        const first = text.getStartPositionOfChar(0);
-        const last = text.getEndPositionOfChar(text.getNumberOfChars() - 1);
+        // In the text's own coordinates, which its item's `<svg>` sets at the item's origin.
+        const start = text.getStartPositionOfChar(0);
+        const end = text.getEndPositionOfChar(text.getNumberOfChars() - 1);
+        const first = inPrint(print, text, start.x, start.y);
+        const last = inPrint(print, text, end.x, end.y);
         const where = `${name} ${family} ${text.textContent}`;
         // A twentieth of a unit: a glyph that SVG scales alone, as "м" is, ends off by a rounding.
         expect(Math.abs(first.x - left), where).toBeLessThan(0.05);
@@ -120,9 +145,10 @@ test("every piece of text starts and ends where the layout puts it, on its basel
         // Firefox takes by its own extents of the glyphs, a "(" alone a seventh of the size wider
         // than its advance (T111).
         const box = text.getBBox();
-        expect(Math.abs(box.x - left), where).toBeLessThan(3);
+        const corner = inPrint(print, text, box.x, box.y);
+        expect(Math.abs(corner.x - left), where).toBeLessThan(3);
         expect(Math.abs(box.width - width), where).toBeLessThan(drawn);
-        expect(box.y < baseline && box.y + box.height > baseline, where).toBe(true);
+        expect(corner.y < baseline && corner.y + box.height > baseline, where).toBe(true);
       }
     }
   }
@@ -143,6 +169,13 @@ test("each box lies where the ink is, at any width and scroll: a stroke through 
     const rects = [...print.querySelectorAll("rect")];
     const boxes = boxesOf(page);
     expect(rects).toHaveLength(boxes.length);
+    // Each item's `<svg>` stands where the layout puts the item, of its size.
+    const listed = [...print.querySelectorAll('[role="listitem"]')];
+    const place = (item: Element) =>
+      ["x", "y", "width", "height"].map((name) => Number(item.getAttribute(name)));
+    expect(listed.map(place)).toEqual(
+      page.items.map(({ left, top, width: wide, height }) => [left, top, wide, height]),
+    );
     const end = viewport.scrollHeight - viewport.clientHeight;
     expect(end).toBeGreaterThan(0);
     for (const scrollTop of [0, end]) {
@@ -152,13 +185,16 @@ test("each box lies where the ink is, at any width and scroll: a stroke through 
       const bottom = shown.vy + viewport.clientHeight / shown.k;
       for (const [n, rect] of rects.entries()) {
         const { left, top, width: wide, height } = boxes[n] as PageBox;
+        // The frame's own corners, which its item's `<svg>` sets at the item's origin.
         const ctm = rect.getScreenCTM();
         if (ctm === null) throw new Error("the box has no matrix to the screen");
-        for (const [x, y] of [
-          [left, top],
-          [left + wide, top + height],
+        const [x0, y0] = [rect.x.baseVal.value, rect.y.baseVal.value];
+        const [x1, y1] = [x0 + rect.width.baseVal.value, y0 + rect.height.baseVal.value];
+        for (const [x, y, own] of [
+          [left, top, new DOMPoint(x0, y0)],
+          [left + wide, top + height, new DOMPoint(x1, y1)],
         ] as const) {
-          const point = new DOMPoint(x, y).matrixTransform(ctm);
+          const point = own.matrixTransform(ctm);
           const expected = at(canvas, shown, x, y);
           expect(Math.abs(point.x - expected.clientX)).toBeLessThan(0.05);
           expect(Math.abs(point.y - expected.clientY)).toBeLessThan(0.05);
@@ -215,7 +251,8 @@ test("a box's frame is one CSS pixel on whole device pixels, in the ink's colour
   expect(style.stroke).toBe("rgb(17, 17, 17)");
   const pixel = await screenshot(element);
   const host = element.getBoundingClientRect();
-  const ctm = rect.getScreenCTM();
+  // The print is in page units, and the box where the layout puts it.
+  const ctm = print.getScreenCTM();
   if (ctm === null) throw new Error("the box has no matrix to the screen");
   const { left, top, width, height } = boxesOf(page)[0] as PageBox;
   const point = (x: number, y: number) => {
@@ -308,11 +345,8 @@ test("the lines are in the manifest's explanation language, or the element's own
 });
 
 test("an item at the bottom of the page that is brought into view, or its text, stands in the container's visible part two frames later, under the row, in a page of any writing mode", async () => {
-  // Firefox brings an SVG group of no transform into view as if it lay at its origin, and so
-  // scrolls to the item not at all: its text it brings (T111; measurements 1.5).
-  const targets = server.browser === "firefox" ? ["text"] : ["item", "text"];
   for (const writing of ["horizontal-tb", "vertical-rl"]) {
-    for (const target of targets) {
+    for (const target of ["item", "text"]) {
       const parent = document.createElement("div");
       parent.style.writingMode = writing;
       document.body.append(parent);
@@ -323,7 +357,7 @@ test("an item at the bottom of the page that is brought into view, or its text, 
       const brought = target === "item" ? last : text;
       brought.scrollIntoView({ block: "nearest" });
       await settle();
-      const item = brought.getBoundingClientRect();
+      const item = shownOf(brought);
       const port = viewport.getBoundingClientRect();
       const where = `${writing}, ${target}`;
       expect(viewport.scrollTop, where).toBeGreaterThan(0);
@@ -489,10 +523,11 @@ test("a filled box's frame is three CSS pixels of ink on whole device pixels, an
   ]);
   const pixel = await screenshot(element);
   const host = element.getBoundingClientRect();
+  // The print is in page units, and the boxes where the layout puts them.
+  const ctm = print.getScreenCTM();
+  if (ctm === null) throw new Error("the print has no matrix to the screen");
   /** The dark device pixels across a box's left edge, at the middle of its height. */
-  const across = (rect: SVGRectElement, { left, top, height }: PageBox) => {
-    const ctm = rect.getScreenCTM();
-    if (ctm === null) throw new Error("the box has no matrix to the screen");
+  const across = ({ left, top, height }: PageBox) => {
     const edge = new DOMPoint(left, top + height / 2).matrixTransform(ctm);
     const step = 1 / devicePixelRatio;
     let dark = 0;
@@ -503,9 +538,9 @@ test("a filled box's frame is three CSS pixels of ink on whole device pixels, an
     return dark;
   };
   const [first, second] = boxesOf(page) as [PageBox, PageBox];
-  expect(across(filled, first)).toBeGreaterThanOrEqual(3 * devicePixelRatio - 1);
-  expect(across(filled, first)).toBeLessThanOrEqual(3 * devicePixelRatio + 1);
-  expect(across(empty, second)).toBeLessThanOrEqual(devicePixelRatio + 1);
+  expect(across(first)).toBeGreaterThanOrEqual(3 * devicePixelRatio - 1);
+  expect(across(first)).toBeLessThanOrEqual(3 * devicePixelRatio + 1);
+  expect(across(second)).toBeLessThanOrEqual(devicePixelRatio + 1);
   expect([filled.getAttribute("aria-label"), empty.getAttribute("aria-label")]).toEqual([
     "Окошко, заполнено",
     "Окошко",
