@@ -2,7 +2,8 @@
 // that spec's release file carries gives exactly what it says (section 7 of the legal part's
 // README), every text of the file is shown, the file is held to its sum and to the tag spec/ stands
 // on, and the sets the build takes — the measurement's and the eval set's in the release of
-// v0.17.4, the same as in v0.15.0's, and all three in the part for tests (T102, T109, T110, T111).
+// v0.18.3, of the versions that apply from 2026-11-16, and all three in the part for tests (T102,
+// T109, T110, T111, T113).
 // From version 3 of the part a reading is on a day (T111).
 
 import { copyFileSync, cpSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -95,10 +96,11 @@ describe("the release file", () => {
     ]);
   });
 
-  // The runner's time by the ratio of the test below, 776 ms here to 4 804 ms there, until the log
-  // of CI gives its own line (T111).
-  test("is read on a day: version 3 of the policy is the next until 2026-11-27, then the current", {
-    timeout: budget(8_700),
+  // The runner's time by the ratio of the test below, 4 804 ms there at T111: here, at T113, it
+  // reads the part on eight days in 1 956 ms to the test below's 724 ms, until the log of CI gives
+  // its own line (T111, T113).
+  test("is read on a day: version 3 of the policy is the next until 2026-11-27, then the current, and version 4 from 2026-11-28", {
+    timeout: budget(13_000),
   }, () => {
     withLegalFile((folder, schema) => {
       const validate = validatorOf(schema);
@@ -108,10 +110,19 @@ describe("the release file", () => {
         current: { texts: { "privacy-policy": 2 } },
         next: { texts: { "privacy-policy": 3 } },
       });
-      const after = on("2026-11-27");
-      expect(after).toMatchObject({ current: { texts: { "privacy-policy": 3 } } });
+      expect(on("2026-11-27")).toMatchObject({
+        current: { texts: { "privacy-policy": 3 } },
+        next: { texts: { "privacy-policy": 4 } },
+      });
+      const after = on("2026-11-28");
+      expect(after).toMatchObject({ current: { texts: { "privacy-policy": 4 } } });
       expect("next" in after && after.next).toEqual({ texts: {}, sets: {} });
       // A set applies from the day it was approved: before it, its version before is the current.
+      expect(on("2026-11-15")).toMatchObject({
+        current: { sets: { measure: 2, "eval-set": 1 } },
+        next: { sets: { measure: 3, "eval-set": 2 } },
+      });
+      expect(on("2026-11-16")).toMatchObject({ current: { sets: { measure: 3, "eval-set": 2 } } });
       expect(on("2026-11-10")).toMatchObject({ current: { sets: { measure: 1, "eval-set": 1 } } });
       expect(pageSetsOf(folder, schema, "", "2026-11-10").measurement?.version).toBe("measure-1");
       // Before its first policy applied, the part is refused.
@@ -137,9 +148,10 @@ describe("the release file", () => {
       const part = partIn(folder);
       const reading = readingOf(validatorOf(schema), part, null, todayInUtc());
       if (!("current" in reading)) throw new Error("spec's part is refused");
-      // At v0.17.4, as at v0.15.0, the sets of the adults are in force, and the child's is still
-      // a draft (R139 spec, R141 spec).
-      expect(reading.current.sets).toEqual({ measure: 2, "eval-set": 1 });
+      // At v0.18.3, from 2026-11-16, the sets of the adults are in force at the versions whose
+      // notices give the upload link 12 hours at most, and the child's is still a draft (R139
+      // spec, R141 spec).
+      expect(reading.current.sets).toEqual({ measure: 3, "eval-set": 2 });
       expect(Object.keys(part.files)).toContain("texts/privacy-policy/2.ru.md");
       for (const [file, bytes] of Object.entries(part.files)) {
         expect(markdownProblem(bytes), file).toBeNull();
@@ -147,10 +159,10 @@ describe("the release file", () => {
       }
       const sets = pageSetsOf(folder, schema);
       expect(Object.keys(sets)).toEqual(["measurement", "evalSet"]);
-      expect(sets.measurement?.version).toBe("measure-2");
-      expect(sets.evalSet?.version).toBe("eval-set-1");
+      expect(sets.measurement?.version).toBe("measure-3");
+      expect(sets.evalSet?.version).toBe("eval-set-2");
     });
-    // It reads all twenty files twice.
+    // It reads all twenty-five files twice.
   });
 });
 

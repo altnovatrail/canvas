@@ -85,7 +85,7 @@
 
 ## 2. The tokens Claude Code's sessions spend
 
-A row is `just -f spec/justfile tokens-report --since <start> --until <end> --row` over the transcripts of this machine's sessions, after the pattern of measurements 1.9 spec; when an epic is archived, over the epic's window (RUN.md, «Как устроен план: эпики»; R145 spec). The first row is "before" the epic E13: all of `canvas`'s sessions until 2026-11-12T14:27, as `spec` measured them in measurements 1.9 spec; the next ones are E13's sessions (R77).
+A row is `just -f spec/justfile tokens-report --since <start> --until <end> --row` over the transcripts of this machine's sessions, after the pattern of measurements 1.9 spec; when an epic is archived, over the epic's window (RUN.md, «Epics»; R145 spec). The first row is "before" the epic E13: all of `canvas`'s sessions until 2026-11-12T14:27, as `spec` measured them in measurements 1.9 spec; the next ones are E13's sessions (R77).
 
 | Window, UTC | What | Sessions | Calls, main / subagents | Context of a call, k, main / subagents | Compactions | Cost at API prices |
 |---|---|---|---|---|---|---|
