@@ -3,9 +3,10 @@
 // built in a toolchain stage — toolchain-core or toolchain, of one Node —, since tutor's CI pins
 // its sum (T32 tutor). Written here rather than by GNU tar and gzip, whose bytes follow their
 // versions and flags: each file a ustar header with the name, size and checksum and nothing of the
-// machine — mode 0644, owner 0, no owner's name, time 0 — the names in ascending order, no folder, and gzip with no name and no time. The deflate
-// is Node's zlib, which .devcontainer/Dockerfile pins with Node: archive.test.ts pins the bytes of
-// a small archive, so a Node whose zlib deflates otherwise fails there before a release.
+// machine — mode 0644, owner 0, no owner's name, time 0 — the names in ascending order, no
+// folder, and gzip with no name and no time. The deflate is Node's zlib, which
+// .devcontainer/Dockerfile pins with Node: archive.test.ts pins the bytes of a small archive, so a
+// Node whose zlib deflates otherwise fails there before a release.
 //
 //   node scripts/archive.ts <folder> <archive>
 //

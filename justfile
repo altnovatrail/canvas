@@ -104,8 +104,8 @@ ci-vuln:
 # the release of modules whose package of grade-3-math the tree holds is verified, a sample is
 # written of each of its tasks into build/synthetic-module by the generator's file, built as a
 # release carries it, and sample-check holds them, and the example of a module's sheet, as an eval
-# set of their module (T86, T96; R63, R68). sample-check runs buf
-# from the toolchain stage on the contracts of spec/. spec's recipes run under this same just.
+# set of their module (T86, T96; R63, R68). sample-check runs buf from the stage toolchain-core,
+# which CI runs ci-licenses in, on the contracts of spec/. spec's recipes run under this same just.
 ci-licenses:
     {{ quote(just_executable()) }} -f spec/justfile licenses-check-repo package-lock.json licenses.json
     {{ quote(just_executable()) }} -f spec/justfile release-verify-npm package-lock.json
@@ -131,16 +131,16 @@ build: _install
 
 # Write the files of the release of a version, v0.1.0 say, into dist/, as .github's shared
 # release.yml runs it: in the stage toolchain-core, on the tree of the commit alone, with no git,
-# no spec submodule and no token (R08; R18 .github). They are the package's archive, as npm pack makes it,
-# with the version without its v, NOTICE in it too (R46); the synthetic samples, as just synthetic
-# writes them, in one flat archive, synthetic-samples_<version>.tar.gz, and what each shows, one
-# line to a sample under a line of the columns' names, synthetic-samples_<version>.tsv (R50); the
-# samples page, as scripts/page.ts builds it with the draft of texts, samples-page_<version>.html,
-# whose own version is the number without its v (R55; R66): the set of texts for tests goes into
-# no page but 0.0.0, so into no release; the generator of a module's eval set, as
-# scripts/generator.ts builds it, synthetic-module_<version>.mjs (R68); LICENSE; and SHA256SUMS of
-# the six. The set is written outside dist/, which takes files alone; the builders of the page and
-# of the generator each write their one file there and print its path first.
+# no spec submodule and no token (R08; R18 .github). They are the package's archive, as npm pack
+# makes it, with the version without its v, NOTICE in it too (R46); the synthetic samples, as just
+# synthetic writes them, in one flat archive, synthetic-samples_<version>.tar.gz, and what each
+# shows, one line to a sample under a line of the columns' names, synthetic-samples_<version>.tsv
+# (R50); the samples page, as scripts/page.ts builds it with the draft of texts,
+# samples-page_<version>.html, whose own version is the number without its v (R55; R66): the set of
+# texts for tests goes into no page but 0.0.0, so into no release; the generator of a module's eval
+# set, as scripts/generator.ts builds it, synthetic-module_<version>.mjs (R68); LICENSE; and
+# SHA256SUMS of the six. The set is written outside dist/, which takes files alone; the builders of
+# the page and of the generator each write their one file there and print its path first.
 # The package's archive is packed from a copy of what npm pack takes, with the version set there,
 # so that the package.json of the tree keeps 0.0.0, and scripts/release.ts checks the archive
 # itself and names it. npm pack fixes every file's time and order, scripts/archive.ts writes
