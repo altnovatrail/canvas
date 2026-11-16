@@ -4688,4 +4688,4 @@ How it is built — [architecture.md](architecture.md), section 3.3.
 
 — *Revisit:* if the hang comes back in a run with the session's tree — the next AX call of WebDriverAgent, by its log; with T116 and T117 — the rest of row 7.23.
 
-— row 7.23 spec; measurements 3.1 spec; R76 spec, R156 spec; sources 7.10; R54, R57; [architecture.md](architecture.md), section 3.7; `.github/workflows/emulators.yml`, `.github/workflows/page.yml`, `probe/ipad.sh`, `probe/ipad.ts`, `emulators/stop.sh`, `emulators/page-ipad.sh`.
+— row 7.23 spec; measurements 3.1 spec; R76 spec, R156 spec; sources 7.10; measurements 3.1; R54, R57; [architecture.md](architecture.md), section 3.7; `.github/workflows/emulators.yml`, `.github/workflows/page.yml`, `probe/ipad.sh`, `probe/ipad.ts`, `emulators/stop.sh`, `emulators/page-ipad.sh`.
