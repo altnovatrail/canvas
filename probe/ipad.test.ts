@@ -3,7 +3,16 @@
 // report. The run itself is the workflow's, on a runner of macOS.
 
 import { expect, test } from "vitest";
-import { centre, elements, labelled, locate, quoted, reportOf, scriptState } from "./ipad.ts";
+import {
+  centre,
+  elements,
+  inFront,
+  labelled,
+  locate,
+  quoted,
+  reportOf,
+  scriptState,
+} from "./ipad.ts";
 
 const REPORT = JSON.stringify({ probe: "2", file: "t29-probe-csp.html", settled: true }, null, 2);
 
@@ -97,4 +106,10 @@ test("a report the tree splits into lines is read from the lines one after anoth
   expect(reportOf(split)).toEqual({ probe: "2", file: "t29-probe-csp.html", settled: true });
   const other = elements({ type: "XCUIElementTypeStaticText", value: '{ "x": 1 }' });
   expect(reportOf(other)).toBeUndefined();
+});
+
+test("the app in front is named to WebDriverAgent by its setting, so it asks no other app", () => {
+  expect(inFront("com.apple.DocumentsApp")).toEqual({
+    settings: { defaultActiveApplication: "com.apple.DocumentsApp" },
+  });
 });

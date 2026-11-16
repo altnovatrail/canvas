@@ -91,3 +91,24 @@ A row is `just -f spec/justfile tokens-report --since <start> --until <end> --ro
 |---|---|---|---|---|---|---|
 | 2026-10-13T00:00 … 2026-11-12T14:27 | before E13 — measurements 1.9 spec | 37 | 12,565 / 7,897 | 369.1 / 114.8 | 99 | $2,040.66 |
 | 2026-11-12T20:15 … 2026-11-12T22:00 | E13: the session of T110 — the move, the rebuild and the translation of `docs/` by 17 subagents and its blind reading by 4 —, until its pull request | 1 | 286 / 635 | 222.8 / 98.1 | 1 | $66.94 |
+
+## 3. The speed of CI
+
+### 3.1. The emulators' iPad jobs before and after T115
+
+(R80; T115; row 7.23 spec, measurements 3.1 spec) — the times GitHub gives each job and step, `gh api repos/altnovatrail/canvas/actions/runs/<run>/jobs`, and the artifacts' `phases.txt`, `versions.txt` and WebDriverAgent's log, 2026-11-12 and 2026-11-16.
+
+| Run | What | iPad 27, s | iPad 26.5, s | Of them |
+|---|---|---|---|---|
+| `emulators.yml` [43316532085](https://github.com/altnovatrail/canvas/actions/runs/43316532085) | before, the run of measurements 3.1 spec | 712 | 411 | iPad 27: 177 s of WebDriverAgent's log silent after Safari's session |
+| `emulators.yml` [43798027512](https://github.com/altnovatrail/canvas/actions/runs/43798027512) | before, `main`'s code (pull request #131) | 811 | 874 | the build of WebDriverAgent 157 s and 242 s; the upload of the artifact 150 s and 73 s; the job's end 37 s and 23 s |
+| `emulators.yml` [43810305338](https://github.com/altnovatrail/canvas/actions/runs/43810305338) | T115, a miss of the cache | 1082 | 767 | the build 513 s and 305 s; the stop 5 s and 8 s; the save 43 s and 3 s; the upload 4 s and 2 s; the job's end 3 s and 2 s |
+| `emulators.yml` [43812391731](https://github.com/altnovatrail/canvas/actions/runs/43812391731), attempt 1 | T115 with the review's fixes, a miss | 837 | 698 | the stop 10 s and 8 s; the save 7 s and 2 s |
+| `emulators.yml` [43812391731](https://github.com/altnovatrail/canvas/actions/runs/43812391731), attempt 2 | the same, a hit | 444 | 590 | no clone and no build; the stop 17 s and 7 s; the upload 2 s and 1 s |
+| `page.yml` [43799577739](https://github.com/altnovatrail/canvas/actions/runs/43799577739) | before, a push to `main` | — | 552 | the pages' copies 16 s after the boot |
+| `page.yml` [43810310421](https://github.com/altnovatrail/canvas/actions/runs/43810310421), [43812398914](https://github.com/altnovatrail/canvas/actions/runs/43812398914) | T115, by hand on the branch | — | 575, 529 | the copies and servers 1 s, before the boot; `safaridriver --enable` and its start 69 s and 71 s in the first |
+
+- **The detection of the active app.** WebDriverAgent's log has "Cannot precisely detect the current application" 3 times in run 43316532085 and 2 times in each iPad job of run 43798027512; in no job of T115's runs. The silence after Safari's session, before the first "Find the Application": 177 s, then 57 s and 75 s before; 65 s and 30 s on the miss and 42 s on iOS 27 on the hit after.
+- **The entries** of the cache are 5.7–6.3 MB each.
+- **Not measured apart:** the runners' own spread is as large as a gain of tens of seconds — the boot of the simulator took 95–179 s in these runs, the build of WebDriverAgent 157–513 s, and the samples page's iPad job came out no faster within it. The Android job of `emulators.yml` failed in the first two attempts of run 43812391731 on "System UI isn't responding" in the emulator and passed in the third, 352 s; neither it nor its files changed in T115.
+- **A loaded runner.** In run [43816134598](https://github.com/altnovatrail/canvas/actions/runs/43816134598), on T115's code with a hit, iPad 27 failed in 1112 s: the simulator booted in 179 s, `xcodebuild -xctestrun` wrote its first line 8 min after it — 83 s in the hit before —, and `simctl io screenshot` failed in the probe. Hence the start's wait is ten minutes by the clock, not 120 tries.

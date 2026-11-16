@@ -111,7 +111,7 @@ jobs:
 
   # The iPad Simulator on both iPadOS the volunteers may have: 27, on the image GitHub still calls a
   # public preview, and 26.5 on the stable one. WebDriverAgent, built from its tag by the image's
-  # Xcode, taps for the driver (T80).
+  # Xcode or taken from the cache of that build (R80), taps for the driver (T80).
   ipad:
     name: iPad ${{ matrix.ios }}
     runs-on: ${{ matrix.runner }}
@@ -145,10 +145,46 @@ jobs:
       - name: Xcode
         run: sudo xcode-select -s "/Applications/Xcode_${{ matrix.xcode }}.app"
 
+      # WebDriverAgent's build for testing from the cache (R80), keyed by the commit probe/ipad.sh
+      # pins, the script's own sha256, which holds how it builds, and the build of the Xcode it
+      # builds with, read from the Xcode's own version.plist as emulators/simulator.sh reads it. Not
+      # by the build's own sha256: it is not reproducible byte for byte, and probe/ipad.sh builds it
+      # anew when the cache's is of another commit or does not start.
+      - name: WebDriverAgent's key
+        id: wda-key
+        env:
+          SCRIPT: ${{ hashFiles('probe/ipad.sh') }}
+        run: |
+          commit=$(sed -n 's/^wda_commit=//p' probe/ipad.sh)
+          [[ "$commit" =~ ^[0-9a-f]{40}$ ]]
+          xcode=$(/usr/libexec/PlistBuddy -c "Print :ProductBuildVersion" "$(xcode-select -p)/../version.plist")
+          echo "key=wda-$commit-xcode-$xcode-${{ runner.os }}-${{ runner.arch }}-$SCRIPT" >> "$GITHUB_OUTPUT"
+
+      - name: WebDriverAgent from the cache
+        id: wda
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/wda/Build/Products
+          key: ${{ steps.wda-key.outputs.key }}
+
       - name: Simulator, WebDriverAgent and probe
         env:
           IOS: ${{ matrix.ios }}
         run: bash probe/ipad.sh
+
+      # Before the files are kept: left running, the simulator and xcodebuild slowed their upload.
+      - name: Simulator and servers stopped
+        if: always()
+        run: bash emulators/stop.sh
+
+      # A build of this run that started, kept whatever the probe found; a pull request's entry is
+      # its own, and a run by hand on main fills the one every pull request reads (R57).
+      - name: WebDriverAgent into the cache
+        if: always() && hashFiles('build/wda-started') != ''
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/wda/Build/Products
+          key: ${{ steps.wda-key.outputs.key }}
 
       - name: Screenshots, trees and reports
         if: always()
