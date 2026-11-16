@@ -2029,7 +2029,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
         rect.after(text);
         this.#values[c] = text;
       }
-      // In the item's group, from its origin, as its box's frame is.
+      // In the item's `<svg>`, from its origin, as its box's frame is.
       const width = pieceWidth(value);
       const { x, y } = fromItem(
         item,
@@ -2359,20 +2359,21 @@ function near({ x, y }: InkPoint, box: Box, reach: number): boolean {
 
 /**
  * An item of a workbook's lines (R36): its number, then its text and its boxes in the order they
- * are read, each where the layout put it. The group stands at the item's origin by `transform`,
- * and its parts lie from there: Firefox brings a group of no transform into view as if it lay at
- * the layer's origin, and so would scroll to no item at all (measurements 1.5). A piece of text is
- * fitted to its width by SVG, whatever the font, and its size is never read.
+ * are read, each where the layout put it. The item is an `<svg>` of its own place and size, which
+ * shows what it holds beyond its edges, and its parts lie from its origin: Firefox brings a group
+ * into view as a point at its origin, and only a box with a size whole (measurements 1.5 and 1.6).
+ * A piece of text is fitted to its width by SVG, whatever the font, and its size is never read.
  */
-function itemOf(item: PageItem): SVGGElement {
-  const g = document.createElementNS(SVG, "g");
-  g.setAttribute("role", "listitem");
-  g.setAttribute("transform", `translate(${item.left} ${item.top})`);
-  g.append(
+function itemOf(item: PageItem): SVGSVGElement {
+  const svg = document.createElementNS(SVG, "svg");
+  placeOver(svg, item);
+  svg.setAttribute("overflow", "visible");
+  svg.setAttribute("role", "listitem");
+  svg.append(
     textOf(item.number, item),
     ...item.line.map((part) => (isBox(part) ? rectOf(part, item) : textOf(part, item))),
   );
-  return g;
+  return svg;
 }
 
 /** Where the layout puts a part of an item, from the item's origin, in page units. */

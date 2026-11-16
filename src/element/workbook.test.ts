@@ -69,6 +69,20 @@ function inPrint(print: SVGGElement, shape: SVGGraphicsElement, x: number, y: nu
   return new DOMPoint(x, y).matrixTransform(to.inverse().multiply(from));
 }
 
+/**
+ * What an element of the print shows on the screen: an item, by its parts, for Firefox gives an
+ * inner `<svg>` a box that is not its item's (measurements 1.6).
+ */
+function shownOf(element: Element): { top: number; bottom: number } {
+  const boxes = [...(element.children.length > 0 ? element.children : [element])].map((part) =>
+    part.getBoundingClientRect(),
+  );
+  return {
+    top: Math.min(...boxes.map(({ top }) => top)),
+    bottom: Math.max(...boxes.map(({ bottom }) => bottom)),
+  };
+}
+
 /** A page's boxes in the order the template draws them. */
 function boxesOf(page: Page): PageBox[] {
   return page.items.flatMap((item) => item.boxes);
@@ -116,7 +130,7 @@ test("every piece of text starts and ends where the layout puts it, on its basel
       ).toEqual(expected.map(({ text }) => text));
       for (const [n, text] of texts.entries()) {
         const { left, baseline, width } = expected[n] as PageText;
-        // In the text's own coordinates, which its item's group moves to the item's origin.
+        // In the text's own coordinates, which its item's `<svg>` sets at the item's origin.
         const start = text.getStartPositionOfChar(0);
         const end = text.getEndPositionOfChar(text.getNumberOfChars() - 1);
         const first = inPrint(print, text, start.x, start.y);
@@ -155,6 +169,13 @@ test("each box lies where the ink is, at any width and scroll: a stroke through 
     const rects = [...print.querySelectorAll("rect")];
     const boxes = boxesOf(page);
     expect(rects).toHaveLength(boxes.length);
+    // Each item's `<svg>` stands where the layout puts the item, of its size.
+    const listed = [...print.querySelectorAll('[role="listitem"]')];
+    const place = (item: Element) =>
+      ["x", "y", "width", "height"].map((name) => Number(item.getAttribute(name)));
+    expect(listed.map(place)).toEqual(
+      page.items.map(({ left, top, width: wide, height }) => [left, top, wide, height]),
+    );
     const end = viewport.scrollHeight - viewport.clientHeight;
     expect(end).toBeGreaterThan(0);
     for (const scrollTop of [0, end]) {
@@ -164,7 +185,7 @@ test("each box lies where the ink is, at any width and scroll: a stroke through 
       const bottom = shown.vy + viewport.clientHeight / shown.k;
       for (const [n, rect] of rects.entries()) {
         const { left, top, width: wide, height } = boxes[n] as PageBox;
-        // The frame's own corners, which its item's group moves to the item's origin.
+        // The frame's own corners, which its item's `<svg>` sets at the item's origin.
         const ctm = rect.getScreenCTM();
         if (ctm === null) throw new Error("the box has no matrix to the screen");
         const [x0, y0] = [rect.x.baseVal.value, rect.y.baseVal.value];
@@ -324,12 +345,8 @@ test("the lines are in the manifest's explanation language, or the element's own
 });
 
 test("an item at the bottom of the page that is brought into view, or its text, stands in the container's visible part two frames later, under the row, in a page of any writing mode", async () => {
-  // Firefox brings an SVG group into view as a point at its origin, which `transform` places at the
-  // item's top, and so scrolls the item only to the edge of the visible part: its text it brings
-  // (measurements 1.5 and 1.6; Д10, В80).
-  const targets = server.browser === "firefox" ? ["text"] : ["item", "text"];
   for (const writing of ["horizontal-tb", "vertical-rl"]) {
-    for (const target of targets) {
+    for (const target of ["item", "text"]) {
       const parent = document.createElement("div");
       parent.style.writingMode = writing;
       document.body.append(parent);
@@ -340,7 +357,7 @@ test("an item at the bottom of the page that is brought into view, or its text, 
       const brought = target === "item" ? last : text;
       brought.scrollIntoView({ block: "nearest" });
       await settle();
-      const item = brought.getBoundingClientRect();
+      const item = shownOf(brought);
       const port = viewport.getBoundingClientRect();
       const where = `${writing}, ${target}`;
       expect(viewport.scrollTop, where).toBeGreaterThan(0);
