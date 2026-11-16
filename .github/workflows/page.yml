@@ -238,6 +238,11 @@ jobs:
       - name: Simulator, safaridriver and page
         run: bash emulators/page-ipad.sh
 
+      # Before the files are kept: the simulator and the servers are done with.
+      - name: Simulator and servers stopped
+        if: always()
+        run: bash emulators/stop.sh
+
       # Read as the page's own; the protocol's check, which needs buf of the toolchain stage, is
       # the next job's.
       - name: Saved files

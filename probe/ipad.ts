@@ -111,6 +111,14 @@ export function reportOf(all: readonly Element[]): Record<string, unknown> | und
   return undefined;
 }
 
+/** The settings of WebDriverAgent's session that name the app in front. Without them a read of the
+ * tree asks the accessibility service which app is active, and on a cold simulator the question
+ * hung up to three minutes before WebDriverAgent fell back to "the system's recently active one"
+ * (T115). With them it asks that app's state alone, while the app is in front. */
+export function inFront(bundleId: string): { settings: { defaultActiveApplication: string } } {
+  return { settings: { defaultActiveApplication: bundleId } };
+}
+
 /** Where the run leaves what it found: the folder the workflow keeps as its artifact. */
 const run = new Run("build/probe-ipad");
 const { folder } = run;
@@ -166,6 +174,7 @@ async function open(bundleId: string): Promise<void> {
       },
     });
   }
+  await call("POST", `/session/${session}/appium/settings`, inFront(bundleId));
   await sleep(3000);
 }
 
@@ -182,7 +191,9 @@ export function labelled(label: string, how: "==" | "BEGINSWITH" = "==", type = 
 
 async function screen(): Promise<Element[]> {
   try {
-    return elements(await call("GET", "/source?format=json"));
+    // The session's tree, of the app inFront names: a tree without a session is of the app
+    // WebDriverAgent finds active by itself, the slow question inFront spares.
+    return elements(await call("GET", `/session/${session}/source?format=json`));
   } catch {
     return [];
   }

@@ -598,6 +598,15 @@ Read 2026-11-02 (architecture 3.4; T70 and T71 in [RUN.md](../RUN.md)):
   - on `/@fs/<tree>/package.json` and `RUN.md`, 403, and the server's log has exactly three allowed folders: `demo`, `src` and `node_modules`;
   - on `/package.json`, `/../package.json` and `/%2e%2e/package.json` it answers with the page itself, `index.html`.
 
+### 7.10. WebDriverAgent v16.15.3: the app a read of the tree takes
+
+(architecture 3.7; R80), read 2026-11-16 — [appium/WebDriverAgent](https://github.com/appium/WebDriverAgent/tree/v16.15.3), tag v16.15.3, commit 02cb92f of 2026-10-16:
+
+- `WebDriverAgentLib/Commands/FBDebugCommands.m`: the tree answers with and without a session, `[[FBRoute GET:@"/source"] respondWithTarget:self action:@selector(handleGetSourceCommand:)]` and `[[FBRoute GET:@"/source"].withoutSession respondWithTarget:self action:@selector(handleGetSourceCommand:)]`, and takes `XCUIApplication *application = request.session.activeApplication ?: XCUIApplication.fb_activeApplication;`. `WebDriverAgentLib/Routing/FBRoute.m` sets `request.session = session;` only on a route that requires a session;
+- `WebDriverAgentLib/Categories/XCUIApplication+FBHelpers.m`: `fb_activeApplication` is `[self fb_activeApplicationWithDefaultBundleId:nil]`, which begins with `NSArray<id<FBXCAccessibilityElement>> *activeApplicationElements = [FBXCAXClientProxy.sharedClient activeApplications];` and, where it cannot tell the app on the screen, logs "Cannot precisely detect the current application. Will use the system's recently active one" and "Consider changing the 'defaultActiveApplication' setting to the bundle identifier of the desired application under test";
+- `WebDriverAgentLib/Routing/FBSession.m`, `activeApplication`: `if (nil != defaultBundleId && [self applicationStateWithBundleId:defaultBundleId] >= XCUIApplicationStateRunningForeground)`, then `return [self makeApplicationWithBundleId:defaultBundleId];`, before the session's own app and before `fb_activeApplicationWithDefaultBundleId:`;
+- the setting: `[[FBRoute POST:@"/appium/settings"] respondWithTarget:self action:@selector(handleSetSettings:)]` in `WebDriverAgentLib/Commands/FBSessionCommands.m`, which reads `request.arguments[@"settings"]`, and `NSString* const FB_SETTING_DEFAULT_ACTIVE_APPLICATION = @"defaultActiveApplication";` in `WebDriverAgentLib/Utilities/FBSettings.m`.
+
 ## 8. Licenses and contribution
 
 ### 8.1. Apache License 2.0
