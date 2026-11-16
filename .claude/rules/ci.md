@@ -17,17 +17,18 @@ paths:
 
 # CI, the container, the npm packages and the release
 
-## The four checks
+## The five checks
 
-`just ci` runs the four checks CI runs, one job each of .github's shared `typescript.yml`, in a new container of the `toolchain` stage of `.devcontainer/Dockerfile` (R19 .github; R12):
+`just ci` runs the five checks CI runs, one job each of .github's shared `typescript.yml` with its input `engines`, in a new container of the `toolchain` stage of `.devcontainer/Dockerfile`, whose image the wrapper builds once on a miss and only a push to `main` saves (R19 .github, R42 .github; R12, R57):
 - `ci-lint` — Biome, the types of the three programs — the DOM-free part, the element and the scripts with the tests — and the icons and `NOTICE` that `scripts/icons.ts` writes (R46);
-- `ci-test` — the package's build, the tests in Node and in Chromium with their coverage, then in WebKit and Firefox without it — V8's coverage is Chromium's alone (R78) —, and the package as a consumer takes it;
+- `ci-test` — the package's build, the tests in Node and in Chromium with their coverage, and the package as a consumer takes it;
+- `ci-engines` — the tests in WebKit and Firefox, without coverage — V8's coverage is Chromium's alone —, as the check "TypeScript / engines" beside `ci-test` (R78);
 - `ci-vuln` — `npm audit` of what the package ships with, high or above; of the tools of development, Dependabot's alerts tell (R12);
 - `ci-licenses` — spec's `licenses-check-repo`, with spec's list at its tag and the exceptions in `licenses.json` (R39 spec), and `release-verify-npm package-lock.json`, which checks each package of `@altnovatrail` against the signature of its release (R77 spec, R44); then the release files of `tasks/` (`.claude/rules/tasks.md`), and spec's `sample-check` on the example sample files and the synthetic sets (`.claude/rules/eval.md`).
 
 Only `ci-licenses` reads `spec/`, and it needs the network — Sigstore, the npm registry and GitHub: when one of them cannot be read, the file is refused. A task that changes code or its tooling ends with `just ci` green. A test's timeout is twenty times its own time on a free runner of CI (R75): a test that fails only on a loaded host is compared with `main` before the change is blamed.
 
-Coverage goes to Codecov from .github's TypeScript wrapper, `coverage/lcov.info` (R43), and a merge waits for `codecov/patch`, at least 90 % of the changed lines covered (R48 spec). Beside the four run secrets, DCO, CodeQL, Scorecard, SonarCloud and the workflows of the emulators (`.claude/rules/page.md`); rule 12 of RUN.md has their findings closed before the next task.
+Coverage goes to Codecov from .github's TypeScript wrapper, `coverage/lcov.info` (R43), and a merge waits for `codecov/patch`, at least 90 % of the changed lines covered (R48 spec). Beside the five run secrets, DCO, CodeQL, Scorecard, SonarCloud and the workflows of the emulators (`.claude/rules/page.md`); rule 12 of RUN.md has their findings closed before the next task.
 
 ## Versions and licenses
 

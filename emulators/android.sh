@@ -31,4 +31,4 @@ docker run --rm --init --network host --user "$(id -u):$(id -g)" \
     --volume "$ANDROID_HOME/platform-tools:/adb:ro" \
     --volume "$GITHUB_STEP_SUMMARY:$GITHUB_STEP_SUMMARY" \
     --volume "$PWD:/work" --workdir /work \
-    toolchain node "$driver"
+    novatrail-toolchain node "$driver"

@@ -5,8 +5,8 @@
 // — Chrome Headless Shell, WebKit and Firefox from the toolchain stage of .devcontainer/Dockerfile,
 // through Playwright (R13, R79 spec) — and once more with forced colours, a mode of the browser's
 // context that only its own file runs in, in Chromium and Firefox: WebKit has none to emulate
-// (R23). Each instance's name ends in its engine, which ci-test picks the runs by: Vitest's v8
-// coverage works in Chromium alone. Each project names its own files: the spec submodule beside
+// (R23). Each instance's name ends in its engine, which ci-test and ci-engines pick the runs by:
+// Vitest's v8 coverage works in Chromium alone, so WebKit and Firefox run apart, without it. Each project names its own files: the spec submodule beside
 // them has tests of its own, which are not canvas's.
 import { playwright } from "@vitest/browser-playwright";
 import { defaultExclude, defineConfig } from "vitest/config";
