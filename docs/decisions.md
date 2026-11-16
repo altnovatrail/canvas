@@ -789,6 +789,8 @@ How it is built — [architecture.md](architecture.md), section 3.6.
 
 — *Amendment 2026-11-12 (T110):* **`@bufbuild/protobuf` in `devDependencies` is 2.17.0, at an exact version: `@altnovatrail/contracts` 0.16.3 pins it so (sources 6.10), and with the earlier 2.16.0 the lock file would get two copies. Its version goes with the tag of `spec`, and Dependabot does not touch it (`.github/dependabot.yml`).** — R55, R77; RUN.md, T110.
 
+— *Amendment 2026-11-16 (T114):* **all seven references to `.github`'s shared workflows — `secrets.yml`, `dco.yml`, `documents.yml` and `typescript.yml` in `ci.yml`, `codeql.yml`, `scorecard.yml` and `release.yml` — are at v0.1.24, by the SHA fab102d, and `.github/dependabot.yml` raises them as one group, `shared-workflows`, under `github-actions`, as the template of architecture 3.3 .github has it (Д88 spec).** `gh release verify` accepted the release. Between v0.1.22 and v0.1.24 the seven changed only in comments of `release.yml` and `scorecard.yml`: the calls, their inputs and the required checks are the same (sources 6.13). The group puts every reference into one pull request, to one release, where Dependabot opened one per file, and on 2026-11-08 left two of the seven untouched. *Why now:* T113 moved `canvas` to `spec` v0.18.3 and left the raise to the next task (R79); the cache of the `toolchain` stage's image, Д146 spec, `canvas` has had since v0.1.22 (R67). *Rejected:* waiting for Dependabot — a pull request per file, each a round of checks (Д88 spec). — `.github/workflows/`, `.github/dependabot.yml`; [architecture.md](architecture.md), sections 3.4 and 3.7; sources 6.13; R43, R60, R67, R79; T114 (body — [docs/plan/E13.md](plan/E13.md)).
+
 **R13. `canvas`'s container differs from `spec`'s container by what the code added. In the stage `toolchain` — Chrome Headless Shell 1248 from the Playwright image v1.64.1, pinned by tag and digest, and its system libraries from the snapshot 20261021T000000Z of the Ubuntu archive. In the stage `devcontainer` — the Biome extension 3.7.1. Chrome Headless Shell is a build of Google Chrome for Testing under Google's free terms and a named exception for a tool that ships nowhere.**
 - **The browser.** `COPY --from=mcr.microsoft.com/playwright:v1.64.1-noble@sha256:7852dc5…` takes only `/ms-playwright/chromium_headless_shell-1248` — the browser Playwright runs in headless mode. The revision is an `ARG` by `browsers.json` of playwright-core 1.64.1, and `ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright` lies outside `HOME`. Firefox, WebKit, FFmpeg and the full Chromium with `WidevineCdm` are not copied: the tests do not run them. The folder is 273 MB.
 - **The libraries** — 21 packages of Chromium from Playwright v1.64.1's `nativeDeps.ts` for Ubuntu 24.04 and `libfontconfig1`, `libfreetype6`, `fonts-liberation`, as in `.github`'s probe. They are installed by `apt-get update --snapshot` and `apt-get install --snapshot` with `ARG UBUNTU_SNAPSHOT=20261021T000000Z`.
@@ -3396,6 +3398,8 @@ The sources are [architecture.md](architecture.md), section 4, "Pictures on the 
 
 — *Amendment 2026-11-02:* `codecov/patch` has stood in the ruleset of `main` since 2026-11-02, with `integration_id` 254 — Codecov: the author put it there. "Once the author puts it in the ruleset" above is fulfilled, and from this day a merge of a pull request with code waits for at least 90 % of the changed lines covered. On #63, with no edits of the code, the check came as "Coverage not affected". — RUN.md, T65; [architecture.md](architecture.md), section 3.7.
 
+— *Amendment 2026-11-16 (T114):* **the references to `.github`'s shared workflows are seven — `release.yml` with them — and at v0.1.24, not at v0.1.12; the contract of the coverage report and the permissions are the same (the 2026-11-16 amendment to R12; sources 6.13).**
+
 ## `spec` tag v0.6.2
 
 **R44. `canvas` is on `spec` v0.6.2: the submodule `spec/` and the package `@altnovatrail/spec` are at this tag, and the package 0.6.2 is taken without R12's pause, since its version is set by the tag. `ci-licenses` checks every package of `@altnovatrail` in the lock file by `spec`'s recipe `release-verify-npm`, on every pull request and on `main`: so `canvas` carries out the signature rule of RULES.md (R77 spec). `spec` recorded the rows «в реестр spec» В51–В55, all as `canvas` recommended, and no rows are left in table 3 of RUN.md. The format 0.2 in the element and the element's types from `spec` are taken by T68 and T69.**
@@ -4116,6 +4120,8 @@ How it is built — [architecture.md](architecture.md), section 3.3.
 
 — *Amendment 2026-11-10 (T99):* **the exception of format 0.3 for the file of `tutor` is removed: `tutor` released a file of open views of format 0.4 — v0.1.22 of 2026-11-10 (Д158 in the RUN.md of `spec`) —, and `openTasksOf` accepts only the element's format, `FORMAT`, and `TUTOR_FORMATS` is gone. The "Revisit" about the exception is closed.**
 
+— *Amendment 2026-11-16 (T114):* **the shared workflows of `.github` are at v0.1.24, not at v0.1.21: v0.1.22 came by R67, v0.1.24 by the 2026-11-16 amendment to R12.**
+
 ## A worked example on a workbook
 
 **R61. The element shows a lesson's worked example on a workbook (format 0.4) as a task on a workbook on which nobody writes: the example's lines are on the page in the task's layout, the boxes empty, and a demo step `fill` writes its value into its box when the learner opens the step. The values stand in the middle of the boxes, on the line, at the width of their text by the table of widths, as the lines' texts do, and to a screen reader the box names it: «Окошко 1: 5». A hidden demo hides the values too. The check is by the schema and the rules `lesson.example-fills` and `lesson.workbook-page`.**
@@ -4317,6 +4323,8 @@ How it is built — [architecture.md](architecture.md), section 3.3.
 — *Revisit:* when `tutor` releases a file of open views of format 0.4 — remove `TUTOR_FORMATS` in a task of its own, together with the copy in `tasks/` (Д158 in the RUN.md of `spec`; R62); when the sets of `legal` come into force — what the page opens (T89).
 
 — RUN.md, T88, T89, tables 3 and 4; R11, R12, R57, R59, R60, R62, R63; [architecture.md](architecture.md), the status; README.md, CLAUDE.md; `emulators/toolchain.sh`, `page/sets/`, `page/sets.ts`, `page/steps.ts`, `page/texts.ts`, `.github/workflows/`, `package.json`, the copies of the format in `src/core/`.
+
+— *Amendment 2026-11-16 (T114):* **the shared workflows of `.github` are at v0.1.24 instead of v0.1.22, with the same cache of the `toolchain` stage's image: the release changed only comments of the workflows `canvas` calls (the 2026-11-16 amendment to R12; sources 6.13).**
 
 ## The generator of a module's eval set as a release file
 
@@ -4659,3 +4667,5 @@ How it is built — [architecture.md](architecture.md), section 3.3.
 - **translating the rows of table 4 word for word** — R154 spec asks for terse English, and a row holds only what is open: the history of the checks went to the archive.
 
 — RUN.md, T113 (body — [docs/plan/E13.md](plan/E13.md)); R19 spec, R125 spec, R153 spec, R154 spec, R155 spec, R156 spec; Д238 spec, Д250 spec; sources 6.12; R02, R17, R59, R69, R77; [architecture.md](architecture.md), sections 3.6 and 4; `.devcontainer/Dockerfile`, `justfile`, `package.json`, `scripts/legal.ts`, `scripts/legal.test.ts`, `scripts/page.test.ts`, `page/texts.ts`, `page/steps.test.ts`, `emulators/saved.ts`, `tasks/spec-v0.18.3/`, RUN.md, `run/`, CLAUDE.md, README.md.
+
+— *Amendment 2026-11-16 (T114):* **T114 is done: the workflows call `.github` v0.1.24, and Dependabot raises the references by the group `shared-workflows` (the 2026-11-16 amendment to R12).**

@@ -458,6 +458,14 @@ At the tag [v0.1.12](https://github.com/altnovatrail/.github/tree/v0.1.12), comm
 - `just new-repo-draft canvas typescript 3.2 v0.18.3` in a temporary clone of `spec` at the tag gives a `.devcontainer/` that differs from that of `canvas` at v0.17.4 by the base image `mcr.microsoft.com/devcontainers/base:3.0.13-noble@sha256:48be4adec1c1ecbe030064700aef85382f5205786a8f82937fc44a7473717eae`, after 3.0.12, and by the comment that `spec`'s own Dockerfile ends with a stage `orchestrator` the copy leaves out; its `.claude/settings.json` is that of `canvas` but for the `deny` rules of R15; its RUN.md and `run/` are the layout of R153 spec, R154 spec and R155 spec;
 - `gh release list -R altnovatrail/.github` — v0.1.24 of 2026-11-13 the last; the workflows of `canvas` call v0.1.22.
 
+### 6.13. `.github` v0.1.24
+
+(architecture 3.7; the 2026-11-16 amendment to R12; T114), read 2026-11-16:
+
+- `gh release list -R altnovatrail/.github` — v0.1.24 of 2026-11-13, the last, after v0.1.23 of 2026-11-12 and v0.1.22 of 2026-11-10; `gh release verify v0.1.24 -R altnovatrail/.github` — "Release v0.1.24 verified!", the tag is the commit `fab102d8bbb4659575e107ee488e072aaaa71821` (`gh api repos/altnovatrail/.github/git/ref/tags/v0.1.24`);
+- `gh api repos/altnovatrail/.github/compare/v0.1.22...v0.1.24`: of the workflows that `canvas` calls, only `release.yml` and `scorecard.yml` changed, each in comments alone — `(architecture 4)` became `(measurements 5.11)` and `(sources 8.3)` in `release.yml` and `(sources 6.1)` in `scorecard.yml`, the records of `.github`; `typescript.yml`, `documents.yml`, `codeql.yml`, `secrets.yml` and `dco.yml` did not change, and neither did the inputs, outputs, jobs or permissions of any of the seven. The rest of the diff is `go.yml`, which `canvas` does not call, and `.github`'s own documents, rules and container;
+- architecture 3.3 of `.github` at v0.1.24, the template of `.github/dependabot.yml`: "The references to the shared workflows go as one group, `shared-workflows`: all in one pull request, to one release, not a pull request per file (the 2026-11-08 amendment to R04; Д88 in RUN.md `spec`)", with the group `shared-workflows`, `patterns: ["altnovatrail/.github/*"]`, under `github-actions`.
+
 ## 7. Tools, packages and CI
 
 ### 7.1. GitHub Packages
