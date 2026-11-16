@@ -68,8 +68,14 @@ export interface PageBox {
   readonly height: number;
 }
 
-/** An item on the page: its number, its line in the order it is read, and its boxes by slot. */
+/**
+ * An item on the page: its origin, its number, its line in the order it is read, and its boxes by
+ * slot.
+ */
 export interface PageItem {
+  /** Where it is laid from, in page units: its column's left edge and its row's top. */
+  readonly left: number;
+  readonly top: number;
   readonly number: PageText;
   readonly line: readonly (PageText | PageBox)[];
   /** The boxes of the line, the same objects as in `line`: slot 1 first. */
@@ -430,7 +436,7 @@ function itemOf(
     width,
   };
   const height = Math.max(y - top, lines.length === 0 ? layout.line : 0);
-  return { item: { number, line, boxes: line.filter(isBox) }, height };
+  return { item: { left, top, number, line, boxes: line.filter(isBox) }, height };
 }
 
 function deepFreeze<T>(value: T): T {

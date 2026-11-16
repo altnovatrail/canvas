@@ -2018,9 +2018,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
         this.#values[c] = undefined;
         continue;
       }
-      const box = page.items[cell.item - 1]?.boxes[cell.slot - 1];
+      const item = page.items[cell.item - 1];
+      const box = item?.boxes[cell.slot - 1];
       const rect = this.#rects[c];
-      if (box === undefined || rect === undefined) continue;
+      if (item === undefined || box === undefined || rect === undefined) continue;
       if (text === undefined) {
         text = document.createElementNS(SVG, "text");
         text.setAttribute("class", "value");
@@ -2028,12 +2029,15 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
         rect.after(text);
         this.#values[c] = text;
       }
+      // In the item's group, from its origin, as its box's frame is.
       const width = pieceWidth(value);
-      text.setAttribute("x", String(box.left + Math.floor((box.width - width) / 2)));
-      text.setAttribute(
-        "y",
-        String(box.top + Math.floor(box.height / 2) + Math.floor(LAYOUT.size / 3)),
+      const { x, y } = fromItem(
+        item,
+        box.left + Math.floor((box.width - width) / 2),
+        box.top + Math.floor(box.height / 2) + Math.floor(LAYOUT.size / 3),
       );
+      text.setAttribute("x", String(x));
+      text.setAttribute("y", String(y));
       text.setAttribute("textLength", String(width));
       text.textContent = value;
     }
@@ -2355,23 +2359,32 @@ function near({ x, y }: InkPoint, box: Box, reach: number): boolean {
 
 /**
  * An item of a workbook's lines (R36): its number, then its text and its boxes in the order they
- * are read, each where the layout put it. A piece of text is fitted to its width by SVG, whatever
- * the font, and its size is never read.
+ * are read, each where the layout put it. The group stands at the item's origin by `transform`,
+ * and its parts lie from there: Firefox brings a group of no transform into view as if it lay at
+ * the layer's origin, and so would scroll to no item at all (measurements 1.5). A piece of text is
+ * fitted to its width by SVG, whatever the font, and its size is never read.
  */
 function itemOf(item: PageItem): SVGGElement {
   const g = document.createElementNS(SVG, "g");
   g.setAttribute("role", "listitem");
+  g.setAttribute("transform", `translate(${item.left} ${item.top})`);
   g.append(
-    textOf(item.number),
-    ...item.line.map((part) => (isBox(part) ? rectOf(part) : textOf(part))),
+    textOf(item.number, item),
+    ...item.line.map((part) => (isBox(part) ? rectOf(part, item) : textOf(part, item))),
   );
   return g;
 }
 
-function textOf({ text, left, baseline, width }: PageText): SVGTextElement {
+/** Where the layout puts a part of an item, from the item's origin, in page units. */
+function fromItem(item: PageItem, left: number, top: number): { x: number; y: number } {
+  return { x: left - item.left, y: top - item.top };
+}
+
+function textOf({ text, left, baseline, width }: PageText, item: PageItem): SVGTextElement {
   const element = document.createElementNS(SVG, "text");
-  element.setAttribute("x", String(left));
-  element.setAttribute("y", String(baseline));
+  const { x, y } = fromItem(item, left, baseline);
+  element.setAttribute("x", String(x));
+  element.setAttribute("y", String(y));
   element.setAttribute("textLength", String(width));
   element.setAttribute("lengthAdjust", "spacingAndGlyphs");
   element.textContent = text;
@@ -2379,9 +2392,10 @@ function textOf({ text, left, baseline, width }: PageText): SVGTextElement {
 }
 
 /** A box, a picture to a screen reader, which its name tells of (R34). */
-function rectOf(box: PageBox): SVGRectElement {
+function rectOf(box: PageBox, item: PageItem): SVGRectElement {
   const rect = document.createElementNS(SVG, "rect");
-  placeOver(rect, box);
+  const { x, y } = fromItem(item, box.left, box.top);
+  placeOver(rect, { ...box, left: x, top: y });
   rect.setAttribute("role", "img");
   return rect;
 }

@@ -199,6 +199,24 @@ describe("the layout of a workbook's page", () => {
     }
   });
 
+  test("gives each item its origin, its column's left and its row's top, which none of its parts lies before or above", () => {
+    for (const [name, page] of FITTING) {
+      for (const item of page.items) {
+        expect([40, 520], name).toContain(item.left);
+        expect(item.number.left, name).toBeGreaterThanOrEqual(item.left);
+        for (const part of item.line) {
+          expect(part.left, name).toBeGreaterThanOrEqual(item.left);
+          expect(isBox(part) ? part.top : part.baseline, name).toBeGreaterThanOrEqual(item.top);
+        }
+      }
+    }
+    const page = pageOf(corpus("times-ten").items);
+    expect(page.items.slice(8, 10).map(({ left, top }) => [left, top])).toEqual([
+      [40, 568],
+      [520, 568],
+    ]);
+  });
+
   test("gives the boxes of an item by slot, the same objects its line has, in the order they are read", () => {
     for (const [, page] of FITTING) {
       for (const { line, boxes } of page.items) expect(boxes).toEqual(line.filter(isBox));
