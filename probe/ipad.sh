@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # The iPad's run of the probe on a runner of macOS (T80 in RUN.md; R54 in docs/decisions.md): an
-# iPad simulator of the iOS runtime IOS names, WebDriverAgent built from its tag by the runner's
-# Xcode and started on it, then probe/ipad.ts. What the run ran on goes into build/probe-ipad
-# beside what it found.
+# iPad simulator of the iOS runtime IOS names, WebDriverAgent started on it — its build for testing
+# from the workflow's cache, or built from its tag by the runner's Xcode on a miss (R80) —, then
+# probe/ipad.ts. What the run ran on goes into build/probe-ipad beside what it found.
 set -euo pipefail
 
 : "${IOS:?IOS names the version of the iOS runtime, such as 26.5 or 27}"
@@ -10,12 +10,13 @@ out=build/probe-ipad
 mkdir -p "$out"
 
 # WebDriverAgent at its tag, and the tag's commit checked: a moved tag stops the run. The workflow
-# keys the cache of its build by the commit, read from this line.
+# keys the cache of its build by this file's sha256 and by the commit, read from this line.
 wda_tag=v16.15.3
 wda_commit=02cb92f0e93c8b021443bcbb8eeb80932c113220
-# The build for testing, which the workflow's cache holds by the commit and the Xcode's build
-# (R80): the .xctestrun file and the apps it names, all test-without-building needs.
+# The build for testing, which the workflow's cache holds (R80): the .xctestrun file and the apps
+# it names, all test-without-building needs, and the commit it was built from.
 products=build/wda/Build/Products
+runner=com.facebook.WebDriverAgentRunner.xctrunner
 
 # The newest runtime of the version, and the iPad on it (emulators/simulator.sh).
 udid=$(bash emulators/simulator.sh probe-ipad "$IOS" "$out")
@@ -30,6 +31,7 @@ build() {
   for try in 1 2 3; do
     if xcodebuild -quiet -project build/wda-src/WebDriverAgent.xcodeproj -scheme WebDriverAgentRunner \
         -destination "id=$udid" -derivedDataPath build/wda build-for-testing; then
+      echo "$wda_commit" > "$products/commit.txt"
       return 0
     fi
     [[ "$try" -lt 3 ]]
@@ -37,13 +39,15 @@ build() {
   done
 }
 
-# WebDriverAgent started from the build for testing, in the background, and whether it answered
-# within four minutes; one that did not is stopped.
+# WebDriverAgent started from a build for testing of the pinned commit, in the background, its log
+# into the file named, and whether it answered within four minutes; one that did not is stopped,
+# its runner on the simulator too, so that no stale agent holds the port.
 start() {
-  local xctestrun
-  xctestrun=$(find "$products" -maxdepth 1 -name '*.xctestrun' 2> /dev/null | head -n 1)
+  local log=$1 xctestrun
+  [[ "$(cat "$products/commit.txt" 2> /dev/null)" == "$wda_commit" ]] || return 1
+  xctestrun=$(find "$products" -maxdepth 1 -name '*.xctestrun' | head -n 1)
   [[ -n "$xctestrun" ]] || return 1
-  xcodebuild -xctestrun "$xctestrun" -destination "id=$udid" test-without-building > "$out/wda.txt" 2>&1 &
+  xcodebuild -xctestrun "$xctestrun" -destination "id=$udid" test-without-building > "$log" 2>&1 &
   local agent=$!
   for _ in $(seq 1 120); do
     curl --silent --fail http://127.0.0.1:8100/status > /dev/null && return 0
@@ -51,22 +55,23 @@ start() {
     sleep 2
   done
   kill "$agent" 2> /dev/null || true
+  xcrun simctl terminate "$udid" "$runner" 2> /dev/null || true
   return 1
 }
 
-# A build from the cache that does not start is built anew: a spoiled entry costs a run its time,
-# not its result. build/wda-started tells the workflow that a build of this run started, which it
-# then saves.
-if start; then
+# A build from the cache that does not start is built anew, and its log kept apart. The entry keeps
+# its key, and actions/cache saves no other under it: every run reads it again and pays the wait,
+# so the warning asks for it to be deleted. build/wda-started tells the workflow that a build of
+# this run started, which it then saves.
+if [[ -d "$products" ]] && start "$out/wda-cache.txt"; then
   echo "WebDriverAgent's build from the cache" >> "$out/versions.txt"
 else
-  # The entry keeps its key and is read by every run: the warning asks for it to be deleted.
   if [[ -d "$products" ]]; then
     echo "WebDriverAgent's build from the cache did not start: built anew" >> "$out/versions.txt"
-    echo "::warning::WebDriverAgent's build from the cache did not start; delete its entry wda-$wda_commit-… (gh cache list)"
+    echo "::warning::WebDriverAgent's build from the cache did not start (wda-cache.txt of the artifact); delete its entry, gh cache list --key wda-"
   fi
   build
-  start
+  start "$out/wda.txt"
   touch build/wda-started
 fi
 

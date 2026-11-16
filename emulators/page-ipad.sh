@@ -56,6 +56,7 @@ for _ in $(seq 1 30); do
   sleep 1
 done
 curl --silent --fail --max-time 5 http://127.0.0.1:4444/status > /dev/null
+curl --silent --fail --max-time 5 --output /dev/null "http://127.0.0.1:8080/$page"
 curl --silent --fail --max-time 5 --output /dev/null "http://127.0.0.1:8081/$test_page"
 
 phase "the driver runs"

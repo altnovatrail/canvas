@@ -111,7 +111,7 @@ jobs:
 
   # The iPad Simulator on both iPadOS the volunteers may have: 27, on the image GitHub still calls a
   # public preview, and 26.5 on the stable one. WebDriverAgent, built from its tag by the image's
-  # Xcode, taps for the driver (T80).
+  # Xcode or taken from the cache of that build (R80), taps for the driver (T80).
   ipad:
     name: iPad ${{ matrix.ios }}
     runs-on: ${{ matrix.runner }}
@@ -146,15 +146,19 @@ jobs:
         run: sudo xcode-select -s "/Applications/Xcode_${{ matrix.xcode }}.app"
 
       # WebDriverAgent's build for testing from the cache (R80), keyed by the commit probe/ipad.sh
-      # pins and the build of the Xcode it builds with, read from the Xcode's own version.plist as
-      # emulators/simulator.sh reads it. Not by its sha256: the build is not reproducible byte for
-      # byte, and probe/ipad.sh builds it anew when the cache's does not start.
+      # pins, the script's own sha256, which holds how it builds, and the build of the Xcode it
+      # builds with, read from the Xcode's own version.plist as emulators/simulator.sh reads it. Not
+      # by the build's own sha256: it is not reproducible byte for byte, and probe/ipad.sh builds it
+      # anew when the cache's is of another commit or does not start.
       - name: WebDriverAgent's key
         id: wda-key
+        env:
+          SCRIPT: ${{ hashFiles('probe/ipad.sh') }}
         run: |
           commit=$(sed -n 's/^wda_commit=//p' probe/ipad.sh)
+          [[ "$commit" =~ ^[0-9a-f]{40}$ ]]
           xcode=$(/usr/libexec/PlistBuddy -c "Print :ProductBuildVersion" "$(xcode-select -p)/../version.plist")
-          echo "key=wda-$commit-xcode-$xcode-${{ runner.os }}-${{ runner.arch }}" >> "$GITHUB_OUTPUT"
+          echo "key=wda-$commit-xcode-$xcode-${{ runner.os }}-${{ runner.arch }}-$SCRIPT" >> "$GITHUB_OUTPUT"
 
       - name: WebDriverAgent from the cache
         id: wda
