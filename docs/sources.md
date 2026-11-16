@@ -478,6 +478,27 @@ At the tag [v0.1.12](https://github.com/altnovatrail/.github/tree/v0.1.12), comm
 - `codeql.yml`: only the analysis of `go` changed — Go from go.dev's archive by `ARG GO_VERSION` and `ARG GO_SHA256_AMD64`, without building the stage; `canvas` analyses `actions` and `javascript-typescript`;
 - R19 `.github`, the amendment of 2026-11-16: "The caller puts the check into its ruleset of `main` once it has first come to `main` (architecture 3.3)"; the consequence: "`app` and `canvas` take it by their tasks of rows 7.22 and 7.23: the reference to a release with the input, `engines: true`, `ci-engines`, and `ci-test` without WebKit and Firefox, in one pull request — an older release rejects an unknown input —, then "TypeScript / engines" into the ruleset".
 
+### 6.15. The move to `spec` v0.18.4
+
+(architecture 3.7; R81; T117), read 2026-11-16:
+
+- `gh release list -R altnovatrail/spec` — v0.18.4 of 2026-11-16 07:08Z, Latest; `gh release verify v0.18.4 -R altnovatrail/spec` — "Release v0.18.4 verified!", the tag is the commit `5867a6c6233c8fb8823c56c39a9e4c52a19d8ee0`, the merge of T166 spec; `npm view @altnovatrail/spec version` — 0.18.4, and so is `@altnovatrail/contracts`, whose dependencies are still `{ '@bufbuild/protobuf': '2.17.0' }`;
+- `git -C spec diff --stat v0.18.3 v0.18.4 -- format types contracts legal` — empty: nothing `canvas` reads changed;
+- `legal-3.tar.gz` of the release v0.18.4 — sha256 `c91a02e5082bc0a71b27b395a4c0d0e4a75a222384b8dd617606421ac41d19dc`; `release-verify spec v0.18.4` — "legal-3.tar.gz: spec v0.18.4, signed by spec's release.yml". Unpacked, it matches the archive of v0.18.3 file for file (`diff -r`);
+- `just new-repo-draft canvas typescript 3.2 v0.18.4` in a temporary clone of `spec` at the tag gives a `.devcontainer/` that differs from that of `canvas` at v0.18.3 in the Dockerfile alone: the first stage is `toolchain-core`, "Node, just, Go and buf: what a release needs — its version and its files — and every check that runs no browser, and a release builds it alone (R31 spec)"; `toolchain` is `FROM toolchain-core AS toolchain` with the kind's lines, the browsers and their packages; and apt reads a source of its own, `URIs: https://snapshot.ubuntu.com/ubuntu/${UBUNTU_SNAPSHOT}/`, with `-o Dir::Etc::SourceList=/dev/null -o Dir::Etc::SourceParts=<folder>`, instead of `--snapshot`, the snapshot and the list of packages unchanged. Its `.claude/settings.json` is that of `canvas` but for the `deny` rules of R15;
+- `tools/toolchain/toolchain.sh` at the tag: "The stage is toolchain, the one the checks run in, unless TOOLCHAIN_STAGE names toolchain-core: Node, just, Go and buf alone, which a release builds, and a check that runs no browser may", and "a file of either stage loads as novatrail-toolchain: a caller that builds both keeps them under keys that name the stage";
+- measurements 3.2 spec: apt with the source of its own fetched 33.6 MB against 67.6 MB and resolved the same 431 packages at the same versions; "Not measured. The time of a release, and the build of the kind's stage by docker".
+
+### 6.16. `.github` v0.1.31
+
+(architecture 3.4 and 3.7; R81; T117), read 2026-11-16:
+
+- `gh release list -R altnovatrail/.github` — v0.1.31 of 2026-11-16 16:11Z, Latest, after v0.1.30 of 11:09Z; `gh release verify v0.1.31 -R altnovatrail/.github` — "Release v0.1.31 verified!"; the tag is the commit `93c848fb51a10a245968cf730b99cc709a7748bf`, the merge of T66 `.github`, after T67 `.github`, its move to `spec` v0.18.4;
+- `git diff --stat v0.1.30 v0.1.31 -- .github/workflows` in a clone of `.github`: `documents.yml`, `go.yml`, `release.yml`, `self-release.yml` and `typescript.yml` changed; `secrets.yml`, `dco.yml`, `codeql.yml` and `scorecard.yml` did not. No input or output that `canvas` gives or reads changed;
+- R47 .github: "The checks that start no browser and run no test — "Go / lint", "Go / vuln" and "Go / licenses", the same three of `typescript.yml`, and `documents.yml` — run in `toolchain-core` where the Dockerfile has the stage and its stage `toolchain` holds more than it, and in `toolchain` otherwise, as before: the workflow reads it in the Dockerfile, with no input"; the core's image is `${{ runner.temp }}/novatrail-toolchain-core.tar` by the key `toolchain-core-<OS>-<architecture>-<hash of the Dockerfile>`, and the release's "Work out the version" sets `TOOLCHAIN_STAGE: toolchain-core`, and "Build the files" builds `--target toolchain-core` where the tree's Dockerfile has that stage;
+- row В40 `.github`: a caller's move to a tag with T166 spec "has to keep in the core what its release and those checks need … and put in `toolchain` only what its tests need, as nss_wrapper of `api` and the browsers of the kind `typescript`"; the record 13.8 of the sources of `.github` lists for `canvas`'s `release-files` "`node scripts/package.ts`, `npm pack`, `node scripts/release.ts`, `just synthetic`, `node scripts/archive.ts`, `scripts/page.ts` and `scripts/generator.ts`, after `build`, `tsc -p tsconfig.build.json`", and "Playwright's three browsers … and their system packages by apt from the snapshot" as all its `toolchain` adds;
+- the cache of GitHub Actions of `canvas` (`gh api repos/altnovatrail/canvas/actions/cache/usage`) — 18 entries, 9 375 MiB: the `toolchain` entries of 928–935 MiB and the WebDriverAgent builds of 5 MiB.
+
 ## 7. Tools, packages and CI
 
 ### 7.1. GitHub Packages

@@ -10,8 +10,8 @@
 // current set is closed. --texts names a part of
 // the legal texts for tests instead, whose sets begin with test-, and only into a page of version
 // 0.0.0, which no release has (T20; R58). It builds from the tree alone — no spec/, no git, no
-// token, no network — in the toolchain stage, as release-files will take it (T75). Vite's API
-// bundles page/main.ts into one script; the page's own style stays as it is. The policy of
+// token, no network — in the stage toolchain-core, as release-files takes it (T75, T117). Vite's
+// API bundles page/main.ts into one script; the page's own style stays as it is. The policy of
 // scripts/csp.ts goes into a <meta> element with the hashes of both. The tasks are worked out here,
 // from tutor's file of open tasks in tasks/, checked against its sum (R49), and put into the
 // bundle: a page has no synchronous hash for openTasksOf. Every task of the file goes in, bank by
