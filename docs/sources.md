@@ -448,6 +448,16 @@ At the tag [v0.1.12](https://github.com/altnovatrail/.github/tree/v0.1.12), comm
 - `just new-repo-draft canvas typescript 3.2 v0.17.4` in a temporary clone of `spec` at the tag gives a `.devcontainer/` that differs from that of `canvas` at v0.16.3 by the WebKit 2388 and Firefox 1572 of the image `mcr.microsoft.com/playwright:v1.65.0-noble` with their libraries and fonts, and by `--network-alias=canvas`; `node_modules/playwright-core/browsers.json` of Playwright 1.65.0 names the same revisions, `chromium-headless-shell` 1254, `webkit` 2388 and `firefox` 1572. The template's `.claude/settings.json` and AGENTS.md are those of `canvas`, but for the `deny` rules of R15;
 - the cache of GitHub Actions of `canvas` (`gh api repos/altnovatrail/canvas/actions/cache/usage`) — 18 entries, 9906 MiB, every one an image of the `toolchain` stage, 548–554 MiB, of the three versions of the Dockerfile before this one.
 
+### 6.12. The move to `spec` v0.18.3
+
+(architecture 3.6; R79; T113), read 2026-11-16:
+
+- `gh release list -R altnovatrail/spec` — v0.18.3 of 2026-11-16 00:42Z, the last, after v0.18.2, v0.18.1 and v0.18.0 of 2026-11-15 and the line 0.17 up to v0.17.13; `gh release verify v0.18.3 -R altnovatrail/spec` — "Release v0.18.3 verified!", the tag is the commit 922886a; `npm view @altnovatrail/spec version` — 0.18.3, and so is `@altnovatrail/contracts`, whose dependencies are still `{ '@bufbuild/protobuf': '2.17.0' }`;
+- `legal-3.tar.gz` of the release v0.18.3 — sha256 `dd0b7d610b760ef291ffbd8f47247d8a8ef28ffd90f7cc788fd7fef89b96b0c2`, its bundle `4c9bd1b7420fd399c605bb05b0951467bc22f5c9daa314b14d82732d13d8b61c`; `release-verify spec v0.18.3` — "legal-3.tar.gz: spec v0.18.3, signed by spec's release.yml". It holds 25 files under `texts/`; `legal.yaml` adds the texts `measure-notice` 3, `measure-form` 3, `eval-set-notice` 2 and `volunteer-form` 2 and the sets `measure` 3 and `eval-set` 2, each `in_force_since: "2026-11-16"`, and version 4 of the privacy policy, `in_force_since: "2026-11-28"`; `child-sample` stays a draft. The summary of `measure-notice` 3: "You send the file by an upload link that works for 12 hours at most", where version 2 said "by a one-day upload link"; `eval-set-notice` 2 says the same;
+- `git -C spec diff v0.17.4 v0.18.3 -- format types contracts`: `format/` unchanged; the types change `exportv2` into `exportv3` and a comment of `admissionv0`; the contracts change `novatrail/api/v1` alone — nothing `canvas` reads;
+- `just new-repo-draft canvas typescript 3.2 v0.18.3` in a temporary clone of `spec` at the tag gives a `.devcontainer/` that differs from that of `canvas` at v0.17.4 by the base image `mcr.microsoft.com/devcontainers/base:3.0.13-noble@sha256:48be4adec1c1ecbe030064700aef85382f5205786a8f82937fc44a7473717eae`, after 3.0.12, and by the comment that `spec`'s own Dockerfile ends with a stage `orchestrator` the copy leaves out; its `.claude/settings.json` is that of `canvas` but for the `deny` rules of R15; its RUN.md and `run/` are the layout of R153 spec, R154 spec and R155 spec;
+- `gh release list -R altnovatrail/.github` — v0.1.24 of 2026-11-13 the last; the workflows of `canvas` call v0.1.22.
+
 ## 7. Tools, packages and CI
 
 ### 7.1. GitHub Packages

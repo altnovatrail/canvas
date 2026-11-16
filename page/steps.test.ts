@@ -12,8 +12,8 @@ function legal(version: string): LegalSet {
   return { version, notice: [{ paragraph: [{ text: "The notice." }] }], gist: "Суть." };
 }
 
-/** A build of the adults' sets of v0.17.4 of spec: the measurement's alone here (T102, T111). */
-const adults: PageTexts = { measurement: legal("measure-2") };
+/** A build of the adults' sets of v0.18.3 of spec: the measurement's alone here (T102, T111, T113). */
+const adults: PageTexts = { measurement: legal("measure-3") };
 /** A build with a current set for every purpose. */
 const approved: PageTexts = {
   measurement: legal("measure-1"),
@@ -56,7 +56,7 @@ test("each purpose opens with its own set, and the eval set only in a build with
 test("a purpose's samples name its set's version, and its file goes where the page's words say", () => {
   expect(versionOf(approved, "measurement")).toBe("measure-1");
   expect(versionOf(approved, "child")).toBe("child-sample-1");
-  expect(versionOf(adults, "measurement")).toBe("measure-2");
+  expect(versionOf(adults, "measurement")).toBe("measure-3");
   expect(versionOf(adults, "evalSet")).toBeUndefined();
   expect(handOverOf(approved, "evalSet")).toBe(HAND_OVER.evalSet);
   expect(handOverOf(approved, "child")).toBe(HAND_OVER.child);
@@ -67,7 +67,7 @@ test("a purpose's samples name its set's version, and its file goes where the pa
 test("each purpose asks the age and its own statement: the form of its version", () => {
   expect(statements(adults, "measurement")).toEqual([
     STATEMENTS.adult,
-    STATEMENTS.form("measure-2"),
+    STATEMENTS.form("measure-3"),
   ]);
   expect(statements(approved, "measurement")[1]).toBe(
     "Форма согласия версии measure-1 подписана и принята организатором.",

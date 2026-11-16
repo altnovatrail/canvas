@@ -24,7 +24,7 @@ import { CHILD_CODE } from "./watch.ts";
 
 /** The version of the measurement's set of texts a release build carries: the current one of spec's
  * legal part at the tag spec/ stands on, which scripts/page.test.ts holds the build to (T102). */
-export const RELEASE_TEXTS = "measure-2";
+export const RELEASE_TEXTS = "measure-3";
 
 /** Which build a folder's files came from: the test build's folders end in -test (T22). */
 export type Built = "release" | "test";

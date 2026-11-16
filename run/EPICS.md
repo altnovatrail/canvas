@@ -1,0 +1,14 @@
+# EPICS.md — epics for later of `canvas`
+
+Table 2 of [RUN.md](../RUN.md) (R153 spec, R154 spec).
+
+- A row has a result and a basis, no tasks yet. Row order is the order epics are taken, until the author decides otherwise.
+- Read by the choice and planning of the next epic, not by each task. Once an epic is split into tasks, they go to table 1 and the body of RUN.md, and its row leaves (RUN.md, Epics).
+- Epic numbers are not reused: next — E14.
+
+## Table 2. Epics for later
+
+Empty: the author decided on 2026-11-12 that there is no next epic yet.
+
+| ID | Epic | Result | Basis |
+|---|---|---|---|

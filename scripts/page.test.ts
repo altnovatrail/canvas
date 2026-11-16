@@ -364,10 +364,10 @@ describe("the builder", () => {
   test("takes the release file's sets in force, and the part for tests into no version but 0.0.0 (T89, T102)", {
     timeout: budget(1_726),
   }, () => {
-    // At v0.17.4 the measurement's and the eval set's sets are in force, and a child's is a draft.
+    // At v0.18.3 the measurement's and the eval set's sets are in force, and a child's is a draft.
     expect(textsFor("1.0.0")).toEqual({
       measurement: expect.objectContaining({ version: RELEASE_TEXTS }),
-      evalSet: expect.objectContaining({ version: "eval-set-1" }),
+      evalSet: expect.objectContaining({ version: "eval-set-2" }),
     });
     const tests = textsFor("0.0.0", TEST_PART);
     expect([tests.measurement?.version, tests.evalSet?.version, tests.child?.version]).toEqual([
@@ -427,8 +427,8 @@ describe("the file", () => {
     expect(readFileSync(again, "utf8")).toBe(page);
     // The minifier writes the strings of the page's data in any of the quotes.
     expect(page).toMatch(/version:["'`]1\.2\.3["'`]/);
-    expect(page).toMatch(/["'`]measure-2["'`]/);
-    expect(page).toMatch(/["'`]eval-set-1["'`]/);
+    expect(page).toMatch(/["'`]measure-3["'`]/);
+    expect(page).toMatch(/["'`]eval-set-2["'`]/);
     expect(page).not.toMatch(/test-(measure|eval-set|child-sample)/);
     // The notice in force is shown, and no draft of the legal texts, a child's sample's, to anyone
     // (README of spec's legal part, section 2).
