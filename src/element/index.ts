@@ -254,6 +254,7 @@ const STYLE = `
   display: flex; align-items: center;
 }
 .rail[hidden] { display: none; }
+.rail.example { padding-bottom: 88px; }
 .tools {
   box-sizing: border-box; flex: none; width: 52px; max-height: 100%;
   margin: 0 0 0 16px; padding: 4px; border-radius: 26px;
@@ -1960,9 +1961,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /**
    * The learner opened the next part of the demo with the row's Next (R42). The list grows above
    * the sheet, and the layout keeps a sheet scrolled into sight where it was at once, before the
-   * scroll of the container is heard; then the part comes into sight below the row of buttons, the
-   * region tells of it, and whoever listens hears of the new state. The focus stays on Next, which
-   * opens the part after it. Nothing happens while the demo is hidden, or open whole.
+   * scroll of the container is heard; then the part comes into sight between the band and the row
+   * of glass, the region tells of it, and whoever listens hears of the new state. The focus stays
+   * on Next, which opens the part after it. Nothing happens while the demo is hidden, or open whole.
    */
   #openNext(): void {
     const example = this.#example;
@@ -2068,9 +2069,15 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * scrolling would hold for every scroller of the chain alike — the sheet's container and the
    * page. An area of the sheet taller than what is in sight comes by its top from below, but by its
    * bottom from above, and then the band's cover brings its top back into sight (T61). The bar of
-   * buttons covers nothing at the top: it stands at the left edge (R84).
+   * buttons covers nothing at the top: it stands at the left edge, and a worked example's row at
+   * the bottom, where a scroll margin keeps what comes from below above it (R84).
    */
   #bringIntoSight(item: HTMLElement): void {
+    // A worked example's row of glass stands over the bottom of what is in sight: what comes into
+    // sight from below stops 16 pixels above it (R84).
+    const { rail, row } = this.#tools;
+    const under = rail.hidden || row.hidden ? 0 : row.offsetHeight + 32;
+    item.style.setProperty("scroll-margin-bottom", `${under}px`);
     item.scrollIntoView({ block: "nearest", behavior: "instant" });
     // A scroller that comes to its top hands the rest on to the next. A scroller goes again only
     // while each of its scrolls leaves less covered than the last (T94).

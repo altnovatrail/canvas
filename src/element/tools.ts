@@ -162,8 +162,17 @@ export class Tools {
     this.element.className = "tools";
     this.element.setAttribute("role", "toolbar");
     this.element.setAttribute("aria-orientation", "vertical");
-    // A bar that scrolls inside its glass is no stop of Tab of its own, as Firefox makes it.
-    this.element.tabIndex = -1;
+    // Glass that scrolls inside itself is no stop of Tab of its own, as Firefox makes it, and a
+    // press on the glass between buttons, which would focus it then, takes the focus nowhere.
+    for (const glass of [this.element, this.row]) {
+      glass.tabIndex = -1;
+      glass.addEventListener("mousedown", (event) => {
+        const { target } = event;
+        if (target === glass || (target instanceof HTMLElement && target.className === "line")) {
+          event.preventDefault();
+        }
+      });
+    }
     this.tip.className = "tip";
     // The tooltip says what the button's name says already: a screen reader reads that alone.
     this.tip.setAttribute("aria-hidden", "true");
@@ -234,6 +243,8 @@ export class Tools {
     this.row.addEventListener("focusin", (event) => {
       if (event.target instanceof Element) bringIn(this.row, event.target);
     });
+    // A tooltip stands by its button as the bar scrolls under it.
+    this.element.addEventListener("scroll", () => this.#placeTip());
     this.element.addEventListener("focusout", () => {
       this.#focused = undefined;
       this.#showTip();
@@ -266,6 +277,7 @@ export class Tools {
       this.#name();
     }
     const writes = kind !== "example";
+    this.rail.classList.toggle("example", !writes);
     this.#reveal([
       [this.row, !writes],
       [this.#next, !writes],
@@ -360,10 +372,10 @@ export class Tools {
    * beside it at the bar's edge, unless Escape dismissed it: only what has changed is written.
    */
   #showTip(): void {
-    const wanted = this.#hovered ?? this.#focused;
+    // A button the pointer was over may have gone with no pointerleave: the focus's has its tooltip.
+    const wanted = [this.#hovered, this.#focused].find((button) => button && !button.hidden);
     if (this.#dismissed !== undefined && this.#dismissed !== wanted) this.#dismissed = undefined;
-    const button =
-      wanted !== undefined && !wanted.hidden && wanted !== this.#dismissed ? wanted : undefined;
+    const button = wanted !== this.#dismissed ? wanted : undefined;
     if (button === this.#tipFor && this.tip.hidden === (button === undefined)) return;
     this.#tipFor = button;
     if (button === undefined) {
@@ -372,8 +384,18 @@ export class Tools {
       return;
     }
     this.tip.textContent = button.lastElementChild?.textContent ?? "";
-    // The tooltip stands beside its button, 8 pixels off the bar's edge and level with its middle,
-    // read from the bar, which may scroll.
+    this.#placeTip();
+    this.tip.hidden = false;
+    document.addEventListener("keydown", this.#escape, true);
+  }
+
+  /**
+   * The tooltip stands beside its button, 8 pixels off the bar's edge and level with its middle,
+   * read from the bar, which may scroll.
+   */
+  #placeTip(): void {
+    const button = this.#tipFor;
+    if (button === undefined) return;
     const rail = this.rail.getBoundingClientRect();
     const bar = this.element.getBoundingClientRect();
     const box = button.getBoundingClientRect();
@@ -382,8 +404,6 @@ export class Tools {
     const y = box.top + box.height / 2;
     this.tip.style.setProperty("--tip-x", `${(x - rail.left) / scale}px`);
     this.tip.style.setProperty("--tip-y", `${(y - rail.top) / scale}px`);
-    this.tip.hidden = false;
-    document.addEventListener("keydown", this.#escape, true);
   }
 
   /**
@@ -405,6 +425,7 @@ export class Tools {
     if (next === undefined) return;
     next.focus();
     bringIn(this.element, next);
+    this.#placeTip();
   }
 
   /**
@@ -418,6 +439,7 @@ export class Tools {
     // Read before a button hides: a hidden one loses the focus at the next update of the style.
     const focused = this.#labelled.find(([button]) => button.matches(":focus"))?.[0];
     for (const [element, shown] of wanted) element.hidden = !shown;
+    if (this.#hovered?.hidden) this.#hovered = undefined;
     const first = this.#first();
     if (!this.#chosen || this.#buttons.some((button) => button.tabIndex === 0 && button.hidden)) {
       this.#stopAt(first);

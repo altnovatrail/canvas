@@ -14,6 +14,7 @@ import { Pictures } from "./pictures.js";
 import {
   accessibilityTree,
   arrive,
+  buttonOf,
   type Colour,
   deferred,
   devtools,
@@ -949,4 +950,16 @@ test("a value the demo writes in a box is a node of its own in the lines' langua
   await page.elementLocator(element).getByRole("button", { name: "Demo" }).click();
   expect(value()).toBeNull();
   expect(rect?.getAttribute("aria-label")).toBe("Box");
+});
+
+test("a part Next brings into sight in a low element stops 16 pixels above the worked example's row of glass, which stands at the element's bottom", async () => {
+  const { element, actions } = await placed(made, 400, 150);
+  element.workedExample = workedExample();
+  await settle();
+  buttonOf(element, "Next").click();
+  await settle();
+  const item = element.shadowRoot?.querySelector(".parts li")?.getBoundingClientRect();
+  const row = actions.getBoundingClientRect();
+  expect(row.bottom).toBeLessThanOrEqual(window.innerHeight);
+  expect(item?.bottom).toBeLessThanOrEqual(row.top - 16 + 0.5);
 });

@@ -239,8 +239,16 @@ export class Hands {
     hand.x = contact.x;
     hand.y = contact.y;
     hand.travel = Math.max(hand.travel, Math.hypot(contact.x - hand.x0, contact.y - hand.y0));
-    // A finger of pen mode that has gone past the slop with no second drags the sheet alone (R84).
-    if (hand.role === "waits" && this.#gesture === undefined && hand.travel > SLOP_PX) {
+    // A finger of pen mode that has gone past the slop with no second drags the sheet alone (R84),
+    // but not while a sheet of the page is written on: nothing moves under the pen. Another finger
+    // that waits then does nothing until it lifts, and takes no drag over from where it came down.
+    if (
+      hand.role === "waits" &&
+      this.#gesture === undefined &&
+      hand.travel > SLOP_PX &&
+      !this.#mode.writing
+    ) {
+      for (const other of this.#hands.values()) if (other.role === "waits") other.role = "idle";
       hand.role = "scrolls";
       this.#gesture = {
         fingers: [contact.pointerId],

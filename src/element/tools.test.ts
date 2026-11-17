@@ -987,6 +987,67 @@ test("the keyboard's focus on an icon button shows its tooltip, the arrows move 
   expect(document.activeElement).toBe(before);
 });
 
+test("in a bar that scrolls inside its glass, the tooltip of the button the keys bring stands level with it, and moves with it as the bar scrolls", async () => {
+  const before = pageButton("Before");
+  const { element, root, row } = await sheet(400, 200);
+  await off();
+  const tip = tipOf(root);
+  const level = () => {
+    const shown = tip.getBoundingClientRect();
+    return shown.top + shown.height / 2;
+  };
+  before.focus();
+  await userEvent.tab();
+  await userEvent.keyboard("{End}");
+  const zoomOut = buttonOf(element, "Zoom out");
+  expect(said(tip)).toBe("Zoom out");
+  expect(row.scrollTop).toBeGreaterThan(0);
+  expect(level()).toBeCloseTo(middle(zoomOut).clientY, 0);
+  row.scrollTop = 0;
+  await settle();
+  expect(level()).toBeCloseTo(middle(zoomOut).clientY, 0);
+});
+
+test("a button the mouse was over that goes takes its tooltip along, and the keyboard's focus shows its own", async () => {
+  const before = pageButton("Before");
+  const { element, root } = await sheet(400, 600);
+  await off();
+  const tip = tipOf(root);
+  await userEvent.hover(buttonOf(element, "Eraser"));
+  expect(said(tip)).toBe("Eraser");
+  element.task = sheetTask({ tools: ["pen"] });
+  await settle();
+  before.focus();
+  await userEvent.tab();
+  expect(said(tip)).toBe("Pen");
+});
+
+test("a press on the glass between the buttons, of the bar or of a worked example's row, takes the focus nowhere, and one on a button takes it there", async () => {
+  const { element, root, row, actions } = await sheet(400, 600);
+  element.workedExample = workedExample();
+  await settle();
+  const pressed = (target: Element) => {
+    const down = new MouseEvent("mousedown", { bubbles: true, cancelable: true, composed: true });
+    target.dispatchEvent(down);
+    return down.defaultPrevented;
+  };
+  const line = root.querySelector(".tools.row .line");
+  if (line === null) throw new Error("the row has no line");
+  expect([pressed(row), pressed(actions), pressed(line)]).toEqual([true, true, true]);
+  const icon = buttonOf(element, "Next").querySelector("svg");
+  if (icon === null) throw new Error("Next has no icon");
+  expect([pressed(buttonOf(element, "Zoom in")), pressed(icon)]).toEqual([false, false]);
+});
+
+test("on a worked example in a low element the bar stands above the row, 16 pixels clear of it", async () => {
+  const { element, row, actions } = await sheet(400, 220);
+  element.workedExample = workedExample();
+  await settle();
+  const bar = row.getBoundingClientRect();
+  expect(bar.height).toBeGreaterThan(0);
+  expect(bar.bottom).toBeLessThanOrEqual(actions.getBoundingClientRect().top - 16 + 0.5);
+});
+
 test("on a worked example Next and Demo, which show their labels, have no tooltip, nor has the consumer's button, and the zoom's buttons have theirs beside the bar", async () => {
   const { element, root, row } = await sheet(400, 600);
   const own = consumerButton();

@@ -429,6 +429,38 @@ describe("one finger in pen mode", () => {
     return bench;
   }
 
+  test("a finger that came down too late to pair, while another waited, does nothing once the other drags, and takes no drag over when it lifts", () => {
+    const bench = dragged();
+    bench.down(B, PAIR_MS + 1, { x: 1300, y: 100 });
+    expect(bench.role(B)).toBe("waits");
+    bench.move(A, 200, { x: 1100, y: 120 });
+    expect([bench.role(A), bench.role(B)]).toEqual(["scrolls", "idle"]);
+    const steps = bench.steps.length;
+    bench.move(B, 210, { x: 1300, y: 160 });
+    bench.hands.lift(A);
+    bench.move(B, 220, { x: 1300, y: 170 });
+    expect([bench.role(B), bench.steps.length, bench.hands.scrolling]).toEqual([
+      "idle",
+      steps,
+      false,
+    ]);
+  });
+
+  test("a finger drags nothing while a sheet of the page is written on, and drags once it is not", () => {
+    const mode = new PenMode();
+    let written = true;
+    mode.enlist(() => written);
+    const bench = new Bench(mode);
+    mode.on = true;
+    bench.down(A, 0);
+    bench.move(A, 10, { x: 1100, y: 130 });
+    expect([bench.role(A), bench.steps]).toEqual(["waits", []]);
+    written = false;
+    bench.move(A, 20, { x: 1100, y: 140 });
+    expect(bench.role(A)).toBe("scrolls");
+    expect(bench.steps).toEqual([{ dx: 0, dy: 40 - SLOP_PX, fresh: true }]);
+  });
+
   test(`a finger that goes past ${SLOP_PX} px with no second drags the sheet alone, from where it came down by its travel past the slop, then in step with it, writing nothing (R84)`, () => {
     const bench = dragged();
     // To the slop's edge: it waits on, and nothing moves.
