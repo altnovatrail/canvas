@@ -1,10 +1,15 @@
 // What the drivers of the Android emulator read off the screen (T74, T78 in RUN.md; R54 in
 // docs/decisions.md): the nodes of a dump of uiautomator, where a tap on one lands, and where a
-// point of the page lies on the screen. The run itself is the workflow's, on a runner with an
-// emulator.
+// point of the page lies on the screen; and how they ask adb for an emulator gone offline and
+// bring it back, on a stand-in for adb (T124). The run itself is the workflow's, on a runner with
+// an emulator.
 
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { expect, test } from "vitest";
 import {
+  Android,
   calibrate,
   entities,
   find,
@@ -16,6 +21,7 @@ import {
   pageView,
   placed,
 } from "./android.ts";
+import { Run } from "./run.ts";
 
 const DUMP = `<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0">
 <node index="0" text="" resource-id="" class="android.widget.FrameLayout" content-desc="" bounds="[0,0][1600,2560]">
@@ -107,4 +113,91 @@ test("the page's own view is found by its class, and a point of the page lies fr
     pageView(nodes(`<node text="" class="${PAGE_VIEW}" content-desc="" bounds="[0,0][0,0]" />`)),
   ).toBeUndefined();
   expect(pageView([])).toBeUndefined();
+});
+
+/** A stand-in for the runner's adb: it writes each call's arguments to a file and answers
+ * get-state with the state in another, failing as adb does for a device offline; a reconnection
+ * brings the device back. */
+function fakeAdb(state: string): {
+  android: (adb?: string) => Android;
+  calls: () => string[];
+  done: () => void;
+} {
+  const folder = mkdtempSync(join(tmpdir(), "adb-"));
+  const adb = join(folder, "adb");
+  const log = join(folder, "calls.txt");
+  const current = join(folder, "state");
+  writeFileSync(current, state);
+  writeFileSync(
+    adb,
+    [
+      "#!/bin/sh",
+      `echo "$*" >> "${log}"`,
+      `if [ "$1" = reconnect ]; then echo device > "${current}"; fi`,
+      'if [ "$1" = get-state ]; then',
+      `  state=$(cat "${current}")`,
+      '  [ "$state" = device ] || { echo "error: device $state" >&2; exit 1; }',
+      "  echo device",
+      "fi",
+      "",
+    ].join("\n"),
+  );
+  chmodSync(adb, 0o755);
+  const run = new Run(join(folder, "run"));
+  return {
+    android: (other = adb) => new Android(run, other),
+    calls: () => readFileSync(log, "utf8").trim().split("\n"),
+    done: () => rmSync(folder, { recursive: true, force: true }),
+  };
+}
+
+test("a device is online only when adb answers that it is one, and offline otherwise", () => {
+  const up = fakeAdb("device");
+  const down = fakeAdb("offline");
+  try {
+    expect(up.android().online()).toBe(true);
+    expect(down.android().online()).toBe(false);
+    expect(down.android(join(tmpdir(), "no-adb-here")).online()).toBe(false);
+  } finally {
+    up.done();
+    down.done();
+  }
+});
+
+const FORWARDS = [
+  "forward tcp:9222 localabstract:chrome_devtools_remote",
+  "reverse tcp:8080 tcp:8080",
+  "reverse tcp:8081 tcp:8081",
+];
+
+test("a reset reconnects an emulator gone offline, waits for it, and sets the forwards before Chrome stops", async () => {
+  const fake = fakeAdb("offline");
+  try {
+    const android = fake.android();
+    await android.reset(["8080", "8081"], 0);
+    expect(fake.calls()).toEqual([
+      "get-state",
+      "reconnect offline",
+      "wait-for-device",
+      ...FORWARDS,
+      "shell am force-stop com.android.chrome",
+    ]);
+    expect(android.online()).toBe(true);
+  } finally {
+    fake.done();
+  }
+});
+
+test("a reset of an emulator adb still has sets the forwards anew, which a lost connection took", async () => {
+  const fake = fakeAdb("device");
+  try {
+    await fake.android().reset(["8080", "8081"], 0);
+    expect(fake.calls()).toEqual([
+      "get-state",
+      ...FORWARDS,
+      "shell am force-stop com.android.chrome",
+    ]);
+  } finally {
+    fake.done();
+  }
 });

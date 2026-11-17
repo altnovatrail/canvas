@@ -426,3 +426,23 @@ test("one more pass follows a device's failure only, and none follows the last",
     "2 the pass went to its end",
   ]);
 });
+
+test("a recovery that throws still gives the second pass, which alone says how the run ended", async () => {
+  const stuck = new Run(mkdtempSync(join(folder, "stuck-")));
+  let tries = 0;
+  await passes(
+    stuck,
+    async () => {
+      tries += 1;
+      stuck.record("draw", tries > 1);
+    },
+    async () => {
+      throw new Error("simctl terminate: Safari is not running");
+    },
+  );
+  expect(tries).toBe(2);
+  expect(stuck.verdict()).toBe("ok");
+  expect(readFileSync(join(stuck.folder, "log.txt"), "utf8")).toContain(
+    "the recovery failed: Error: simctl terminate: Safari is not running",
+  );
+});

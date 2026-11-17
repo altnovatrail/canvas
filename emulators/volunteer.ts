@@ -467,7 +467,9 @@ export async function volunteer(
 }
 
 /** Passes of a run: one, and one more when the device failed it, after the device's recovery. A
- * pass that throws is the device's failure: the page's own are steps it records. */
+ * pass that throws is the device's failure: the page's own are steps it records. A recovery that
+ * throws still leaves the second pass to run: a device it could not reset may answer anyway, and
+ * one gone fails that pass by itself (T124). */
 export async function passes(
   run: Run,
   pass: () => Promise<void>,
@@ -481,7 +483,11 @@ export async function passes(
     }
     if (run.verdict() !== "device" || run.pass >= 2) return;
     run.log("the device failed: one more pass");
-    await recover();
+    try {
+      await recover();
+    } catch (error) {
+      run.log(`the recovery failed: ${String(error).slice(0, 200)}`);
+    }
     run.pass += 1;
   }
 }
