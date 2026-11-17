@@ -4781,6 +4781,8 @@ How it is built — [architecture.md](architecture.md), section 3.3.
 
 — RUN.md, T119 (body — [docs/plan/E13.md](plan/E13.md)); R40 spec, R156 spec, R157 spec; Д257 spec; sources 6.17; R13, R36, R45, R81; [architecture.md](architecture.md), section 3.6; `.devcontainer/devcontainer.json`, `.devcontainer/Dockerfile`, `justfile`, `package.json`, `scripts/legal.ts`, `tasks/spec-v0.18.6/`, `run/DEBT.md`, `run/QUESTIONS.md`.
 
+— *Amendment 2026-11-17 (T122):* **README.md names no tag of `spec` and has no sections Status and License: its links lead to `https://github.com/altnovatrail/spec`, the submodule is named without its tag, and a move to a tag no longer edits README — "the tag in … README" of "What the move takes" no longer holds —, nor does a task write its status there.** The author's word of 2026-11-17 for the README of every repository: a status and a tag there go stale with each task and each move. The tag stays where a session reads it — CLAUDE.md, RUN.md, `.claude/rules/tasks.md` and [architecture.md](architecture.md) —, and the license is named by LICENSE, NOTICE and README's badge. — RUN.md, T122 (body — [docs/plan/E13.md](plan/E13.md)); R21 spec.
+
 ## The picture of a work
 
 **R83. The picture of a work is the element's own method `exportPicture(): Promise<Blob>`: the PNG of the strokes the surface shows, with no condition — the whole sheet, or the workbook's whole page with its draft, 1000 × 1400 px, a pixel a unit —, for `StoredWork.picture` of `PutWork`. Each stroke is the outline the screen fills, black on white, and the pixels go through the crop's encoder, grey, 8 bits: 1,576,640 bytes at most.** 2026-11-17, T120.
