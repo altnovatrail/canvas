@@ -81,6 +81,7 @@ import {
   type PageText,
   pieceWidth,
 } from "../core/page.js";
+import { encodePNG } from "../core/png.js";
 import { type PointerSample, Recorder } from "../core/recorder.js";
 import { fitScale, K_MAX, scaleFor, toSheet, type View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
@@ -1200,6 +1201,41 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const work = workForCheck(this.#work.strokes, digit);
     if (work === null) return null;
     return Object.freeze({ png: blobOf(work.png), submission: work.submission });
+  }
+
+  /**
+   * The picture of the work, for the `picture` of a stored work that app puts on the server
+   * (contracts/README.md spec, section 15; R83): the PNG of the strokes the surface shows, with no
+   * condition — the whole sheet, or the workbook's whole page with its draft, one pixel a unit,
+   * 1000 × 1400, whatever is filled and whether the work was sent to be checked or not; an empty
+   * surface, and a worked example's, is white. The strokes are those `exportWork()` takes, as the
+   * history has them: not the stroke under way, but those under an eraser not yet lifted. Each is
+   * the outline the screen fills, black on white with no theme and no template, and the pixels go
+   * through the crop's encoder, grey a byte each: so the picture looks as the sheet does, and holds
+   * at most 1,576,640 bytes, for the encoder spends at most 9 bits on a byte of a row, under the
+   * 4 MiB of a stored work.
+   */
+  async exportPicture(): Promise<Blob> {
+    // A pixel a unit: the ink is 3 px wide, as on a screen of a pixel a unit.
+    const { width, height } = SHEET;
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (context === null) throw new Error(`<${TAG}> got no 2D context to draw its picture on`);
+    context.fillStyle = "#fff";
+    context.fillRect(0, 0, width, height);
+    context.fillStyle = "#000";
+    for (const stroke of this.#work.strokes) context.fill(this.#finished(stroke).path);
+    const { data } = context.getImageData(0, 0, width, height);
+    // The canvas's memory goes at once, not at a collection: WebKit caps what all canvases hold.
+    canvas.width = 0;
+    canvas.height = 0;
+    // Black on white: the red of a pixel is its grey. Every index is within the pixels' four bytes
+    // a pixel, so none reads past them.
+    const gray = new Uint8Array(width * height);
+    for (let at = 0; at < gray.length; at++) gray[at] = data[4 * at] as number;
+    return blobOf(encodePNG(gray, width, height));
   }
 
   disconnectedCallback(): void {

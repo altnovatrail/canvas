@@ -120,6 +120,11 @@ export const sent: Blob | readonly Blob[] =
 export const place: readonly [number, number] | undefined =
   "cells" in done ? [done.cells[0]?.item ?? 1, done.cells[0]?.slot ?? 1] : undefined;
 export const history: readonly HistoryEvent[] = sheet.history;
+/**
+ * The picture of the work, a PNG of the whole surface with no condition, for a stored work's
+ * picture (R83): always a Blob, never null.
+ */
+export const picture: Promise<Blob> = sheet.exportPicture();
 /** A workbook's marks stand on answer cells, by their item and slot (R39). */
 sheet.marks = {
   submission: boxes,
@@ -175,7 +180,9 @@ held.marks = undefined;
 held.undo();
 // @ts-expect-error The same for clear.
 held.clear();
-// @ts-expect-error The picture of the whole sheet is no part of the interface (R27).
+// @ts-expect-error The picture of the work is the package's own until spec's agreement names it (В82).
+held.exportPicture();
+// @ts-expect-error exportPNG() is gone (R27): the picture of the work is exportPicture() (R83).
 sheet.exportPNG();
 // @ts-expect-error null is no history: undefined, and undefined alone, is the empty one.
 sheet.history = null;
