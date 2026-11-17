@@ -1231,9 +1231,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     // The canvas's memory goes at once, not at a collection: WebKit caps what all canvases hold.
     canvas.width = 0;
     canvas.height = 0;
-    // Black on white: the red of a pixel is its grey.
+    // Black on white: the red of a pixel is its grey. Every index is within the pixels' four bytes
+    // a pixel, so none reads past them.
     const gray = new Uint8Array(width * height);
-    for (let at = 0; at < gray.length; at++) gray[at] = data[4 * at] ?? 255;
+    for (let at = 0; at < gray.length; at++) gray[at] = data[4 * at] as number;
     return blobOf(encodePNG(gray, width, height));
   }
 

@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { cellsOf } from "../core/boxes.js";
 import type { HistoryEvent } from "../core/history.js";
 import type { InkPoint, Stroke } from "../core/ink.js";
@@ -176,4 +176,16 @@ test("the picture is the drawing the surface's own canvas shows: a pen's widths 
     Array.from({ length: 12 }, (_, k) => picture.gray(x, 74 + k)).filter((gray) => gray < 128)
       .length;
   expect(across(430)).toBeGreaterThan(across(70));
+});
+
+test("with no 2D context to draw on, the picture's promise is rejected, not a picture that is not the work's", async () => {
+  const { element } = await placed(made, 400);
+  element.history = written([line(1, 100, 100, 300)]);
+  const getContext = vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+  try {
+    await expect(element.exportPicture()).rejects.toThrow(/no 2D context/);
+  } finally {
+    getContext.mockRestore();
+  }
+  expect(whole(await pictureOf(element))).toBe(true);
 });
