@@ -54,10 +54,26 @@ export async function axeOf(
   const left = new Set(result.incomplete.map(({ id }) => id));
   const named = new Set(incomplete);
   if (left.size !== named.size || [...left].some((id) => !named.has(id))) {
+    // What axe could not decide beyond the names, node by node, or the names it decided after all.
+    const undecided = result.incomplete
+      .filter(({ id }) => !named.has(id))
+      .flatMap(({ id, nodes }) =>
+        nodes.map((node) => `${id}: ${String(node.target)} — ${reasonOf(node)}`),
+      );
+    const decided = incomplete.filter((id) => !left.has(id)).map((id) => `${id}: decided`);
     throw new Error(
-      `axe leaves incomplete ${[...left].join(", ") || "nothing"}, not ${incomplete.join(", ") || "nothing"}`,
+      `axe leaves incomplete ${[...left].join(", ") || "nothing"}, not ${incomplete.join(", ") || "nothing"}:\n${[...undecided, ...decided].join("\n")}`,
     );
   }
+}
+
+/** Why axe could not decide on a node: the message key of the first of its checks that gives one. */
+function reasonOf(node: axe.NodeResult): string {
+  for (const check of [...node.any, ...node.all, ...node.none]) {
+    const data = check.data as { messageKey?: unknown } | null | undefined;
+    if (typeof data?.messageKey === "string") return data.messageKey;
+  }
+  return node.failureSummary ?? "no reason given";
 }
 
 /** The relative luminance of an opaque colour as getComputedStyle gives it (WCAG 2.2, «relative

@@ -317,7 +317,7 @@ const STYLE = `
   position: absolute; left: var(--tip-x, 76px); top: var(--tip-y, 0px); z-index: 2;
   transform: translateY(-50%); white-space: nowrap;
   font-size: 12.5px; font-weight: 500; line-height: 1; padding: 8px 10px; border-radius: 9px;
-  background: rgba(29, 29, 31, 0.92); color: #fff; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  background: #1d1d1f; color: #fff; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
 }
 .tip[hidden] { display: none; }
 .viewport.zoomed { overflow-x: auto; direction: ltr; }

@@ -14,6 +14,7 @@ import {
   input,
   level,
   placed,
+  rest,
   settle,
   spacer,
   touches,
@@ -35,11 +36,13 @@ import { TIP_GRACE_MS } from "./tools.js";
 // it, the wheel and the keys scroll it (R84), and the zoom itself is zoom.test.ts's.
 
 const made: HTMLElement[] = [];
-afterEach(() => {
+afterEach(async () => {
   for (const element of made.splice(0)) element.remove();
   // A pen puts the whole page in pen mode: the next test starts without it.
   PEN_MODE.on = false;
   window.scrollTo(0, 0);
+  // The mouse a test left over a button: the next test, or file, has no tooltip it did not ask for.
+  await rest();
 });
 
 /** A sheet `width` CSS pixels wide, as tall as its statement and sheet unless given a height. */
