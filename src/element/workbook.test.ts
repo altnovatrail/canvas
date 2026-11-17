@@ -344,13 +344,13 @@ test("the lines are in the manifest's explanation language, or the element's own
   expect(text.matches(":lang(en-GB)")).toBe(true);
 });
 
-test("an item at the bottom of the page that is brought into view, or its text, stands in the container's visible part two frames later, under the row, in a page of any writing mode", async () => {
+test("an item at the bottom of the page that is brought into view, or its text, stands in the container's visible part two frames later, in a page of any writing mode", async () => {
   for (const writing of ["horizontal-tb", "vertical-rl"]) {
     for (const target of ["item", "text"]) {
       const parent = document.createElement("div");
       parent.style.writingMode = writing;
       document.body.append(parent);
-      const { element, viewport, row, print } = await workbook(shortLines(20), 414, 500, parent);
+      const { element, viewport, print } = await workbook(shortLines(20), 414, 500, parent);
       const last = print.querySelector('[role="list"]')?.lastElementChild;
       const text = last?.querySelector("text");
       if (!last || !text) throw new Error("the list has no items");
@@ -361,8 +361,8 @@ test("an item at the bottom of the page that is brought into view, or its text, 
       const port = viewport.getBoundingClientRect();
       const where = `${writing}, ${target}`;
       expect(viewport.scrollTop, where).toBeGreaterThan(0);
-      const top = Math.max(port.top, row.getBoundingClientRect().bottom);
-      expect(item.top, where).toBeGreaterThanOrEqual(top - 0.5);
+      // The bar, over the sheet's left edge, takes none of the container's height (R84).
+      expect(item.top, where).toBeGreaterThanOrEqual(port.top - 0.5);
       expect(item.bottom, where).toBeLessThanOrEqual(port.bottom + 0.5);
       element.remove();
     }

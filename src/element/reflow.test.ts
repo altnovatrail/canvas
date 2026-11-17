@@ -2,20 +2,23 @@ import { afterEach, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { SHORT } from "../core/pages.fixture.js";
 import { sheetTask, workbookTask, workedExample } from "../core/tasks.fixture.js";
-import type { NovatrailCanvas } from "./index.js";
-import { placed, settle, spacer } from "./pointer.fixture.js";
+import { consumerButton, placed, settle, spacer } from "./pointer.fixture.js";
 
-// The row of buttons in a low window (T92; R28): it sticks over what scrolls the element while it
-// is no taller than a quarter of it, below the consumer's --novatrail-canvas-top, and stands in its
-// place otherwise, as WCAG's technique C34 un-fixes a sticky header (1.4.10, 2.4.11). The window of
-// 1.4.10 is 320 × 256 CSS px: 1280 × 1024 at a zoom of 400 %. A button in focus keeps its whole
-// ring in the row, at the window's edge too (2.4.7). Each test sets the window it needs, and the
-// next starts at Vitest's own, 414 × 896.
+// The bar of buttons in a narrow or a low window (T121; R84, R90 spec): the rail it stands in the
+// middle of sticks over what scrolls the element, below the consumer's --novatrail-canvas-top, as
+// tall as the part of the element in sight, and the bar, 52 CSS px wide at the element's left edge,
+// is never wider than that: at 320 CSS px the page does not scroll sideways (1.4.10), as the
+// mockup's "Two sizes" has it. A bar taller than its rail, less the rail's margins of 16 px, scrolls
+// inside its glass, and the keyboard's focus brings each of its buttons into sight there (2.4.11).
+// A button's ring of focus, two pixels outside its edge, stays on the glass, which clips what
+// overflows it (2.4.7). The window of 1.4.10 is 320 × 256 CSS px: 1280 × 1024 at a zoom of 400 %.
+// Each test sets the window it needs, and the next starts at Vitest's own, 414 × 896, whose body
+// has no margin. A worked example's row of Next, Demo and the consumer's buttons, at the bottom,
+// keeps within the element less 16 px at each side, and scrolls inside its glass across.
 
 const made: HTMLElement[] = [];
 afterEach(async () => {
   for (const element of made.splice(0)) element.remove();
-  document.body.style.margin = "";
   window.scrollTo({ top: 0, behavior: "instant" });
   await page.viewport(414, 896);
 });
@@ -26,29 +29,20 @@ async function windowOf(width: number, height: number): Promise<void> {
   await settle();
 }
 
-/** A button of the row by its label. */
-function buttonOf(row: HTMLElement, label: string): HTMLButtonElement {
-  const found = [...row.querySelectorAll("button")].find((each) => each.textContent === label);
-  if (found === undefined) throw new Error(`the row has no ${label}`);
-  return found;
+/** The rail the bar stands in, in the element's shadow root. */
+function railOf(root: ShadowRoot): HTMLElement {
+  const rail = root.querySelector<HTMLElement>(".rail");
+  if (rail === null) throw new Error("the element has no rail");
+  return rail;
 }
 
-/** Down pressed at the top of the page, which it scrolls by four fifths of the whole window. */
-function downByWindow(row: HTMLElement) {
-  const down = buttonOf(row, "Down");
-  const sight = window.visualViewport?.height ?? window.innerHeight;
-  down.click();
-  expect(window.scrollY).toBeCloseTo(Math.round(0.8 * sight), 0);
-  return { down, sight };
-}
+/** The middle of a box, down the screen. */
+const middleOf = (box: DOMRect) => (box.top + box.bottom) / 2;
 
-/** How the row stands now: sticky or static. */
-const position = (row: HTMLElement) => getComputedStyle(row).position;
-
-/** The kinds of canvas whose rows are tried: a sheet, a workbook and a worked example. */
+/** The kinds of canvas whose bars are tried: a sheet, a workbook and a worked example. */
 const KINDS: readonly {
   readonly name: string;
-  readonly put: (width: number) => Promise<{ element: NovatrailCanvas; row: HTMLElement }>;
+  readonly put: (width: number) => ReturnType<typeof placed>;
 }[] = [
   {
     name: "a sheet",
@@ -70,181 +64,161 @@ const KINDS: readonly {
 ];
 
 test.each(KINDS)(
-  "$name: in a window of 320 × 256 the row, wrapped over more than a quarter of it, stands in its place and goes with the page, and in a taller window it sticks",
+  "$name: in a window of 320 × 256 the page does not scroll sideways, the bar stands in the window, and every button's ring of focus stays across on its glass",
   async ({ put }) => {
     await windowOf(320, 256);
-    const { row } = await put(304);
+    const { row } = await put(320);
     spacer(made);
     await settle();
-    expect(row.getBoundingClientRect().height).toBeGreaterThan(256 / 4);
-    expect(position(row)).toBe("static");
-    window.scrollTo({ top: 300, behavior: "instant" });
-    await settle();
-    expect(row.getBoundingClientRect().bottom).toBeLessThanOrEqual(0);
-
-    window.scrollTo({ top: 0, behavior: "instant" });
-    await windowOf(320, 896);
-    expect(position(row)).toBe("sticky");
-    window.scrollTo({ top: 300, behavior: "instant" });
-    await settle();
-    expect(row.getBoundingClientRect().top).toBeCloseTo(0, 3);
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(320);
+    const bar = row.getBoundingClientRect();
+    expect(bar.left).toBeGreaterThanOrEqual(0);
+    expect(bar.right).toBeLessThanOrEqual(320);
+    const shown = [...row.querySelectorAll("button")].filter((each) => !each.hidden);
+    expect(shown.length).toBeGreaterThan(0);
+    // The ring is two pixels wide and stands outside the button's edge.
+    for (const each of shown) {
+      const button = each.getBoundingClientRect();
+      expect(button.left - 2).toBeGreaterThanOrEqual(bar.left);
+      expect(button.right + 2).toBeLessThanOrEqual(bar.right);
+    }
   },
 );
 
-test("in a wide low window a row of one line sticks, until the consumer's offset leaves it more than a quarter of the rest, heard at the next scroll; a taller window lets it stick again", async () => {
-  await windowOf(1024, 256);
-  const { element, row } = await placed(made, 1000, undefined, { task: sheetTask() });
+test("a worked example in a window of 320 × 256: its row of Next, Demo and the consumer's button stands in the window, in its middle across, its bottom 16 pixels above the window's, and the page does not scroll sideways", async () => {
+  await windowOf(320, 256);
+  const { element, actions } = await placed(made, 320);
+  element.append(consumerButton());
+  element.workedExample = workedExample();
   spacer(made);
   await settle();
-  // One line of buttons, 44 px tall, and the row's margins: 60 px, a quarter of 256 less 4 px.
-  expect(row.getBoundingClientRect().height).toBeCloseTo(60, 0);
-  expect(position(row)).toBe("sticky");
-  // 60 px over a quarter of 256 − 40: the offset changes no size, and the next scroll hears it.
-  // A scroller that holds nothing of the element, fixed so that the page keeps its size.
-  const other = document.createElement("div");
-  other.style.cssText =
-    "position: fixed; top: 0; left: 0; width: 50px; height: 50px; overflow: auto;";
-  const tall = document.createElement("div");
-  tall.style.height = "200px";
-  other.append(tall);
-  document.body.append(other);
-  made.push(other);
-  await settle();
-  element.style.setProperty("--novatrail-canvas-top", "40px");
-  // Its scroll tells the element nothing.
-  other.scrollTop = 30;
-  await settle();
-  expect(position(row)).toBe("sticky");
-  window.scrollTo({ top: 10, behavior: "instant" });
-  await settle();
-  expect(position(row)).toBe("static");
-  await windowOf(1024, 896);
-  expect(position(row)).toBe("sticky");
+  expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(320);
+  const row = actions.getBoundingClientRect();
+  expect(row.left).toBeGreaterThanOrEqual(16 - 0.5);
+  expect(row.right).toBeLessThanOrEqual(320 - 16 + 0.5);
+  expect(row.left + row.width / 2).toBeCloseTo(160, 0);
+  expect(row.bottom).toBeCloseTo(256 - 16, 0);
 });
+
+/** The low places a sheet's bar is tried in: a window of 1.4.10, and an element given a height. */
+const LOW: readonly {
+  readonly name: string;
+  readonly put: () => ReturnType<typeof placed>;
+}[] = [
+  {
+    name: "in a window of 320 × 256, the page scrolling the element",
+    put: async () => {
+      await windowOf(320, 256);
+      const found = await placed(made, 320, undefined, { task: sheetTask() });
+      spacer(made);
+      await settle();
+      return found;
+    },
+  },
+  {
+    name: "in an element 200 px tall",
+    put: () => placed(made, 400, 200, { task: sheetTask() }),
+  },
+];
+
+test.each(LOW)(
+  "$name the bar is no taller than its rail less the rail's margins and scrolls inside its glass, and the keyboard's focus brings its last button into sight there and its first back",
+  async ({ put }) => {
+    const { root, row } = await put();
+    const rail = railOf(root).getBoundingClientRect();
+    const bar = row.getBoundingClientRect();
+    expect(rail.top).toBeGreaterThanOrEqual(-0.5);
+    expect(rail.bottom).toBeLessThanOrEqual(window.innerHeight + 0.5);
+    expect(bar.height).toBeLessThanOrEqual(rail.height - 32 + 0.5);
+    expect(bar.top).toBeGreaterThanOrEqual(rail.top + 16 - 0.5);
+    expect(row.scrollHeight).toBeGreaterThan(row.clientHeight);
+    await userEvent.tab();
+    expect(root.activeElement?.textContent).toBe("Pen");
+    await userEvent.keyboard("{End}");
+    const last = root.activeElement;
+    expect(last?.textContent).toBe("Zoom out");
+    expect(row.scrollTop).toBeGreaterThan(0);
+    const button = last?.getBoundingClientRect();
+    const now = row.getBoundingClientRect();
+    expect(button?.top).toBeGreaterThanOrEqual(now.top - 0.5);
+    expect(button?.bottom).toBeLessThanOrEqual(now.bottom + 0.5);
+    expect(button?.bottom).toBeLessThanOrEqual(window.innerHeight + 0.5);
+    await userEvent.keyboard("{Home}");
+    expect(root.activeElement?.textContent).toBe("Pen");
+    expect(row.scrollTop).toBeCloseTo(0, 0);
+  },
+);
+
+/**
+ * The consumer's offsets tried on a page that scrolls the element in a window 400 px tall, and
+ * where each puts the rail's top: pixels, a percentage of the window, and `auto`, which counts
+ * nothing.
+ */
+const OFFSETS: readonly { readonly offset: string | undefined; readonly top: number }[] = [
+  { offset: undefined, top: 0 },
+  { offset: "40px", top: 40 },
+  { offset: "10%", top: 40 },
+  { offset: "auto", top: 0 },
+];
+
+test.each(OFFSETS)(
+  "without a height, in a page that scrolls the element, the rail sticks at the offset $offset and reaches the window's bottom, so that the bar stays in the middle of what is in sight as the page scrolls",
+  async ({ offset, top }) => {
+    await windowOf(414, 400);
+    const { element, root, row } = await placed(made, 400, undefined, { task: sheetTask() });
+    // A sheet 400 px wide is some 560 px tall: taller than the window, which it scrolls past.
+    if (offset !== undefined) element.style.setProperty("--novatrail-canvas-top", offset);
+    spacer(made);
+    await settle();
+    const middle = (top + window.innerHeight) / 2;
+    for (const scrolled of [100, 150]) {
+      window.scrollTo({ top: scrolled, behavior: "instant" });
+      await settle();
+      expect(element.getBoundingClientRect().top).toBeCloseTo(-scrolled, 0);
+      const rail = railOf(root).getBoundingClientRect();
+      expect(rail.top).toBeCloseTo(top, 0);
+      expect(rail.bottom).toBeCloseTo(window.innerHeight, 0);
+      expect(middleOf(row.getBoundingClientRect())).toBeCloseTo(middle, 0);
+    }
+  },
+);
 
 test.each(["auto", "hidden"])(
-  "in an ancestor of overflow %s, which the row sticks in, it stands in its place while it covers more than a quarter of it, and sticks once the ancestor grows",
+  "in an ancestor of overflow %s lower than the window the rail sticks to the ancestor, below the offset, and the bar stands within what the ancestor shows",
   async (overflow) => {
+    await windowOf(414, 400);
     const scroller = document.createElement("div");
-    scroller.style.overflow = overflow;
-    scroller.style.height = "1000px";
+    scroller.style.cssText = `height: 300px; overflow: ${overflow};`;
     document.body.append(scroller);
-    const { row } = await placed(made, 400, undefined, { parent: scroller, task: sheetTask() });
-    const tall = row.getBoundingClientRect().height;
-    expect(position(row)).toBe("sticky");
-    // The ancestor's size alone, and not the window's, makes the row stand or stick.
-    scroller.style.height = `${3 * tall}px`;
+    const { element, root, row } = await placed(made, 400, undefined, {
+      parent: scroller,
+      task: sheetTask(),
+    });
+    element.style.setProperty("--novatrail-canvas-top", "20px");
+    scroller.scrollTop = 100;
     await settle();
-    expect(position(row)).toBe("static");
-    scroller.style.height = `${5 * tall}px`;
-    await settle();
-    expect(position(row)).toBe("sticky");
-    // An ancestor that no longer contains it hands the row to the window, 896 px tall: it sticks.
-    scroller.style.overflow = "visible";
-    scroller.style.height = `${3 * tall}px`;
-    await settle();
-    expect(position(row)).toBe("sticky");
+    const sight = scroller.getBoundingClientRect();
+    expect(element.getBoundingClientRect().top).toBeCloseTo(sight.top - 100, 0);
+    expect(railOf(root).getBoundingClientRect().top).toBeCloseTo(sight.top + 20, 0);
+    const bar = row.getBoundingClientRect();
+    expect(bar.top).toBeGreaterThanOrEqual(sight.top + 20);
+    expect(bar.bottom).toBeLessThanOrEqual(sight.bottom);
   },
 );
 
-test("with the row in its place, Down scrolls the page by four fifths of the window, the row's height not taken off, but the consumer's band over it", async () => {
-  await windowOf(320, 256);
-  const { element, row } = await placed(made, 304, undefined, { task: sheetTask() });
-  spacer(made);
-  await settle();
-  expect(position(row)).toBe("static");
-  const { down, sight } = downByWindow(row);
-
-  window.scrollTo({ top: 0, behavior: "instant" });
-  element.style.setProperty("--novatrail-canvas-top", "40px");
-  await settle();
-  down.click();
-  expect(window.scrollY).toBeCloseTo(Math.round(0.8 * (sight - 40)), 0);
-});
-
-test("with the row in its place, a part Next opens comes out from under the consumer's band, not the row", async () => {
-  await windowOf(320, 256);
-  const { element, row } = await placed(made, 304);
-  element.workedExample = workedExample();
-  element.style.setProperty("--novatrail-canvas-top", "40px");
-  spacer(made);
-  await settle();
-  expect(position(row)).toBe("static");
-  const next = buttonOf(row, "Next");
-  next.click();
-  await settle();
-  // The page scrolled past the open part, which the next part comes in under.
-  const first = element.shadowRoot?.querySelector(".parts li");
-  if (!first) throw new Error("the list has no part");
-  window.scrollTo({
-    top: window.scrollY + first.getBoundingClientRect().bottom + 50,
-    behavior: "instant",
-  });
-  await settle();
-  next.click();
-  const second = element.shadowRoot?.querySelectorAll(".parts li")[1];
-  if (!second) throw new Error("the list has no second part");
-  expect(second.getBoundingClientRect().top).toBeCloseTo(40, 0);
-});
-
-test("at the edge of a window 320 wide every button's ring of focus stays in the row, on its paper", async () => {
-  await windowOf(320, 896);
-  document.body.style.margin = "0";
-  const { element, row } = await placed(made, 320, undefined, { task: sheetTask() });
-  await userEvent.tab();
-  expect(element.shadowRoot?.activeElement?.textContent).toBe("Pen");
-  const box = row.getBoundingClientRect();
-  expect(box.left).toBeGreaterThanOrEqual(0);
-  // The ring stands two pixels out and is two wide.
-  for (const each of row.querySelectorAll("button")) {
-    const button = each.getBoundingClientRect();
-    if (button.width === 0) continue;
-    expect(button.left - 4).toBeGreaterThanOrEqual(box.left);
-    expect(button.right + 4).toBeLessThanOrEqual(box.right);
-    expect(button.top - 4).toBeGreaterThanOrEqual(box.top);
-    expect(button.bottom + 4).toBeLessThanOrEqual(box.bottom);
-  }
-});
-
-test("with the row in its place in a panel of its own, Down handed on to the page counts the whole window: the band over the panel is not the page's", async () => {
-  const above = document.createElement("div");
-  above.style.height = "500px";
-  document.body.append(above);
-  made.push(above);
-  const panel = document.createElement("div");
-  panel.style.cssText = "height: 200px; overflow: auto;";
-  document.body.append(panel);
-  const { element, row } = await placed(made, 400, undefined, { parent: panel, task: sheetTask() });
-  element.style.setProperty("--novatrail-canvas-top", "20px");
-  spacer(made);
-  panel.scrollTop = panel.scrollHeight;
-  await settle();
-  expect(position(row)).toBe("static");
-  downByWindow(row);
-});
-
-test("an offset in percent counts of the window, and an offset of auto counts nothing", async () => {
-  await windowOf(1024, 256);
-  const { element, row } = await placed(made, 1000, undefined, { task: sheetTask() });
-  // 10 % of 256 is 25.6 px, and 4 × 60 is more than the 230.4 px below it.
-  element.style.setProperty("--novatrail-canvas-top", "10%");
-  await windowOf(1024, 257);
-  expect(position(row)).toBe("static");
-  await windowOf(1024, 256);
-  expect(position(row)).toBe("static");
-  element.style.setProperty("--novatrail-canvas-top", "auto");
-  await windowOf(1024, 257);
-  expect(position(row)).toBe("sticky");
-});
-
-test("a hidden element, whose row has no height, leaves the row as it was, and shown again it stands as before", async () => {
-  await windowOf(320, 256);
-  const { element, row } = await placed(made, 304, undefined, { task: sheetTask() });
-  expect(position(row)).toBe("static");
+test("a hidden element, whose bar has no height, shown again stands its bar where it stood, still scrolling inside its glass", async () => {
+  const { element, root, row } = await placed(made, 400, 200, { task: sheetTask() });
+  const where = () => {
+    const rail = railOf(root).getBoundingClientRect();
+    const bar = row.getBoundingClientRect();
+    return [rail.top, rail.height, bar.top, bar.left, bar.width, bar.height];
+  };
+  const before = where();
   element.hidden = true;
   await settle();
-  expect(row.classList.contains("loose")).toBe(true);
+  expect(row.getBoundingClientRect().height).toBe(0);
   element.hidden = false;
   await settle();
-  expect(position(row)).toBe("static");
+  expect(where()).toEqual(before);
+  expect(row.scrollHeight).toBeGreaterThan(row.clientHeight);
 });

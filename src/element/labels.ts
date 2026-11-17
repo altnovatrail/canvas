@@ -8,8 +8,9 @@
 // - no label counts a thing, so none has forms of number yet. The first that does takes CLDR's
 //   categories, `other` always among them, chosen by `Intl.PluralRules` of the label's language;
 // - no label tells the learner's gender (R70 spec) or speaks as the AI in the first person (П-15);
-// - the buttons' words are those of the table of words of architecture 6 spec, the four of the
-//   page's zoom and of the scroll across among them since spec took them by В76 (T94; Д219 spec).
+// - the buttons' words are those of the table of words of architecture 6 spec, the two of the
+//   page's zoom among them since spec took them by В76 (T94; Д219 spec); the four that scrolled the
+//   sheet left the row with their buttons (R84).
 // This module is no entry point of the package.
 
 /**
@@ -35,15 +36,9 @@ export interface Labels {
   readonly eraser: string;
   readonly undo: string;
   readonly clear: string;
-  /** The buttons that scroll the sheet back up and on down, with a single pointer (R33). */
-  readonly up: string;
-  readonly down: string;
   /** The buttons of the page's zoom, a step larger and a step smaller (T94). */
   readonly zoomIn: string;
   readonly zoomOut: string;
-  /** The buttons that scroll a zoomed sheet left and right, with a single pointer (T94). */
-  readonly left: string;
-  readonly right: string;
   /** The button that lets a finger write again, in pen mode (R29). */
   readonly finger: string;
   /** A box of a workbook's line, alone in it (R36). */
@@ -75,12 +70,8 @@ const ENGLISH: Labels = Object.freeze({
   eraser: "Eraser",
   undo: "Undo",
   clear: "Clear",
-  up: "Up",
-  down: "Down",
   zoomIn: "Zoom in",
   zoomOut: "Zoom out",
-  left: "Left",
-  right: "Right",
   finger: "Draw with finger",
   box: "Box",
   boxAt: "Box {slot}",
@@ -112,12 +103,8 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
       eraser: "Ластик",
       undo: "Отменить",
       clear: "Очистить",
-      up: "Выше",
-      down: "Ниже",
       zoomIn: "Крупнее",
       zoomOut: "Мельче",
-      left: "Левее",
-      right: "Правее",
       finger: "Рисовать пальцем",
       box: "Окошко",
       boxAt: "Окошко {slot}",

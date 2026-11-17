@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { cdp } from "vitest/browser";
 import { sheetTask, workedExample } from "../core/tasks.fixture.js";
-import { devtools, placed, settle, spacer } from "./pointer.fixture.js";
+import { buttonOf, devtools, placed, settle, spacer } from "./pointer.fixture.js";
 
 // Motion and the learner's wish for less of it (T92; WCAG 2.3.3, which R90 spec asks of canvas):
-// nothing in the element moves but the scrolling, and its scrolls jump to where they go — Up and
-// Down, two fingers and a part of a worked example brought into sight — whatever smoothness the
+// nothing in the element moves but the scrolling, and its scrolls jump to where they go — two
+// fingers and a part of a worked example brought into sight — whatever smoothness the
 // page asks of its scrolling. The style animates nothing: its one transition, of the canvas's
 // colour, a millisecond long, moves nothing and only tells the element to draw the ink anew. The
 // page asks for reduced motion here, through the DevTools protocol, so that a smoothness that
@@ -34,60 +34,22 @@ function smoothly(element: HTMLElement): void {
   smooth.push(element);
 }
 
-/** A button of the row by its label. */
-function buttonOf(row: HTMLElement, label: string): HTMLButtonElement {
-  const found = [...row.querySelectorAll("button")].find((each) => each.textContent === label);
-  if (found === undefined) throw new Error(`the row has no ${label}`);
-  return found;
-}
-
 test.runIf(devtools)(
-  "Up and Down jump to where they scroll, the sheet's container, an ancestor and the page alike, though the page asks for smooth scrolling",
+  "Next brings a part into sight at once, out from under the consumer's band, though the page asks for smooth scrolling",
   async () => {
     smoothly(document.documentElement);
-    const held = await placed(made, 400, 300, { task: sheetTask() });
-    const down = buttonOf(held.row, "Down");
-    down.click();
-    // At once, in the same task: a smooth scroll would have gone nowhere yet.
-    expect(held.viewport.scrollTop).toBeCloseTo(Math.round(0.8 * held.viewport.clientHeight), 0);
-    buttonOf(held.row, "Up").click();
-    expect(held.viewport.scrollTop).toBe(0);
-    held.element.remove();
-
-    const scroller = document.createElement("div");
-    scroller.style.cssText = "height: 300px; overflow: auto;";
-    smoothly(scroller);
-    document.body.append(scroller);
-    const free = await placed(made, 400, undefined, { parent: scroller, task: sheetTask() });
-    buttonOf(free.row, "Down").click();
-    expect(scroller.scrollTop).toBeGreaterThan(0);
-    const after = scroller.scrollTop;
-    await settle();
-    expect(scroller.scrollTop).toBe(after);
-    scroller.remove();
-
-    const page = await placed(made, 400, undefined, { task: sheetTask() });
-    spacer(made);
-    await settle();
-    buttonOf(page.row, "Down").click();
-    expect(window.scrollY).toBeGreaterThan(0);
-  },
-);
-
-test.runIf(devtools)(
-  "Next brings a part into sight at once, though the page asks for smooth scrolling",
-  async () => {
-    smoothly(document.documentElement);
-    const { element, row } = await placed(made, 400);
+    const { element } = await placed(made, 400);
     element.workedExample = workedExample();
+    element.style.setProperty("--novatrail-canvas-top", "30px");
     spacer(made);
     await settle();
-    // The page scrolled well below the list: the part comes back up into sight.
+    // The page scrolled well below the list: the part comes back up into sight, and down from
+    // under the band at once too.
     window.scrollTo({ top: 1200, behavior: "instant" });
     await settle();
-    buttonOf(row, "Next").click();
+    buttonOf(element, "Next").click();
     const item = element.shadowRoot?.querySelector(".parts li")?.getBoundingClientRect();
-    expect(item?.top).toBeGreaterThanOrEqual(row.getBoundingClientRect().bottom - 0.5);
+    expect(item?.top).toBeGreaterThanOrEqual(30 - 0.5);
     expect(item?.bottom).toBeLessThanOrEqual(window.innerHeight);
   },
 );

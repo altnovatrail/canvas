@@ -56,7 +56,7 @@ function withPictures(...pictures: [ref: string, alt: string][]): SheetTask {
   });
 }
 
-test("the statement stands above the sheet as text, in the module's language, and the element is as tall as both and the row of buttons", async () => {
+test("the statement stands above the sheet as text, in the module's language, and the element is as tall as both, the bar of buttons over the sheet taking no room", async () => {
   const { element, root, statement, canvas, view } = await sheet(
     400,
     sheetTask({
@@ -75,13 +75,14 @@ test("the statement stands above the sheet as text, in the module's language, an
   const sheetBox = root.querySelector(".sheet")?.getBoundingClientRect();
   const above = statement.getBoundingClientRect();
   expect(sheetBox?.top).toBeGreaterThanOrEqual(above.bottom);
-  // The row of the element's own buttons stands above the statement (R28).
-  const row = root.querySelector(".tools")?.getBoundingClientRect();
-  expect(above.top).toBeGreaterThanOrEqual(row?.bottom ?? Number.NaN);
-  expect(element.getBoundingClientRect().height).toBeCloseTo(
-    (row?.height ?? Number.NaN) + above.height + 1400 * 0.4,
-    0,
-  );
+  // The bar of the element's own buttons stands over the column, in no room of its own (R84):
+  // nothing stands above the statement.
+  const box = element.getBoundingClientRect();
+  expect(above.top).toBeCloseTo(box.top, 0);
+  expect(box.height).toBeCloseTo(above.height + 1400 * 0.4, 0);
+  const bar = root.querySelector(".tools")?.getBoundingClientRect();
+  expect(bar?.top).toBeGreaterThanOrEqual(box.top);
+  expect(bar?.bottom).toBeLessThanOrEqual(box.bottom);
 
   // The sheet below the statement takes its strokes where they are on it.
   level(canvas, view(), 100, 100, 300);
@@ -328,7 +329,7 @@ test("the addresses of the pictures' files go when the pictures leave the task o
 
 test("with the statement in sight, the eraser takes nothing below the container's bottom, where the canvas goes on out of sight", async () => {
   const lines = Array.from({ length: 4 }, (_, i) => ({ text: `Line ${i + 1} of the statement.` }));
-  // Tall enough for the row of three lines at 400 CSS px and the stroke at 100 under it (T94).
+  // Tall enough for the statement and the stroke at 100 under it.
   const { element, canvas, viewport, view } = await sheet(
     400,
     sheetTask({ statement: lines }),

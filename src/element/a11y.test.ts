@@ -1,14 +1,16 @@
 // The element by axe-core (T90 in RUN.md; R70 in docs/decisions.md): every kind of canvas has no
 // violation of WCAG 2.2 level AA that axe finds in its shadow tree (R90 spec), and a violation put
 // into it fails the helper. axe cannot tell the background of a workbook's printed lines, which the
-// layer of input covers: their contrast is this test's own. The same kinds in forced colours are
-// forced-colors.test.ts's.
+// layer of input covers, nor that of a worked example's labelled buttons or of a tooltip, which
+// stand over the canvas and the pictures of the sheet, which axe takes for images: their contrast
+// is this test's own, against the glass or the tooltip's fill over the paper, as the bar's ring of
+// focus is. The same kinds in forced colours are forced-colors.test.ts's.
 
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 import { sheetTask } from "../core/tasks.fixture.js";
-import { axeOf, contrast, KINDS } from "./axe.fixture.js";
-import { placed, settle } from "./pointer.fixture.js";
+import { axeOf, contrast, KINDS, WORKBOOK_INCOMPLETE } from "./axe.fixture.js";
+import { buttonOf, placed, settle } from "./pointer.fixture.js";
 
 const made: HTMLElement[] = [];
 
@@ -26,37 +28,43 @@ test.each(KINDS)("$name has no violation that axe finds", async ({ put, incomple
   await axeOf(await put(made), incomplete);
 });
 
+/** The container of an element given a height, laid out anew. */
+async function container(element: HTMLElement): Promise<HTMLElement> {
+  await settle();
+  const viewport = element.shadowRoot?.querySelector<HTMLElement>(".viewport");
+  if (!viewport) throw new Error("the element has no container");
+  return viewport;
+}
+
 test.each(KINDS)(
   "$name, of a height its content overflows, has none either: its container is a region with a stop of Tab, which axe's scrollable-region-focusable asks of it (T93)",
-  async ({ put, incomplete }) => {
+  async ({ put, incomplete, clear = incomplete }) => {
     const element = await put(made);
     element.style.height = "300px";
-    await settle();
-    const viewport = element.shadowRoot?.querySelector(".viewport");
-    expect(viewport?.getAttribute("role")).toBe("region");
-    await axeOf(element, incomplete);
+    const viewport = await container(element);
+    expect(viewport.getAttribute("role")).toBe("region");
+    await axeOf(element, clear);
   },
 );
 
 test.each(KINDS)(
   "$name, of that height, in a lang its labels are not in, has none either: the container is in English, which it is named in, and the column in German (T106)",
-  async ({ put, incomplete }) => {
+  async ({ put, incomplete, clear = incomplete }) => {
     const element = await put(made);
     element.style.height = "300px";
     element.setAttribute("lang", "de");
-    await settle();
-    const viewport = element.shadowRoot?.querySelector(".viewport");
-    expect([viewport?.getAttribute("role"), viewport?.getAttribute("lang")]).toEqual([
+    const viewport = await container(element);
+    expect([viewport.getAttribute("role"), viewport.getAttribute("lang")]).toEqual([
       "region",
       "en",
     ]);
-    expect(viewport?.firstElementChild?.getAttribute("lang")).toBe("de");
-    expect(["Sheet", "Workbook", "Worked example"]).toContain(viewport?.getAttribute("aria-label"));
-    await axeOf(element, incomplete);
+    expect(viewport.firstElementChild?.getAttribute("lang")).toBe("de");
+    expect(["Sheet", "Workbook", "Worked example"]).toContain(viewport.getAttribute("aria-label"));
+    await axeOf(element, clear);
   },
 );
 
-test.each(KINDS.filter(({ incomplete }) => incomplete.includes("color-contrast")))(
+test.each(KINDS.filter(({ incomplete }) => incomplete === WORKBOOK_INCOMPLETE))(
   "$name: its printed lines stand out from its paper, as axe cannot tell",
   async ({ put }) => {
     const root = (await put(made)).shadowRoot;
@@ -88,47 +96,145 @@ test("a violation in the shadow tree fails the helper, and so does an incomplete
   await expect(axeOf(element, ["color-contrast"])).rejects.toThrow(/incomplete nothing/);
 });
 
-/** The row's buttons as the element has them: a worked example's Next and Demo, hidden, first. */
-function rowOf(element: HTMLElement) {
-  const root = element.shadowRoot;
-  const row = root?.querySelector<HTMLElement>(".tools");
-  const [, , pen, , , , up] = [...(root?.querySelectorAll(".tools button") ?? [])];
-  if (!root || !row || !pen || !up) throw new Error("the element has no row of buttons");
-  return { root, row, pen, up };
+/**
+ * A colour as getComputedStyle gives it — rgb(), rgba(), or color(srgb …), as a color-mix() with
+ * transparent computes — laid over an opaque one, as rgb() of whole channels: what the eye sees of
+ * a fill seen through, such as the bar's glass over the paper.
+ */
+function over(colour: string, under: string): string {
+  const numbers = (text: string) => (text.match(/[\d.]+(?:e-?\d+)?/g) ?? []).map(Number);
+  const scale = colour.startsWith("color(srgb") ? 255 : 1;
+  const [r = 0, g = 0, b = 0, alpha = colour === "transparent" ? 0 : 1] = numbers(colour);
+  const below = numbers(under);
+  const mixed = [r, g, b].map((c, n) =>
+    Math.round(c * scale * alpha + (below[n] ?? 0) * (1 - alpha)),
+  );
+  return `rgb(${mixed.join(", ")})`;
 }
 
+/** The colour of the sheet's paper, which the bar and the tooltip stand over. */
+function paperOf(element: HTMLElement): string {
+  const paper = element.shadowRoot?.querySelector(".sheet");
+  if (!paper) throw new Error("the element has no sheet");
+  return getComputedStyle(paper).backgroundColor;
+}
+
+/** What a button of the bar or of a worked example's row stands on: its glass, over the paper. */
+function glassOf(element: HTMLElement, box: Element): string {
+  return over(getComputedStyle(box).backgroundColor, paperOf(element));
+}
+
+/** The bar's parts as the element has them, and the glass its buttons stand on. */
+function barOf(element: HTMLElement) {
+  const root = element.shadowRoot;
+  const bar = root?.querySelector<HTMLElement>(".tools");
+  if (!root || !bar) throw new Error("the element has no bar");
+  const [pen, zoomOut] = ["Pen", "Zoom out"].map((label) => buttonOf(element, label));
+  if (!pen || !zoomOut) throw new Error("the bar has no pen and no Zoom out");
+  return { root, bar, pen, zoomOut, glass: glassOf(element, bar) };
+}
+
+test("a colour seen through, laid over the paper, is what the eye sees of the two", () => {
+  expect(over("rgba(255, 255, 255, 0.76)", "rgb(0, 0, 0)")).toBe("rgb(194, 194, 194)");
+  expect(over("color(srgb 0 0.443137 0.890196 / 0.12)", "rgb(255, 255, 255)")).toBe(
+    "rgb(224, 238, 252)",
+  );
+  expect(over("transparent", "rgb(17, 17, 17)")).toBe("rgb(17, 17, 17)");
+  expect(over("rgb(1, 2, 3)", "rgb(17, 17, 17)")).toBe("rgb(1, 2, 3)");
+});
+
 test.each([
-  { theme: "the default theme", paper: undefined, ink: undefined },
-  { theme: "a dark theme of the consumer's", paper: "rgb(17, 17, 17)", ink: "rgb(238, 238, 238)" },
+  { theme: "the default theme", colours: {}, accent: "rgb(0, 113, 227)" },
+  {
+    theme: "a dark theme of the consumer's",
+    colours: {
+      paper: "#111111",
+      ink: "#eeeeee",
+      glass: "rgba(28, 28, 30, 0.76)",
+      accent: "#8fb4ff",
+    },
+    accent: "rgb(143, 180, 255)",
+  },
 ])(
-  "in $theme a button in focus shows a solid ring two pixels wide and two out, in the ink's colour, at least 3:1 to the row's paper, on the tool in use and on an unavailable Up alike (T92)",
-  async ({ paper, ink }) => {
+  "in $theme a button in focus shows a solid ring two pixels wide at its edge, in the accent, at least 3:1 to the glass over the paper and to the button's own fill, on the tool in use and on an unavailable Zoom out alike (T92)",
+  async ({ colours, accent }) => {
     const { element } = await placed(made, 400, undefined, { task: sheetTask() });
-    if (paper !== undefined) element.style.setProperty("--novatrail-canvas-paper", paper);
-    if (ink !== undefined) element.style.setProperty("--novatrail-canvas-ink", ink);
-    const { root, row, pen, up } = rowOf(element);
+    for (const [name, value] of Object.entries(colours)) {
+      element.style.setProperty(`--novatrail-canvas-${name}`, value);
+    }
+    const { root, bar, pen, zoomOut, glass } = barOf(element);
     await userEvent.tab();
-    for (const focused of [pen, up]) {
-      if (focused === up) await userEvent.keyboard("{End}{ArrowLeft}{ArrowLeft}{ArrowLeft}");
+    for (const focused of [pen, zoomOut]) {
+      if (focused === zoomOut) await userEvent.keyboard("{End}");
       expect(root.activeElement).toBe(focused);
       expect(focused.matches(":focus-visible")).toBe(true);
       const style = getComputedStyle(focused);
       expect([style.outlineStyle, style.outlineWidth, style.outlineOffset]).toEqual([
         "solid",
         "2px",
-        "2px",
+        "0px",
       ]);
-      expect(style.outlineColor).toBe(getComputedStyle(row).color);
-      // 1.4.11 Non-text Contrast: «at least 3:1 against adjacent color(s)» — the row's paper, which
-      // the ring stands on, its offset too. An opacity would pale the ring with its button.
-      expect(contrast(style.outlineColor, getComputedStyle(row).backgroundColor)).toBeGreaterThan(
-        3,
-      );
+      expect(style.outlineColor).toBe(accent);
+      // 1.4.11 Non-text Contrast: «at least 3:1 against adjacent color(s)» — the glass over the
+      // paper outside the ring, and inside it the button's own fill over that glass: the accent at
+      // an eighth on the tool in use. An opacity would pale the ring with its button.
+      for (const adjacent of [glass, over(style.backgroundColor, glass)]) {
+        expect(contrast(style.outlineColor, adjacent)).toBeGreaterThan(3);
+      }
       expect(style.opacity).toBe("1");
     }
-    expect(up.getAttribute("aria-disabled")).toBe("true");
+    expect(zoomOut.getAttribute("aria-disabled")).toBe("true");
     // The unavailable button is paler by its colour, between the ink and the paper.
-    expect(getComputedStyle(up).color).not.toBe(getComputedStyle(row).color);
-    await axeOf(element);
+    expect(getComputedStyle(zoomOut).color).not.toBe(getComputedStyle(bar).color);
+    // Its tooltip shows, over the canvas, which axe takes for an image, so that it cannot tell the
+    // tooltip's background: 1.4.3's «at least 4.5:1», over the paper, is this test's own.
+    const tip = root.querySelector<HTMLElement>(".tip");
+    if (!tip || tip.hidden) throw new Error("the button in focus shows no tooltip");
+    const { color, backgroundColor } = getComputedStyle(tip);
+    expect(contrast(color, over(backgroundColor, paperOf(element)))).toBeGreaterThanOrEqual(4.5);
+    await axeOf(element, ["color-contrast"]);
   },
 );
+
+test.each(KINDS.filter(({ name }) => name.startsWith("a worked example")))(
+  "$name: Next and Demo, labelled on the glass of its row, stand out from the glass over the paper, as axe cannot tell",
+  async ({ put }) => {
+    const element = await put(made);
+    // Every part closed: Next has one to open, and is available.
+    element.demoState = { opened: 0, hidden: false };
+    await settle();
+    const row = element.shadowRoot?.querySelector(".tools.row");
+    if (!row) throw new Error("the worked example has no row");
+    const glass = glassOf(element, row);
+    const labelled = ["Next", "Demo"].map((label) => buttonOf(element, label));
+    expect(labelled.every((button) => row.contains(button))).toBe(true);
+    expect(
+      labelled.map((button) => [button.textContent, button.hasAttribute("aria-disabled")]),
+    ).toEqual([
+      ["Next", false],
+      ["Demo", false],
+    ]);
+    // 1.4.3 Contrast (Minimum): «at least 4.5:1» for text of the size of the labels.
+    for (const button of labelled) {
+      const { color, backgroundColor } = getComputedStyle(button);
+      expect(contrast(color, over(backgroundColor, glass))).toBeGreaterThanOrEqual(4.5);
+    }
+  },
+);
+
+test("a bar taller than the band it stands in scrolls inside its glass and is still one stop of Tab, and End brings its last button whole into the glass's sight, as focus() does in Chromium and WebKit (1.4.10, 2.4.11)", async () => {
+  const { root, row, viewport } = await placed(made, 400, 300, { task: sheetTask() });
+  expect(row.scrollHeight).toBeGreaterThan(row.clientHeight);
+  await userEvent.tab();
+  expect(root.activeElement?.textContent).toBe("Pen");
+  await userEvent.tab();
+  expect(root.activeElement).toBe(viewport);
+  await userEvent.tab({ shift: true });
+  await userEvent.keyboard("{End}");
+  const last = root.activeElement;
+  expect(last?.textContent).toBe("Zoom out");
+  const box = last?.getBoundingClientRect();
+  const glass = row.getBoundingClientRect();
+  expect(box?.top).toBeGreaterThanOrEqual(glass.top - 0.5);
+  expect(box?.bottom).toBeLessThanOrEqual(glass.bottom + 0.5);
+});

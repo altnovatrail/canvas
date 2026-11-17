@@ -82,21 +82,16 @@ test("a label that names the place to cut at not once, or a place with no value,
 test("the buttons say the words of the table of architecture 6 spec", () => {
   const words = (tag: string) => {
     const { labels } = labelsFor(tag);
-    const { pen, eraser, undo, clear, up, down, zoomIn, zoomOut, left, right, next, demo, finger } =
-      labels;
-    return [pen, eraser, undo, clear, up, down, zoomIn, zoomOut, left, right, next, demo, finger];
+    const { pen, eraser, undo, clear, zoomIn, zoomOut, next, demo, finger } = labels;
+    return [pen, eraser, undo, clear, zoomIn, zoomOut, next, demo, finger];
   };
   expect(words("en")).toEqual([
     "Pen",
     "Eraser",
     "Undo",
     "Clear",
-    "Up",
-    "Down",
     "Zoom in",
     "Zoom out",
-    "Left",
-    "Right",
     "Next",
     "Demo",
     "Draw with finger",
@@ -106,12 +101,8 @@ test("the buttons say the words of the table of architecture 6 spec", () => {
     "Ластик",
     "Отменить",
     "Очистить",
-    "Выше",
-    "Ниже",
     "Крупнее",
     "Мельче",
-    "Левее",
-    "Правее",
     "Дальше",
     "Показ",
     "Рисовать пальцем",

@@ -128,7 +128,9 @@ describe("who writes", () => {
     bench.mode.on = true;
     expect(bench.down(A, 20)).toBe(false);
     expect(bench.role(A)).toBe("waits");
-    expect(bench.move(A, 30, { y: 140 })).toBe(false);
+    // Within the slop: one that goes further drags the sheet ("one finger in pen mode").
+    expect(bench.move(A, 30, { y: 100 + SLOP_PX })).toBe(false);
+    expect(bench.role(A)).toBe("waits");
     // Asked for the finger again, the next finger writes.
     bench.mode.on = false;
     expect(bench.down(B, 40)).toBe(true);
@@ -418,6 +420,183 @@ describe("two fingers", () => {
   });
 });
 
+describe("one finger in pen mode", () => {
+  /** A sheet in pen mode with the finger A down on it, at 1100, 100, at the time 0. */
+  function dragged(): Bench {
+    const bench = new Bench();
+    bench.mode.on = true;
+    bench.down(A, 0);
+    return bench;
+  }
+
+  test("a finger that came down too late to pair, while another waited, does nothing once the other drags, and takes no drag over when it lifts", () => {
+    const bench = dragged();
+    bench.down(B, PAIR_MS + 1, { x: 1300, y: 100 });
+    expect(bench.role(B)).toBe("waits");
+    bench.move(A, 200, { x: 1100, y: 120 });
+    expect([bench.role(A), bench.role(B)]).toEqual(["scrolls", "idle"]);
+    const steps = bench.steps.length;
+    bench.move(B, 210, { x: 1300, y: 160 });
+    bench.hands.lift(A);
+    bench.move(B, 220, { x: 1300, y: 170 });
+    expect([bench.role(B), bench.steps.length, bench.hands.scrolling]).toEqual([
+      "idle",
+      steps,
+      false,
+    ]);
+  });
+
+  test("a finger drags nothing while a sheet of the page is written on, and drags once it is not", () => {
+    const mode = new PenMode();
+    let written = true;
+    mode.enlist(() => written);
+    const bench = new Bench(mode);
+    mode.on = true;
+    bench.down(A, 0);
+    bench.move(A, 10, { x: 1100, y: 130 });
+    expect([bench.role(A), bench.steps]).toEqual(["waits", []]);
+    written = false;
+    bench.move(A, 20, { x: 1100, y: 140 });
+    expect(bench.role(A)).toBe("scrolls");
+    expect(bench.steps).toEqual([{ dx: 0, dy: 40 - SLOP_PX, fresh: true }]);
+  });
+
+  test(`a finger that goes past ${SLOP_PX} px with no second drags the sheet alone, from where it came down by its travel past the slop, then in step with it, writing nothing (R84)`, () => {
+    const bench = dragged();
+    // To the slop's edge: it waits on, and nothing moves.
+    expect(bench.move(A, 10, { x: 1100, y: 100 + SLOP_PX })).toBe(false);
+    expect([bench.role(A), bench.hands.scrolling, bench.steps]).toEqual(["waits", false, []]);
+    // 12 down, 4 past it: the drag begins, without a jump.
+    expect(bench.move(A, 20, { x: 1100, y: 112 })).toBe(false);
+    expect([bench.role(A), bench.hands.scrolling]).toEqual(["scrolls", true]);
+    expect(bench.steps).toEqual([{ dx: 0, dy: 12 - SLOP_PX, fresh: true }]);
+    expect(bench.move(A, 30, { x: 1100, y: 120 })).toBe(false);
+    bench.move(A, 40, { x: 1100, y: 90 });
+    expect(bench.steps.slice(1)).toEqual([
+      { dx: 0, dy: 8, fresh: false },
+      { dx: 0, dy: -30, fresh: false },
+    ]);
+    expect([bench.writing, bench.dropped]).toEqual([undefined, []]);
+    // A first move far past the slop, up or down, goes by its share past it alone.
+    for (const y of [160, 40]) {
+      const far = dragged();
+      far.move(A, 10, { x: 1100, y });
+      const dy = y - 100;
+      expect(far.steps).toEqual([{ dx: 0, dy: dy - Math.sign(dy) * SLOP_PX, fresh: true }]);
+    }
+  });
+
+  test.each([
+    // 10 right and 4 down, more than twice as far across: across alone, to the end of the drag.
+    { way: "across", to: [1110, 104], on: [1110, 130], back: [1090, 130], last: [-20, 0] },
+    // 4 right and 20 down: down alone.
+    { way: "down", to: [1104, 120], on: [1130, 120], back: [1130, 110], last: [0, -10] },
+    // 9 right and 12 down, neither twice the other: both ways, by the same share of each.
+    { way: "both ways", to: [1109, 112], on: [1109, 112], back: [1114, 117], last: [5, 5] },
+  ])(
+    `a finger that goes ${RAIL} times further one way than the other drags the sheet that way alone, as two fingers do: $way`,
+    ({ to, on, back, last }) => {
+      const bench = dragged();
+      const [x = 0, y = 0] = to;
+      bench.move(A, 10, { x, y });
+      const [dx, dy] = [x - 1100, y - 100];
+      const gone = Math.hypot(dx, dy);
+      const past = (d: number) => (d * (gone - SLOP_PX)) / gone;
+      const across = Math.abs(dx) * RAIL > Math.abs(dy);
+      const down = Math.abs(dy) * RAIL > Math.abs(dx);
+      expect(bench.steps).toEqual([
+        { dx: across ? past(dx) : 0, dy: down ? past(dy) : 0, fresh: true },
+      ]);
+      // A move off the rail, or none, moves nothing, and back on it the sheet follows.
+      bench.move(A, 20, { x: on[0], y: on[1] });
+      expect(bench.steps).toHaveLength(1);
+      bench.move(A, 30, { x: back[0], y: back[1] });
+      expect(bench.steps.slice(1)).toEqual([{ dx: last[0], dy: last[1], fresh: false }]);
+    },
+  );
+
+  test("on a sheet that does not scroll across, a finger drags by its travel down alone, however far across it goes", () => {
+    const bench = dragged();
+    bench.across = false;
+    // 40 across and 6 down: past the slop, so no longer waiting, but within it down.
+    bench.move(A, 10, { x: 1140, y: 106 });
+    expect([bench.role(A), bench.steps]).toEqual(["scrolls", []]);
+    bench.move(A, 20, { x: 1160, y: 118 });
+    expect(bench.steps).toEqual([{ dx: 0, dy: 18 - SLOP_PX, fresh: true }]);
+    bench.move(A, 30, { x: 1180, y: 123 });
+    expect(bench.steps.slice(1)).toEqual([{ dx: 0, dy: 5, fresh: false }]);
+  });
+
+  test(`a second finger after the drag began does nothing, within ${PAIR_MS} ms too, and the drag goes on, till its finger lifts`, () => {
+    const bench = dragged();
+    bench.move(A, 10, { x: 1100, y: 120 });
+    expect(bench.down(B, 50)).toBe(false);
+    expect(bench.down(C, 60)).toBe(false);
+    expect([bench.role(A), bench.role(B), bench.role(C)]).toEqual(["scrolls", "idle", "idle"]);
+    // The second finger moves nothing, and the first drags on.
+    bench.move(B, 70, { x: 1200, y: 160 });
+    bench.move(A, 80, { x: 1100, y: 130 });
+    expect(bench.steps).toEqual([
+      { dx: 0, dy: 20 - SLOP_PX, fresh: true },
+      { dx: 0, dy: 10, fresh: false },
+    ]);
+    bench.up(A);
+    expect(bench.hands.scrolling).toBe(false);
+    expect([bench.role(B), bench.role(C)]).toEqual(["idle", "idle"]);
+    bench.move(B, 90, { x: 1200, y: 200 });
+    expect(bench.steps).toHaveLength(2);
+    // Once they have lifted, a new finger waits, and drags afresh from where it came down.
+    bench.up(B);
+    bench.up(C);
+    bench.down(A, 100, { x: 1100, y: 300 });
+    expect(bench.role(A)).toBe("waits");
+    bench.move(A, 110, { x: 1100, y: 290 });
+    expect(bench.steps.slice(2)).toEqual([{ dx: 0, dy: -10 + SLOP_PX, fresh: true }]);
+  });
+
+  test("a pen ends a drag and leaves its finger idle till it lifts, and neither a pen nor a mouse drags", () => {
+    const bench = dragged();
+    bench.move(A, 10, { x: 1100, y: 120 });
+    expect(bench.down(PEN, 20)).toBe(true);
+    expect([bench.role(A), bench.hands.scrolling]).toEqual(["idle", false]);
+    bench.move(A, 30, { x: 1100, y: 160 });
+    expect(bench.move(PEN, 30, { y: 300 })).toBe(true);
+    bench.up(PEN);
+    bench.move(A, 40, { x: 1100, y: 200 });
+    expect(bench.role(A)).toBe("idle");
+    bench.up(A);
+    expect(bench.down(MOUSE, 50)).toBe(true);
+    expect(bench.move(MOUSE, 60, { y: 300 })).toBe(true);
+    expect(bench.steps).toHaveLength(1);
+  });
+
+  test("without pen mode one finger writes however far it goes, and a palm never drags, nor a finger once it grows into one", () => {
+    const free = new Bench();
+    expect(free.down(A, 0)).toBe(true);
+    expect(free.move(A, 10, { x: 1100, y: 200 })).toBe(true);
+    expect([free.role(A), free.steps]).toEqual(["writes", []]);
+
+    const palm = new Bench();
+    palm.mode.on = true;
+    palm.down(A, 0, { size: PALM_PX + 1 });
+    palm.move(A, 10, { x: 1100, y: 200, size: PALM_PX + 1 });
+    palm.move(A, 20, { x: 1100, y: 300 });
+    expect([palm.role(A), palm.hands.scrolling, palm.steps]).toEqual(["palm", false, []]);
+
+    const grown = dragged();
+    grown.move(A, 10, { x: 1100, y: 120 });
+    grown.move(A, 20, { x: 1100, y: 140, size: PALM_PX + 1 });
+    expect([grown.role(A), grown.hands.scrolling]).toEqual(["palm", false]);
+    grown.move(A, 30, { x: 1100, y: 200 });
+    expect(grown.steps).toHaveLength(1);
+    // A reset in the middle of a drag forgets it too.
+    const reset = dragged();
+    reset.move(A, 10, { x: 1100, y: 120 });
+    reset.hands.reset();
+    expect([reset.hands.scrolling, reset.hands.roles.size]).toEqual([false, 0]);
+  });
+});
+
 test("every sequence of five touches, pens, mice and switches keeps the rules of the hands", {
   timeout: budget(1_855),
 }, () => {
@@ -455,6 +634,7 @@ test("every sequence of five touches, pens, mice and switches keeps the rules of
       const penMode = bench.mode.on;
       const writing = bench.writing;
       const scrolled = bench.steps.length;
+      const before = bench.hands.roles;
       if (step === "finger") {
         bench.mode.on = false;
       } else if (step.endsWith("down")) {
@@ -497,8 +677,19 @@ test("every sequence of five touches, pens, mice and switches keeps the rules of
           breaks("a touch goes on after a pen came down");
         }
       }
-      if (scrolling !== 0 && scrolling !== 2) breaks("a gesture of other than two fingers");
-      if (bench.steps.length > scrolled && (scrolling !== 2 || bench.writing === PEN)) {
+      if (scrolling > 2) breaks("a gesture of more than two fingers");
+      const lone =
+        scrolling === 1 ? [...roles].find(([, role]) => role === "scrolls")?.[0] : undefined;
+      const scrollers = [...before.values()].filter((role) => role === "scrolls").length;
+      if (lone !== undefined && !(before.get(lone) === "scrolls" && scrollers === 1)) {
+        // A finger drags alone only once it waited and went past the slop by a move of its own.
+        const went = (y.get(lone) ?? 100) - 100;
+        if (before.get(lone) !== "waits" || lone !== pointerId || went <= SLOP_PX) {
+          breaks("a finger drags alone that neither waited nor went past the slop, or one of two");
+        }
+      }
+      if (scrollers === 1 && scrolling === 2) breaks("a second finger joins one that drags");
+      if (bench.steps.length > scrolled && (scrolling === 0 || bench.writing === PEN)) {
         breaks("the sheet scrolls without a gesture, or while a pen writes");
       }
       if (bench.mode.on && bench.writing !== undefined && kindOf(bench.writing) === "touch") {
