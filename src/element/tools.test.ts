@@ -127,6 +127,17 @@ const said = (tip: HTMLElement) => (tip.hidden ? null : tip.textContent);
 const PAST_GRACE = TIP_GRACE_MS + 150;
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * The mouse moved off the element, onto a button of the page below it: the test before may have
+ * left it where a button of this element now stands, which shows its tooltip till its grace ends.
+ */
+async function off(): Promise<HTMLButtonElement> {
+  const away = pageButton("Away");
+  await userEvent.hover(away);
+  await wait(PAST_GRACE);
+  return away;
+}
+
 test("the bar is a vertical toolbar of the pen and the eraser, undo and clear, named in English for an element of no language, before the sheet in the order of Tab", async () => {
   const { element, root, row } = await sheet();
   const found = buttons(element);
@@ -396,11 +407,11 @@ test("the bar is one stop of Tab, the arrows down and up move between its button
   expect(stops()).toEqual(["Pen"]);
   before.focus();
   await userEvent.tab();
+  expect(root.activeElement?.textContent).toBe("Pen");
   // Undo, Clear and Zoom out are reached while unavailable, the arrows go round the bar, Home and
   // End go to its ends, and a key with Control is not the bar's, nor are the arrows across a bar
   // that runs down: the keys, and the button they leave focused.
   await moves(root, [
-    ["", "Pen"],
     ["{ArrowDown}", "Eraser"],
     ["{ArrowDown}{ArrowDown}", "Clear"],
     ["{ArrowDown}", "Zoom in"],
@@ -658,7 +669,8 @@ test.each(["ltr", "rtl"])(
     const parent = document.createElement("div");
     parent.dir = dir;
     document.body.append(parent);
-    const { element, root, row, viewport } = await sheet(400, 600, parent);
+    // A sheet 700 pixels tall, by its width, in an element of 600: the container scrolls it.
+    const { element, root, row, viewport } = await sheet(500, 600, parent);
     const box = element.getBoundingClientRect();
     const bar = row.getBoundingClientRect();
     expect(bar.width).toBeCloseTo(52, 1);
@@ -759,6 +771,7 @@ test("the tool in use is filled with the accent at an eighth and drawn in it, a 
 
 test("a mouse over an icon button shows its label in a tooltip beside the bar, level with the button, in the element's language, hidden from a screen reader; Escape dismisses it till another button, and it goes with the element", async () => {
   const { element, root, row } = await sheet(400, 600);
+  await off();
   const tip = tipOf(root);
   expect(tip.getAttribute("aria-hidden")).toBe("true");
   expect(said(tip)).toBeNull();
@@ -793,7 +806,7 @@ test("a mouse over an icon button shows its label in a tooltip beside the bar, l
 
 test("a tooltip stays a moment after the pointer leaves its button, and while the pointer is on it", async () => {
   const { element, root } = await sheet(400, 600);
-  const away = pageButton("Away");
+  const away = await off();
   const tip = tipOf(root);
   const pen = button(element, "Pen");
   await userEvent.hover(pen);
@@ -815,6 +828,7 @@ test("a tooltip stays a moment after the pointer leaves its button, and while th
 test("the keyboard's focus on an icon button shows its tooltip, the arrows move it with the focus, Escape dismisses it, and leaving the bar hides it", async () => {
   const before = pageButton("Before");
   const { root } = await sheet(400, 600);
+  await off();
   const tip = tipOf(root);
   before.focus();
   await userEvent.tab();
@@ -835,7 +849,7 @@ test("the keyboard's focus on an icon button shows its tooltip, the arrows move 
 test("on a worked example Next and Demo, which show their labels, have no tooltip, and the zoom's buttons have theirs above the row", async () => {
   const { element, root, row } = await sheet(400, 600);
   element.workedExample = workedExample();
-  await settle();
+  await off();
   const tip = tipOf(root);
   for (const name of ["Next", "Demo"]) {
     await userEvent.hover(button(element, name));
@@ -853,6 +867,7 @@ test.runIf(devtools)(
   "a finger's touch of an icon button presses it and shows no tooltip: a finger has no hover",
   async () => {
     const { element, root } = await sheet(400, 600);
+    await off();
     const finger = { id: 1, ...middle(button(element, "Eraser")) };
     await touches("touchStart", [finger]);
     await touches("touchEnd", [finger]);

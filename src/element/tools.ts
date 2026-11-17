@@ -85,7 +85,8 @@ export const TIP_GRACE_MS = 200;
 export class Tools {
   /**
    * What the element puts beside its scroll container: the band the bar stands in the middle of,
-   * which takes no pointer, and in it the bar and its tooltip.
+   * as wide as nothing, so that only the bar and its tooltip, which stand out of it, take a pointer,
+   * and as the element does: a consumer's pointer-events: none stops them too (R20, R28).
    */
   readonly rail = document.createElement("div");
   /** The bar: a toolbar, named in the element's language. */
@@ -156,6 +157,8 @@ export class Tools {
     this.element.className = "tools";
     this.element.setAttribute("role", "toolbar");
     this.element.setAttribute("aria-orientation", "vertical");
+    // A bar that scrolls inside its glass is no stop of Tab of its own, as Firefox makes it.
+    this.element.tabIndex = -1;
     this.tip.className = "tip";
     // The tooltip says what the button's name says already: a screen reader reads that alone.
     this.tip.setAttribute("aria-hidden", "true");
@@ -366,7 +369,7 @@ export class Tools {
     const rail = this.rail.getBoundingClientRect();
     const bar = this.element.getBoundingClientRect();
     const box = button.getBoundingClientRect();
-    const scale = this.rail.offsetWidth > 0 ? rail.width / this.rail.offsetWidth : 1;
+    const scale = this.rail.offsetHeight > 0 ? rail.height / this.rail.offsetHeight : 1;
     const above = this.#kind === "example";
     const x = above ? box.left + box.width / 2 : bar.right + 8 * scale;
     const y = above ? bar.top - 8 * scale : box.top + box.height / 2;

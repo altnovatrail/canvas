@@ -2,7 +2,7 @@
 // docs/decisions.md): app's CI does not look into the canvas's element, so canvas's own does (R90
 // spec). The rules are those of WCAG 2.0, 2.1 and 2.2 at levels A and AA (wcag.fixture.ts). Its
 // target-size measures 2.5.8, 24 × 24 CSS px; the 44 × 44 of 2.5.5, which R90 spec asks of canvas
-// too, is the row's own test (R28). What axe cannot tell it leaves incomplete: a test names those
+// too, is the bar's own test (R28). What axe cannot tell it leaves incomplete: a test names those
 // it expects of its kind of canvas, so that a new one does not pass in silence. Like the tests, the
 // build leaves this module out, and the package never has it.
 
@@ -75,11 +75,23 @@ export function contrast(a: string, b: string): number {
  * input covers, so that axe cannot tell their background. */
 export const WORKBOOK_INCOMPLETE: readonly string[] = ["color-contrast"];
 
+/** What axe leaves incomplete on a worked example on a sheet: the contrast of the labels of Next
+ * and Demo, whose row stands over the sheet's canvas and pictures, which axe takes for images, so
+ * that it cannot tell their background (R84). a11y.test.ts measures it against the glass over the
+ * paper. */
+export const EXAMPLE_INCOMPLETE: readonly string[] = ["color-contrast"];
+
 /** A kind of canvas axe looks at: how to put one on the page, and what axe leaves incomplete. */
 export interface Kind {
   readonly name: string;
   readonly put: (made: HTMLElement[]) => Promise<NovatrailCanvas>;
   readonly incomplete: readonly string[];
+  /**
+   * What axe leaves incomplete where the buttons stand on what it can tell, if not `incomplete`:
+   * on the opaque Canvas of forced colours, and on an element 300 CSS px tall, where a worked
+   * example's row stands over the text of its open parts rather than over the sheet.
+   */
+  readonly clear?: readonly string[];
 }
 
 /** The consumer's media, a new one for each element: every picture the same file of four colours,
@@ -172,7 +184,8 @@ export const KINDS: readonly Kind[] = [
   {
     name: "a worked example on a sheet, with pictures",
     put: example(workedExample(), DEMO.filter((part) => "picture" in part).length),
-    incomplete: [],
+    incomplete: EXAMPLE_INCOMPLETE,
+    clear: [],
   },
   {
     name: "a worked example on a workbook",

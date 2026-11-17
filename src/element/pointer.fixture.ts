@@ -110,9 +110,10 @@ export function watch(node: Node): () => MutationRecord[] {
 }
 
 /**
- * A sheet `width` CSS pixels wide in `parent`, as tall as its row, statement and sheet unless given
- * a height, laid out and drawn, with the parts of it the tests reach for. What goes on the page
- * goes into `made`, for the test to take off: the element, or the parent it was put in.
+ * A sheet `width` CSS pixels wide in `parent`, as tall as its statement and sheet unless given a
+ * height, laid out and drawn, with the parts of it the tests reach for — `row` is the bar of its
+ * buttons, which stands over the sheet's left edge (R84). What goes on the page goes into `made`,
+ * for the test to take off: the element, or the parent it was put in.
  */
 export async function placed(
   made: HTMLElement[],
@@ -131,7 +132,7 @@ export async function placed(
   const canvas = root?.querySelector("canvas");
   const viewport = root?.querySelector<HTMLElement>(".viewport");
   const row = root?.querySelector<HTMLElement>(".tools");
-  if (!root || !canvas || !viewport || !row) throw new Error("the element has no row and canvas");
+  if (!root || !canvas || !viewport || !row) throw new Error("the element has no bar and canvas");
   const view = (): View => {
     const { view } = probe(element);
     if (view === undefined) throw new Error("the element is not laid out");
@@ -140,7 +141,6 @@ export async function placed(
   return { element, root, canvas, viewport, row, view };
 }
 
-/** A page taller than the screen, which scrolls the element: it goes into `made`, to be taken off. */
 /** A button's icon, the SVG before its label (R46). */
 export function iconOf(button: Element): SVGSVGElement {
   const icon = button.firstElementChild;
@@ -148,6 +148,7 @@ export function iconOf(button: Element): SVGSVGElement {
   return icon;
 }
 
+/** A page taller than the screen, which scrolls the element: it goes into `made`, to be taken off. */
 export function spacer(made: HTMLElement[]): void {
   const rest = document.createElement("div");
   rest.style.height = "2000px";

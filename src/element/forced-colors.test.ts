@@ -51,6 +51,19 @@ function system(keyword: string): string {
   return colour;
 }
 
+/** An element's bar and its parts: a worked example's Next and Demo, hidden on a sheet, first. */
+function barOf(element: HTMLElement) {
+  const root = element.shadowRoot;
+  const bar = root?.querySelector(".tools");
+  const line = root?.querySelector(".tools .line");
+  const tip = root?.querySelector<HTMLElement>(".tip");
+  const [, , pen, eraser, undo, , , zoomOut] = [...(root?.querySelectorAll(".tools button") ?? [])];
+  if (!root || !bar || !line || !tip || !pen || !eraser || !undo || !zoomOut) {
+    throw new Error("the element has no bar of buttons");
+  }
+  return { root, bar, line, tip, pen, eraser, undo, zoomOut };
+}
+
 /** "rgb(r, g, b)" as its three numbers. */
 function channels(colour: string): number[] {
   return (colour.match(/\d+(\.\d+)?/g) ?? []).slice(0, 3).map(Number);
@@ -132,7 +145,7 @@ test("with forced colours the sheet takes the system's colours, whatever the con
   expect(new Uint8Array(await work.png.arrayBuffer())).toEqual(own.png);
 });
 
-test("with forced colours the row of buttons takes the system's colours of buttons, its icons too: the tool in use the highlight's, an unavailable button the grey of disabled text", async () => {
+test("with forced colours the bar takes the system's colours, its glass the canvas's within a border of text, its buttons those of buttons, their icons too: the tool in use the highlight's, an unavailable button the grey of disabled text", async () => {
   const theme = document.createElement("div");
   theme.style.setProperty("--novatrail-canvas-ink", "rgb(0, 0, 255)");
   theme.style.setProperty("--novatrail-canvas-paper", "rgb(255, 255, 200)");
@@ -142,12 +155,14 @@ test("with forced colours the row of buttons takes the system's colours of butto
   element.style.width = "400px";
   theme.append(element);
   await settle();
-  const root = element.shadowRoot;
-  const row = root?.querySelector(".tools");
-  // A worked example's Next and Demo come first, hidden on a sheet (R42).
-  const [, , pen, eraser, undo, , up] = [...(root?.querySelectorAll(".tools button") ?? [])];
-  if (!row || !pen || !eraser || !undo || !up) throw new Error("the element has no row of buttons");
-  expect(getComputedStyle(row).backgroundColor).toBe(system("Canvas"));
+  const { bar, line, pen, eraser, undo, zoomOut } = barOf(element);
+  // The glass is the canvas's, whatever blurs behind it, and its edge and lines the text's.
+  expect(getComputedStyle(bar).backgroundColor).toBe(system("Canvas"));
+  expect([getComputedStyle(bar).borderTopStyle, getComputedStyle(bar).borderTopColor]).toEqual([
+    "solid",
+    system("CanvasText"),
+  ]);
+  expect(getComputedStyle(line).backgroundColor).toBe(system("CanvasText"));
   expect(getComputedStyle(eraser).backgroundColor).toBe(system("ButtonFace"));
   expect(getComputedStyle(eraser).color).toBe(system("ButtonText"));
   expect(getComputedStyle(eraser).borderTopColor).toBe(system("ButtonBorder"));
@@ -158,8 +173,8 @@ test("with forced colours the row of buttons takes the system's colours of butto
   // An icon is the colour of its button's text, whatever the mode makes it (R46).
   expect(getComputedStyle(iconOf(eraser)).fill).toBe(system("ButtonText"));
   expect(getComputedStyle(iconOf(pen)).fill).toBe(system("HighlightText"));
-  // Nothing to undo yet, and nothing above to scroll back up to (R33).
-  for (const unavailable of [undo, up]) {
+  // Nothing to undo yet, and no smaller zoom than the fit (T94).
+  for (const unavailable of [undo, zoomOut]) {
     expect(unavailable.getAttribute("aria-disabled")).toBe("true");
     expect(getComputedStyle(unavailable).color).toBe(system("GrayText"));
     expect(getComputedStyle(unavailable).borderTopColor).toBe(system("GrayText"));
@@ -167,25 +182,33 @@ test("with forced colours the row of buttons takes the system's colours of butto
   }
 });
 
-test("with forced colours the ring of a button in focus is the system's highlight, on the tool in use and on an unavailable button alike (T92)", async () => {
+test("with forced colours the ring of a button in focus is the system's highlight, on the tool in use and on an unavailable button alike (T92), and its tooltip the canvas's, with the text's colour and border", async () => {
   const element = document.createElement("novatrail-canvas");
   element.style.width = "400px";
   element.style.setProperty("--novatrail-canvas-ink", "rgb(0, 0, 255)");
+  element.style.setProperty("--novatrail-canvas-accent", "rgb(255, 0, 0)");
   document.body.append(element);
   made.push(element);
   await settle();
-  const root = element.shadowRoot;
-  const [, , pen, , , , up] = [...(root?.querySelectorAll(".tools button") ?? [])];
-  if (!pen || !up) throw new Error("the element has no row of buttons");
+  const { root, pen, zoomOut, tip } = barOf(element);
   await userEvent.tab();
-  for (const focused of [pen, up]) {
-    if (focused === up) await userEvent.keyboard("{End}{ArrowLeft}{ArrowLeft}{ArrowLeft}");
-    expect(root?.activeElement).toBe(focused);
+  for (const focused of [pen, zoomOut]) {
+    if (focused === zoomOut) await userEvent.keyboard("{End}");
+    expect(root.activeElement).toBe(focused);
     expect(focused.matches(":focus-visible")).toBe(true);
     const style = getComputedStyle(focused);
     expect(style.outlineStyle).toBe("solid");
     expect(style.outlineWidth).toBe("2px");
     expect(style.outlineColor).toBe(system("Highlight"));
+    // The keyboard's focus shows the button's tooltip, in the system's colours, not its own.
+    expect([tip.hidden, tip.textContent]).toEqual([false, focused.textContent]);
+    const shown = getComputedStyle(tip);
+    expect([
+      shown.backgroundColor,
+      shown.color,
+      shown.borderTopStyle,
+      shown.borderTopColor,
+    ]).toEqual([system("Canvas"), system("CanvasText"), "solid", system("CanvasText")]);
   }
 });
 
@@ -273,7 +296,7 @@ test("with forced colours a worked example's Demo draws its icon in the colour o
   const root = element.shadowRoot;
   const [next, demo] = [...(root?.querySelectorAll(".tools .demo button") ?? [])];
   if (!(next instanceof HTMLButtonElement) || !demo)
-    throw new Error("the row has no Next and Demo");
+    throw new Error("the bar has no Next and Demo");
   const icon = iconOf(demo);
   expect(getComputedStyle(icon).fill).toBe(system("ButtonText"));
   // The paragraph and the picture beside the sheet, which stands in its frame till its file comes.
@@ -309,7 +332,7 @@ test("with forced colours a picture on an area of the sheet keeps the colours of
   made.push(element);
   await arrive();
   const next = element.shadowRoot?.querySelector<HTMLButtonElement>(".tools .demo button");
-  if (!next) throw new Error("the row has no Next");
+  if (!next) throw new Error("the bar has no Next");
   next.click();
   // The middle of each quarter of the picture, on the sheet.
   const shown = await sheetColours(element, [
@@ -344,9 +367,10 @@ function highlight(): Pair[] {
 
 test.each(KINDS)(
   "$name has no violation that axe finds in forced colours either (T90)",
-  async ({ put, incomplete }) => {
+  async ({ put, incomplete, clear = incomplete }) => {
     // The selected tool is in the system's Highlight and HighlightText, whose contrast is the
     // system's, in every engine: Firefox's own palette has them 2.94 to 1, white on #3399ff (T111).
-    await axeOf(await put(made), incomplete, highlight());
+    // The bar's glass is the mode's opaque Canvas, and axe tells what stands on it (R84).
+    await axeOf(await put(made), clear, highlight());
   },
 );

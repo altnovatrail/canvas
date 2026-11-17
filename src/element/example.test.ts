@@ -20,7 +20,7 @@ import { PEN_MODE } from "./session.js";
 // A lesson's worked example on the element, in a browser (R42): the property workedExample, which
 // the element takes instead of a task, and the mode in which the learner does not write — the
 // canvas takes no input, a finger on the sheet scrolls it as the browser does, and there is no work
-// to give, to check or to mark. Its row is tools.test.ts's, its layers layers.test.ts's.
+// to give, to check or to mark. Its buttons are tools.test.ts's, its layers layers.test.ts's.
 
 const made: HTMLElement[] = [];
 afterEach(async () => {
@@ -32,7 +32,7 @@ afterEach(async () => {
 });
 
 /**
- * A sheet 400 CSS pixels wide, as tall as its row, statement and sheet unless given a height, with
+ * A sheet 400 CSS pixels wide, as tall as its statement and sheet unless given a height, with
  * what it tells: its `historychange` events, and how many `toolchange` events it sent.
  */
 async function sheet(height?: number) {

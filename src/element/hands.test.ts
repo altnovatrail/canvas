@@ -22,8 +22,9 @@ import { probe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
 
 // Input on a tablet in Chromium (R29): a pen, fingers and a palm, through the DevTools protocol as
-// the browser gives them — the pen mode they put the page in, the finger's button in the row, and
-// two fingers scrolling the sheet or the page.
+// the browser gives them — the pen mode they put the page in, the finger's button on the bar, one
+// finger in pen mode dragging the sheet (R84), and two fingers scrolling the sheet or the page. The
+// bar stands over the sheet's left edge, so the pointers here come down to the right of it.
 
 const made: HTMLElement[] = [];
 beforeEach(() => {
@@ -39,16 +40,16 @@ afterEach(async () => {
   window.scrollTo(0, 0);
 });
 
-/** A sheet `width` CSS pixels wide, as tall as its row, statement and sheet unless given a height. */
+/** A sheet `width` CSS pixels wide, as tall as its statement and sheet unless given a height. */
 async function sheet(
   width = 400,
   height?: number,
   options: { parent?: HTMLElement; task?: Task } = {},
 ) {
   const parts = await placed(made, width, height, options);
-  // The finger's button is the row's last (R33).
+  // The finger's button is the bar's last (R29).
   const finger = [...parts.row.querySelectorAll("button")].at(-1);
-  if (finger === undefined) throw new Error("the row has no finger's button");
+  if (finger === undefined) throw new Error("the bar has no finger's button");
   return { ...parts, finger };
 }
 
@@ -88,13 +89,14 @@ async function swipe(canvas: HTMLCanvasElement, view: () => View, x: number, y: 
 }
 
 /**
- * Two fingers that come down together in the middle of the sheet's visible part and go `dy` CSS
- * pixels down the screen in five steps, lifting at the end unless told to stay.
+ * Two fingers that come down together in the middle of the sheet's visible part, or the first of
+ * them `alone`, and go `dy` CSS pixels down the screen in five steps, lifting at the end unless
+ * told to stay.
  */
 async function twoFingers(
   viewport: HTMLElement,
   dy: number,
-  { stay = false }: { stay?: boolean } = {},
+  { stay = false, alone = false }: { stay?: boolean; alone?: boolean } = {},
 ): Promise<Finger[]> {
   const box = viewport.getBoundingClientRect();
   const top = Math.max(box.top, 0);
@@ -104,11 +106,12 @@ async function twoFingers(
   // The second finger 10 ms after the first by the events' own times, well within PAIR_MS: a frame
   // between the two on a loaded runner may take longer than that by the clock.
   const down = Date.now() / 1000;
+  const fingers = alone ? [one] : [one, two];
   await touches("touchStart", [one], down);
-  await touches("touchStart", [one, two], down + 0.01);
-  let now = [one, two];
+  if (!alone) await touches("touchStart", fingers, down + 0.01);
+  let now = fingers;
   for (let step = 1; step <= 5; step++) {
-    now = moved([one, two], (dy * step) / 5);
+    now = moved(fingers, (dy * step) / 5);
     await touches("touchMove", now);
   }
   if (!stay) await touches("touchEnd", []);
@@ -125,18 +128,18 @@ test.runIf(devtools)(
   },
   async () => {
     const { element, canvas, view } = await sheet();
-    await swipe(canvas, view, 100, 100);
+    await swipe(canvas, view, 300, 100);
     expect(ids(element)).toEqual([1]);
     expect(probe(element).strokes[0]?.kind).toBe("touch");
     expect(PEN_MODE.on).toBe(false);
-    await pen(canvas, view, [100, 300], [400, 300]);
+    await pen(canvas, view, [300, 300], [600, 300]);
     expect(PEN_MODE.on).toBe(true);
     expect(ids(element)).toEqual([1, 2]);
-    await swipe(canvas, view, 100, 500);
+    await swipe(canvas, view, 300, 500);
     expect(ids(element)).toEqual([1, 2]);
-    await input("mousePressed", at(canvas, view(), 100, 700));
-    await input("mouseMoved", at(canvas, view(), 300, 700));
-    await input("mouseReleased", at(canvas, view(), 300, 700));
+    await input("mousePressed", at(canvas, view(), 300, 700));
+    await input("mouseMoved", at(canvas, view(), 500, 700));
+    await input("mouseReleased", at(canvas, view(), 500, 700));
     expect(ids(element)).toEqual([1, 2, 3]);
   },
 );
@@ -151,12 +154,12 @@ test.runIf(devtools)(
     const named = () =>
       page.elementLocator(element).getByRole("button", { name: "Draw with finger" });
     expect(finger.hidden).toBe(true);
-    // While the pen writes, the row stays as it is.
-    await input("mousePressed", at(canvas, view(), 100, 300), { pointerType: "pen", force: 0.5 });
+    // While the pen writes, the bar stays as it is.
+    await input("mousePressed", at(canvas, view(), 300, 300), { pointerType: "pen", force: 0.5 });
     await settle();
     expect(PEN_MODE.on).toBe(true);
     expect(finger.hidden).toBe(true);
-    await input("mouseReleased", at(canvas, view(), 100, 300), { pointerType: "pen", force: 0 });
+    await input("mouseReleased", at(canvas, view(), 300, 300), { pointerType: "pen", force: 0 });
     await expect.element(named()).toBeVisible();
     element.lang = "ru";
     const russian = labelsFor("ru").labels;
@@ -165,9 +168,9 @@ test.runIf(devtools)(
     await expect.poll(() => finger.hidden).toBe(true);
     expect(PEN_MODE.on).toBe(false);
     expect(root.activeElement?.textContent).toBe(russian.pen);
-    await swipe(canvas, view, 100, 500);
+    await swipe(canvas, view, 300, 500);
     expect(probe(element).strokes.map((each) => each.kind)).toEqual(["pen", "touch"]);
-    await pen(canvas, view, [100, 700], [300, 700]);
+    await pen(canvas, view, [300, 700], [500, 700]);
     await expect.poll(() => finger.hidden).toBe(false);
   },
 );
@@ -177,7 +180,7 @@ test.runIf(devtools)(
   async () => {
     Reflect.deleteProperty(navigator, "maxTouchPoints");
     const { canvas, finger, view } = await sheet();
-    await pen(canvas, view, [100, 300], [400, 300]);
+    await pen(canvas, view, [300, 300], [600, 300]);
     await settle();
     expect(PEN_MODE.on).toBe(true);
     expect(finger.hidden).toBe(true);
@@ -189,40 +192,83 @@ test.runIf(devtools)(
   async () => {
     const one = await sheet();
     const two = await sheet();
-    await pen(one.canvas, one.view, [100, 300], [400, 300]);
+    await pen(one.canvas, one.view, [300, 300], [600, 300]);
     await expect.poll(() => two.finger.hidden).toBe(false);
     expect(one.finger.hidden).toBe(false);
     two.finger.click();
     await expect.poll(() => one.finger.hidden).toBe(true);
     expect(two.finger.hidden).toBe(true);
-    await swipe(one.canvas, one.view, 100, 500);
+    await swipe(one.canvas, one.view, 300, 500);
     expect(ids(one.element)).toEqual([1, 2]);
   },
 );
 
 test.runIf(devtools)(
-  "every row of the page waits for the end of a pen's stroke: the sheet above wraps its row only then, and the sheet below moves only then",
+  "every bar of the page waits for the end of a pen's stroke to show the finger's button, and moves no sheet when it comes: the bar stands over the sheet",
   async () => {
-    // A row so narrow that the finger's button takes a line of its own.
-    const above = await sheet(200);
-    const below = await sheet(200);
-    const top = below.canvas.getBoundingClientRect().top;
+    const above = await sheet();
+    const below = await sheet();
+    const sheets = [above, below];
+    const boxes = () =>
+      sheets.map(({ element, canvas }) => [
+        canvas.getBoundingClientRect().top,
+        element.getBoundingClientRect().height,
+      ]);
+    const before = boxes();
+    const tall = below.row.getBoundingClientRect().height;
     const options = { pointerType: "pen", force: 0.5 } as const;
-    await input("mousePressed", at(below.canvas, below.view(), 100, 300), options);
+    await input("mousePressed", at(below.canvas, below.view(), 300, 300), options);
     await settle();
-    await input("mouseMoved", at(below.canvas, below.view(), 300, 300), options);
+    await input("mouseMoved", at(below.canvas, below.view(), 600, 300), options);
     await settle();
-    // In pen mode now, but the stroke goes on: no row has changed, and the sheet below is where it was.
+    // In pen mode now, but the stroke goes on: no bar has changed.
     expect([above.finger.hidden, below.finger.hidden]).toEqual([true, true]);
-    expect(below.canvas.getBoundingClientRect().top).toBe(top);
-    await input("mouseReleased", at(below.canvas, below.view(), 300, 300), {
+    expect(below.row.getBoundingClientRect().height).toBe(tall);
+    await input("mouseReleased", at(below.canvas, below.view(), 600, 300), {
       ...options,
       force: 0,
     });
     await expect.poll(() => above.finger.hidden).toBe(false);
     expect(below.finger.hidden).toBe(false);
     await settle();
-    expect(below.canvas.getBoundingClientRect().top).toBeGreaterThan(top);
+    // The bar grows by the button, a target of 44 × 44, over the sheet, which stays where it was
+    // and as tall, and so does the one below it.
+    expect(below.row.getBoundingClientRect().height).toBeGreaterThan(tall);
+    const { width, height } = below.finger.getBoundingClientRect();
+    expect([width, height]).toEqual([44, 44]);
+    expect(boxes()).toEqual(before);
+  },
+);
+
+test.runIf(devtools)(
+  "in pen mode one finger that drags up the sheet scrolls its container down by the drag past the slop, writing nothing and telling no historychange; a pen's drag writes and scrolls nothing, and without pen mode a finger writes (R84)",
+  {
+    timeout: budget(1_000),
+  },
+  async () => {
+    const { element, canvas, viewport, view } = await sheet(400, 300);
+    const told: HistoryChange[] = [];
+    element.addEventListener("historychange", (event) => told.push(event.detail));
+    PEN_MODE.on = true;
+    await twoFingers(viewport, -60, { alone: true });
+    await settle();
+    expect(viewport.scrollTop).toBeCloseTo(60 - SLOP_PX, 0);
+    expect(view().vy).toBeCloseTo(viewport.scrollTop / view().k, 3);
+    expect([ids(element), told, probe(element).roles.size]).toEqual([[], [], 0]);
+    // A pen's drag up the visible part writes, and the sheet stays.
+    const scrolled = viewport.scrollTop;
+    const { vy } = view();
+    await pen(canvas, view, [300, vy + 500], [300, vy + 200]);
+    await settle();
+    expect(viewport.scrollTop).toBe(scrolled);
+    expect([ids(element), told.length]).toEqual([[1], 1]);
+    // Asked for the finger, one writes again, and drags nothing.
+    PEN_MODE.on = false;
+    await twoFingers(viewport, -60, { alone: true });
+    await settle();
+    expect(viewport.scrollTop).toBe(scrolled);
+    expect(probe(element).strokes.map((each) => each.kind)).toEqual(["pen", "touch"]);
+    expect(told.length).toBe(2);
   },
 );
 
@@ -257,7 +303,7 @@ test.runIf(devtools)(
     await touches("touchCancel", []);
     expect(probe(element).live).toBeUndefined();
     expect(told).toEqual([]);
-    await swipe(canvas, view, 100, 900);
+    await swipe(canvas, view, 300, 900);
     expect(ids(element)).toEqual([3]);
   },
 );
@@ -375,7 +421,7 @@ test.runIf(devtools)(
     timeout: budget(786),
   },
   async () => {
-    // Tall enough for the pen at 400 under the row of three lines at 400 CSS px (T94).
+    // Tall enough for the pen at 400 (T94): the bar over the sheet takes none of its height (R84).
     const { element, canvas, viewport, view } = await sheet(400, 400);
     const finger = fingerAt(1, canvas, view(), 200, 200);
     await touches("touchStart", [finger]);
@@ -448,26 +494,6 @@ test.runIf(devtools)(
 );
 
 test.runIf(devtools)(
-  "the row, wrapped once the finger's button comes, moves the sheet only after the pen's stroke",
-  async () => {
-    const { canvas, finger, row, view } = await sheet(200);
-    const tall = row.getBoundingClientRect().height;
-    const top = canvas.getBoundingClientRect().top;
-    await input("mousePressed", at(canvas, view(), 100, 300), { pointerType: "pen", force: 0.5 });
-    await settle();
-    await input("mouseMoved", at(canvas, view(), 300, 300), { pointerType: "pen", force: 0.5 });
-    await settle();
-    expect(canvas.getBoundingClientRect().top).toBe(top);
-    await input("mouseReleased", at(canvas, view(), 300, 300), { pointerType: "pen", force: 0 });
-    await expect.poll(() => finger.hidden).toBe(false);
-    await settle();
-    // The finger's button fits no line of the row 200 px wide: the row wraps, and the sheet goes down.
-    expect(row.getBoundingClientRect().height).toBeGreaterThan(tall);
-    expect(canvas.getBoundingClientRect().top).toBeGreaterThan(top);
-  },
-);
-
-test.runIf(devtools)(
   "with the consumer's pointer-events: none two fingers start no scroll, and one finger on the statement scrolls it as the browser does",
   {
     timeout: budget(1_166),
@@ -485,7 +511,8 @@ test.runIf(devtools)(
     // On the statement the browser scrolls by itself (R23).
     const statement = root.querySelector(".statement")?.getBoundingClientRect();
     if (statement === undefined) throw new Error("no statement");
-    const on = { id: 1, clientX: statement.left + 50, clientY: statement.top + 20 };
+    // To the right of the bar, whose glass scrolls itself, and nothing beyond it.
+    const on = { id: 1, clientX: statement.left + 150, clientY: statement.top + 20 };
     await touches("touchStart", [on]);
     for (let step = 1; step <= 10; step++) {
       await touches("touchMove", [{ ...on, clientY: on.clientY - 10 * step }]);

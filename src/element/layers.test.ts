@@ -1,4 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
+import { userEvent } from "vitest/browser";
 import { CROP } from "../core/crop.js";
 import { gridPath } from "../core/grid.js";
 import { shortLines } from "../core/pages.fixture.js";
@@ -58,7 +59,7 @@ function rgbaAt(canvas: HTMLCanvasElement, view: View, x: number, y: number): nu
   return [...(pixel?.data ?? [])];
 }
 
-test("the sheet is a stack of layers in the order of concepts 8 spec, and of them the canvas alone takes pointer events, as the element does, and so do the buttons of the row", async () => {
+test("the sheet is a stack of layers in the order of concepts 8 spec, and of them the canvas alone takes pointer events, as the element does, and so do the buttons of the bar, while the rail it stands in covers nothing of the sheet", async () => {
   const { element, root, canvas, stage, viewport } = await sheet(400);
   const layers = [...stage.children];
   expect(layers.map((layer) => layer.getAttribute("class") ?? layer.localName)).toEqual([
@@ -89,24 +90,34 @@ test("the sheet is a stack of layers in the order of concepts 8 spec, and of the
   }
   const sheetBox = root.querySelector(".sheet");
   if (!sheetBox) throw new Error("the element has no sheet");
-  // The row of the element's own buttons sets no pointer-events of its own either (R28), Up and
-  // Down (R33), the zoom's pair and Left and Right (T94), the finger's button of pen mode (R29)
-  // and a worked example's Next and Demo (R42) too.
+  // The bar of the element's own buttons sets no pointer-events of its own either (R28), the
+  // zoom's pair (T94), the finger's button of pen mode (R29) and a worked example's Next and Demo
+  // (R42) too. The rail it stands in, as tall as the element in sight, is as wide as nothing: the
+  // bar stands out of it, and beside the bar the pointer is on the sheet (R84).
+  const bar = root.querySelector(".tools");
+  const rail = root.querySelector(".rail");
   const buttons = [...root.querySelectorAll(".tools button")];
-  expect(buttons).toHaveLength(13);
-  for (const box of [canvas, stage, sheetBox, viewport, ...buttons]) {
-    expect(getComputedStyle(box).pointerEvents).toBe("auto");
-  }
+  if (!bar || !rail) throw new Error("the element has no bar in a rail");
+  expect(buttons).toHaveLength(9);
+  expect(rail.getBoundingClientRect().width).toBe(0);
+  const boxes = [canvas, stage, sheetBox, viewport, rail, bar, ...buttons];
+  for (const box of boxes) expect(getComputedStyle(box).pointerEvents).toBe("auto");
+  const pen = buttons.find((button) => button.textContent === "Pen")?.getBoundingClientRect();
+  if (!pen) throw new Error("the bar has no pen");
+  const onPen = [pen.left + pen.width / 2, pen.top + pen.height / 2] as const;
+  expect(root.elementFromPoint(...onPen)?.closest("button")?.textContent).toBe("Pen");
+  const beside = bar.getBoundingClientRect();
+  expect(root.elementFromPoint(beside.right + 10, onPen[1])).toBe(canvas);
   // The marks over the ink take no pointer: what is under the pointer is the canvas.
   const middle = canvas.getBoundingClientRect();
   const hit = root.elementFromPoint(middle.left + 100, middle.top + 100);
   expect(hit).toBe(canvas);
 
-  // The consumer's pointer-events: none reaches the canvas, and the buttons.
+  // The consumer's pointer-events: none reaches the canvas, and the buttons: a press on the pen's
+  // button goes through the element.
   element.style.pointerEvents = "none";
-  for (const box of [canvas, stage, sheetBox, viewport, ...buttons]) {
-    expect(getComputedStyle(box).pointerEvents).toBe("none");
-  }
+  for (const box of boxes) expect(getComputedStyle(box).pointerEvents).toBe("none");
+  expect(element.contains(document.elementFromPoint(...onPen))).toBe(false);
 });
 
 test("a worked example's canvas alone takes no pointer, the stage keeps the menu and the selection off the sheet, and out of it the consumer's none reaches the canvas again", async () => {
@@ -177,11 +188,10 @@ test("a new width puts the layers on the new k in the frame it is laid out in, b
   const { element, root, viewport } = await sheet(400, 200);
   const template = root.querySelector<SVGSVGElement>(".template");
   if (!template) throw new Error("the element has no template");
-  // The sheet shows in what the element's height leaves under its row of buttons (R28).
+  // The sheet shows in the element's whole height: the bar of buttons stands over it (R84).
   expect(template.viewBox.baseVal.height).toBeCloseTo(viewport.clientHeight / 0.4, 3);
   element.style.width = "300px";
   // An observer made after the element's own reports after it, in the same frame, before paint.
-  // The row may wrap at the new width, and the container is shorter then.
   const shown = await new Promise<{ height: number; port: number }>((resolve) => {
     const observer = new ResizeObserver(() => {
       observer.disconnect();
@@ -317,8 +327,7 @@ test("on the screen the ink lies over the grid, and the grid's lines and dots ov
   dense(canvas, view(), 300, 20, 330);
   await settle();
   const k = 0.41;
-  // The sheet stands under the row of buttons (R28) and the statement, a whole number of CSS pixels
-  // down.
+  // The sheet stands under the statement, a whole number of CSS pixels down.
   const sheetTop = root.querySelector(".sheet")?.getBoundingClientRect().top ?? Number.NaN;
   const down = sheetTop - element.getBoundingClientRect().top;
   expect(Number.isInteger(down)).toBe(true);
@@ -376,25 +385,48 @@ test("writing, erasing, undo() and clear() leave the template as it was", async 
   observer.disconnect();
 });
 
-test("the consumer's custom properties colour the paper, the grid, the ink and the row of buttons, and a new ink is drawn without a scroll; the crop for checking keeps its own", async () => {
+test("the consumer's custom properties colour the paper, the grid, the ink and the bar of buttons — its glass, its icons and the accent of the tool in use and of the focus —, and a new ink is drawn without a scroll; the crop for checking keeps its own", async () => {
   const theme = document.createElement("div");
   theme.style.setProperty("--novatrail-canvas-paper", "rgb(10, 20, 30)");
   theme.style.setProperty("--novatrail-canvas-grid", "rgb(200, 0, 0)");
   theme.style.setProperty("--novatrail-canvas-ink", "rgb(0, 0, 255)");
+  theme.style.setProperty("--novatrail-canvas-accent", "rgb(255, 128, 0)");
+  theme.style.setProperty("--novatrail-canvas-glass", "rgba(40, 50, 60, 0.5)");
   document.body.append(theme);
   const { element, root, canvas, grid, view } = await sheet(400, undefined, theme);
   const paper = root.querySelector(".sheet");
   if (!paper) throw new Error("the element has no sheet");
   expect(getComputedStyle(paper).backgroundColor).toBe("rgb(10, 20, 30)");
   expect(getComputedStyle(grid).stroke).toBe("rgb(200, 0, 0)");
-  // The row of buttons in paper and ink as well, the tool in use filled with the ink (R28).
-  const row = root.querySelector(".tools");
-  const inUse = root.querySelector('.tools [aria-checked="true"]');
-  if (!row || !inUse) throw new Error("the element has no row of buttons");
-  expect(getComputedStyle(row).backgroundColor).toBe("rgb(10, 20, 30)");
-  expect(getComputedStyle(row).color).toBe("rgb(0, 0, 255)");
-  expect(getComputedStyle(inUse).backgroundColor).toBe("rgb(0, 0, 255)");
-  expect(getComputedStyle(inUse).color).toBe("rgb(10, 20, 30)");
+  // The bar of buttons in the glass, or the paper where nothing blurs, its icons in the ink, and
+  // the tool in use filled with the accent at an eighth, its icon in the accent (R28, R84).
+  const bar = root.querySelector(".tools");
+  const inUse = root.querySelector<HTMLElement>('.tools [aria-checked="true"]');
+  const other = root.querySelector('.tools [aria-checked="false"] svg');
+  if (!bar || !inUse || !other) throw new Error("the element has no bar of buttons");
+  const blurs = ["backdrop-filter", "-webkit-backdrop-filter"].some((name) =>
+    CSS.supports(name, "blur(1px)"),
+  );
+  const glass = blurs ? "rgba(40, 50, 60, 0.5)" : "rgb(10, 20, 30)";
+  expect(getComputedStyle(bar).backgroundColor).toBe(glass);
+  expect(getComputedStyle(bar).color).toBe("rgb(0, 0, 255)");
+  expect(getComputedStyle(other).fill).toBe("rgb(0, 0, 255)");
+  // The accent at an eighth, as this browser computes the same mix.
+  const mixed = document.createElement("div");
+  mixed.style.backgroundColor = "color-mix(in srgb, rgb(255, 128, 0) 12%, transparent)";
+  theme.append(mixed);
+  expect(getComputedStyle(inUse).backgroundColor).toBe(getComputedStyle(mixed).backgroundColor);
+  expect(getComputedStyle(inUse).color).toBe("rgb(255, 128, 0)");
+  // The keyboard's focus on the tool in use: a ring in the accent, on the button's edge.
+  await userEvent.tab();
+  expect(root.activeElement).toBe(inUse);
+  const ring = getComputedStyle(inUse);
+  expect([ring.outlineStyle, ring.outlineWidth, ring.outlineColor]).toEqual([
+    "solid",
+    "2px",
+    "rgb(255, 128, 0)",
+  ]);
+  inUse.blur();
 
   dense(canvas, view(), 300, 100, 300);
   await settle();

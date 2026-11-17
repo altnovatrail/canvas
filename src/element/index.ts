@@ -200,7 +200,7 @@ const ERASER_RADIUS_PX = 10;
 // stage, which sticks to the container's top and left, and each shows what lies there, shifted in
 // the frame the ink is drawn in (R18, R23; architecture 3.2 in docs/architecture.md).
 // Over the container, in the same cell of the frame's grid, stands the rail of the element's own
-// buttons: a band as tall as the part of the element in sight, which takes no pointer, sticking to
+// buttons: a band as tall as the part of the element in sight and as wide as nothing, sticking to
 // the top of whatever scrolls the element, as far down as the consumer's --novatrail-canvas-top
 // says, and in its middle, 16 pixels from the left edge, the bar of buttons: 52 pixels wide, round
 // at its ends, of the mockup's glass — the fill the consumer's theme gives, blurred behind, or the
@@ -246,14 +246,16 @@ const STYLE = `
   outline: none; -webkit-tap-highlight-color: transparent;
 }
 .rail {
-  grid-area: 1 / 1; align-self: start; position: sticky; top: var(--novatrail-canvas-top, 0px);
-  z-index: 1; box-sizing: border-box; height: min(100%, 100dvh - var(--novatrail-canvas-top, 0px));
-  padding: 16px 0; display: flex; align-items: center; pointer-events: none;
+  grid-area: 1 / 1; align-self: start; justify-self: left; width: 0; direction: ltr;
+  position: sticky; top: var(--rail-top, var(--novatrail-canvas-top, 0px)); z-index: 1;
+  box-sizing: border-box; padding: 16px 0;
+  height: min(100%, var(--rail-room, 100dvh) - var(--rail-top, var(--novatrail-canvas-top, 0px)));
+  display: flex; align-items: center;
 }
-.rail.example { align-items: flex-end; justify-content: center; }
+.rail.example { justify-self: center; align-items: flex-end; justify-content: center; }
 .rail[hidden] { display: none; }
 .tools {
-  pointer-events: auto; box-sizing: border-box; flex: none; width: 52px; max-height: 100%;
+  box-sizing: border-box; flex: none; width: 52px; max-height: 100%;
   margin: 0 0 0 16px; padding: 4px; border-radius: 26px;
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
@@ -266,8 +268,9 @@ const STYLE = `
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .tools { background: var(--novatrail-canvas-paper, ${PAPER}); }
 }
+.tools:dir(rtl) { direction: rtl; }
 .example .tools {
-  width: auto; max-width: calc(100% - 32px); max-height: none; margin: 0; padding: 6px;
+  width: auto; max-width: calc(var(--rail-width, 100vw) - 32px); max-height: none; margin: 0; padding: 6px;
   border-radius: 28px; flex-direction: row; gap: 4px; overflow-x: auto; overflow-y: hidden;
 }
 .tools .demo, .tools .choice, .tools .zoom {
@@ -311,7 +314,7 @@ const STYLE = `
 .tools:dir(rtl) svg.mirrored { transform: scaleX(-1); }
 .tip {
   position: absolute; left: var(--tip-x, 76px); top: var(--tip-y, 0px); z-index: 2;
-  transform: translateY(-50%); pointer-events: auto; white-space: nowrap;
+  transform: translateY(-50%); white-space: nowrap;
   font-size: 12.5px; font-weight: 500; line-height: 1; padding: 8px 10px; border-radius: 9px;
   background: rgba(29, 29, 31, 0.92); color: #fff; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
 }
@@ -622,8 +625,12 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /** The page grown or shrunk, or the window: what scrolls the element may have room now, or none. */
   readonly #resized = (): void => {
     this.#region();
+    this.#fit();
   };
   readonly #page = new ResizeObserver(this.#resized);
+  /** What the bar's rail sticks in, when a scroller of the page's: its height is the rail's room. */
+  #port: Element | null = null;
+  readonly #ported = new ResizeObserver(() => this.#fit());
   #unwatchPen: (() => void) | undefined;
   #unwatchZoom: (() => void) | undefined;
   /** The page's zoom as the sheet is laid out by it (T94). */
@@ -686,8 +693,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       if (box !== undefined) this.#area = { width: box.inlineSize, height: box.blockSize };
     }
     // The container's new size, the statement's or that of the list of a demo's parts: each moves
-    // the sheet.
+    // the sheet, and the first is the room of a worked example's row.
     this.#layout();
+    this.#fit();
   });
   /** The size of the container's visible part, in CSS pixels as laid out, before any transform. */
   #area: { readonly width: number; readonly height: number } | undefined;
@@ -1133,6 +1141,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#page.observe(document.documentElement);
     window.addEventListener("resize", this.#resized);
     this.#refresh();
+    this.#fit();
   }
 
   /**
@@ -1146,6 +1155,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   attributeChangedCallback(name: string): void {
     if (name === "tools-hidden") {
       this.#tools.rail.hidden = this.hasAttribute("tools-hidden");
+      this.#fit();
       return;
     }
     this.#tools.label(this.getAttribute("lang"));
@@ -1272,6 +1282,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#unwatchZoom?.();
     this.#unwatchZoom = undefined;
     this.#page.disconnect();
+    this.#ported.disconnect();
+    this.#port = null;
     this.#tools.disconnect();
     window.removeEventListener("resize", this.#resized);
     // A stroke that ended here may be the one the other rows of the page waited for.
@@ -1728,6 +1740,32 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     if (this.#column.style.getPropertyValue("--direction") !== direction) {
       this.#column.style.setProperty("--direction", direction);
     }
+  }
+
+  /**
+   * What the rail's CSS cannot know (R84): the height of what it sticks in — the scroller's, which
+   * it watches, or the window's —, from whose top it runs down to its bottom, below the consumer's
+   * --novatrail-canvas-top; and the element's width, which a worked example's row keeps within, as
+   * the rail is as wide as nothing. A band in pixels is taken as it changes; one in percent, of the
+   * scroller's height as `top` takes it and not of the element's as `height` would, and `auto`,
+   * nothing as `#band` counts it, are taken here, at the next resize.
+   */
+  #fit(): void {
+    const rail = this.#tools.rail;
+    if (!this.isConnected || rail.hidden) return;
+    const band = getComputedStyle(this).getPropertyValue("--novatrail-canvas-top").trim();
+    rail.style.removeProperty("--rail-top");
+    if (band === "auto") rail.style.setProperty("--rail-top", "0px");
+    // A sticky box's `top` reads as the pixels it is used at.
+    else if (band.includes("%")) rail.style.setProperty("--rail-top", getComputedStyle(rail).top);
+    const room = roomOf(rail);
+    if (room.port !== this.#port) {
+      if (this.#port !== null) this.#ported.unobserve(this.#port);
+      this.#port = room.port;
+      if (room.port !== null) this.#ported.observe(room.port);
+    }
+    rail.style.setProperty("--rail-room", `${room.height / scaleOf(rail)}px`);
+    rail.style.setProperty("--rail-width", `${this.#wrapper.clientWidth}px`);
   }
 
   /**

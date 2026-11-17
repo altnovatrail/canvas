@@ -21,7 +21,7 @@ import { probe } from "./probe.js";
 // The sheet from the keyboard (T93; R33): the element's own scroll container, while its content
 // overflows it, is a region named by the canvas kind, with a stop of Tab of its own, so that the
 // keyboard scrolls it in Safari too, where a container that nothing in it can take the focus in
-// scrolls by no key (R90 spec; WebKit's bug 277290). Tab goes into it from the row and out of it to
+// scrolls by no key (R90 spec; WebKit's bug 277290). Tab goes into it from the bar and out of it to
 // what follows the element (2.1.2), and the keys scroll it as the browser scrolls a container. An
 // element without a height of its own scrolls with the page and has no such stop, and neither has
 // one whose task fits. A ring shows the focus the keyboard brought, over the sheet (2.4.7).
@@ -41,7 +41,7 @@ function after(): HTMLButtonElement {
   return button;
 }
 
-/** The kinds of canvas, put on the page, and what the region and the row are named in English. */
+/** The kinds of canvas, put on the page, and what the region and the bar are named in English. */
 const KINDS = [
   {
     kind: "a sheet",
@@ -89,7 +89,7 @@ const regionOf = (viewport: HTMLElement) =>
   ["tabindex", "role", "aria-label"].map((name) => viewport.getAttribute(name));
 
 test.each(KINDS)(
-  "on $kind of a height its content overflows, Tab goes from the row into the container, a region named by the kind in Chromium's own tree, and out of it to what follows; Shift+Tab comes back",
+  "on $kind of a height its content overflows, Tab goes from the bar into the container, a region named by the kind in Chromium's own tree, and out of it to what follows; Shift+Tab comes back",
   async ({ give, region, row: rowName }) => {
     const { root, viewport, row, next } = await put(give, 300);
     expect(viewport.scrollHeight).toBeGreaterThan(viewport.clientHeight);
@@ -294,9 +294,10 @@ test.each([
     if (ink !== undefined) element.style.setProperty("--novatrail-canvas-ink", ink);
     await settle();
     expect(getComputedStyle(shown).display).toBe("none");
-    // A point of the container's edge, low on it, where the sheet's paper is under the ring.
-    const x = viewport.offsetLeft + 1;
-    const y = viewport.getBoundingClientRect().bottom - element.getBoundingClientRect().top - 20;
+    // A point of the container's bottom edge, in its middle, where the sheet's paper is under the
+    // ring, away from the bar of glass and its shadow at the left.
+    const x = viewport.offsetLeft + viewport.clientWidth / 2;
+    const y = viewport.getBoundingClientRect().bottom - element.getBoundingClientRect().top - 1;
     const before = (await screenshot(element))(x, y);
     await userEvent.tab();
     await userEvent.tab();
