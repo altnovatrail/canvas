@@ -245,10 +245,15 @@ function ways(run: Run, build: string, port: string, way: Way): Ways {
   const file = pageFile(build);
   return {
     pass: () => volunteer(run, new Safari(run, file, port), { keep: true, way }),
-    // Safari closed and launched anew, for the next session to connect to.
+    // Safari closed and launched anew, for the next session to connect to. A Safari that is no
+    // longer running cannot be terminated, and is launched all the same (T124).
     recover: async () => {
-      execFileSync(XCRUN, ["simctl", "terminate", udid, SAFARI], { stdio: "ignore" });
-      run.log("Safari terminated");
+      try {
+        execFileSync(XCRUN, ["simctl", "terminate", udid, SAFARI], { stdio: "ignore" });
+        run.log("Safari terminated");
+      } catch (error) {
+        run.log(`Safari not terminated, launched all the same: ${String(error).slice(0, 200)}`);
+      }
       await sleep(2000);
       execFileSync(XCRUN, ["simctl", "launch", udid, SAFARI], { stdio: "ignore" });
       run.log("Safari launched");

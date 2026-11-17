@@ -665,6 +665,13 @@ Read 2026-11-02 (architecture 3.4; T70 and T71 in [RUN.md](../RUN.md)):
 - `WebDriverAgentLib/Routing/FBSession.m`, `activeApplication`: `if (nil != defaultBundleId && [self applicationStateWithBundleId:defaultBundleId] >= XCUIApplicationStateRunningForeground)`, then `return [self makeApplicationWithBundleId:defaultBundleId];`, before the session's own app and before `fb_activeApplicationWithDefaultBundleId:`;
 - the setting: `[[FBRoute POST:@"/appium/settings"] respondWithTarget:self action:@selector(handleSetSettings:)]` in `WebDriverAgentLib/Commands/FBSessionCommands.m`, which reads `request.arguments[@"settings"]`, and `NSString* const FB_SETTING_DEFAULT_ACTIVE_APPLICATION = @"defaultActiveApplication";` in `WebDriverAgentLib/Utilities/FBSettings.m`.
 
+### 7.11. adb: a device offline, its reconnection and its forwards
+
+(R54, its T124 amendment), read 2026-11-17 — [platform/packages/modules/adb](https://android.googlesource.com/platform/packages/modules/adb/+/1cf2f017d312f73b3dc53bda85ef2610e35a80e9), branch `main` at commit 1cf2f017d312f73b3dc53bda85ef2610e35a80e9 (`git ls-remote`):
+
+- `client/commandline.cpp`, the help: " get-state                print offline | bootloader | device", " wait-for[-TRANSPORT]-STATE...", "     wait for device to be in a given state" and " reconnect offline        reset offline/unauthorized devices to force reconnect"; `adb reconnect offline` sends `host:reconnect-offline`;
+- `adb_listeners.cpp`: a forward's listener is installed with `transport->AddDisconnect(&listener->disconnect);`, and its function, "Called as a transport disconnect function", does `listener_list.erase(iter);` — a forward goes with the connection it was set on. That the reverses go too is not read: the driver sets them again either way.
+
 ## 8. Licenses and contribution
 
 ### 8.1. Apache License 2.0

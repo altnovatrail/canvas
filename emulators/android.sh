@@ -20,6 +20,7 @@ adb="$ANDROID_HOME/platform-tools/adb"
 sdkmanager --list_installed > "$out/sdk-installed.txt" 2>&1 || true
 
 "$adb" wait-for-device
+# The same forwards Android.forward of emulators/android.ts sets again when a pass begins anew.
 "$adb" forward tcp:9222 localabstract:chrome_devtools_remote
 # The servers' ports on the emulator's own loopback lead to the runner's.
 "$adb" reverse tcp:8080 tcp:8080

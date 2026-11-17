@@ -29,6 +29,10 @@ export const AWAY = /^(Download|Download anyway|Keep|No thanks|Don.t allow|Not n
 /** Where the emulator reaches the runner's server: its own loopback, whose port emulators/android.sh
  * hands over to the runner's by `adb reverse`. */
 export const HOST = "localhost";
+/** The runner's port that emulators/android.sh forwards Chrome's DevTools socket to. */
+const DEVTOOLS_PORT = 9222;
+/** How long an adb command of the recovery may take before it counts as failed (T124). */
+const ADB_WAIT = 15_000;
 
 /** A node of uiautomator's dump: its text, its description, its bounds on the screen and, where
  * the dump names it, its class. */
@@ -253,6 +257,53 @@ export class Android {
 
   shell(command: string): string {
     return execFileSync(this.adb, ["shell", command], { encoding: "utf8", maxBuffer: 1 << 26 });
+  }
+
+  /** Whether adb reaches the device: a runner's emulator went offline in the middle of a run on
+   * 2026-11-16, twice, and nothing brought it back before the run's end (T124). */
+  online(): boolean {
+    try {
+      const state = execFileSync(this.adb, ["get-state"], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+        timeout: ADB_WAIT,
+      });
+      return state.trim() === "device";
+    } catch {
+      return false;
+    }
+  }
+
+  /** The device brought back to adb, waited for up to a minute. */
+  reconnect(): void {
+    this.adbRun(["reconnect", "offline"]);
+    execFileSync(this.adb, ["wait-for-device"], { stdio: "ignore", timeout: 60_000 });
+  }
+
+  /** The forwards emulators/android.sh sets, set again: DevTools to port 9222 and the servers'
+   * ports back to the runner's. A forward goes with the connection it was set on (sources 7.11 in
+   * docs/sources.md), and a device that adb lost may have come back by itself; setting one anew
+   * replaces it. */
+  forward(ports: readonly string[]): void {
+    this.adbRun(["forward", `tcp:${DEVTOOLS_PORT}`, "localabstract:chrome_devtools_remote"]);
+    for (const port of ports) this.adbRun(["reverse", `tcp:${port}`, `tcp:${port}`]);
+  }
+
+  /** Chrome stopped, for a pass or a build to begin afresh: the emulator brought back first where
+   * adb has lost it, and the forwards set again either way (T124). */
+  async reset(ports: readonly string[], pause = 3000): Promise<void> {
+    if (!this.online()) {
+      this.run.log("the emulator is offline: adb reconnects it");
+      this.reconnect();
+      this.run.log("the emulator is back");
+    }
+    this.forward(ports);
+    this.stopChrome();
+    await sleep(pause);
+  }
+
+  private adbRun(args: readonly string[]): void {
+    execFileSync(this.adb, args, { stdio: "ignore", timeout: ADB_WAIT });
   }
 
   /** Copy a file off the device. */
