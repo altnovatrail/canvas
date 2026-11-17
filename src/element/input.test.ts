@@ -128,10 +128,9 @@ test.runIf(devtools)("a real pen writes with its pressure", async () => {
 
 test("a sheet taller than the element scrolls, and input lands where its visible part shows", async () => {
   const { element, canvas, viewport, view } = await sheet(400, 200);
-  // The container takes what the element's height leaves under its row of buttons (R28).
-  const row = element.shadowRoot?.querySelector(".tools")?.getBoundingClientRect().height ?? 0;
-  expect(row).toBeGreaterThan(0);
-  expect(canvas.getBoundingClientRect().height).toBeCloseTo(200 - row, 6);
+  // The container takes the element's whole height: the bar of buttons stands over it (R84).
+  expect(viewport.getBoundingClientRect().height).toBeCloseTo(200, 6);
+  expect(canvas.getBoundingClientRect().height).toBeCloseTo(200, 6);
   viewport.scrollTop = 100;
   await settle();
   // 100 CSS pixels down: 250 units at k 0.4, a little more if a scroll bar takes some width.
@@ -576,9 +575,8 @@ test("a tool the element does not take, given before it is upgraded, leaves it t
 test("the eraser takes nothing beyond the part of the sheet on the screen, where a captured pointer goes on", async () => {
   const { element, canvas, view } = await sheet(400, 200);
   // One stroke in sight, at 300, and one below the part on the screen, at 1000: the container, 140
-  // CSS pixels tall under the row of buttons, shows the sheet down to 350 at k 0.4.
-  const row = element.shadowRoot?.querySelector(".tools")?.getBoundingClientRect().height ?? 0;
-  element.style.height = `${row + 140}px`;
+  // CSS pixels tall, the element's whole height, shows the sheet down to 350 at k 0.4.
+  element.style.height = "140px";
   await settle();
   level(canvas, view(), 300, 100, 300);
   level(canvas, view(), 1000, 100, 300);

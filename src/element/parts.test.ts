@@ -35,7 +35,8 @@ import { PAGE_ZOOM } from "./session.js";
 // into a numbered list between the statement and the sheet, and Demo hides and shows the whole
 // demo; demoState tells how far the learner has gone, and demochange tells of the learner's own
 // presses alone. A polite region tells a screen reader of the part just opened, the list keeps its
-// items as they were built, and a part comes into sight at once, below the row of buttons. DEMO,
+// items as they were built, and a part comes into sight at once, out from under the consumer's
+// band, --novatrail-canvas-top: the row of glass stands at the bottom, over no part's top. DEMO,
 // the demo of the tests, has four parts: a paragraph, a picture beside the sheet, a picture on an
 // area of it, and a paragraph. The pictures' files come from the consumer's media, each reference
 // once, as the example comes, with the statement's (T64). A picture on an area stands on the layer
@@ -56,7 +57,7 @@ afterEach(() => {
 });
 
 /**
- * A sheet 400 CSS pixels wide in `parent`, as tall as its row, statement, parts and sheet unless
+ * A sheet 400 CSS pixels wide in `parent`, as tall as its statement, parts and sheet unless
  * given a height, showing a worked example of DEMO, with what it has told by demochange, its list
  * of parts, its region, and its Next and Demo.
  */
@@ -396,32 +397,32 @@ test("with the sheet scrolled into sight Next brings the part into sight above i
   expect(view().vy).toBeCloseTo(vy, 1);
 });
 
-test("in a page that scrolls the element, Next brings the part into sight below the row, stuck at the consumer's offset", async () => {
-  const { element, list, next, row } = await demo();
+test("in a page that scrolls the element, Next brings the part into sight below the consumer's band at its offset", async () => {
+  const { element, list, next } = await demo();
   element.style.setProperty("--novatrail-canvas-top", "30px");
   spacer(made);
   window.scrollTo(0, 300);
   await settle();
-  expect(row.getBoundingClientRect().top).toBeCloseTo(30, 0);
   next.click();
   const item = list.lastElementChild?.getBoundingClientRect();
-  expect(item?.top).toBeGreaterThanOrEqual(row.getBoundingClientRect().bottom - 0.5);
+  expect(item?.top).toBeGreaterThanOrEqual(30 - 0.5);
   expect(item?.bottom).toBeLessThanOrEqual(window.innerHeight);
   await settle();
   expect(list.lastElementChild?.getBoundingClientRect().top).toBeCloseTo(item?.top ?? 0, 0);
 });
 
-test("an element with a height on a page scrolled past its top: the row sticks over its container, and Next brings the part out from under it", async () => {
-  const { list, next, row, viewport } = await demo(300);
+test("an element with a height on a page scrolled past its top: Next brings the part into sight in its container and out from under the consumer's band over the page", async () => {
+  const { element, list, next, viewport } = await demo(300);
+  element.style.setProperty("--novatrail-canvas-top", "30px");
   spacer(made);
   viewport.scrollTop = 400;
   window.scrollTo(0, 100);
   await settle();
-  const port = viewport.getBoundingClientRect();
-  expect(row.getBoundingClientRect().bottom).toBeGreaterThan(port.top + 1);
+  // The container's top is above the band, and the part above the container's top.
+  expect(viewport.getBoundingClientRect().top).toBeLessThan(30);
   next.click();
   const item = list.lastElementChild?.getBoundingClientRect();
-  expect(item?.top).toBeGreaterThanOrEqual(row.getBoundingClientRect().bottom - 0.5);
+  expect(item?.top).toBeGreaterThanOrEqual(30 - 0.5);
   expect(item?.bottom).toBeLessThanOrEqual(viewport.getBoundingClientRect().bottom + 0.5);
 });
 
@@ -708,7 +709,7 @@ test("Next brings a picture on an area into sight by its area, not by its item: 
 });
 
 test("on a zoomed sheet Next brings a picture's area on the right into sight across too, and the open part stays at the container's left (T94)", async () => {
-  // Tall enough for the area under the row of three lines that Left and Right make.
+  // Tall enough for the whole area in sight.
   const { element, root, list, next, viewport } = await demo(400);
   element.workedExample = onArea({ left: 700, top: 1100, width: 250, height: 200 });
   await settle();
@@ -732,24 +733,23 @@ test("on a zoomed sheet Next brings a picture's area on the right into sight acr
   }
 });
 
-test("in a page that scrolls the element, Next brings a picture's area out from under the row stuck at the consumer's offset", async () => {
-  const { element, root, list, next, row } = await demo();
+test("in a page that scrolls the element, Next brings a picture's area out from under the consumer's band at its offset", async () => {
+  const { element, root, list, next } = await demo();
   element.workedExample = onArea({ left: 100, top: 1100, width: 800, height: 200 });
   element.style.setProperty("--novatrail-canvas-top", "30px");
   spacer(made);
   await settle();
   const spot = root.querySelector(".spot");
-  // The area's top just under the top of the screen, under the row that sticks there.
+  // The area's top just under the top of the screen, under the band there.
   window.scrollTo(0, window.scrollY + (spot?.getBoundingClientRect().top ?? 0) - 10);
   await settle();
   next.click();
-  const top = row.getBoundingClientRect().bottom;
-  expect(spot?.getBoundingClientRect().top).toBeCloseTo(top, 0);
+  expect(spot?.getBoundingClientRect().top).toBeCloseTo(30, 0);
   expect(list.lastElementChild?.getBoundingClientRect().bottom).toBeLessThan(0);
 });
 
-test("Next brings a picture on an area taller than what is in sight into sight by its top, under the row, whether the area is above what is in sight or below it", async () => {
-  const { element, root, next, viewport, row } = await demo(300);
+test("Next brings a picture on an area taller than what is in sight into sight by its top, whether the area is above what is in sight or below it", async () => {
+  const { element, root, next, viewport } = await demo(300);
   const top = () => root.querySelector(".spot")?.getBoundingClientRect().top;
   // From above: the container scrolled to the sheet's bottom, past the area's top.
   element.workedExample = onArea({ left: 0, top: 100, width: 1000, height: 1300 });
@@ -758,7 +758,6 @@ test("Next brings a picture on an area taller than what is in sight into sight b
   await settle();
   next.click();
   expect(top()).toBeCloseTo(viewport.getBoundingClientRect().top, 0);
-  expect(top()).toBeCloseTo(row.getBoundingClientRect().bottom, 0);
   // From below: the container at its top, and the area's top under what is in sight.
   element.workedExample = onArea({ left: 0, top: 600, width: 1000, height: 800 });
   viewport.scrollTop = 0;

@@ -251,6 +251,7 @@ const STYLE = `
   padding: 16px 0; display: flex; align-items: center; pointer-events: none;
 }
 .rail.example { align-items: flex-end; justify-content: center; }
+.rail[hidden] { display: none; }
 .tools {
   pointer-events: auto; box-sizing: border-box; flex: none; width: 52px; max-height: 100%;
   margin: 0 0 0 16px; padding: 4px; border-radius: 26px;
@@ -794,7 +795,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /** The element follows its own `lang`: its buttons are labelled in it (R07, R28). */
-  static readonly observedAttributes = ["lang"];
+  static readonly observedAttributes = ["lang", "tools-hidden"];
 
   /**
    * What a press of the primary button does: "pen" writes, as the element starts, and "eraser"
@@ -1136,11 +1137,17 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * The element's `lang` came, changed or went: its buttons and a workbook's boxes are labelled in
-   * it, or in English for a language their labels are not in, and for none (R28, R36). An attribute
-   * the element had before it was defined comes here just after the constructor, which reads no
-   * attribute.
+   * it, or in English for a language their labels are not in, and for none (R28, R36). Or
+   * `tools-hidden` did: while the element has it, the bar is out of sight and of the accessibility
+   * tree, as `app` hides it on a phone under its tutor's sheet (R84; В83 in run/QUESTIONS.md). An
+   * attribute the element had before it was defined comes here just after the constructor, which
+   * reads no attribute.
    */
-  attributeChangedCallback(): void {
+  attributeChangedCallback(name: string): void {
+    if (name === "tools-hidden") {
+      this.#tools.rail.hidden = this.hasAttribute("tools-hidden");
+      return;
+    }
     this.#tools.label(this.getAttribute("lang"));
     this.#nameRegion();
     this.#nameBoxes();

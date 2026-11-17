@@ -435,7 +435,7 @@ test("a history without the marked strokes takes the marks off, and the next tas
   await expect.element(buttons(next).pen).toBeChecked();
 });
 
-test("app's path through a lesson: after a task, its worked example on a new element, named so, with Next, Demo, Up, Down and the zoom's pair alone, on which the learner writes nothing", async () => {
+test("app's path through a lesson: after a task, its worked example on a new element, named so, with Next, Demo and the zoom's pair alone, on which the learner writes nothing", async () => {
   const { sheet, store } = await app();
   write(sheet, 100, 100, 300);
   expect(store).toHaveLength(1);
@@ -461,7 +461,7 @@ test("app's path through a lesson: after a task, its worked example on a new ele
       .getByRole("button")
       .elements()
       .map((each) => each.textContent),
-  ).toEqual(["Дальше", "Показ", "Выше", "Ниже", "Крупнее", "Мельче"]);
+  ).toEqual(["Дальше", "Показ", "Крупнее", "Мельче"]);
   await expect.element(within.getByText(/How many posts stand along a path 12 m/)).toBeVisible();
   await expect
     .element(within.getByRole("img", { name: "A path with posts along it" }))

@@ -5,17 +5,32 @@ import { sheetTask, workedExample } from "../core/tasks.fixture.js";
 import { ROW } from "./icons.js";
 import { NovatrailCanvas, type ToolChange } from "./index.js";
 import { labelsFor } from "./labels.js";
-import { at, devtools, iconOf, input, level, placed, settle, spacer } from "./pointer.fixture.js";
+import {
+  at,
+  devtools,
+  iconOf,
+  input,
+  level,
+  placed,
+  settle,
+  spacer,
+  touches,
+} from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
+import { TIP_GRACE_MS } from "./tools.js";
 
-// The element's own row of buttons in a browser (R28): a toolbar of the tools the task allows, of
-// undo and clearing, of Up and Down (R33) and of the zoom's pair (T94), found by its roles and
-// names in the element's language, worked with the pointer and with the keyboard, telling of the
-// learner's choice of tool, scrolling what two fingers would, and standing above the statement and
-// the sheet, outside their scrolling. A worked example's row has Up, Down and the zoom's pair alone
-// (R42). Each button shows its icon before its label, which stays its name (R46; R78 spec). The
-// zoom itself, and Left and Right, are zoom.test.ts's.
+// The element's own buttons in a browser (R28, R84): a vertical bar of glass over the sheet's left
+// edge, as the interface mockup draws it (R148 spec), a toolbar of the tools the task allows, of
+// undo and clearing and of the zoom's pair (T94), found by its roles and names in the element's
+// language, worked with the pointer and with the keyboard, telling of the learner's choice of
+// tool, standing in the middle of what is in sight of the element and taking no room of its own.
+// Each button shows an icon alone, its label its name and its tooltip, which the pointer's hover
+// and the keyboard's focus show and Escape dismisses (the 2026-11-14 amendment to R90 spec; WCAG
+// 1.4.13). A worked example's toolbar is a row of the same glass at the bottom, of Next and Demo
+// with their labels beside their icons and of the zoom's pair (R42). The sheet has no buttons that
+// scroll it: a hand drags it, the wheel and the keys scroll it (R84), and the zoom itself is
+// zoom.test.ts's.
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -25,11 +40,11 @@ afterEach(() => {
   window.scrollTo(0, 0);
 });
 
-/** A sheet `width` CSS pixels wide, as tall as its row and the sheet unless given a height. */
+/** A sheet `width` CSS pixels wide, as tall as its statement and sheet unless given a height. */
 const sheet = (width = 400, height?: number, parent: HTMLElement = document.body) =>
   placed(made, width, height, { parent });
 
-/** The row's buttons by their roles and names, as a screen reader finds them, in the element. */
+/** The bar's buttons by their roles and names, as a screen reader finds them, in the element. */
 function buttons(element: HTMLElement, names = labelsFor(null).labels) {
   const within = page.elementLocator(element);
   return {
@@ -39,17 +54,15 @@ function buttons(element: HTMLElement, names = labelsFor(null).labels) {
     eraser: within.getByRole("radio", { name: names.eraser }),
     undo: within.getByRole("button", { name: names.undo }),
     clear: within.getByRole("button", { name: names.clear }),
-    up: within.getByRole("button", { name: names.up }),
-    down: within.getByRole("button", { name: names.down }),
   };
 }
 
-/** One button of the row, as the element has it. */
+/** One button of the bar, as the element has it, by its label. */
 function button(element: HTMLElement, name: string): HTMLButtonElement {
   const found = [...(element.shadowRoot?.querySelectorAll("button") ?? [])].find(
     (each) => each.textContent === name,
   );
-  if (found === undefined) throw new Error(`the row has no ${name}`);
+  if (found === undefined) throw new Error(`the bar has no ${name}`);
   return found;
 }
 
@@ -80,8 +93,42 @@ function heard(target: EventTarget): ToolChange[] {
   return details;
 }
 
-test("the row is a toolbar of the pen and the eraser, undo and clear, named in English for an element of no language", async () => {
-  const { element, row } = await sheet();
+/** Each of the keys pressed in turn, and the button, by its label, that the focus is on after it. */
+async function moves(
+  root: ShadowRoot,
+  steps: readonly (readonly [keys: string, to: string])[],
+): Promise<void> {
+  for (const [keys, to] of steps) {
+    await userEvent.keyboard(keys);
+    expect(root.activeElement?.textContent, keys).toBe(to);
+  }
+}
+
+/** A button of the page, before or after the element, for Tab to come from or go to. */
+function pageButton(text: string): HTMLButtonElement {
+  const one = document.createElement("button");
+  one.textContent = text;
+  document.body.append(one);
+  made.push(one);
+  return one;
+}
+
+/** The element's tooltip. */
+function tipOf(root: ShadowRoot): HTMLElement {
+  const tip = root.querySelector<HTMLElement>(".tip");
+  if (tip === null) throw new Error("the bar has no tooltip");
+  return tip;
+}
+
+/** What the tooltip says while it shows, and null while it is hidden. */
+const said = (tip: HTMLElement) => (tip.hidden ? null : tip.textContent);
+
+/** Longer than a tooltip stays after the pointer leaves, by a margin for a loaded host. */
+const PAST_GRACE = TIP_GRACE_MS + 150;
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+test("the bar is a vertical toolbar of the pen and the eraser, undo and clear, named in English for an element of no language, before the sheet in the order of Tab", async () => {
+  const { element, root, row } = await sheet();
   const found = buttons(element);
   await expect.element(found.row).toBeVisible();
   await expect.element(found.group).toBeVisible();
@@ -89,12 +136,10 @@ test("the row is a toolbar of the pen and the eraser, undo and clear, named in E
   await expect.element(found.eraser).not.toBeChecked();
   await expect.element(found.undo).toBeVisible();
   await expect.element(found.clear).toBeVisible();
-  await expect.element(found.up).toBeVisible();
-  await expect.element(found.down).toBeVisible();
+  expect(row.getAttribute("aria-orientation")).toBe("vertical");
   // The order the arrow keys go through, and the language the names are in. A worked example's
-  // Next and Demo come first, and a sheet hides them (R42). Up and Down are on every device (R33),
-  // and so are Zoom in and Zoom out, while Left and Right come with a zoomed sheet (T94). The last
-  // button is pen mode's, which out of it the row hides (R29).
+  // Next and Demo come first, and a sheet hides them (R42). Zoom in and Zoom out are on every
+  // device (T94). The last button is pen mode's, which out of it the bar hides (R29).
   expect([...row.querySelectorAll("button")].map((each) => each.textContent)).toEqual([
     "Next",
     "Demo",
@@ -102,19 +147,25 @@ test("the row is a toolbar of the pen and the eraser, undo and clear, named in E
     "Eraser",
     "Undo",
     "Clear",
-    "Up",
-    "Down",
     "Zoom in",
     "Zoom out",
-    "Left",
-    "Right",
     "Draw with finger",
   ]);
-  expect(row.querySelectorAll("button[hidden]")).toHaveLength(5);
+  expect(row.querySelectorAll("button[hidden]")).toHaveLength(3);
   expect(row.lang).toBe("en");
+  // The lines between the groups say nothing to a screen reader, and the finger's goes with it.
+  const lines = [...row.querySelectorAll<HTMLElement>(".line")];
+  expect(lines.map((line) => [line.getAttribute("aria-hidden"), line.hidden])).toEqual([
+    ["true", false],
+    ["true", true],
+  ]);
+  // The rail of the bar comes first in the frame: Tab reaches the bar before the sheet.
+  const rail = root.querySelector(".frame")?.firstElementChild;
+  expect(rail?.className).toBe("rail");
+  expect(rail?.contains(row)).toBe(true);
 });
 
-test("each button shows its icon before its label: an SVG that names nothing, in outline, but filled for the tool in use", async () => {
+test("each button shows its icon, its label after it: an SVG that names nothing, in outline, but filled for the tool in use", async () => {
   const { element, row } = await sheet();
   const each = [...row.querySelectorAll("button")];
   expect(each.map((one) => drawn(one).name)).toEqual([
@@ -124,12 +175,8 @@ test("each button shows its icon before its label: an SVG that names nothing, in
     ROW.eraser.outline,
     ROW.undo.outline,
     ROW.clear.outline,
-    ROW.up.outline,
-    ROW.down.outline,
     ROW.zoomIn.outline,
     ROW.zoomOut.outline,
-    ROW.left.outline,
-    ROW.right.outline,
     ROW.finger.outline,
   ]);
   for (const one of each) {
@@ -155,7 +202,7 @@ test("each button shows its icon before its label: an SVG that names nothing, in
   expect(button(element, "Ластик").querySelectorAll("svg")).toHaveLength(1);
 });
 
-test("in a row that runs right to left, the icons of Next, Undo and a hidden Demo are mirrored, and no other, and ArrowLeft goes on to the next button", async () => {
+test("in an element whose text runs right to left, the icons of Next, Undo and a hidden Demo are mirrored, and no other; the bar's arrows still go down, and a worked example's ArrowLeft goes on", async () => {
   const parent = document.createElement("div");
   parent.dir = "rtl";
   document.body.append(parent);
@@ -168,36 +215,30 @@ test("in a row that runs right to left, the icons of Next, Undo and a hidden Dem
         drawn(one).mirrored,
       ]),
     );
-  expect(mirrored()).toEqual({
-    Pen: false,
-    Eraser: false,
-    Undo: true,
-    Clear: false,
-    Up: false,
-    Down: false,
-    "Zoom in": false,
-    "Zoom out": false,
-  });
-  // The arrow that points along the row goes on: the next button stands to the left (R46).
+  const unturned = { "Zoom in": false, "Zoom out": false };
+  expect(mirrored()).toEqual({ Pen: false, Eraser: false, Undo: true, Clear: false, ...unturned });
+  // The bar runs down whichever way the text runs: the arrows across are not its (APG).
   button(element, "Pen").focus();
-  await userEvent.keyboard("{ArrowLeft}");
-  expect(root.activeElement?.textContent).toBe("Eraser");
-  await userEvent.keyboard("{ArrowRight}");
-  expect(root.activeElement?.textContent).toBe("Pen");
+  await moves(root, [
+    ["{ArrowDown}", "Eraser"],
+    ["{ArrowLeft}", "Eraser"],
+    ["{ArrowRight}", "Eraser"],
+    ["{ArrowUp}", "Pen"],
+  ]);
   element.workedExample = workedExample();
   await settle();
-  const unturned = { Up: false, Down: false, "Zoom in": false, "Zoom out": false };
   expect(mirrored()).toEqual({ Next: true, Demo: false, ...unturned });
+  // The arrow that points along the example's row goes on: the next button stands to the left (R46).
+  button(element, "Next").focus();
+  await moves(root, [
+    ["{ArrowLeft}", "Demo"],
+    ["{ArrowRight}", "Next"],
+    ["{ArrowDown}", "Next"],
+  ]);
   button(element, "Demo").click();
   await settle();
   expect(drawn(button(element, "Demo")).name).toBe(ROW.demoHidden.outline);
   expect(mirrored()).toEqual({ Next: true, Demo: true, ...unturned });
-  // Left and Right point where the sheet goes, whichever way the row runs (T94).
-  button(element, "Zoom in").click();
-  await settle();
-  expect(mirrored()).toMatchObject({ Left: false, Right: false });
-  button(element, "Zoom out").click();
-  await settle();
   // Left to right, nothing is mirrored.
   parent.dir = "ltr";
   expect(Object.values(mirrored()).some(Boolean)).toBe(false);
@@ -219,15 +260,11 @@ test("the labels follow the element's own lang: Russian for ru and its regions, 
     "Ластик",
     "Отменить",
     "Очистить",
-    "Выше",
-    "Ниже",
     "Крупнее",
     "Мельче",
-    "Левее",
-    "Правее",
     "Рисовать пальцем",
   ]);
-  // A language the labels are not in reads as English, in English: the row says its own.
+  // A language the labels are not in reads as English, in English: the bar says its own.
   for (const tag of ["de", "", "constructor", "x-ru", "zh-Hant-CN"]) {
     element.setAttribute("lang", tag);
     expect(row.lang).toBe("en");
@@ -273,7 +310,35 @@ test("the element reads its own lang alone, and has it from the start when made 
   expect(early.shadowRoot?.querySelector(".tools")?.getAttribute("lang")).toBe("ru");
 });
 
-test("a tool the learner chooses with the row is the element's tool, and toolchange tells of it once", async () => {
+test("tools-hidden takes the bar out of sight and of the accessibility tree, the focus off it, from markup too, and its going brings the bar back with its stop of Tab", async () => {
+  const { element, root, row } = await sheet(400, 600);
+  const eraser = button(element, "Eraser");
+  eraser.focus();
+  const within = page.elementLocator(element);
+  const toolbars = () => within.getByRole("toolbar").elements();
+  expect(toolbars()).toHaveLength(1);
+  element.toggleAttribute("tools-hidden", true);
+  await settle();
+  expect(toolbars()).toHaveLength(0);
+  expect(row.getBoundingClientRect().height).toBe(0);
+  expect(root.activeElement).toBeNull();
+  element.removeAttribute("tools-hidden");
+  await settle();
+  await expect.element(buttons(element).row).toBeVisible();
+  expect(row.getBoundingClientRect().width).toBeCloseTo(52, 1);
+  expect([...root.querySelectorAll('[tabindex="0"]')]).toEqual([eraser]);
+  // An element made with the attribute has no bar from the start.
+  const markup = document.createElement("div");
+  markup.innerHTML = "<novatrail-canvas tools-hidden></novatrail-canvas>";
+  document.body.append(markup);
+  made.push(markup);
+  await settle();
+  const early = markup.querySelector("novatrail-canvas");
+  expect(early?.shadowRoot?.querySelector<HTMLElement>(".rail")?.hidden).toBe(true);
+  expect(page.elementLocator(markup).getByRole("toolbar").elements()).toHaveLength(0);
+});
+
+test("a tool the learner chooses with the bar is the element's tool, and toolchange tells of it once", async () => {
   const { element } = await sheet();
   const told = heard(element);
   const found = buttons(element);
@@ -291,7 +356,7 @@ test("a tool the learner chooses with the row is the element's tool, and toolcha
   expect(told).toEqual([{ tool: "eraser" }, { tool: "pen" }]);
 });
 
-test("a tool the consumer sets shows on the row and is told of by no event", async () => {
+test("a tool the consumer sets shows on the bar and is told of by no event", async () => {
   const { element } = await sheet();
   const told = heard(element);
   element.tool = "eraser";
@@ -322,52 +387,41 @@ test("toolchange goes up from the element and out of a consumer's shadow tree", 
   expect(event?.target).toBe(host);
 });
 
-test("the row is one stop of Tab, the arrow keys move between its buttons choosing nothing, and Space chooses", async () => {
-  const before = document.createElement("button");
-  before.textContent = "Before";
-  const after = document.createElement("button");
-  after.textContent = "After";
-  document.body.append(before);
-  made.push(before);
+test("the bar is one stop of Tab, the arrows down and up move between its buttons choosing nothing, those across do nothing, and Space chooses", async () => {
+  const before = pageButton("Before");
   const { element, root } = await sheet();
-  document.body.append(after);
-  made.push(after);
+  const after = pageButton("After");
   const told = heard(element);
-  const focused = () => root.activeElement?.textContent;
   const stops = () => [...root.querySelectorAll('[tabindex="0"]')].map((each) => each.textContent);
   expect(stops()).toEqual(["Pen"]);
   before.focus();
   await userEvent.tab();
-  expect(focused()).toBe("Pen");
-  await userEvent.keyboard("{ArrowRight}");
-  expect(focused()).toBe("Eraser");
-  expect(element.tool).toBe("pen");
-  // Undo, Clear, Up and Zoom out are reached while unavailable, the arrows go round the row, Home
-  // and End go to its ends, and a key with Control is not the row's: the keys, and the button they
-  // leave focused.
-  const moves: [keys: string, to: string][] = [
-    ["{ArrowRight}{ArrowRight}", "Clear"],
-    ["{ArrowRight}", "Up"],
-    ["{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}", "Pen"],
-    ["{ArrowLeft}", "Zoom out"],
+  // Undo, Clear and Zoom out are reached while unavailable, the arrows go round the bar, Home and
+  // End go to its ends, and a key with Control is not the bar's, nor are the arrows across a bar
+  // that runs down: the keys, and the button they leave focused.
+  await moves(root, [
+    ["", "Pen"],
+    ["{ArrowDown}", "Eraser"],
+    ["{ArrowDown}{ArrowDown}", "Clear"],
+    ["{ArrowDown}", "Zoom in"],
+    ["{ArrowDown}{ArrowDown}", "Pen"],
+    ["{ArrowUp}", "Zoom out"],
     ["{Home}", "Pen"],
     ["{End}", "Zoom out"],
-    ["{Control>}{ArrowLeft}{/Control}", "Zoom out"],
-    ["{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}", "Eraser"],
-  ];
-  for (const [keys, to] of moves) {
-    await userEvent.keyboard(keys);
-    expect(focused(), keys).toBe(to);
-  }
+    ["{Control>}{ArrowUp}{/Control}", "Zoom out"],
+    ["{ArrowLeft}{ArrowRight}", "Zoom out"],
+    ["{ArrowUp}{ArrowUp}{ArrowUp}{ArrowUp}", "Eraser"],
+  ]);
+  expect(element.tool).toBe("pen");
   expect(stops()).toEqual(["Eraser"]);
   await userEvent.keyboard(" ");
   expect(element.tool).toBe("eraser");
   expect(told).toEqual([{ tool: "eraser" }]);
-  // Out of the row and back: the focus comes back to the button it left.
+  // Out of the bar and back: the focus comes back to the button it left.
   await userEvent.tab();
   expect(document.activeElement).toBe(after);
   await userEvent.tab({ shift: true });
-  expect(focused()).toBe("Eraser");
+  expect(root.activeElement?.textContent).toBe("Eraser");
 });
 
 test("Undo and Clear stand unavailable while there is nothing to undo or to clear, and keep the focus", async () => {
@@ -455,8 +509,8 @@ test("a task without the eraser has none: no button, no eraser of the pen, no to
   expect(() => {
     element.task = sheetTask({ tools: ["eraser"] });
   }).toThrow(TypeError);
-  // Pen, Undo, Clear, Up and Down, Zoom in and Zoom out.
-  expect(root.querySelectorAll("button:not([hidden])")).toHaveLength(7);
+  // Pen, Undo, Clear, Zoom in and Zoom out.
+  expect(root.querySelectorAll("button:not([hidden])")).toHaveLength(5);
 });
 
 test("a new task without the eraser puts the pen back, with no event, and the focus with it; an erasing under way ends as it began", async () => {
@@ -488,7 +542,7 @@ test("a new task without the eraser puts the pen back, with no event, and the fo
   expect(element.tool).toBe("pen");
 });
 
-test("a worked example's row is named so in the element's language and has Next, Demo, Up, Down and the zoom's pair alone, the stop of Tab and the focus on Next, and leaving it brings the rest back", async () => {
+test("a worked example's toolbar is a row named so in the element's language, of Next and Demo with their labels and the zoom's pair alone, its arrows across, the stop of Tab and the focus on Next, and leaving it brings the bar back", async () => {
   // A device with touch, in pen mode: a worked example's row has no finger's button even so (R42).
   Object.defineProperty(navigator, "maxTouchPoints", { value: 5, configurable: true });
   try {
@@ -502,32 +556,36 @@ test("a worked example's row is named so in the element's language and has Next,
     const { element, root, row } = await sheet();
     PEN_MODE.on = true;
     await settle();
-    const focused = () => root.activeElement?.textContent;
     const shown = () =>
       [...row.querySelectorAll("button:not([hidden])")].map((each) => each.textContent);
     const stops = () =>
       [...root.querySelectorAll('[tabindex="0"]')].map((each) => each.textContent);
-    expect(shown()).toHaveLength(9);
+    expect(shown()).toHaveLength(7);
     button(element, "Pen").focus();
     element.workedExample = workedExample();
     expect(row.getAttribute("aria-label")).toBe("Worked example buttons");
-    expect(shown()).toEqual(["Next", "Demo", "Up", "Down", "Zoom in", "Zoom out"]);
+    expect(row.getAttribute("aria-orientation")).toBe("horizontal");
+    expect(row.parentElement?.classList.contains("example")).toBe(true);
+    expect(shown()).toEqual(["Next", "Demo", "Zoom in", "Zoom out"]);
     expect(page.elementLocator(element).getByRole("radiogroup").elements()).toHaveLength(0);
-    expect(focused()).toBe("Next");
+    // Next and Demo are actions, and show their labels beside their icons (R90 spec).
+    await settle();
+    for (const name of ["Next", "Demo"]) {
+      const label = button(element, name).querySelector(".label")?.getBoundingClientRect();
+      expect(label?.width, name).toBeGreaterThan(8);
+    }
+    expect(root.activeElement?.textContent).toBe("Next");
     expect(stops()).toEqual(["Next"]);
-    const moves: [keys: string, to: string][] = [
+    await moves(root, [
       ["{ArrowRight}", "Demo"],
-      ["{ArrowRight}", "Up"],
+      ["{ArrowRight}", "Zoom in"],
       ["{ArrowLeft}", "Demo"],
       ["{ArrowLeft}", "Next"],
       ["{ArrowLeft}", "Zoom out"],
+      ["{ArrowUp}{ArrowDown}", "Zoom out"],
       ["{Home}", "Next"],
       ["{End}", "Zoom out"],
-    ];
-    for (const [keys, to] of moves) {
-      await userEvent.keyboard(keys);
-      expect(focused(), keys).toBe(to);
-    }
+    ]);
     element.setAttribute("lang", "ru");
     const russian = labelsFor("ru").labels;
     await expect
@@ -537,19 +595,13 @@ test("a worked example's row is named so in the element's language and has Next,
           .getByRole("toolbar", { name: russian.exampleButtons, exact: true }),
       )
       .toBeVisible();
-    expect(shown()).toEqual([
-      russian.next,
-      russian.demo,
-      russian.up,
-      russian.down,
-      russian.zoomIn,
-      russian.zoomOut,
-    ]);
-    // Out of the example the row is the sheet's again, and the stop stays where the focus left it.
+    expect(shown()).toEqual([russian.next, russian.demo, russian.zoomIn, russian.zoomOut]);
+    // Out of the example the bar is the sheet's again, and the stop stays where the focus left it.
     element.workedExample = undefined;
     await settle();
     expect(row.getAttribute("aria-label")).toBe(russian.sheetButtons);
-    expect(shown()).toHaveLength(9);
+    expect(row.getAttribute("aria-orientation")).toBe("vertical");
+    expect(shown()).toHaveLength(7);
     expect(stops()).toEqual([russian.zoomOut]);
   } finally {
     Reflect.deleteProperty(navigator, "maxTouchPoints");
@@ -574,15 +626,15 @@ test("an eraser given before the element is upgraded, with a task without it, le
   }
 });
 
-test("every button is at least 44 CSS pixels square, in English and in Russian, on a narrow sheet, pen mode's too, and a worked example's", async () => {
-  // A device with touch, in pen mode: the row shows every button it has (R29, R33).
+test("every button is at least 44 CSS pixels square, in English and in Russian, pen mode's too, and a worked example's", async () => {
+  // A device with touch, in pen mode: the bar shows every button it has (R29).
   Object.defineProperty(navigator, "maxTouchPoints", { value: 5, configurable: true });
   try {
     const { element, row } = await sheet(400);
     PEN_MODE.on = true;
-    // A sheet's nine buttons, then a worked example's six (R42).
-    for (const count of [9, 6]) {
-      if (count === 6) element.workedExample = workedExample();
+    // A sheet's seven buttons, then a worked example's four (R42).
+    for (const count of [7, 4]) {
+      if (count === 4) element.workedExample = workedExample();
       for (const tag of ["en", "ru"]) {
         element.setAttribute("lang", tag);
         await settle();
@@ -600,189 +652,218 @@ test("every button is at least 44 CSS pixels square, in English and in Russian, 
   }
 });
 
-/** Up and Down of the element's row (R33). */
-const upAndDown = (element: HTMLElement) => ({
-  up: button(element, "Up"),
-  down: button(element, "Down"),
-});
-
-/** What `aria-disabled` says of each button: "true" while it stands unavailable. */
-const unavailableOf = (...each: HTMLButtonElement[]) =>
-  each.map((one) => one.getAttribute("aria-disabled"));
-
-test.each([1, 1.5])(
-  "Up and Down scroll the container of an element with a height by four fifths of what it shows, under an ancestor scaled %s times as well",
-  async (scale) => {
-    const wrapper = document.createElement("div");
-    wrapper.style.cssText = `transform: scale(${scale}); transform-origin: 0 0;`;
-    document.body.append(wrapper);
-    const { element, viewport } = await sheet(400, 300, wrapper);
-    const { up, down } = upAndDown(element);
-    // In pixels of the container's layout, whatever the scale on the screen.
-    const step = Math.round(0.8 * viewport.clientHeight);
-    await userEvent.click(down);
-    expect(viewport.scrollTop).toBeCloseTo(step, 0);
-    await userEvent.click(down);
-    expect(viewport.scrollTop).toBeCloseTo(2 * step, 0);
-    await userEvent.click(up);
-    expect(viewport.scrollTop).toBeCloseTo(step, 0);
-    expect(window.scrollY).toBe(0);
-  },
-);
-
-test("Down at the container's end hands the scroll on to the page, by four fifths of what it shows below the row stuck over it, and Up scrolls the container back first", async () => {
-  const { element, row, viewport } = await sheet(400, 300);
-  spacer(made);
-  const { up, down } = upAndDown(element);
-  const end = viewport.scrollHeight - viewport.clientHeight;
-  viewport.scrollTop = end;
-  // The page scrolled a little, and the row sticks over its top.
-  window.scrollTo(0, 100);
-  await settle();
-  expect(row.getBoundingClientRect().top).toBeCloseTo(0, 3);
-  const sight = window.visualViewport?.height ?? window.innerHeight;
-  const step = Math.round(0.8 * (sight - row.getBoundingClientRect().bottom));
-  down.click();
-  expect(viewport.scrollTop).toBeCloseTo(end, 0);
-  expect(window.scrollY).toBeCloseTo(100 + step, 0);
-  window.scrollTo(0, 0);
-  await settle();
-  await userEvent.click(up);
-  expect(viewport.scrollTop).toBeCloseTo(end - Math.round(0.8 * viewport.clientHeight), 0);
-  expect(window.scrollY).toBe(0);
-});
-
-test("Up and Down stand unavailable where what they scroll can go no further, keep the focus there, and do nothing", async () => {
-  const { element, root, viewport } = await sheet(400, 300);
-  const { up, down } = upAndDown(element);
-  // The container at its top, and a page that does not scroll: nothing above.
-  expect(unavailableOf(up, down)).toEqual(["true", null]);
-  const within = page.elementLocator(element);
-  await expect.element(within.getByRole("button", { name: "Up", disabled: true })).toBeVisible();
-  down.focus();
-  const end = viewport.scrollHeight - viewport.clientHeight;
-  for (let press = 0; press < 10 && viewport.scrollTop < end - 0.5; press++) {
-    await userEvent.keyboard("{Enter}");
-  }
-  expect(unavailableOf(up, down)).toEqual([null, "true"]);
-  expect(root.activeElement).toBe(down);
-  await userEvent.keyboard("{Enter} ");
-  expect(viewport.scrollTop).toBeCloseTo(end, 0);
-  expect(root.activeElement).toBe(down);
-  // A scroll that is not theirs sets them as the container now is.
-  viewport.scrollTop = 0;
-  await settle();
-  expect(unavailableOf(up, down)).toEqual(["true", null]);
-});
-
-test("without a height Up and Down scroll the ancestor that scrolls the element, and hear it scroll", async () => {
-  const scroller = document.createElement("div");
-  scroller.style.cssText = "height: 300px; overflow: auto;";
-  document.body.append(scroller);
-  const { element } = await sheet(400, undefined, scroller);
-  const { up, down } = upAndDown(element);
-  expect(unavailableOf(up, down)).toEqual(["true", null]);
-  scroller.scrollTop = 100;
-  await settle();
-  expect(unavailableOf(up, down)).toEqual([null, null]);
-  // Back by four fifths of what the ancestor shows, more than 100 px whether the row sticks to its
-  // top or, wrapped over more than a quarter of 300 px, stands in its place (T92): to 0.
-  await userEvent.click(up);
-  expect(scroller.scrollTop).toBe(0);
-  expect(unavailableOf(up, down)).toEqual(["true", null]);
-});
-
-test("Up and Down count only what an ancestor that clips the container lets show", async () => {
-  // A container that scrolls well past a step, in a panel that shows a part of it.
-  const panel = document.createElement("div");
-  panel.style.cssText = "height: 250px; overflow: auto;";
-  document.body.append(panel);
-  const { element, viewport } = await sheet(400, 400, panel);
-  const seen = panel.getBoundingClientRect().bottom - viewport.getBoundingClientRect().top;
-  upAndDown(element).down.click();
-  expect(viewport.scrollTop).toBeCloseTo(Math.round(0.8 * seen), 0);
-});
-
-test("without a height, Down stands unavailable on a page no taller than the window until the page grows, and then scrolls it by four fifths of the window, the row lower down", async () => {
-  const above = document.createElement("div");
-  above.style.height = "100px";
-  document.body.append(above);
-  made.push(above);
-  const { element, row } = await sheet(400);
-  const { down } = upAndDown(element);
-  expect(unavailableOf(down)).toEqual(["true"]);
-  // The page grows, and nothing scrolls: Down has somewhere to go.
-  spacer(made);
-  await settle();
-  expect(unavailableOf(down)).toEqual([null]);
-  // The row stands in its place, below the page's top, over nothing: the whole window counts.
-  expect(row.getBoundingClientRect().top).toBeCloseTo(100, 3);
-  const sight = window.visualViewport?.height ?? window.innerHeight;
-  down.click();
-  expect(window.scrollY).toBeCloseTo(Math.round(0.8 * sight), 0);
-});
-
-test.runIf(devtools)(
-  "a press of Up or Down while a pointer writes moves nothing under it, and one after the stroke scrolls",
-  async () => {
-    const { element, canvas, viewport, view } = await sheet(400, 300);
-    const { down } = upAndDown(element);
-    await input("mousePressed", at(canvas, view(), 100, 100));
-    await input("mouseMoved", at(canvas, view(), 300, 100));
-    down.click();
-    expect(viewport.scrollTop).toBe(0);
-    await input("mouseReleased", at(canvas, view(), 300, 100));
-    expect(probe(element).strokes).toHaveLength(1);
-    down.click();
+test.each(["ltr", "rtl"])(
+  "in an element with a height, %s, the bar stands 16 pixels from its left edge in the middle of it, 52 pixels wide, its icons in round targets of 44, takes no room, and stays while the sheet scrolls under it",
+  async (dir) => {
+    const parent = document.createElement("div");
+    parent.dir = dir;
+    document.body.append(parent);
+    const { element, root, row, viewport } = await sheet(400, 600, parent);
+    const box = element.getBoundingClientRect();
+    const bar = row.getBoundingClientRect();
+    expect(bar.width).toBeCloseTo(52, 1);
+    expect(bar.left - box.left).toBeCloseTo(16, 1);
+    expect(getComputedStyle(row).borderRadius).toBe("26px");
+    // The middle of what is in sight of the element: the window may be lower than it.
+    const top = Math.max(box.top, 0);
+    const sight = Math.min(box.bottom, window.innerHeight) - top;
+    expect(Math.abs(bar.top + bar.height / 2 - (top + sight / 2))).toBeLessThanOrEqual(1);
+    for (const each of row.querySelectorAll("button:not([hidden])")) {
+      const rect = each.getBoundingClientRect();
+      expect([rect.width, rect.height]).toEqual([44, 44]);
+      expect(getComputedStyle(each).borderRadius).toBe("22px");
+      // The label is out of sight, and still the button's name (R46).
+      expect(each.querySelector(".label")?.getBoundingClientRect().width).toBeLessThanOrEqual(1);
+      expect(iconOf(each).getBoundingClientRect().width).toBeCloseTo(20, 1);
+    }
+    // The bar overlays the sheet: the container and the column start at the element's top.
+    expect(viewport.getBoundingClientRect().top).toBeCloseTo(box.top, 3);
+    expect(viewport.clientHeight).toBeCloseTo(600, 0);
+    expect(root.querySelector(".column")?.getBoundingClientRect().top).toBeCloseTo(box.top, 3);
+    expect(bar.left).toBeGreaterThan(viewport.getBoundingClientRect().left);
+    viewport.scrollTop = 200;
+    await settle();
     expect(viewport.scrollTop).toBeGreaterThan(0);
+    expect(row.getBoundingClientRect().top).toBe(bar.top);
+    expect(element.getBoundingClientRect().top).toBe(box.top);
   },
 );
 
-test("with a height, the row stays where it is while the statement and the sheet scroll under it", async () => {
-  const { element, row, viewport } = await sheet(400, 300);
-  const top = row.getBoundingClientRect().top;
-  expect(viewport.getBoundingClientRect().top).toBeCloseTo(row.getBoundingClientRect().bottom, 3);
-  expect(viewport.clientHeight).toBeCloseTo(300 - row.getBoundingClientRect().height, 0);
-  viewport.scrollTop = 200;
-  await settle();
-  expect(row.getBoundingClientRect().top).toBe(top);
-  expect(element.getBoundingClientRect().top).toBe(top);
+test("without a height, the bar sticks in the middle of what the window shows below --novatrail-canvas-top, over the sheet, which it takes the pointer from", async () => {
+  // A sheet taller than the window, by its width: the page scrolls it, and the bar sticks.
+  const width = Math.ceil(((window.innerHeight + 300) * 1000) / 1400);
+  const { element, root, row, canvas } = await sheet(width);
+  spacer(made);
+  const rail = row.parentElement;
+  if (rail === null) throw new Error("the bar has no rail");
+  for (const band of [0, 40]) {
+    element.style.setProperty("--novatrail-canvas-top", `${band}px`);
+    window.scrollTo(0, 100);
+    await settle();
+    expect(element.getBoundingClientRect().top).toBeLessThan(band);
+    expect(rail.getBoundingClientRect().top).toBeCloseTo(band, 3);
+    const bar = row.getBoundingClientRect();
+    const sight = window.innerHeight - band;
+    expect(Math.abs(bar.top + bar.height / 2 - (band + sight / 2)), `${band}`).toBeLessThanOrEqual(
+      1,
+    );
+    // Over the sheet: a pointer there meets the bar, not the canvas under it.
+    const over = middle(row);
+    const sheetBox = canvas.getBoundingClientRect();
+    expect(over.clientX).toBeGreaterThan(sheetBox.left);
+    expect(row.contains(root.elementFromPoint(over.clientX, over.clientY))).toBe(true);
+  }
 });
 
-test("without a height, the row sticks to the top of the page's scrolling, as far down as --novatrail-canvas-top says, over the sheet it hides from the eraser", async () => {
-  const { element, root, row, canvas, view } = await sheet(400);
-  spacer(made);
-  // A stroke well down the sheet, and the page scrolled so that it is under the row.
-  level(canvas, view(), 700, 100, 300);
-  window.scrollTo(0, at(canvas, view(), 200, 700).clientY - 20);
-  await settle();
-  expect(window.scrollY).toBeGreaterThan(0);
-  expect(row.getBoundingClientRect().top).toBeCloseTo(0, 3);
-  const over = at(canvas, view(), 200, 700);
-  expect(row.contains(root.elementFromPoint(over.clientX, over.clientY))).toBe(true);
-  // An erasing that goes over the stroke under the row takes nothing there.
-  element.tool = "eraser";
-  const mouse = { pointerId: 5, pointerType: "mouse", isPrimary: true, bubbles: true };
-  const below = row.getBoundingClientRect().bottom + 40;
-  const event = (type: string, clientY: number, init: PointerEventInit) =>
-    new PointerEvent(type, {
-      ...mouse,
-      clientX: at(canvas, view(), 200, 0).clientX,
-      clientY,
-      ...init,
-    });
-  canvas.dispatchEvent(event("pointerdown", below, { button: 0, buttons: 1 }));
-  canvas.dispatchEvent(event("pointermove", at(canvas, view(), 200, 700).clientY, { buttons: 1 }));
-  canvas.dispatchEvent(event("pointerup", at(canvas, view(), 200, 700).clientY, { buttons: 0 }));
-  expect(probe(element).strokes.map((each) => each.id)).toEqual([1]);
+test("the tool in use is filled with the accent at an eighth and drawn in it, a button in focus ringed in it, and the bar is of glass: each the consumer's own where its theme gives one", async () => {
+  const before = pageButton("Before");
+  const { element, root, row } = await sheet();
+  const pen = button(element, "Pen");
+  const eraser = button(element, "Eraser");
+  const plain = document.createElement("div");
+  document.body.append(plain);
+  made.push(plain);
+  /** What the engine computes of a colour, read off a plain element of the page. */
+  const computed = (property: string, value: string) => {
+    plain.style.setProperty(property, value);
+    return getComputedStyle(plain).getPropertyValue(property);
+  };
+  const themes = [
+    { accent: "#0071E3", glass: "rgba(255, 255, 255, 0.76)" },
+    { accent: "#c03030", glass: "rgb(10, 20, 30)", own: true },
+  ];
+  for (const { accent, glass, own } of themes) {
+    if (own) {
+      element.style.setProperty("--novatrail-canvas-accent", accent);
+      element.style.setProperty("--novatrail-canvas-glass", glass);
+    }
+    const style = getComputedStyle(pen);
+    const mixed = computed("background-color", `color-mix(in srgb, ${accent} 12%, transparent)`);
+    expect(style.backgroundColor, accent).toBe(mixed);
+    expect(style.color, accent).toBe(computed("color", accent));
+    expect(getComputedStyle(eraser).backgroundColor).toBe(computed("background-color", "#0000"));
+    expect(getComputedStyle(row).backgroundColor, glass).toBe(computed("background-color", glass));
+    // The keyboard's focus on the bar: a ring of two pixels in the accent, on the button's edge.
+    before.focus();
+    await userEvent.tab();
+    expect(root.activeElement).toBe(pen);
+    const ring = getComputedStyle(pen);
+    expect([ring.outlineStyle, ring.outlineWidth, ring.outlineOffset]).toEqual([
+      "solid",
+      "2px",
+      "0px",
+    ]);
+    expect(ring.outlineColor).toBe(computed("color", accent));
+  }
+});
 
-  element.style.setProperty("--novatrail-canvas-top", "40px");
+test("a mouse over an icon button shows its label in a tooltip beside the bar, level with the button, in the element's language, hidden from a screen reader; Escape dismisses it till another button, and it goes with the element", async () => {
+  const { element, root, row } = await sheet(400, 600);
+  const tip = tipOf(root);
+  expect(tip.getAttribute("aria-hidden")).toBe("true");
+  expect(said(tip)).toBeNull();
+  for (const tag of ["en", "ru"]) {
+    element.setAttribute("lang", tag);
+    const { labels } = labelsFor(tag);
+    for (const key of ["pen", "undo", "zoomOut"] as const) {
+      const one = button(element, labels[key]);
+      await userEvent.hover(one);
+      expect(said(tip), key).toBe(labels[key]);
+      expect(tip.lang).toBe(tag);
+      const box = one.getBoundingClientRect();
+      const shown = tip.getBoundingClientRect();
+      expect(shown.width).toBeGreaterThan(0);
+      expect(shown.left).toBeGreaterThanOrEqual(row.getBoundingClientRect().right);
+      const level = shown.top + shown.height / 2;
+      expect(level).toBeGreaterThan(box.top);
+      expect(level).toBeLessThan(box.bottom);
+    }
+  }
+  // Another language while it shows: it says the label in that one.
+  element.setAttribute("lang", "en");
+  expect(said(tip)).toBe("Zoom out");
+  // Escape dismisses it, the pointer still over the button; another button shows its own.
+  await userEvent.keyboard("{Escape}");
+  expect(said(tip)).toBeNull();
+  await userEvent.hover(button(element, "Clear"));
+  expect(said(tip)).toBe("Clear");
+  element.remove();
+  expect(said(tip)).toBeNull();
+});
+
+test("a tooltip stays a moment after the pointer leaves its button, and while the pointer is on it", async () => {
+  const { element, root } = await sheet(400, 600);
+  const away = pageButton("Away");
+  const tip = tipOf(root);
+  const pen = button(element, "Pen");
+  await userEvent.hover(pen);
+  expect(said(tip)).toBe("Pen");
+  pen.dispatchEvent(new PointerEvent("pointerleave", { pointerType: "mouse" }));
+  expect(said(tip)).toBe("Pen");
+  await wait(PAST_GRACE);
+  expect(said(tip)).toBeNull();
+  // From a button onto its tooltip, which keeps it, and off it.
+  await userEvent.hover(button(element, "Eraser"));
+  await userEvent.hover(page.elementLocator(tip));
+  await wait(PAST_GRACE);
+  expect(said(tip)).toBe("Eraser");
+  await userEvent.hover(away);
+  await wait(PAST_GRACE);
+  expect(said(tip)).toBeNull();
+});
+
+test("the keyboard's focus on an icon button shows its tooltip, the arrows move it with the focus, Escape dismisses it, and leaving the bar hides it", async () => {
+  const before = pageButton("Before");
+  const { root } = await sheet(400, 600);
+  const tip = tipOf(root);
+  before.focus();
+  await userEvent.tab();
+  expect(said(tip)).toBe("Pen");
+  const steps: [keys: string, tip: string | null][] = [
+    ["{ArrowDown}", "Eraser"],
+    ["{Escape}", null],
+    ["{ArrowDown}", "Undo"],
+    ["{Shift>}{Tab}{/Shift}", null],
+  ];
+  for (const [keys, shown] of steps) {
+    await userEvent.keyboard(keys);
+    expect(said(tip), keys).toBe(shown);
+  }
+  expect(document.activeElement).toBe(before);
+});
+
+test("on a worked example Next and Demo, which show their labels, have no tooltip, and the zoom's buttons have theirs above the row", async () => {
+  const { element, root, row } = await sheet(400, 600);
+  element.workedExample = workedExample();
   await settle();
-  expect(row.getBoundingClientRect().top).toBeCloseTo(40, 3);
+  const tip = tipOf(root);
+  for (const name of ["Next", "Demo"]) {
+    await userEvent.hover(button(element, name));
+    expect(said(tip), name).toBeNull();
+  }
+  const zoomIn = button(element, "Zoom in");
+  await userEvent.hover(zoomIn);
+  expect(said(tip)).toBe("Zoom in");
+  const shown = tip.getBoundingClientRect();
+  expect(shown.bottom).toBeLessThanOrEqual(row.getBoundingClientRect().top);
+  expect(shown.left + shown.width / 2).toBeCloseTo(middle(zoomIn).clientX, 0);
 });
 
 test.runIf(devtools)(
-  "a press on the row starts no stroke, and a stroke let go over a button clicks none",
+  "a finger's touch of an icon button presses it and shows no tooltip: a finger has no hover",
+  async () => {
+    const { element, root } = await sheet(400, 600);
+    const finger = { id: 1, ...middle(button(element, "Eraser")) };
+    await touches("touchStart", [finger]);
+    await touches("touchEnd", [finger]);
+    await settle();
+    expect(element.tool).toBe("eraser");
+    expect(said(tipOf(root))).toBeNull();
+  },
+);
+
+test.runIf(devtools)(
+  "a press on the bar starts no stroke, and a stroke let go over a button clicks none",
   async () => {
     const { element, canvas, view } = await sheet(400);
     await press(button(element, "Eraser"));
@@ -790,7 +871,7 @@ test.runIf(devtools)(
     await press(button(element, "Pen"));
     expect(element.tool).toBe("pen");
     expect(probe(element).strokes).toEqual([]);
-    // A stroke from the sheet up over Clear: it lands, and Clear stays unpressed.
+    // A stroke from the sheet onto Clear, over the sheet's edge: it lands, and Clear stays unpressed.
     level(canvas, view(), 300, 100, 200);
     await input("mousePressed", at(canvas, view(), 100, 100));
     await input("mouseMoved", at(canvas, view(), 300, 100));
@@ -803,18 +884,19 @@ test.runIf(devtools)(
 test.runIf(devtools)(
   "with the consumer's pointer-events: none the buttons take no pointer, and their keys still work",
   async () => {
-    const { element, viewport } = await sheet(400, 300);
+    const { element } = await sheet(400, 300);
     element.style.pointerEvents = "none";
     await press(button(element, "Eraser"));
     expect(element.tool).toBe("pen");
     button(element, "Eraser").focus();
     await userEvent.keyboard(" ");
     expect(element.tool).toBe("eraser");
-    // Down's key scrolls the sheet, though two fingers would start no gesture then (R29, R33).
-    await press(button(element, "Down"));
-    expect(viewport.scrollTop).toBe(0);
-    button(element, "Down").focus();
+    // Zoom in's key zooms the sheet, though two fingers would start no gesture then (R29, T94).
+    const zoomOut = button(element, "Zoom out");
+    await press(button(element, "Zoom in"));
+    expect(zoomOut.getAttribute("aria-disabled")).toBe("true");
+    button(element, "Zoom in").focus();
     await userEvent.keyboard("{Enter}");
-    expect(viewport.scrollTop).toBeGreaterThan(0);
+    expect(zoomOut.getAttribute("aria-disabled")).toBeNull();
   },
 );

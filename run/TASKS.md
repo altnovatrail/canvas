@@ -24,4 +24,4 @@ Open tasks outside the current epic, each as its body, in Russian (R154 spec, R1
   - доступность панели держится (R28–R73 canvas): toolbar по APG, цели 44 × 44 CSS px, forced colors, `prefers-reduced-motion`;
   - релиз в npm.
 - **Как проверить:** тесты элемента в трёх движках; снимки Playwright панели в тех же состояниях, 390 × 844 и 1194 × 834, против снимков эталона — сравнение без автора (R146 spec); `axe-core`; на 320 CSS px страница не прокручивается вбок; проверки правила 6 своего RUN.md.
-- **Разделы:** R36, R78, R90 и его поправки 2026-11-14, R146, R148 spec; architecture 3.2 и 6 spec; README эталона; Д242, Д244 spec; R28–R73, R33 canvas; architecture 3.10 canvas.
+- **Разделы:** R36 spec, R78 spec, R90 spec и его поправки 2026-11-14, R146 spec, R148 spec; architecture 3.2 и 6 spec; README эталона; Д242, Д244 spec; R28–R73, R33 canvas; architecture 3.10 canvas.

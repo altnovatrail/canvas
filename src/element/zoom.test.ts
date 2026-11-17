@@ -23,9 +23,10 @@ import { PAGE_ZOOM, PEN_MODE } from "./session.js";
 
 // The page's zoom of the sheet in a browser (T94; R90 spec): Zoom in and Zoom out step it from the
 // sheet's fit to twice it, for every sheet of the page, and a zoomed sheet scrolls across as well
-// as down — with Left and Right, two fingers and the keys — its statement staying as wide as the
-// fit. The workbook's printed lines grow with it, as 1.4.4 asks; the canvas stays as small as the
-// container, and the input, the eraser and the work for checking stay in units of the sheet.
+// as down — by the wheel, the keys, a finger in pen mode and two fingers, for the bar has no buttons
+// that scroll it (R84) — its statement staying as wide as the fit. The workbook's printed lines
+// grow with it, as 1.4.4 asks; the canvas stays as small as the container, and the input, the
+// eraser and the work for checking stay in units of the sheet.
 
 const made: HTMLElement[] = [];
 afterEach(async () => {
@@ -37,12 +38,12 @@ afterEach(async () => {
   window.scrollTo(0, 0);
 });
 
-/** A button of an element's row, by its label. */
+/** A button of an element's bar, by its label. */
 function button(element: HTMLElement, name: string): HTMLButtonElement {
   const found = [...(element.shadowRoot?.querySelectorAll("button") ?? [])].find(
     (each) => each.textContent === name,
   );
-  if (found === undefined) throw new Error(`the row has no ${name}`);
+  if (found === undefined) throw new Error(`the bar has no ${name}`);
   return found;
 }
 
@@ -92,12 +93,15 @@ test.each([
     expect(canvas.height).toBe(Math.round(shown.height * devicePixelRatio));
     const across = viewport.scrollWidth - viewport.clientWidth;
     expect(across).toBeCloseTo(Math.max(0, 1000 * k - width), 0);
-    expect(unavailable(element, "Zoom in")).toEqual([zoom === 2 ? "true" : null]);
-    // Left stands unavailable at the left, and Right while neither the container nor the page
-    // scrolls on across: an element wider than the window of the test makes the page scroll.
-    const page = document.documentElement.scrollWidth > window.innerWidth;
-    const right = across > 0.5 || page ? null : "true";
-    expect(unavailable(element, "Left", "Right")).toEqual(["true", right]);
+    expect(unavailable(element, "Zoom in", "Zoom out")).toEqual([zoom === 2 ? "true" : null, null]);
+    // Zoom out from the keyboard steps back to the fit, and a press more does nothing: there it
+    // stands unavailable, and keeps the focus.
+    button(element, "Zoom out").focus();
+    await userEvent.keyboard("{Enter}".repeat(Math.round((zoom - 1) / 0.25) + 1));
+    await settle();
+    expect(PAGE_ZOOM.value).toBe(1);
+    expect(element.shadowRoot?.activeElement).toBe(button(element, "Zoom out"));
+    expect(unavailable(element, "Zoom out")).toEqual(["true"]);
   },
 );
 
@@ -195,49 +199,6 @@ test("a stroke on a zoomed sheet scrolled across lands in sheet units, with its 
   );
   expect(fit.submission).toEqual(zoomed.submission);
 });
-
-test.each([1, 1.5])(
-  "Left and Right come with the zoom, after its pair, and scroll the container by four fifths of what it shows across, under an ancestor scaled %s times as well",
-  async (scale) => {
-    const wrapper = document.createElement("div");
-    wrapper.style.cssText = `transform: scale(${scale}); transform-origin: 0 0;`;
-    document.body.append(wrapper);
-    const { element, row, viewport } = await placed(made, 400, 300, { parent: wrapper });
-    const shown = () =>
-      [...row.querySelectorAll("button:not([hidden])")].map((each) => each.textContent);
-    expect(shown()).not.toContain("Left");
-    await zoomTo(element, 2);
-    expect(shown().slice(-4)).toEqual(["Zoom in", "Zoom out", "Left", "Right"]);
-    for (const name of ["Left", "Right"]) {
-      const rect = button(element, name).getBoundingClientRect();
-      expect(Math.min(rect.width, rect.height)).toBeGreaterThanOrEqual(44 * scale - 0.01);
-    }
-    const box = viewport.getBoundingClientRect();
-    const seen = Math.min(box.right, window.innerWidth) - Math.max(box.left, 0);
-    const step = Math.round((0.8 * seen) / scale);
-    const end = viewport.scrollWidth - viewport.clientWidth;
-    button(element, "Right").click();
-    expect(viewport.scrollLeft).toBeCloseTo(Math.min(step, end), 0);
-    button(element, "Right").click();
-    expect(viewport.scrollLeft).toBeCloseTo(Math.min(2 * step, end), 0);
-    // At the container's end Right hands on to the page, if the page scrolls across: a scaled
-    // element is wider than the window of the test.
-    const page = document.documentElement.scrollWidth > window.innerWidth;
-    expect(unavailable(element, "Left", "Right")).toEqual([null, page ? null : "true"]);
-    button(element, "Left").click();
-    expect(viewport.scrollLeft).toBeCloseTo(Math.max(0, end - step), 0);
-    expect(viewport.scrollTop).toBe(0);
-    expect(window.scrollX).toBe(0);
-    // Zoom out to the fit hides them, and the focus stays on Zoom out, which they come after.
-    button(element, "Zoom out").focus();
-    await userEvent.keyboard("{Enter}{Enter}{Enter}{Enter}");
-    await settle();
-    expect(PAGE_ZOOM.value).toBe(1);
-    expect(shown()).not.toContain("Left");
-    expect(element.shadowRoot?.activeElement).toBe(button(element, "Zoom out"));
-    expect(unavailable(element, "Zoom out")).toEqual(["true"]);
-  },
-);
 
 test("the zoom is the page's: a press on one sheet lays out every other, and a new one takes it, but nothing moves while a pointer writes", async () => {
   const one = await placed(made, 400, 300);
@@ -389,7 +350,7 @@ test("every layer shows the zoomed sheet by the canvas's one view, scrolled acro
   }
 });
 
-test("in a page that runs right to left, by a style or by dir, the zoomed statement keeps the element's direction, and by dir, as the row's icons go (R46), Left stands left of Right", async () => {
+test("in a page that runs right to left, by a style or by dir, the zoomed statement keeps the element's direction, and the container runs left to right from the sheet's left", async () => {
   for (const runs of ["style", "dir"] as const) {
     const parent = document.createElement("div");
     if (runs === "style") parent.style.direction = "rtl";
@@ -406,9 +367,6 @@ test("in a page that runs right to left, by a style or by dir, the zoomed statem
     // The container runs left to right, from the sheet's left.
     expect(getComputedStyle(viewport).direction).toBe("ltr");
     expect(viewport.scrollLeft).toBe(0);
-    const left = button(element, "Left").getBoundingClientRect();
-    const right = button(element, "Right").getBoundingClientRect();
-    if (runs === "dir") expect(left.right).toBeLessThanOrEqual(right.left);
     await zoomTo(element, 1);
   }
 });
