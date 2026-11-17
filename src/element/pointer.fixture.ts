@@ -8,7 +8,7 @@
 // package never has it.
 
 import { vi } from "vitest";
-import { cdp, page, server, userEvent } from "vitest/browser";
+import { cdp, page, server } from "vitest/browser";
 import { toScreen, type View } from "../core/screen.js";
 import "./index.js";
 import { type ExportedSheet, NovatrailCanvas, type Task } from "./index.js";
@@ -173,23 +173,10 @@ export function iconOf(button: Element): SVGSVGElement {
   return icon;
 }
 
-/** A page taller than the screen, which scrolls the element: it goes into `made`, to be taken off. */
-/**
- * The mouse moved to the window's bottom right corner, where no element of a test stands: Vitest
- * keeps the page's pointer from test to test and from file to file, and an element laid out under
- * a pointer left over a bar's button would show that button's tooltip (R84).
- */
-export async function rest(): Promise<void> {
-  const corner = document.createElement("div");
-  corner.style.cssText = "position: fixed; right: 0; bottom: 0; width: 4px; height: 4px;";
-  document.body.append(corner);
-  try {
-    await userEvent.hover(corner);
-  } finally {
-    corner.remove();
-  }
-}
+/** The mouse moved to the window's corner, where no element of a test stands (R84). */
+export { rest } from "./mouse.fixture.js";
 
+/** A page taller than the screen, which scrolls the element: it goes into `made`, to be taken off. */
 export function spacer(made: HTMLElement[]): void {
   const rest = document.createElement("div");
   rest.style.height = "2000px";

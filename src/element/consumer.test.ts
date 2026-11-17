@@ -8,11 +8,12 @@ import type {
   Tool,
 } from "@altnovatrail/spec/canvas";
 import type * as open from "@altnovatrail/spec/formatv0/open";
-import { afterEach, expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { budget } from "../core/budget.fixture.js";
 import { type Anchor, SHEET } from "../core/index.js";
 import { type Marks, NovatrailCanvas, type Task } from "./index.js";
+import { rest } from "./mouse.fixture.js";
 
 // The trial consumer (R27, R28, R32, R38, R39, R41, R42, R83; RUN.md, T15, T41, T44, T49, T53, T55,
 // T57, T59, T60, T69, T73, T120): a page that takes the element as app is to take it. The types of
@@ -33,6 +34,11 @@ import { type Marks, NovatrailCanvas, type Task } from "./index.js";
 // are found the same way, by their roles and their Russian names.
 
 const made: HTMLElement[] = [];
+// The mouse an earlier test or file left where an element now stands would show a button's
+// tooltip on its own, and the tooltip's words would change the element's text, by which WebKit's
+// locator of an element finds it: the locator would then find nothing (R84). So each test starts
+// with the mouse on the window's corner, where no element stands.
+beforeEach(rest);
 afterEach(() => {
   for (const element of made.splice(0)) element.remove();
 });
