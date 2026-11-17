@@ -9,6 +9,7 @@ import { sheetTask, workbookTask } from "../core/tasks.fixture.js";
 import { axeOf } from "./axe.fixture.js";
 import {
   at,
+  buttonOf,
   devtools,
   level,
   placed,
@@ -38,26 +39,17 @@ afterEach(async () => {
   window.scrollTo(0, 0);
 });
 
-/** A button of an element's bar, by its label. */
-function button(element: HTMLElement, name: string): HTMLButtonElement {
-  const found = [...(element.shadowRoot?.querySelectorAll("button") ?? [])].find(
-    (each) => each.textContent === name,
-  );
-  if (found === undefined) throw new Error(`the bar has no ${name}`);
-  return found;
-}
-
 /** The page's zoom stepped to `zoom` with an element's Zoom in or Zoom out, laid out and drawn. */
 async function zoomTo(element: HTMLElement, zoom: number): Promise<void> {
   while (PAGE_ZOOM.value !== zoom) {
-    button(element, PAGE_ZOOM.value < zoom ? "Zoom in" : "Zoom out").click();
+    buttonOf(element, PAGE_ZOOM.value < zoom ? "Zoom in" : "Zoom out").click();
   }
   await settle();
 }
 
 /** What `aria-disabled` says of each button: "true" while it stands unavailable. */
 const unavailable = (element: HTMLElement, ...names: string[]) =>
-  names.map((name) => button(element, name).getAttribute("aria-disabled"));
+  names.map((name) => buttonOf(element, name).getAttribute("aria-disabled"));
 
 /** The alpha of the canvas's device pixel over a point of the sheet: 0 where there is no ink. */
 function inkAt(canvas: HTMLCanvasElement, view: View, x: number, y: number): number {
@@ -96,11 +88,11 @@ test.each([
     expect(unavailable(element, "Zoom in", "Zoom out")).toEqual([zoom === 2 ? "true" : null, null]);
     // Zoom out from the keyboard steps back to the fit, and a press more does nothing: there it
     // stands unavailable, and keeps the focus.
-    button(element, "Zoom out").focus();
+    buttonOf(element, "Zoom out").focus();
     await userEvent.keyboard("{Enter}".repeat(Math.round((zoom - 1) / 0.25) + 1));
     await settle();
     expect(PAGE_ZOOM.value).toBe(1);
-    expect(element.shadowRoot?.activeElement).toBe(button(element, "Zoom out"));
+    expect(element.shadowRoot?.activeElement).toBe(buttonOf(element, "Zoom out"));
     expect(unavailable(element, "Zoom out")).toEqual(["true"]);
   },
 );

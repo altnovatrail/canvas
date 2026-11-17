@@ -16,11 +16,13 @@
 // amendment to R90 spec; WCAG 1.4.13). The bar is named by the canvas kind's buttons: the sheet's
 // or the workbook's (R36), for the kind's own name is the scroll container's (T93). A lesson's
 // worked example names it too, and has no tools of writing: the learner does not write on its
-// sheet. Its buttons are its demo's, Next, which opens the next part, and Demo, a disclosure button
-// that hides the whole demo and shows it again, each with its label beside its icon, for they are
-// actions, not tools (R42; R90 spec), and so the example's toolbar is a row of glass at the bottom
-// of the element instead, with the zoom's pair after them. A button that goes gives its stop of
-// Tab and the focus to the first button shown. This module is no entry point of the package.
+// sheet, and its bar holds the zoom's pair alone. Its demo's buttons, Next, which opens the next
+// part, and Demo, a disclosure button that hides the whole demo and shows it again, are actions,
+// not tools (R42; R90 spec): each shows its label beside its icon, a stop of Tab of its own, in a
+// row of glass at the bottom of the element, and after a line the slot `actions`, where the
+// consumer puts its own buttons — app's Continue —, as the mockup has one row (R84; В85 in
+// run/QUESTIONS.md). A button that goes gives its stop of Tab and the focus to the first button
+// shown. This module is no entry point of the package.
 
 import type { Tool } from "../core/task.js";
 import { SVG, write } from "./attributes.js";
@@ -91,10 +93,12 @@ export class Tools {
   readonly rail = document.createElement("div");
   /** The bar: a toolbar, named in the element's language. */
   readonly element = document.createElement("div");
+  /** A worked example's row: Next, Demo and the consumer's buttons in the slot `actions` (R84). */
+  readonly row = document.createElement("div");
+  readonly #actions = document.createElement("slot");
+  readonly #beforeActions = separator();
   /** The tooltip of the button the pointer is over, or the keyboard's focus is on. */
   readonly tip = document.createElement("div");
-  /** Next and Demo, a worked example's first buttons (R42). */
-  readonly #demoPair = document.createElement("div");
   readonly #next = plainButton("next");
   readonly #demo = plainButton("demoShown");
   readonly #group = document.createElement("div");
@@ -110,8 +114,8 @@ export class Tools {
   readonly #zoomOut = plainButton("zoomOut");
   readonly #finger = plainButton("finger");
   /**
-   * The buttons with the keys of their labels, in the order the arrow keys go through them. A
-   * button is named only by its label (R46), so each is here with its key.
+   * The buttons with the keys of their labels, the row's and then the bar's in the order the arrow
+   * keys go through them. A button is named only by its label (R46), so each is here with its key.
    */
   readonly #labelled: readonly (readonly [HTMLButtonElement, keyof Labels])[] = [
     [this.#next, "next"],
@@ -124,12 +128,13 @@ export class Tools {
     [this.#zoomOut, "zoomOut"],
     [this.#finger, "finger"],
   ];
-  /** The buttons in the order the arrow keys go through them. */
-  readonly #buttons: readonly HTMLButtonElement[] = this.#labelled.map(([button]) => button);
-  /** The buttons that show an icon alone, and a tooltip: all but Next and Demo (R90 spec). */
-  readonly #tipped: ReadonlySet<HTMLButtonElement> = new Set(
-    this.#buttons.filter((button) => button !== this.#next && button !== this.#demo),
-  );
+  /**
+   * The bar's buttons in the order the arrow keys go through them: each shows an icon alone, and a
+   * tooltip. Next and Demo show their labels (R90 spec).
+   */
+  readonly #buttons: readonly HTMLButtonElement[] = this.#labelled
+    .map(([button]) => button)
+    .filter((button) => button !== this.#next && button !== this.#demo);
   /** The language of the labels shown. */
   #lang: string | undefined;
   /** What the bar is of, named so. */
@@ -163,12 +168,18 @@ export class Tools {
     // The tooltip says what the button's name says already: a screen reader reads that alone.
     this.tip.setAttribute("aria-hidden", "true");
     this.tip.hidden = true;
-    this.#demoPair.className = "demo";
+    this.row.className = "tools row";
     // Next and Demo control what they do not hold: the region that tells of a part, and the list.
     this.#next.setAttribute("aria-controls", controls.status);
     this.#demo.setAttribute("aria-controls", controls.parts);
     this.#demo.setAttribute("aria-expanded", "true");
-    this.#demoPair.append(this.#next, this.#demo);
+    this.#actions.name = "actions";
+    // The line stands between the element's buttons and the consumer's only while there are any.
+    this.#beforeActions.hidden = true;
+    this.#actions.addEventListener("slotchange", () => {
+      this.#beforeActions.hidden = this.#actions.assignedNodes({ flatten: true }).length === 0;
+    });
+    this.row.append(this.#next, this.#demo, this.#beforeActions, this.#actions);
     this.#group.className = "choice";
     this.#group.setAttribute("role", "radiogroup");
     this.#group.append(this.#pen, this.#eraser);
@@ -176,7 +187,6 @@ export class Tools {
     this.#zoomPair.append(this.#zoomIn, this.#zoomOut);
     // The finger's button comes last: coming and going, it moves no other button of the bar.
     this.element.append(
-      this.#demoPair,
       this.#group,
       this.#undo,
       this.#clear,
@@ -185,16 +195,10 @@ export class Tools {
       this.#beforeFinger,
       this.#finger,
     );
-    this.rail.append(this.element, this.tip);
-    for (const button of this.#tipped) button.classList.add("icon");
-    // A worked example's buttons and the finger's come with what they are for.
-    for (const hidden of [
-      this.#demoPair,
-      this.#next,
-      this.#demo,
-      this.#beforeFinger,
-      this.#finger,
-    ]) {
+    this.rail.append(this.element, this.row, this.tip);
+    for (const button of this.#buttons) button.classList.add("icon");
+    // A worked example's row and the finger's button come with what they are for.
+    for (const hidden of [this.row, this.#next, this.#demo, this.#beforeFinger, this.#finger]) {
       hidden.hidden = true;
     }
     // Tab comes to the first button shown, until another has had the focus.
@@ -230,7 +234,7 @@ export class Tools {
       this.#focused = undefined;
       this.#showTip();
     });
-    for (const button of this.#tipped) this.#hover(button);
+    for (const button of this.#buttons) this.#hover(button);
     this.tip.addEventListener("pointerenter", () => {
       this.#onTip = true;
       this.#showTip();
@@ -244,10 +248,9 @@ export class Tools {
 
   /**
    * The bar as the sheet now is. Only what has changed is written. A worked example's has no tools
-   * of writing, no undo and no clearing, for the learner does not write on its sheet, and has Next,
-   * unavailable while the demo is hidden or open whole, and Demo, expanded while the demo is shown
-   * (R42), and it runs along the bottom of the element. Zoom in and Zoom out stand unavailable at
-   * their ends (T94). The tool in use shows its icon filled, and Demo's icon points down while the
+   * of writing, no undo and no clearing, for the learner does not write on its sheet, and its row
+   * has Next, unavailable while the demo is hidden or open whole, and Demo, expanded while the demo
+   * is shown (R42). Zoom in and Zoom out stand unavailable at their ends (T94). The tool in use shows its icon filled, and Demo's icon points down while the
    * demo is shown, and along the row while it is hidden (R46).
    */
   show(state: ToolState): void {
@@ -258,10 +261,8 @@ export class Tools {
       this.#name();
     }
     const writes = kind !== "example";
-    write(this.element, "aria-orientation", writes ? "vertical" : "horizontal");
-    this.rail.classList.toggle("example", !writes);
     this.#reveal([
-      [this.#demoPair, !writes],
+      [this.row, !writes],
       [this.#next, !writes],
       [this.#demo, !writes],
       [this.#group, writes],
@@ -269,6 +270,7 @@ export class Tools {
       [this.#eraser, writes && tools.includes("eraser")],
       [this.#undo, writes],
       [this.#clear, writes],
+      [this.#beforeZoom, writes],
       [this.#beforeFinger, writes && finger],
       [this.#finger, writes && finger],
     ]);
@@ -294,6 +296,7 @@ export class Tools {
     if (lang === this.#lang) return;
     this.#lang = lang;
     this.element.lang = lang;
+    this.row.lang = lang;
     this.tip.lang = lang;
     this.#name();
     this.#group.setAttribute("aria-label", labels.tool);
@@ -365,15 +368,13 @@ export class Tools {
     }
     this.tip.textContent = button.lastElementChild?.textContent ?? "";
     // The tooltip stands beside its button, 8 pixels off the bar's edge and level with its middle,
-    // read from the bar, which may scroll; on a worked example's row, above the button's middle.
+    // read from the bar, which may scroll.
     const rail = this.rail.getBoundingClientRect();
     const bar = this.element.getBoundingClientRect();
     const box = button.getBoundingClientRect();
     const scale = this.rail.offsetHeight > 0 ? rail.height / this.rail.offsetHeight : 1;
-    const above = this.#kind === "example";
-    const x = above ? box.left + box.width / 2 : bar.right + 8 * scale;
-    const y = above ? bar.top - 8 * scale : box.top + box.height / 2;
-    this.tip.classList.toggle("above", above);
+    const x = bar.right + 8 * scale;
+    const y = box.top + box.height / 2;
     this.tip.style.setProperty("--tip-x", `${(x - rail.left) / scale}px`);
     this.tip.style.setProperty("--tip-y", `${(y - rail.top) / scale}px`);
     this.tip.hidden = false;
@@ -381,25 +382,17 @@ export class Tools {
   }
 
   /**
-   * The arrow keys move the focus to the next button or the one before, round the bar: down and up
-   * on the bar, and on a worked example's row the arrow that points along it — so in a row that
-   * runs right to left ArrowLeft is the next —, and Home and End to the first and the last: nothing
-   * is chosen, and no other key is the bar's.
+   * The arrow keys move the focus to the next button or the one before, round the bar, down and up,
+   * and Home and End to the first and the last: nothing is chosen, and no other key is the bar's.
    */
   #key(event: KeyboardEvent): void {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
     const shown = this.#shown();
     const at = shown.indexOf(event.target as HTMLButtonElement);
     if (at < 0) return;
-    let onward = "ArrowDown";
-    let back = "ArrowUp";
-    if (this.#kind === "example") {
-      onward = this.element.matches(":dir(rtl)") ? "ArrowLeft" : "ArrowRight";
-      back = onward === "ArrowLeft" ? "ArrowRight" : "ArrowLeft";
-    }
     let next: HTMLButtonElement | undefined;
-    if (event.key === onward) next = shown[(at + 1) % shown.length];
-    else if (event.key === back) next = shown[(at - 1 + shown.length) % shown.length];
+    if (event.key === "ArrowDown") next = shown[(at + 1) % shown.length];
+    else if (event.key === "ArrowUp") next = shown[(at - 1 + shown.length) % shown.length];
     else if (event.key === "Home") next = shown[0];
     else if (event.key === "End") next = shown.at(-1);
     else return;
@@ -431,14 +424,14 @@ export class Tools {
 
   /**
    * Buttons come or go, all of them at once, and then a button that went gives its stop of Tab and
-   * the focus to the first button shown: the pen on a sheet, Next on a worked example (R28, R42). Till
+   * the focus to the first button shown: the pen on a sheet, Zoom in on a worked example (R28). Till
    * a button has had the focus, the stop is the first button shown, whichever it is now. Nothing is
    * read or written while every button stays as it is: the bar is shown anew after every stroke.
    */
   #reveal(wanted: readonly (readonly [HTMLElement, boolean])[]): void {
     if (wanted.every(([element, shown]) => element.hidden !== shown)) return;
     // Read before a button hides: a hidden one loses the focus at the next update of the style.
-    const focused = this.#buttons.find((button) => button.matches(":focus"));
+    const focused = this.#labelled.find(([button]) => button.matches(":focus"))?.[0];
     for (const [element, shown] of wanted) element.hidden = !shown;
     const first = this.#first();
     if (!this.#chosen || this.#buttons.some((button) => button.tabIndex === 0 && button.hidden)) {

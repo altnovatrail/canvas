@@ -112,8 +112,9 @@ export function watch(node: Node): () => MutationRecord[] {
 /**
  * A sheet `width` CSS pixels wide in `parent`, as tall as its statement and sheet unless given a
  * height, laid out and drawn, with the parts of it the tests reach for — `row` is the bar of its
- * buttons, which stands over the sheet's left edge (R84). What goes on the page goes into `made`,
- * for the test to take off: the element, or the parent it was put in.
+ * buttons, which stands over the sheet's left edge, and `actions` a worked example's row of Next,
+ * Demo and the consumer's buttons at the bottom, hidden on any other kind (R84). What goes on the
+ * page goes into `made`, for the test to take off: the element, or the parent it was put in.
  */
 export async function placed(
   made: HTMLElement[],
@@ -132,13 +133,37 @@ export async function placed(
   const canvas = root?.querySelector("canvas");
   const viewport = root?.querySelector<HTMLElement>(".viewport");
   const row = root?.querySelector<HTMLElement>(".tools");
-  if (!root || !canvas || !viewport || !row) throw new Error("the element has no bar and canvas");
+  const actions = root?.querySelector<HTMLElement>(".tools.row");
+  if (!root || !canvas || !viewport || !row || !actions) {
+    throw new Error("the element has no bar, row and canvas");
+  }
   const view = (): View => {
     const { view } = probe(element);
     if (view === undefined) throw new Error("the element is not laid out");
     return view;
   };
-  return { element, root, canvas, viewport, row, view };
+  return { element, root, canvas, viewport, row, actions, view };
+}
+
+/** One of the element's own buttons by its label: on the bar, or on a worked example's row. */
+export function buttonOf(element: HTMLElement, label: string): HTMLButtonElement {
+  const found = [...(element.shadowRoot?.querySelectorAll("button") ?? [])].find(
+    (each) => each.textContent === label,
+  );
+  if (found === undefined) throw new Error(`the element has no button ${label}`);
+  return found;
+}
+
+/**
+ * A consumer's own button for a worked example's row, a child of the element in its slot
+ * `actions`, as app gives its Continue there (R84).
+ */
+export function consumerButton(text = "Continue"): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.slot = "actions";
+  button.textContent = text;
+  return button;
 }
 
 /** A button's icon, the SVG before its label (R46). */

@@ -10,7 +10,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 import { sheetTask } from "../core/tasks.fixture.js";
 import { axeOf, contrast, KINDS, WORKBOOK_INCOMPLETE } from "./axe.fixture.js";
-import { placed, settle } from "./pointer.fixture.js";
+import { buttonOf, placed, settle } from "./pointer.fixture.js";
 
 const made: HTMLElement[] = [];
 
@@ -119,17 +119,19 @@ function paperOf(element: HTMLElement): string {
   return getComputedStyle(paper).backgroundColor;
 }
 
-/** The bar's parts as the element has them: a worked example's Next and Demo, hidden, first. */
+/** What a button of the bar or of a worked example's row stands on: its glass, over the paper. */
+function glassOf(element: HTMLElement, box: Element): string {
+  return over(getComputedStyle(box).backgroundColor, paperOf(element));
+}
+
+/** The bar's parts as the element has them, and the glass its buttons stand on. */
 function barOf(element: HTMLElement) {
   const root = element.shadowRoot;
   const bar = root?.querySelector<HTMLElement>(".tools");
-  const buttons = [...(root?.querySelectorAll<HTMLButtonElement>(".tools button") ?? [])];
-  const [, , pen] = buttons;
-  const zoomOut = buttons.find((button) => button.textContent === "Zoom out");
-  if (!root || !bar || !pen || !zoomOut) throw new Error("the element has no bar");
-  // What a button of the bar stands on: its glass, over the sheet's paper.
-  const glass = over(getComputedStyle(bar).backgroundColor, paperOf(element));
-  return { root, bar, pen, zoomOut, glass };
+  if (!root || !bar) throw new Error("the element has no bar");
+  const [pen, zoomOut] = ["Pen", "Zoom out"].map((label) => buttonOf(element, label));
+  if (!pen || !zoomOut) throw new Error("the bar has no pen and no Zoom out");
+  return { root, bar, pen, zoomOut, glass: glassOf(element, bar) };
 }
 
 test("a colour seen through, laid over the paper, is what the eye sees of the two", () => {
@@ -201,8 +203,11 @@ test.each(KINDS.filter(({ name }) => name.startsWith("a worked example")))(
     // Every part closed: Next has one to open, and is available.
     element.demoState = { opened: 0, hidden: false };
     await settle();
-    const { root, glass } = barOf(element);
-    const labelled = [...root.querySelectorAll<HTMLElement>(".tools .demo button")];
+    const row = element.shadowRoot?.querySelector(".tools.row");
+    if (!row) throw new Error("the worked example has no row");
+    const glass = glassOf(element, row);
+    const labelled = ["Next", "Demo"].map((label) => buttonOf(element, label));
+    expect(labelled.every((button) => row.contains(button))).toBe(true);
     expect(
       labelled.map((button) => [button.textContent, button.hasAttribute("aria-disabled")]),
     ).toEqual([

@@ -205,22 +205,23 @@ const ERASER_RADIUS_PX = 10;
 // says, and in its middle, 16 pixels from the left edge, the bar of buttons: 52 pixels wide, round
 // at its ends, of the mockup's glass — the fill the consumer's theme gives, blurred behind, or the
 // paper alone where nothing blurs — over the sheet as it scrolls by (R84; R148 spec). A bar taller
-// than the band scrolls inside its glass (1.4.10). A worked example's buttons stand in a row of the
-// same glass at the band's bottom instead. The tool in use is filled with the accent at an eighth,
-// its icon in the accent; a button in focus shows a ring in the accent; an unavailable one is paler
-// by its colour, not its opacity, which would pale the ring too (2.4.7, 1.4.11). A button's
-// tooltip stands beside it, white on near-black, as the mockup has it. Nothing in the element moves
-// but the scrolling, which jumps, and no tooltip fades (2.3.3). The element is as tall as the
-// statement and the sheet unless it is given a height: then the statement and the sheet scroll in
-// it, under the bar. A worked example's open
-// parts stand between the statement and the sheet, and the region that tells of them is out of
-// sight, but not out of the tree a screen reader reads, where a hidden region would tell nothing
-// (R42). A picture's frame there stands in its item's line, from its top, so that the item's
-// number stands at the top too, as a paragraph's does, and not at the picture's bottom (T64). A
-// picture on an area of the sheet stands on the layer of the author's demo, and the sheet scrolls
-// to a hidden box of the area in its own flow, which neither paints nor takes a pointer (T61). On
-// the canvas the browser neither scrolls nor zooms: the pointer writes, and two fingers scroll by
-// the element's own code (R29), and in pen mode one finger too (R84).
+// than the band scrolls inside its glass (1.4.10). A worked example's bar holds the zoom's pair
+// alone, and its Next and Demo stand in a row of the same glass at the band's bottom, the
+// consumer's buttons of the slot actions after them (R84). The tool in use is filled with the
+// accent at an eighth, its icon in the accent; a button in focus shows a ring in the accent; an
+// unavailable one is paler by its colour, not its opacity, which would pale the ring too (2.4.7,
+// 1.4.11). A button's tooltip stands beside it, white on near-black, as the mockup has it. Nothing
+// in the element moves but the scrolling, which jumps, and no tooltip fades (2.3.3). The element is
+// as tall as the statement and the sheet unless it is given a height: then the statement and the
+// sheet scroll in it, under the bar. A worked example's open parts stand between the statement and
+// the sheet, and the region that tells of them is out of sight, but not out of the tree a screen
+// reader reads, where a hidden region would tell nothing (R42). A picture's frame there stands in
+// its item's line, from its top, so that the item's number stands at the top too, as a paragraph's
+// does, and not at the picture's bottom (T64). A picture on an area of the sheet stands on the
+// layer of the author's demo, and the sheet scrolls to a hidden box of the area in its own flow,
+// which neither paints nor takes a pointer (T61). On the canvas the browser neither scrolls nor
+// zooms: the pointer writes, and two fingers scroll by the element's own code (R29), and in pen
+// mode one finger too (R84).
 // The canvas and the buttons take pointer events only as the element does: a consumer's
 // pointer-events: none on the element stops the writing and the buttons' pointer, though not
 // their keys (R20, R28). A worked example's canvas takes no pointer at all: a finger or a pen on
@@ -252,7 +253,6 @@ const STYLE = `
   height: min(100%, var(--rail-room, 100dvh) - var(--rail-top, var(--novatrail-canvas-top, 0px)));
   display: flex; align-items: center;
 }
-.rail.example { justify-self: center; align-items: flex-end; justify-content: center; }
 .rail[hidden] { display: none; }
 .tools {
   box-sizing: border-box; flex: none; width: 52px; max-height: 100%;
@@ -269,18 +269,18 @@ const STYLE = `
   .tools { background: var(--novatrail-canvas-paper, ${PAPER}); }
 }
 .tools:dir(rtl) { direction: rtl; }
-.example .tools {
-  width: auto; max-width: calc(var(--rail-width, 100vw) - 32px); max-height: none; margin: 0; padding: 6px;
-  border-radius: 28px; flex-direction: row; gap: 4px; overflow-x: auto; overflow-y: hidden;
+.tools.row {
+  position: absolute; bottom: 16px; left: calc(var(--rail-width, 100vw) / 2);
+  transform: translateX(-50%); width: max-content; max-width: calc(var(--rail-width, 100vw) - 32px);
+  max-height: none; margin: 0; padding: 6px; border-radius: 28px; flex-direction: row; gap: 4px;
+  overflow-x: auto; overflow-y: hidden;
 }
-.tools .demo, .tools .choice, .tools .zoom {
-  display: flex; flex-direction: column; gap: 2px; flex: none;
-}
-.example .tools .demo, .example .tools .zoom { flex-direction: row; gap: 4px; }
+.tools .choice, .tools .zoom { display: flex; flex-direction: column; gap: 2px; flex: none; }
 .tools .line {
   flex: none; width: 24px; height: 1px; margin: 4px 0; background: rgba(0, 0, 0, 0.1);
 }
-.example .tools .line { width: 1px; height: 24px; margin: 0 4px; }
+.tools.row .line { width: 1px; height: 24px; margin: 0 4px; }
+.tools.row ::slotted(*) { flex: none; }
 .tools button {
   box-sizing: border-box; flex: none; min-width: 44px; min-height: 44px; margin: 0;
   padding: 0 14px 0 10px; display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -309,7 +309,7 @@ const STYLE = `
   .tools [aria-disabled="true"] { opacity: 0.4; }
   .tools [aria-checked="true"] { background: transparent; }
 }
-.tools [hidden] { display: none; }
+.tools[hidden], .tools [hidden] { display: none; }
 .tools button svg { display: block; flex: none; width: 20px; height: 20px; fill: currentColor; }
 .tools:dir(rtl) svg.mirrored { transform: scaleX(-1); }
 .tip {
@@ -318,7 +318,6 @@ const STYLE = `
   font-size: 12.5px; font-weight: 500; line-height: 1; padding: 8px 10px; border-radius: 9px;
   background: rgba(29, 29, 31, 0.92); color: #fff; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
 }
-.tip.above { transform: translate(-50%, -100%); }
 .tip[hidden] { display: none; }
 .viewport.zoomed { overflow-x: auto; direction: ltr; }
 .ring { position: absolute; inset: 0; z-index: 0; pointer-events: none; display: none; }

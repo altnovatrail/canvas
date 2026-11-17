@@ -7,6 +7,7 @@ import { NovatrailCanvas, type ToolChange } from "./index.js";
 import { labelsFor } from "./labels.js";
 import {
   at,
+  buttonOf,
   devtools,
   iconOf,
   input,
@@ -55,15 +56,6 @@ function buttons(element: HTMLElement, names = labelsFor(null).labels) {
     undo: within.getByRole("button", { name: names.undo }),
     clear: within.getByRole("button", { name: names.clear }),
   };
-}
-
-/** One button of the bar, as the element has it, by its label. */
-function button(element: HTMLElement, name: string): HTMLButtonElement {
-  const found = [...(element.shadowRoot?.querySelectorAll("button") ?? [])].find(
-    (each) => each.textContent === name,
-  );
-  if (found === undefined) throw new Error(`the bar has no ${name}`);
-  return found;
 }
 
 /** A button's icon: its name in the set, and whether the style mirrors it (R46). */
@@ -203,14 +195,14 @@ test("each button shows its icon, its label after it: an SVG that names nothing,
   expect(ROW.pen.filled).not.toBe(ROW.pen.outline);
   expect(ROW.eraser.filled).not.toBe(ROW.eraser.outline);
   expect(ROW.demoHidden.outline).not.toBe(ROW.demoShown.outline);
-  button(element, "Eraser").click();
+  buttonOf(element, "Eraser").click();
   await settle();
-  expect(drawn(button(element, "Pen")).name).toBe(ROW.pen.outline);
-  expect(drawn(button(element, "Eraser")).name).toBe(ROW.eraser.filled);
+  expect(drawn(buttonOf(element, "Pen")).name).toBe(ROW.pen.outline);
+  expect(drawn(buttonOf(element, "Eraser")).name).toBe(ROW.eraser.filled);
   // A change of language changes the labels alone.
   element.setAttribute("lang", "ru");
-  expect(drawn(button(element, "Ластик")).name).toBe(ROW.eraser.filled);
-  expect(button(element, "Ластик").querySelectorAll("svg")).toHaveLength(1);
+  expect(drawn(buttonOf(element, "Ластик")).name).toBe(ROW.eraser.filled);
+  expect(buttonOf(element, "Ластик").querySelectorAll("svg")).toHaveLength(1);
 });
 
 test("in an element whose text runs right to left, the icons of Next, Undo and a hidden Demo are mirrored, and no other; the bar's arrows still go down, and a worked example's ArrowLeft goes on", async () => {
@@ -229,7 +221,7 @@ test("in an element whose text runs right to left, the icons of Next, Undo and a
   const unturned = { "Zoom in": false, "Zoom out": false };
   expect(mirrored()).toEqual({ Pen: false, Eraser: false, Undo: true, Clear: false, ...unturned });
   // The bar runs down whichever way the text runs: the arrows across are not its (APG).
-  button(element, "Pen").focus();
+  buttonOf(element, "Pen").focus();
   await moves(root, [
     ["{ArrowDown}", "Eraser"],
     ["{ArrowLeft}", "Eraser"],
@@ -240,15 +232,15 @@ test("in an element whose text runs right to left, the icons of Next, Undo and a
   await settle();
   expect(mirrored()).toEqual({ Next: true, Demo: false, ...unturned });
   // The arrow that points along the example's row goes on: the next button stands to the left (R46).
-  button(element, "Next").focus();
+  buttonOf(element, "Next").focus();
   await moves(root, [
     ["{ArrowLeft}", "Demo"],
     ["{ArrowRight}", "Next"],
     ["{ArrowDown}", "Next"],
   ]);
-  button(element, "Demo").click();
+  buttonOf(element, "Demo").click();
   await settle();
-  expect(drawn(button(element, "Demo")).name).toBe(ROW.demoHidden.outline);
+  expect(drawn(buttonOf(element, "Demo")).name).toBe(ROW.demoHidden.outline);
   expect(mirrored()).toEqual({ Next: true, Demo: true, ...unturned });
   // Left to right, nothing is mirrored.
   parent.dir = "ltr";
@@ -323,7 +315,7 @@ test("the element reads its own lang alone, and has it from the start when made 
 
 test("tools-hidden takes the bar out of sight and of the accessibility tree, the focus off it, from markup too, and its going brings the bar back with its stop of Tab", async () => {
   const { element, root, row } = await sheet(400, 600);
-  const eraser = button(element, "Eraser");
+  const eraser = buttonOf(element, "Eraser");
   eraser.focus();
   const within = page.elementLocator(element);
   const toolbars = () => within.getByRole("toolbar").elements();
@@ -390,7 +382,7 @@ test("toolchange goes up from the element and out of a consumer's shadow tree", 
   document.addEventListener("toolchange", (each) => {
     event = each;
   });
-  button(element, "Eraser").click();
+  buttonOf(element, "Eraser").click();
   expect(told).toEqual([{ tool: "eraser" }]);
   expect(event?.composed).toBe(true);
   expect(event?.bubbles).toBe(true);
@@ -438,8 +430,8 @@ test("the bar is one stop of Tab, the arrows down and up move between its button
 test("Undo and Clear stand unavailable while there is nothing to undo or to clear, and keep the focus", async () => {
   const { element, root, canvas, view } = await sheet();
   const found = buttons(element);
-  const undo = button(element, "Undo");
-  const clear = button(element, "Clear");
+  const undo = buttonOf(element, "Undo");
+  const clear = buttonOf(element, "Clear");
   const unavailable = () => [undo, clear].map((each) => each.getAttribute("aria-disabled"));
   expect(unavailable()).toEqual(["true", "true"]);
   // A screen reader finds them, and finds them unavailable; the disabled attribute is not used.
@@ -479,8 +471,8 @@ test("Undo and Clear stand unavailable while there is nothing to undo or to clea
 
 test("a history given to the sheet sets Undo and Clear as its stack and its strokes are", async () => {
   const { element } = await sheet();
-  const undo = button(element, "Undo");
-  const clear = button(element, "Clear");
+  const undo = buttonOf(element, "Undo");
+  const clear = buttonOf(element, "Clear");
   const unavailable = () => [undo, clear].map((each) => each.getAttribute("aria-disabled"));
   const written: HistoryEvent = {
     kind: "write",
@@ -528,7 +520,7 @@ test("a new task without the eraser puts the pen back, with no event, and the fo
   const { element, root, canvas, view } = await sheet();
   level(canvas, view(), 100, 100, 300);
   const told = heard(element);
-  const eraser = button(element, "Eraser");
+  const eraser = buttonOf(element, "Eraser");
   eraser.focus();
   await userEvent.keyboard(" ");
   expect(element.tool).toBe("eraser");
@@ -572,7 +564,7 @@ test("a worked example's toolbar is a row named so in the element's language, of
     const stops = () =>
       [...root.querySelectorAll('[tabindex="0"]')].map((each) => each.textContent);
     expect(shown()).toHaveLength(7);
-    button(element, "Pen").focus();
+    buttonOf(element, "Pen").focus();
     element.workedExample = workedExample();
     expect(row.getAttribute("aria-label")).toBe("Worked example buttons");
     expect(row.getAttribute("aria-orientation")).toBe("horizontal");
@@ -582,7 +574,7 @@ test("a worked example's toolbar is a row named so in the element's language, of
     // Next and Demo are actions, and show their labels beside their icons (R90 spec).
     await settle();
     for (const name of ["Next", "Demo"]) {
-      const label = button(element, name).querySelector(".label")?.getBoundingClientRect();
+      const label = buttonOf(element, name).querySelector(".label")?.getBoundingClientRect();
       expect(label?.width, name).toBeGreaterThan(8);
     }
     expect(root.activeElement?.textContent).toBe("Next");
@@ -730,8 +722,8 @@ test("without a height, the bar sticks in the middle of what the window shows be
 test("the tool in use is filled with the accent at an eighth and drawn in it, a button in focus ringed in it, and the bar is of glass: each the consumer's own where its theme gives one", async () => {
   const before = pageButton("Before");
   const { element, root, row } = await sheet();
-  const pen = button(element, "Pen");
-  const eraser = button(element, "Eraser");
+  const pen = buttonOf(element, "Pen");
+  const eraser = buttonOf(element, "Eraser");
   const plain = document.createElement("div");
   document.body.append(plain);
   made.push(plain);
@@ -779,7 +771,7 @@ test("a mouse over an icon button shows its label in a tooltip beside the bar, l
     element.setAttribute("lang", tag);
     const { labels } = labelsFor(tag);
     for (const key of ["pen", "undo", "zoomOut"] as const) {
-      const one = button(element, labels[key]);
+      const one = buttonOf(element, labels[key]);
       await userEvent.hover(one);
       expect(said(tip), key).toBe(labels[key]);
       expect(tip.lang).toBe(tag);
@@ -798,7 +790,7 @@ test("a mouse over an icon button shows its label in a tooltip beside the bar, l
   // Escape dismisses it, the pointer still over the button; another button shows its own.
   await userEvent.keyboard("{Escape}");
   expect(said(tip)).toBeNull();
-  await userEvent.hover(button(element, "Clear"));
+  await userEvent.hover(buttonOf(element, "Clear"));
   expect(said(tip)).toBe("Clear");
   element.remove();
   expect(said(tip)).toBeNull();
@@ -808,7 +800,7 @@ test("a tooltip stays a moment after the pointer leaves its button, and while th
   const { element, root } = await sheet(400, 600);
   const away = await off();
   const tip = tipOf(root);
-  const pen = button(element, "Pen");
+  const pen = buttonOf(element, "Pen");
   await userEvent.hover(pen);
   expect(said(tip)).toBe("Pen");
   pen.dispatchEvent(new PointerEvent("pointerleave", { pointerType: "mouse" }));
@@ -816,7 +808,7 @@ test("a tooltip stays a moment after the pointer leaves its button, and while th
   await wait(PAST_GRACE);
   expect(said(tip)).toBeNull();
   // From a button onto its tooltip, which keeps it, and off it.
-  await userEvent.hover(button(element, "Eraser"));
+  await userEvent.hover(buttonOf(element, "Eraser"));
   await userEvent.hover(page.elementLocator(tip));
   await wait(PAST_GRACE);
   expect(said(tip)).toBe("Eraser");
@@ -852,10 +844,10 @@ test("on a worked example Next and Demo, which show their labels, have no toolti
   await off();
   const tip = tipOf(root);
   for (const name of ["Next", "Demo"]) {
-    await userEvent.hover(button(element, name));
+    await userEvent.hover(buttonOf(element, name));
     expect(said(tip), name).toBeNull();
   }
-  const zoomIn = button(element, "Zoom in");
+  const zoomIn = buttonOf(element, "Zoom in");
   await userEvent.hover(zoomIn);
   expect(said(tip)).toBe("Zoom in");
   const shown = tip.getBoundingClientRect();
@@ -868,7 +860,7 @@ test.runIf(devtools)(
   async () => {
     const { element, root } = await sheet(400, 600);
     await off();
-    const finger = { id: 1, ...middle(button(element, "Eraser")) };
+    const finger = { id: 1, ...middle(buttonOf(element, "Eraser")) };
     await touches("touchStart", [finger]);
     await touches("touchEnd", [finger]);
     await settle();
@@ -881,17 +873,17 @@ test.runIf(devtools)(
   "a press on the bar starts no stroke, and a stroke let go over a button clicks none",
   async () => {
     const { element, canvas, view } = await sheet(400);
-    await press(button(element, "Eraser"));
+    await press(buttonOf(element, "Eraser"));
     expect(element.tool).toBe("eraser");
-    await press(button(element, "Pen"));
+    await press(buttonOf(element, "Pen"));
     expect(element.tool).toBe("pen");
     expect(probe(element).strokes).toEqual([]);
     // A stroke from the sheet onto Clear, over the sheet's edge: it lands, and Clear stays unpressed.
     level(canvas, view(), 300, 100, 200);
     await input("mousePressed", at(canvas, view(), 100, 100));
     await input("mouseMoved", at(canvas, view(), 300, 100));
-    await input("mouseMoved", middle(button(element, "Clear")));
-    await input("mouseReleased", middle(button(element, "Clear")));
+    await input("mouseMoved", middle(buttonOf(element, "Clear")));
+    await input("mouseReleased", middle(buttonOf(element, "Clear")));
     expect(probe(element).strokes).toHaveLength(2);
   },
 );
@@ -901,16 +893,16 @@ test.runIf(devtools)(
   async () => {
     const { element } = await sheet(400, 300);
     element.style.pointerEvents = "none";
-    await press(button(element, "Eraser"));
+    await press(buttonOf(element, "Eraser"));
     expect(element.tool).toBe("pen");
-    button(element, "Eraser").focus();
+    buttonOf(element, "Eraser").focus();
     await userEvent.keyboard(" ");
     expect(element.tool).toBe("eraser");
     // Zoom in's key zooms the sheet, though two fingers would start no gesture then (R29, T94).
-    const zoomOut = button(element, "Zoom out");
-    await press(button(element, "Zoom in"));
+    const zoomOut = buttonOf(element, "Zoom out");
+    await press(buttonOf(element, "Zoom in"));
     expect(zoomOut.getAttribute("aria-disabled")).toBe("true");
-    button(element, "Zoom in").focus();
+    buttonOf(element, "Zoom in").focus();
     await userEvent.keyboard("{Enter}");
     expect(zoomOut.getAttribute("aria-disabled")).toBeNull();
   },

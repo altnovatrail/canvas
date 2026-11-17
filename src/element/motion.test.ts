@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { cdp } from "vitest/browser";
 import { sheetTask, workedExample } from "../core/tasks.fixture.js";
-import { devtools, placed, settle, spacer } from "./pointer.fixture.js";
+import { buttonOf, devtools, placed, settle, spacer } from "./pointer.fixture.js";
 
 // Motion and the learner's wish for less of it (T92; WCAG 2.3.3, which R90 spec asks of canvas):
 // nothing in the element moves but the scrolling, and its scrolls jump to where they go — two
@@ -34,18 +34,11 @@ function smoothly(element: HTMLElement): void {
   smooth.push(element);
 }
 
-/** A button of the bar by its label. */
-function buttonOf(row: HTMLElement, label: string): HTMLButtonElement {
-  const found = [...row.querySelectorAll("button")].find((each) => each.textContent === label);
-  if (found === undefined) throw new Error(`the bar has no ${label}`);
-  return found;
-}
-
 test.runIf(devtools)(
   "Next brings a part into sight at once, out from under the consumer's band, though the page asks for smooth scrolling",
   async () => {
     smoothly(document.documentElement);
-    const { element, row } = await placed(made, 400);
+    const { element } = await placed(made, 400);
     element.workedExample = workedExample();
     element.style.setProperty("--novatrail-canvas-top", "30px");
     spacer(made);
@@ -54,7 +47,7 @@ test.runIf(devtools)(
     // under the band at once too.
     window.scrollTo({ top: 1200, behavior: "instant" });
     await settle();
-    buttonOf(row, "Next").click();
+    buttonOf(element, "Next").click();
     const item = element.shadowRoot?.querySelector(".parts li")?.getBoundingClientRect();
     expect(item?.top).toBeGreaterThanOrEqual(30 - 0.5);
     expect(item?.bottom).toBeLessThanOrEqual(window.innerHeight);

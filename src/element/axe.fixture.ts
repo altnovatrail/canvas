@@ -11,7 +11,15 @@ import { expect, vi } from "vitest";
 import { SHORT } from "../core/pages.fixture.js";
 import { DEMO, REMAINDERS, sheetTask, workbookTask, workedExample } from "../core/tasks.fixture.js";
 import type { NovatrailCanvas, WorkedExample } from "./index.js";
-import { arrive, level, placed, quarters, settle, sheetWork } from "./pointer.fixture.js";
+import {
+  arrive,
+  consumerButton,
+  level,
+  placed,
+  quarters,
+  settle,
+  sheetWork,
+} from "./pointer.fixture.js";
 import { TAGS } from "./wcag.fixture.js";
 
 /** A pair of colours a node of color-contrast is in, its text's and its background's, as axe's
@@ -126,10 +134,11 @@ async function written(made: HTMLElement[]) {
 }
 
 /** A worked example on a new element — it shows one only before it shows a task —, every part of
- * its demo opened, and its pictures come. */
-function example(given: WorkedExample, images = 0) {
+ * its demo opened, and its pictures come; the consumer's button in its row, if asked. */
+function example(given: WorkedExample, images = 0, actions = false) {
   return async (made: HTMLElement[]) => {
     const { element } = await placed(made, 400);
+    if (actions) element.append(consumerButton());
     element.media = media();
     element.workedExample = given;
     element.demoState = { opened: given.demo.length, hidden: false };
@@ -140,7 +149,7 @@ function example(given: WorkedExample, images = 0) {
 
 /** Every kind of canvas the element shows: a sheet with its task and a stroke, a statement with
  * pictures, a workbook, marks on a sheet, a worked example on a sheet with pictures beside it and
- * on its sheet, and one on a workbook. */
+ * on its sheet, without the consumer's button in its row and with it, and one on a workbook. */
 export const KINDS: readonly Kind[] = [
   { name: "a sheet with its task and a stroke", put: written, incomplete: [] },
   {
@@ -184,6 +193,12 @@ export const KINDS: readonly Kind[] = [
   {
     name: "a worked example on a sheet, with pictures",
     put: example(workedExample(), DEMO.filter((part) => "picture" in part).length),
+    incomplete: EXAMPLE_INCOMPLETE,
+    clear: [],
+  },
+  {
+    name: "a worked example on a sheet, with pictures and the consumer's button in its row",
+    put: example(workedExample(), DEMO.filter((part) => "picture" in part).length, true),
     incomplete: EXAMPLE_INCOMPLETE,
     clear: [],
   },
