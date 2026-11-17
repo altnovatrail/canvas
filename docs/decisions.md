@@ -4,7 +4,7 @@
 >
 > **Rule:** do not re-propose what was rejected without new facts. If a decision has to change, ask the author and update this file. An entry is never rewritten: an amendment with its date at the end of the entry corrects it, or a new entry replaces it, and the old one stays where it is, marked "Superseded".
 >
-> The repository was set up 2026-10-19 from the template of `spec` v0.1.0 (R21 spec), moved to `spec` v0.2.9 on 2026-10-20 (R01), to v0.2.12 on 2026-10-21 (R03), the same day to v0.2.13 (R04) and to v0.2.14 (R10), to v0.2.18 on 2026-10-22 (R16), to v0.2.35 on 2026-10-26 (R30) and the same day to v0.2.37 (R31), to v0.2.42 on 2026-10-27 (R40), to v0.4.1 on 2026-11-01 (R41), to v0.6.2 on 2026-11-02 (R44) and the same day to v0.6.5 (R45), to v0.9.8 on 2026-11-08 (R47) and the same day to v0.9.9 (R53), to v0.12.0 on 2026-11-09 (R60), straight to v0.14.0 on 2026-11-10, past v0.13.0 (R67), to v0.15.0 on 2026-11-11 (R72), to v0.15.1 on 2026-11-12 (R76) and the same day to v0.16.3 (R77), to v0.17.4 on 2026-11-14 (R78), to v0.18.3 on 2026-11-16 (R79) and the same day to v0.18.4 (R81) and to v0.18.6 (R82). How it comes to differ from the template over time — by tools in the devcontainer, by rules in RUN.md — is recorded here as a decision, as R46 canvas-api recorded its differences from its model. Next number — R83.
+> The repository was set up 2026-10-19 from the template of `spec` v0.1.0 (R21 spec), moved to `spec` v0.2.9 on 2026-10-20 (R01), to v0.2.12 on 2026-10-21 (R03), the same day to v0.2.13 (R04) and to v0.2.14 (R10), to v0.2.18 on 2026-10-22 (R16), to v0.2.35 on 2026-10-26 (R30) and the same day to v0.2.37 (R31), to v0.2.42 on 2026-10-27 (R40), to v0.4.1 on 2026-11-01 (R41), to v0.6.2 on 2026-11-02 (R44) and the same day to v0.6.5 (R45), to v0.9.8 on 2026-11-08 (R47) and the same day to v0.9.9 (R53), to v0.12.0 on 2026-11-09 (R60), straight to v0.14.0 on 2026-11-10, past v0.13.0 (R67), to v0.15.0 on 2026-11-11 (R72), to v0.15.1 on 2026-11-12 (R76) and the same day to v0.16.3 (R77), to v0.17.4 on 2026-11-14 (R78), to v0.18.3 on 2026-11-16 (R79) and the same day to v0.18.4 (R81) and to v0.18.6 (R82). How it comes to differ from the template over time — by tools in the devcontainer, by rules in RUN.md — is recorded here as a decision, as R46 canvas-api recorded its differences from its model. Next number — R84.
 >
 > Here entries are cited as `R03`, in other repositories as `R03 canvas`. The decisions of `spec` are cited as "R18 spec", MathTrail's as "R37 canvas-api", and in a list as "canvas-api: R37, R38". Each log has its own numbers.
 >
@@ -180,6 +180,8 @@
 
 — *Amendment 2026-10-26:* palm rejection is done (R29). Pen mode is one for the whole page: a touch of the pen turns it on, and the button «Рисовать пальцем» turns it off. A palm is a touch wider or taller than 100 CSS px, not 30 as in spec 3.1 canvas-api: on iPadOS the width of a touch is twice its radius, and a threshold of 30 px would take drawing away from the finger. The thresholds are parameters of T22. — R29; RUN.md, T35.
 
+— *Amendment 2026-11-17 (T120):* the browser's drawing surface draws the picture of a work too (R83): a `<canvas>` of its own, out of the document, at a pixel a unit, fills each stroke's path the screen fills, and the crop's encoder writes its pixels. The crop stays its own raster and encoder. — R83; RUN.md, T120.
+
 **R06. The handwriting sheet is 1000 × 1400 logical units, as in canvas-api. The crop by A3 goes for checking. The place in the observation is in fractions 0–1000 of the crop, and `canvas` on the device turns it into units of the sheet. Stroke groups are by space and time, as in `tutor`, and the marks of the text canvas are tied to words by ID.**
 - **The sheet.** The origin is the top left corner, the y axis points down, and the scale is the same on both axes. The sheet is fitted to the width of its area, and what does not fit in height scrolls. The size is a constant of the canvas kind, not a setting of the module; there are no pages. In units of the sheet are the strokes, the grid, the zone of an answer slot and all the layers, and all the layers have the same transform to the screen.
 - **The crop** — by A3: only the visible strokes, a margin of 12 px, and a scale such that the median height of a group becomes the digit height — 32 px by default. `sheet_box` — where the crop with its margin lies on the sheet. The formulas — [architecture.md](architecture.md), section 3.2.
@@ -252,6 +254,8 @@
 — *Amendment 2026-10-26:* scrolling with two fingers is done (R29). Code of our own shifts the same native scrolling — of the sheet's container, and if that cannot scroll in this direction, of an ancestor or of the page — and chooses it at the first step of the gesture. — R29; RUN.md, T35.
 
 — *Amendment 2026-10-27:* the workbook has the same page of 1000 × 1400 units, a constant of the kind, and it has no pages either (R34). What goes for checking from the workbook is not a crop of the whole work but a crop of each filled box — by the same rules of the crop —, and the place in the observation on the workbook is the answer slot. The workbook does not open "Come back to it if a task needs more than the sheet": a task that did not fit is a `TypeError`, and T47 will pass the limit for authors «в реестр spec». — R34.
+
+— *Amendment 2026-11-17 (T120):* a picture of the whole sheet comes back, not for the check (R83): `exportPicture()` gives the PNG of the strokes of the whole sheet, or of the workbook's whole page, 1000 × 1400 px, a pixel a unit, for the stored work of `PutWork`. Only the crop goes to the check, as before. — R83; RUN.md, T120.
 
 **R07. The canvas enters its consumer as a web component — one element `<novatrail-canvas>` for all canvas kinds, without a framework and with an open Shadow DOM. It gets data by properties, gives the work for checking by a method, and the writing history and a request to voice by events. The types of data are from the releases of `spec`, the element's types from the package, and "listen" is voiced by `app`.**
 - **The element.** It takes the canvas kind from the task's open view. It registers when its entry point is imported, and the DOM-free part is a separate entry point, which is imported in Node too.
@@ -339,6 +343,8 @@ The design — [architecture.md](architecture.md), section 3.3.
 — *Amendment 2026-11-02:* `media` with `Media` is already part of the agreement with `app`: `spec` recorded В58 by the 2026-11-02 amendments to R36 spec and R74 spec, and the element takes `Media` from `@altnovatrail/spec/canvas`, and the entry point gives it under the same name. `interface.check.ts` holds `media` through `CanvasElement`, and the trial consumer gives it the same way. What stays the package's own is `undo()` and `clear()` — the element's buttons call them — and everything else that the amendment above names. — R45; RUN.md, T73 in [plan/E8.md](plan/E8.md).
 
 — *Amendment 2026-11-08:* the types of the tutor's marks — the property `marks` and `Marks`, `Mark` and `Anchor` — are now from `@altnovatrail/spec/canvas` too: `spec` recorded them in the form of the temporary types of `canvas` and checked the kind and the place of a mark against the message `Mark` of the contract `novatrail.api.v1` (R97 spec; the second 2026-11-03 amendment to R74 spec). `src/core/marks.ts` gives the types of `spec`, and `interface.check.ts` and `entry.check.ts` check them for identity. What stays the element's own is `undo()`, `clear()` and the temporary tools of the task (Д5). — R47.
+
+— *Amendment 2026-11-17 (T120):* the element gives a second picture by a method of its own, `exportPicture(): Promise<Blob>` — the PNG of the strokes its surface shows, with no condition, for `StoredWork.picture` (R83). It is the package's own until `spec`'s `CanvasElement` names it (В82). — R83; RUN.md, T120.
 
 **R08. The package comes out on npm — `@altnovatrail/canvas`, in the scope of the organization `altnovatrail`. Everything that `canvas` puts out is the files of one GitHub release with the signature of the shared `release.yml` of `.github`: the package, the build of the samples page, the synthetic samples, the license and the sums. The same file of the package goes to npm — by a step of the same shared release, through trusted publishing, without a long-lived token.**
 - **The release** comes out by itself. The `release.yml` of `canvas` calls the shared one by the SHA of its release, and the line is `0.1`. A release comes out only if the paths it is built from have changed (R18 .github).
@@ -1184,6 +1190,8 @@ The item "The board does not take the element" of [architecture.md](architecture
 
 — *Amendment 2026-10-26:* during the check, with `pointer-events: none`, scrolling with two fingers does not start, and scrolling already started goes on until the lift: the drawing surface holds the fingers by capture (R29). The wheel and the scroll bar — as before. — R29; RUN.md, T35.
 
+— *Amendment 2026-11-17 (T120):* a PNG of the whole sheet, a pixel a unit, comes back as `exportPicture()` (R83), for the stored work, not for the board: every stroke by the path the screen fills, a pen's with its pressure, black on white, by the crop's encoder rather than `toBlob`, and a white sheet rather than `null` when it is empty. — R83; RUN.md, T120.
+
 ## The work plan — continued
 
 **R21. `canvas` does not build a text canvas: epic E3 «Текстовая канва» is removed. The package has one canvas kind — the handwriting sheet —, and a return to the text canvas is possible only by a new decision of the author.**
@@ -1862,6 +1870,8 @@ Sources: [architecture.md](architecture.md), section 4.
 - a row «в реестр spec» about a DOM-free subpath at once: a question to `spec` with no consumer.
 
 Revisit when a consumer of `core` without the DOM and without `skipLibCheck` appears: then a row «в реестр spec» about a subpath of `@altnovatrail/spec/canvas` with data types without the DOM. — RUN.md, T69.
+
+— *Amendment 2026-11-17 (T120):* the picture of the whole sheet comes back for another consumer than the board (R83): `exportPicture()` gives the PNG of the strokes the sheet or the workbook's page shows, with no condition, for `StoredWork.picture` of `PutWork`, and `app` sends it to be stored, not to be checked. `exportWork()` stays the one picture for the check, and «Revisit» about the picture of the whole sheet is decided by it. — R83; RUN.md, T120.
 
 **R28. The sheet's own buttons: a row above the statement and the sheet, outside their scrolling — «Перо» and «Ластик», «Отменить» and «Очистить». The labels come from a table of its own in English and Russian, by the element's own `lang`, the tools from the task's field `canvas.tools`, and the element announces a change of tool by the learner with the event `toolchange`.**
 - **The row** is a toolbar of buttons, `role="toolbar"`, first in the shadow tree, before the scrolling:
@@ -4758,3 +4768,34 @@ How it is built — [architecture.md](architecture.md), section 3.3.
 — *Consequence:* the author rebuilds the container after the merge («Rebuild Container»): until then closing VS Code's window still stops it.
 
 — RUN.md, T119 (body — [docs/plan/E13.md](plan/E13.md)); R40 spec, R156 spec, R157 spec; Д257 spec; sources 6.17; R13, R36, R45, R81; [architecture.md](architecture.md), section 3.6; `.devcontainer/devcontainer.json`, `.devcontainer/Dockerfile`, `justfile`, `package.json`, `scripts/legal.ts`, `tasks/spec-v0.18.6/`, `run/DEBT.md`, `run/QUESTIONS.md`.
+
+## The picture of a work
+
+**R83. The picture of a work is the element's own method `exportPicture(): Promise<Blob>`: the PNG of the strokes the surface shows, with no condition — the whole sheet, or the workbook's whole page with its draft, 1000 × 1400 px, a pixel a unit —, for `StoredWork.picture` of `PutWork`. Each stroke is the outline the screen fills, black on white, and the pixels go through the crop's encoder, grey, 8 bits: 1,576,640 bytes at most.** 2026-11-17, T120.
+- **What it gives:**
+  - always a `Blob` of the type `image/png`, never `null`: an empty sheet, a workbook with no box filled and a worked example give a white surface, and the picture is the same before the first `exportWork()` and after it. `app` puts the work when it writes it to the device, at each submission and when the attempt closes, and `api` checks the picture's PNG signature ([the contracts text](../spec/contracts/README.md), section 15);
+  - the surface whole, whatever the element's size, zoom, scroll and density of the screen: the sheet of R06, and on a workbook its page, which is the sheet's (R34);
+  - the strokes as `exportWork()` and `filled` take them at the call, and as the history has them: not the stroke under way, but the strokes under an eraser not yet lifted, which the screen already hides. No template, grid, demo or tutor's marks, no theme and no forced colours: the contract names the strokes alone;
+  - each stroke by its path the screen fills, built once (`#finished`): a pen's line widens with its pressure as on the screen (R18), and the picture looks as the sheet does;
+  - the pixels: a `<canvas>` of its own, out of the document, filled white, the paths black at a pixel a unit, read back by `getImageData`, the red of a pixel its grey, and `encodePNG` of the crop (R25). The canvas gives its memory back at once, set to 0 × 0: WebKit caps what all canvases hold.
+- **Size:** the encoder spends at most 9 bits on a byte of a row and on its filter byte, so 1000 × 1400 with its chunks is 1,576,640 bytes at most, 1.5 MiB of the 4 MiB a stored work holds with its history and contexts. Handwriting leaves most rows white, which the encoder takes as repeats. `png.test.ts` holds the bound on noise of that size.
+- **The agreement:** `CanvasElement` of `@altnovatrail/spec/canvas` at v0.18.6 has no such method (R36 spec; R74 spec). It is the package's own, on `NovatrailCanvas`, which `HTMLElementTagNameMap` gives for `novatrail-canvas`, as `undo()` and `clear()` are; that spec's agreement names it is row В82 «в реестр spec». `interface.check.ts` holds both: the method on `NovatrailCanvas`, and none on `CanvasElement` yet.
+- **Tests:** `src/element/surface.test.ts`, in the three engines — a PNG of 1000 × 1400 by its signature and header on a sheet and on a workbook, before the first submission and after it, the same bytes; the draft of a workbook on it; undo takes a stroke off it; a worked example's is white; and against the surface's own canvas, every dark pixel of the picture over ink of the screen, and the screen's full ink over ink of the picture.
+
+— *Why:* row 5.14 of COORDINATION.md spec, whose text the orchestrator gave (T172 spec; R156 spec): the author decided В66 `app` on 2026-11-16 — whoever draws the sheet and the crop draws the picture too, and they look the same —, and the card architecture 3.2 spec at v0.18.6 describes the method, though it names none: «the PNG of the strokes its sheet's or workbook's surface shows, with no condition, drawn as it draws the sheet and the crop». «Сделай эпик E…» is the author's word on this task.
+- **The screen's outline.** The picture is the work as the learner saw it. An even line is for what a model reads (R20, «Even line»), and the stored work goes to no model: the server keeps its bytes and reads none of them ([the contracts text](../spec/contracts/README.md), section 15).
+- **The crop's encoder.** One form of PNG for both pictures of the element, grey and with no ancillary chunk, and a bound under the limit that no browser's encoder gives. The noise some browsers add to what `getImageData` reads, or the white a fingerprinting guard gives, is accepted, as R20 accepted the noise: nothing outside the tests compares the picture's bytes, and the test engines add none.
+- **A pixel a unit**, as R20's picture was: the ink is 3 px, as on a screen of a pixel a unit. Two pixels a unit would be four times the pixels and a bound of 6.3 MB, over the limit; half a pixel would thin the ink to 1.5 px.
+- **A promise**, as `exportWork()` gives: one form for the two methods, and room to draw off the main thread later.
+
+— *Rejected:*
+- **`app` drawing it by `replay(history)`** and **the crop of the last submission** — options (b) and (c) of В66 `app`, which the author did not take: a second drawing of the same work, and on a workbook no single picture, and nothing before the first submission;
+- **the crop's raster at a pixel a unit** — the same bytes in every engine and in Node, but an even line: the pen's widths would be gone, and the picture would not look as the sheet does;
+- **`toBlob` of the canvas**, as R20's `exportPNG()` — the browser's encoder, its colour type and size its own, with no bound under the limit;
+- **`null` on an empty surface**, as `exportWork()` — the picture has no condition, and `app` puts the work before the first submission too;
+- **the template, the grid and the marks on the picture** — the contract names the strokes;
+- **the method in spec's `CanvasElement` now** — `spec` is read-only here: row В82.
+
+— *Consequence:* the release of the merge to npm, the next version of the line 0.3, which T62 `app` takes (row 6.14 of COORDINATION.md spec); the amendments to R05, R06, R07, R20 and R27; [architecture.md](architecture.md), section 3.3, whose budget is 51 KB in `docs-budgets.json`, not 50: the method adds ≈ 1 KB to a section at its limit.
+
+— RUN.md, T120 (body — [docs/plan/E13.md](plan/E13.md)); row 5.14 spec; R36 spec, R74 spec, R156 spec; [the contracts text](../spec/contracts/README.md), section 15; R05, R06, R07, R18, R20, R25, R27, R34; `src/element/index.ts`, `src/element/interface.check.ts`, `src/element/surface.test.ts`, `src/core/png.test.ts`, `docs-budgets.json`, `run/QUESTIONS.md`.

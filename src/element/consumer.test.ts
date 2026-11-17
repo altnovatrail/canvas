@@ -14,22 +14,23 @@ import { budget } from "../core/budget.fixture.js";
 import { type Anchor, SHEET } from "../core/index.js";
 import { type Marks, NovatrailCanvas, type Task } from "./index.js";
 
-// The trial consumer (R27, R28, R32, R38, R39, R41, R42; RUN.md, T15, T41, T44, T49, T53, T55,
-// T57, T59, T60, T69, T73): a page that takes the element as app is to take it. The types of the
-// contract it takes from spec's package, as app does (R74 spec), and only the element's own from
-// the package: the tutor's marks and the task with its tools. It gives the task and the module's
-// manifest, of spec's types as app holds them, the media and the language, keeps the history of
-// writing as historychange tells it and gives it back, hears the learner's choice of tool, reads
-// which answer slots are filled, takes the work for checking at Check, and gives the tutor's marks
-// back with their submission's context, then opens the sheet again in a new element. On a workbook
-// it writes in the boxes and beside them, reads which are filled, takes the crop of each filled
-// box, and gives a mark on a box back. A lesson's worked example it gives to a new element, where
-// the learner writes nothing, opens the parts of its demo and hides it, while app keeps how far
-// the learner has gone, as demochange tells it, and gives that back to a new element. It goes through the package's entry points alone, never the
-// probe the other tests read. It writes as a script does: pointer events on the canvas in the
-// element's open shadow root, at the points the canvas's rectangle gives. The learner's erasing,
-// undo and clearing go through the sheet's own buttons, and the workbook's boxes are found the same
-// way, by their roles and their Russian names.
+// The trial consumer (R27, R28, R32, R38, R39, R41, R42, R83; RUN.md, T15, T41, T44, T49, T53, T55,
+// T57, T59, T60, T69, T73, T120): a page that takes the element as app is to take it. The types of
+// the contract it takes from spec's package, as app does (R74 spec), and only the element's own
+// from the package: the tutor's marks, the task with its tools and the picture of the work. It
+// gives the task and the module's manifest, of spec's types as app holds them, the media and the
+// language, keeps the history of writing as historychange tells it and gives it back, hears the
+// learner's choice of tool, reads which answer slots are filled, takes the work for checking at
+// Check, and gives the tutor's marks back with their submission's context, then opens the sheet
+// again in a new element. On a workbook it writes in the boxes and beside them, reads which are
+// filled, takes the crop of each filled box and the picture of its whole page, and gives a mark on
+// a box back. A lesson's worked example it gives to a new element, where the learner writes
+// nothing, opens the parts of its demo and hides it, while app keeps how far the learner has gone,
+// as demochange tells it, and gives that back to a new element. It goes through the package's entry
+// points alone, never the probe the other tests read. It writes as a script does: pointer events on
+// the canvas in the element's open shadow root, at the points the canvas's rectangle gives. The
+// learner's erasing, undo and clearing go through the sheet's own buttons, and the workbook's boxes
+// are found the same way, by their roles and their Russian names.
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -619,6 +620,15 @@ test("app's path on a workbook: write in its boxes and beside them, read which a
     { item: 3, slot: 2, ids: [1] },
   ]);
   expect(JSON.parse(JSON.stringify(work.submission))).toEqual(work.submission);
+  // The work app puts on the server while the profile's storage is on has the picture of the whole
+  // page, its draft too, by the package's own method until spec's agreement names it (R83; В82).
+  const picture = await decoded(await sheet.exportPicture());
+  expect([picture.type, picture.signature, picture.size]).toEqual([
+    "image/png",
+    SIGNATURE,
+    [SHEET.width, SHEET.height],
+  ]);
+  expect(picture.grey(200, 700)).toBeLessThan(128);
   // The tutor's mark on the remainder's box comes back with the context: a frame read by its name.
   const marks = marksOf(work.submission, "Посмотри на остаток", { cell: { item: 3, slot: 2 } });
   sheet.marks = marks;
