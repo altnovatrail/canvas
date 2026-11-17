@@ -230,6 +230,10 @@ export class Tools {
       this.#focused = focused.matches(":focus-visible") ? focused : undefined;
       this.#showTip();
     });
+    // Next, Demo or the consumer's button, reached by Tab in a row narrower than its buttons.
+    this.row.addEventListener("focusin", (event) => {
+      if (event.target instanceof Element) bringIn(this.row, event.target);
+    });
     this.element.addEventListener("focusout", () => {
       this.#focused = undefined;
       this.#showTip();
@@ -250,8 +254,9 @@ export class Tools {
    * The bar as the sheet now is. Only what has changed is written. A worked example's has no tools
    * of writing, no undo and no clearing, for the learner does not write on its sheet, and its row
    * has Next, unavailable while the demo is hidden or open whole, and Demo, expanded while the demo
-   * is shown (R42). Zoom in and Zoom out stand unavailable at their ends (T94). The tool in use shows its icon filled, and Demo's icon points down while the
-   * demo is shown, and along the row while it is hidden (R46).
+   * is shown (R42). Zoom in and Zoom out stand unavailable at their ends (T94). The tool in use
+   * shows its icon filled, and Demo's icon points down while the demo is shown, and along the row
+   * while it is hidden (R46).
    */
   show(state: ToolState): void {
     const { kind, tools, tool, undoable, clearable, larger, smaller, finger, opens, expanded } =
@@ -399,27 +404,7 @@ export class Tools {
     event.preventDefault();
     if (next === undefined) return;
     next.focus();
-    this.#bringIn(next);
-  }
-
-  /**
-   * A bar that scrolls inside its glass brings the button in focus wholly into its view (2.4.11):
-   * Firefox's focus() leaves one that is in sight in part where it is. The bar alone scrolls, not
-   * what scrolls the element.
-   */
-  #bringIn(button: HTMLButtonElement): void {
-    // Within the glass's padding, as the first button and the last stand at the bar's ends.
-    const outer = this.element.getBoundingClientRect();
-    const style = getComputedStyle(this.element);
-    const top = outer.top + Number.parseFloat(style.paddingTop);
-    const bottom = outer.bottom - Number.parseFloat(style.paddingBottom);
-    const left = outer.left + Number.parseFloat(style.paddingLeft);
-    const right = outer.right - Number.parseFloat(style.paddingRight);
-    const box = button.getBoundingClientRect();
-    if (box.bottom > bottom) this.element.scrollTop += box.bottom - bottom;
-    else if (box.top < top) this.element.scrollTop -= top - box.top;
-    if (box.right > right) this.element.scrollLeft += box.right - right;
-    else if (box.left < left) this.element.scrollLeft -= left - box.left;
+    bringIn(this.element, next);
   }
 
   /**
@@ -457,6 +442,26 @@ export class Tools {
   #stopAt(stop: HTMLButtonElement): void {
     for (const button of this.#buttons) button.tabIndex = button === stop ? 0 : -1;
   }
+}
+
+/**
+ * Glass that scrolls inside itself — the bar down, a worked example's row across — brings what has
+ * the focus wholly into its view, within its padding, as the first button and the last stand at its
+ * ends (2.4.11): Firefox's focus() leaves one in sight in part where it is, and so do all three
+ * engines in a row. The glass alone scrolls, not what scrolls the element.
+ */
+function bringIn(glass: HTMLElement, item: Element): void {
+  const outer = glass.getBoundingClientRect();
+  const style = getComputedStyle(glass);
+  const top = outer.top + Number.parseFloat(style.paddingTop);
+  const bottom = outer.bottom - Number.parseFloat(style.paddingBottom);
+  const left = outer.left + Number.parseFloat(style.paddingLeft);
+  const right = outer.right - Number.parseFloat(style.paddingRight);
+  const box = item.getBoundingClientRect();
+  if (box.bottom > bottom) glass.scrollTop += box.bottom - bottom;
+  else if (box.top < top) glass.scrollTop -= top - box.top;
+  if (box.right > right) glass.scrollLeft += box.right - right;
+  else if (box.left < left) glass.scrollLeft -= left - box.left;
 }
 
 /** A line between two groups of the bar, which says nothing to a screen reader. */

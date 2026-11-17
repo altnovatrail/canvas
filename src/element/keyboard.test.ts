@@ -41,7 +41,10 @@ function after(): HTMLButtonElement {
   return button;
 }
 
-/** The kinds of canvas, put on the page, and what the region and the bar are named in English. */
+/**
+ * The kinds of canvas, put on the page, what the region and the bar are named in English, and the
+ * buttons Tab comes to between the bar and the region: a worked example's row (R84).
+ */
 const KINDS = [
   {
     kind: "a sheet",
@@ -50,6 +53,7 @@ const KINDS = [
     },
     region: "Sheet",
     row: "Sheet buttons",
+    between: [],
   },
   {
     kind: "a workbook",
@@ -58,6 +62,7 @@ const KINDS = [
     },
     region: "Workbook",
     row: "Workbook buttons",
+    between: [],
   },
   {
     kind: "a worked example",
@@ -66,6 +71,7 @@ const KINDS = [
     },
     region: "Worked example",
     row: "Worked example buttons",
+    between: ["Next", "Demo"],
   },
 ];
 
@@ -89,8 +95,8 @@ const regionOf = (viewport: HTMLElement) =>
   ["tabindex", "role", "aria-label"].map((name) => viewport.getAttribute(name));
 
 test.each(KINDS)(
-  "on $kind of a height its content overflows, Tab goes from the bar into the container, a region named by the kind in Chromium's own tree, and out of it to what follows; Shift+Tab comes back",
-  async ({ give, region, row: rowName }) => {
+  "on $kind of a height its content overflows, Tab goes from the bar, through a worked example's row, into the container, a region named by the kind in Chromium's own tree, and out of it to what follows; Shift+Tab comes back",
+  async ({ give, region, row: rowName, between }) => {
     const { root, viewport, row, next } = await put(give, 300);
     expect(viewport.scrollHeight).toBeGreaterThan(viewport.clientHeight);
     expect(regionOf(viewport)).toEqual(["0", "region", region]);
@@ -106,6 +112,10 @@ test.each(KINDS)(
     }
     await userEvent.tab();
     expect(row.contains(root.activeElement)).toBe(true);
+    for (const label of between) {
+      await userEvent.tab();
+      expect(root.activeElement?.textContent).toBe(label);
+    }
     await userEvent.tab();
     expect(root.activeElement).toBe(viewport);
     expect(viewport.matches(":focus-visible")).toBe(true);
@@ -113,6 +123,10 @@ test.each(KINDS)(
     expect(document.activeElement).toBe(next);
     await userEvent.tab({ shift: true });
     expect(root.activeElement).toBe(viewport);
+    for (const label of [...between].reverse()) {
+      await userEvent.tab({ shift: true });
+      expect(root.activeElement?.textContent).toBe(label);
+    }
     await userEvent.tab({ shift: true });
     expect(row.contains(root.activeElement)).toBe(true);
   },

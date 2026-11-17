@@ -91,16 +91,17 @@ test("the sheet is a stack of layers in the order of concepts 8 spec, and of the
   const sheetBox = root.querySelector(".sheet");
   if (!sheetBox) throw new Error("the element has no sheet");
   // The bar of the element's own buttons sets no pointer-events of its own either (R28), the
-  // zoom's pair (T94), the finger's button of pen mode (R29) and a worked example's Next and Demo
-  // (R42) too. The rail it stands in, as tall as the element in sight, is as wide as nothing: the
-  // bar stands out of it, and beside the bar the pointer is on the sheet (R84).
+  // zoom's pair (T94), the finger's button of pen mode (R29) and a worked example's row of Next and
+  // Demo (R42, R84) too. The rail it stands in, as tall as the element in sight, is as wide as
+  // nothing: the bar stands out of it, and beside the bar the pointer is on the sheet (R84).
   const bar = root.querySelector(".tools");
+  const row = root.querySelector(".tools.row");
   const rail = root.querySelector(".rail");
   const buttons = [...root.querySelectorAll(".tools button")];
-  if (!bar || !rail) throw new Error("the element has no bar in a rail");
+  if (!bar || !row || !rail) throw new Error("the element has no bar and row in a rail");
   expect(buttons).toHaveLength(9);
   expect(rail.getBoundingClientRect().width).toBe(0);
-  const boxes = [canvas, stage, sheetBox, viewport, rail, bar, ...buttons];
+  const boxes = [canvas, stage, sheetBox, viewport, rail, bar, row, ...buttons];
   for (const box of boxes) expect(getComputedStyle(box).pointerEvents).toBe("auto");
   const pen = buttons.find((button) => button.textContent === "Pen")?.getBoundingClientRect();
   if (!pen) throw new Error("the bar has no pen");

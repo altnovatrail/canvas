@@ -435,7 +435,7 @@ test("a history without the marked strokes takes the marks off, and the next tas
   await expect.element(buttons(next).pen).toBeChecked();
 });
 
-test("app's path through a lesson: after a task, its worked example on a new element, named so, with Next, Demo and the zoom's pair alone, on which the learner writes nothing", async () => {
+test("app's path through a lesson: after a task, its worked example on a new element, named so, the zoom's pair alone on its bar, Next and Demo in its row and app's Continue after them, on which the learner writes nothing", async () => {
   const { sheet, store } = await app();
   write(sheet, 100, 100, 300);
   expect(store).toHaveLength(1);
@@ -447,21 +447,35 @@ test("app's path through a lesson: after a task, its worked example on a new ele
   example.manifest = MODULE;
   media(example);
   example.workedExample = EXAMPLE;
+  // app's own button, which ends the segment, in the element's row after its Next and Demo (R84).
+  const proceed = document.createElement("button");
+  proceed.type = "button";
+  proceed.slot = "actions";
+  proceed.textContent = "Продолжить";
+  let proceeded = 0;
+  proceed.addEventListener("click", () => proceeded++);
+  example.append(proceed);
   const told: unknown[] = [];
   example.addEventListener("historychange", ({ detail }) => told.push(detail));
   made.push(example);
   sheet.replaceWith(example);
   await settle();
   const within = page.elementLocator(example);
-  await expect
-    .element(within.getByRole("toolbar", { name: "Кнопки примера", exact: true }))
-    .toBeVisible();
-  expect(
-    within
-      .getByRole("button")
-      .elements()
-      .map((each) => each.textContent),
-  ).toEqual(["Дальше", "Показ", "Крупнее", "Мельче"]);
+  const bar = within.getByRole("toolbar", { name: "Кнопки примера", exact: true });
+  await expect.element(bar).toBeVisible();
+  const words = (found: Element[]) => found.map((each) => each.textContent);
+  expect(words(bar.getByRole("button").elements())).toEqual(["Крупнее", "Мельче"]);
+  // The element's own buttons, and app's, which the locator finds first as a child of the element.
+  const all = within.getByRole("button").elements();
+  expect(words(all.filter((each) => each !== proceed))).toEqual([
+    "Крупнее",
+    "Мельче",
+    "Дальше",
+    "Показ",
+  ]);
+  expect(all).toContain(proceed);
+  await userEvent.click(within.getByRole("button", { name: "Продолжить" }));
+  expect(proceeded).toBe(1);
   await expect.element(within.getByText(/How many posts stand along a path 12 m/)).toBeVisible();
   await expect
     .element(within.getByRole("img", { name: "A path with posts along it" }))

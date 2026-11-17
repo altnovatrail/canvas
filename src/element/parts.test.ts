@@ -331,7 +331,7 @@ test("demochange goes up from the element and out of a consumer's shadow tree, w
 });
 
 test.runIf(devtools)(
-  "a screen reader reads the row, the statement and the list of the open parts in that order, in Chromium's own tree, a picture on an area of the sheet by its words, and not the picture itself on the sheet",
+  "a screen reader reads the bar, Next and Demo, the statement and the list of the open parts in that order, in Chromium's own tree, a picture on an area of the sheet by its words, and not the picture itself on the sheet",
   async () => {
     const { root: shadow, next } = await pictured();
     for (let n = 0; n < 3; n++) next.click();
@@ -350,13 +350,17 @@ test.runIf(devtools)(
     const at = (found: (node: (typeof nodes)[number]) => boolean) => order.findIndex(found);
     const role = (node: (typeof nodes)[number]) => node.role?.value;
     const toolbar = at((node) => role(node) === "toolbar");
+    const named = (name: string) =>
+      at((node) => role(node) === "button" && node.name?.value === name);
     const statement = at(
       (node) =>
         role(node) === "StaticText" && String(node.name?.value).startsWith("A path is 20 m"),
     );
     const list = at((node) => role(node) === "list");
     expect(toolbar).toBeGreaterThanOrEqual(0);
-    expect(statement).toBeGreaterThan(toolbar);
+    expect(named("Next")).toBeGreaterThan(toolbar);
+    expect(named("Demo")).toBeGreaterThan(named("Next"));
+    expect(statement).toBeGreaterThan(named("Demo"));
     expect(list).toBeGreaterThan(statement);
     const items = order.filter((node) => role(node) === "listitem");
     expect(items).toHaveLength(3);

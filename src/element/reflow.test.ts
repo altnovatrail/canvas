@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { SHORT } from "../core/pages.fixture.js";
 import { sheetTask, workbookTask, workedExample } from "../core/tasks.fixture.js";
-import { placed, settle, spacer } from "./pointer.fixture.js";
+import { consumerButton, placed, settle, spacer } from "./pointer.fixture.js";
 
 // The bar of buttons in a narrow or a low window (T121; R84, R90 spec): the rail it stands in the
 // middle of sticks over what scrolls the element, below the consumer's --novatrail-canvas-top, as
@@ -13,7 +13,8 @@ import { placed, settle, spacer } from "./pointer.fixture.js";
 // A button's ring of focus, two pixels outside its edge, stays on the glass, which clips what
 // overflows it (2.4.7). The window of 1.4.10 is 320 × 256 CSS px: 1280 × 1024 at a zoom of 400 %.
 // Each test sets the window it needs, and the next starts at Vitest's own, 414 × 896, whose body
-// has no margin.
+// has no margin. A worked example's row of Next, Demo and the consumer's buttons, at the bottom,
+// keeps within the element less 16 px at each side, and scrolls inside its glass across.
 
 const made: HTMLElement[] = [];
 afterEach(async () => {
@@ -83,6 +84,21 @@ test.each(KINDS)(
     }
   },
 );
+
+test("a worked example in a window of 320 × 256: its row of Next, Demo and the consumer's button stands in the window, in its middle across, its bottom 16 pixels above the window's, and the page does not scroll sideways", async () => {
+  await windowOf(320, 256);
+  const { element, actions } = await placed(made, 320);
+  element.append(consumerButton());
+  element.workedExample = workedExample();
+  spacer(made);
+  await settle();
+  expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(320);
+  const row = actions.getBoundingClientRect();
+  expect(row.left).toBeGreaterThanOrEqual(16 - 0.5);
+  expect(row.right).toBeLessThanOrEqual(320 - 16 + 0.5);
+  expect(row.left + row.width / 2).toBeCloseTo(160, 0);
+  expect(row.bottom).toBeCloseTo(256 - 16, 0);
+});
 
 /** The low places a sheet's bar is tried in: a window of 1.4.10, and an element given a height. */
 const LOW: readonly {

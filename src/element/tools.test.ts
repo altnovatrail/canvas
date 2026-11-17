@@ -8,6 +8,7 @@ import { labelsFor } from "./labels.js";
 import {
   at,
   buttonOf,
+  consumerButton,
   devtools,
   iconOf,
   input,
@@ -28,10 +29,10 @@ import { TIP_GRACE_MS } from "./tools.js";
 // tool, standing in the middle of what is in sight of the element and taking no room of its own.
 // Each button shows an icon alone, its label its name and its tooltip, which the pointer's hover
 // and the keyboard's focus show and Escape dismisses (the 2026-11-14 amendment to R90 spec; WCAG
-// 1.4.13). A worked example's toolbar is a row of the same glass at the bottom, of Next and Demo
-// with their labels beside their icons and of the zoom's pair (R42). The sheet has no buttons that
-// scroll it: a hand drags it, the wheel and the keys scroll it (R84), and the zoom itself is
-// zoom.test.ts's.
+// 1.4.13). A worked example's bar holds the zoom's pair alone, and its Next and Demo, with their
+// labels beside their icons, stand in a row of the same glass at the bottom, the consumer's buttons
+// of the slot actions after them (R42, R84). The sheet has no buttons that scroll it: a hand drags
+// it, the wheel and the keys scroll it (R84), and the zoom itself is zoom.test.ts's.
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -131,7 +132,7 @@ async function off(): Promise<HTMLButtonElement> {
 }
 
 test("the bar is a vertical toolbar of the pen and the eraser, undo and clear, named in English for an element of no language, before the sheet in the order of Tab", async () => {
-  const { element, root, row } = await sheet();
+  const { element, root, row, actions } = await sheet();
   const found = buttons(element);
   await expect.element(found.row).toBeVisible();
   await expect.element(found.group).toBeVisible();
@@ -140,12 +141,10 @@ test("the bar is a vertical toolbar of the pen and the eraser, undo and clear, n
   await expect.element(found.undo).toBeVisible();
   await expect.element(found.clear).toBeVisible();
   expect(row.getAttribute("aria-orientation")).toBe("vertical");
-  // The order the arrow keys go through, and the language the names are in. A worked example's
-  // Next and Demo come first, and a sheet hides them (R42). Zoom in and Zoom out are on every
-  // device (T94). The last button is pen mode's, which out of it the bar hides (R29).
+  // The order the arrow keys go through, and the language the names are in. Zoom in and Zoom out
+  // are on every device (T94). The last button is pen mode's, which out of it the bar hides (R29).
+  // A worked example's Next and Demo are not the bar's: they stand in its row, which a sheet hides.
   expect([...row.querySelectorAll("button")].map((each) => each.textContent)).toEqual([
-    "Next",
-    "Demo",
     "Pen",
     "Eraser",
     "Undo",
@@ -154,7 +153,8 @@ test("the bar is a vertical toolbar of the pen and the eraser, undo and clear, n
     "Zoom out",
     "Draw with finger",
   ]);
-  expect(row.querySelectorAll("button[hidden]")).toHaveLength(3);
+  expect(row.querySelectorAll("button[hidden]")).toHaveLength(1);
+  expect(actions.hidden).toBe(true);
   expect(row.lang).toBe("en");
   // The lines between the groups say nothing to a screen reader, and the finger's goes with it.
   const lines = [...row.querySelectorAll<HTMLElement>(".line")];
@@ -169,11 +169,10 @@ test("the bar is a vertical toolbar of the pen and the eraser, undo and clear, n
 });
 
 test("each button shows its icon, its label after it: an SVG that names nothing, in outline, but filled for the tool in use", async () => {
-  const { element, row } = await sheet();
-  const each = [...row.querySelectorAll("button")];
+  const { element, root } = await sheet();
+  // The bar's buttons, then those of a worked example's row.
+  const each = [...root.querySelectorAll("button")];
   expect(each.map((one) => drawn(one).name)).toEqual([
-    ROW.next.outline,
-    ROW.demoShown.outline,
     ROW.pen.filled,
     ROW.eraser.outline,
     ROW.undo.outline,
@@ -181,6 +180,8 @@ test("each button shows its icon, its label after it: an SVG that names nothing,
     ROW.zoomIn.outline,
     ROW.zoomOut.outline,
     ROW.finger.outline,
+    ROW.next.outline,
+    ROW.demoShown.outline,
   ]);
   for (const one of each) {
     const { icon } = drawn(one);
@@ -205,15 +206,15 @@ test("each button shows its icon, its label after it: an SVG that names nothing,
   expect(buttonOf(element, "Ластик").querySelectorAll("svg")).toHaveLength(1);
 });
 
-test("in an element whose text runs right to left, the icons of Next, Undo and a hidden Demo are mirrored, and no other; the bar's arrows still go down, and a worked example's ArrowLeft goes on", async () => {
+test("in an element whose text runs right to left, the icons of Next, Undo and a hidden Demo are mirrored, and no other; the bar's arrows still go down, and a worked example's row runs from the right, Next first", async () => {
   const parent = document.createElement("div");
   parent.dir = "rtl";
   document.body.append(parent);
-  const { element, root, row } = await sheet(400, undefined, parent);
+  const { element, root } = await sheet(400, undefined, parent);
   /** Whether each button shown mirrors its icon. */
   const mirrored = () =>
     Object.fromEntries(
-      [...row.querySelectorAll("button:not([hidden])")].map((one) => [
+      [...root.querySelectorAll("button:not([hidden])")].map((one) => [
         one.textContent,
         drawn(one).mirrored,
       ]),
@@ -231,34 +232,30 @@ test("in an element whose text runs right to left, the icons of Next, Undo and a
   element.workedExample = workedExample();
   await settle();
   expect(mirrored()).toEqual({ Next: true, Demo: false, ...unturned });
-  // The arrow that points along the example's row goes on: the next button stands to the left (R46).
-  buttonOf(element, "Next").focus();
-  await moves(root, [
-    ["{ArrowLeft}", "Demo"],
-    ["{ArrowRight}", "Next"],
-    ["{ArrowDown}", "Next"],
-  ]);
+  // The row runs as the text does: Demo stands to the left of Next, where Next's arrow points (R46).
+  const across = (label: string) => buttonOf(element, label).getBoundingClientRect();
+  expect(across("Demo").right).toBeLessThanOrEqual(across("Next").left);
   buttonOf(element, "Demo").click();
   await settle();
   expect(drawn(buttonOf(element, "Demo")).name).toBe(ROW.demoHidden.outline);
   expect(mirrored()).toEqual({ Next: true, Demo: true, ...unturned });
-  // Left to right, nothing is mirrored.
+  // Left to right, nothing is mirrored, and Next comes first from the left.
   parent.dir = "ltr";
   expect(Object.values(mirrored()).some(Boolean)).toBe(false);
+  expect(across("Next").right).toBeLessThanOrEqual(across("Demo").left);
 });
 
 test("the labels follow the element's own lang: Russian for ru and its regions, English for any other and for none", async () => {
-  const { element, row } = await sheet();
+  const { element, root, row, actions } = await sheet();
   const russian = labelsFor("ru").labels;
   for (const tag of ["ru", "ru-RU", "RU", "ru-Cyrl-RU-x-school"]) {
     element.setAttribute("lang", tag);
-    expect(row.lang).toBe("ru");
+    expect([row.lang, actions.lang]).toEqual(["ru", "ru"]);
     await expect.element(buttons(element, russian).row).toBeVisible();
     await expect.element(buttons(element, russian).undo).toBeVisible();
   }
-  expect([...row.querySelectorAll("button")].map((each) => each.textContent)).toEqual([
-    "Дальше",
-    "Показ",
+  // The bar's buttons, then those of a worked example's row.
+  expect([...root.querySelectorAll("button")].map((each) => each.textContent)).toEqual([
     "Перо",
     "Ластик",
     "Отменить",
@@ -266,11 +263,13 @@ test("the labels follow the element's own lang: Russian for ru and its regions, 
     "Крупнее",
     "Мельче",
     "Рисовать пальцем",
+    "Дальше",
+    "Показ",
   ]);
   // A language the labels are not in reads as English, in English: the bar says its own.
   for (const tag of ["de", "", "constructor", "x-ru", "zh-Hant-CN"]) {
     element.setAttribute("lang", tag);
-    expect(row.lang).toBe("en");
+    expect([row.lang, actions.lang]).toEqual(["en", "en"]);
     await expect.element(buttons(element).pen).toBeVisible();
   }
   element.setAttribute("lang", "ru");
@@ -545,50 +544,58 @@ test("a new task without the eraser puts the pen back, with no event, and the fo
   expect(element.tool).toBe("pen");
 });
 
-test("a worked example's toolbar is a row named so in the element's language, of Next and Demo with their labels and the zoom's pair alone, its arrows across, the stop of Tab and the focus on Next, and leaving it brings the bar back", async () => {
-  // A device with touch, in pen mode: a worked example's row has no finger's button even so (R42).
+test("a worked example's toolbar is a vertical bar of the zoom's pair alone, named so in the element's language, with the stop of Tab, and the focus when the button it was on goes; Next and Demo stand out of it in the row with their labels, and leaving the example brings the sheet's bar back", async () => {
+  // A device with touch, in pen mode: a worked example's bar has no finger's button even so (R42).
   Object.defineProperty(navigator, "maxTouchPoints", { value: 5, configurable: true });
   try {
     // Till a button has had the focus, Tab comes to the first button shown, whichever it is now.
     const fresh = await sheet();
     const stop = () => fresh.root.querySelector('[tabindex="0"]')?.textContent;
     fresh.element.workedExample = workedExample();
-    expect(stop()).toBe("Next");
+    expect(stop()).toBe("Zoom in");
     fresh.element.workedExample = undefined;
     expect(stop()).toBe("Pen");
-    const { element, root, row } = await sheet();
+    const { element, root, row, actions } = await sheet();
     PEN_MODE.on = true;
     await settle();
-    const shown = () =>
-      [...row.querySelectorAll("button:not([hidden])")].map((each) => each.textContent);
+    const shown = (box: HTMLElement) =>
+      [...box.querySelectorAll("button:not([hidden])")].map((each) => each.textContent);
     const stops = () =>
       [...root.querySelectorAll('[tabindex="0"]')].map((each) => each.textContent);
-    expect(shown()).toHaveLength(7);
+    expect(shown(row)).toHaveLength(7);
     buttonOf(element, "Pen").focus();
     element.workedExample = workedExample();
     expect(row.getAttribute("aria-label")).toBe("Worked example buttons");
-    expect(row.getAttribute("aria-orientation")).toBe("horizontal");
-    expect(row.parentElement?.classList.contains("example")).toBe(true);
-    expect(shown()).toEqual(["Next", "Demo", "Zoom in", "Zoom out"]);
+    expect(row.getAttribute("aria-orientation")).toBe("vertical");
+    expect(shown(row)).toEqual(["Zoom in", "Zoom out"]);
+    expect(row.querySelectorAll(".line:not([hidden])")).toHaveLength(0);
     expect(page.elementLocator(element).getByRole("radiogroup").elements()).toHaveLength(0);
-    // Next and Demo are actions, and show their labels beside their icons (R90 spec).
+    // The pen went with the focus on it: the focus is on the bar's first button.
+    expect(root.activeElement?.textContent).toBe("Zoom in");
+    expect(stops()).toEqual(["Zoom in"]);
+    // Next and Demo are actions, not the bar's: plain buttons of the row, each a stop of Tab of its
+    // own, which show their labels beside their icons (R90 spec).
+    expect([actions.hidden, actions.getAttribute("role")]).toEqual([false, null]);
+    expect(shown(actions)).toEqual(["Next", "Demo"]);
     await settle();
     for (const name of ["Next", "Demo"]) {
-      const label = buttonOf(element, name).querySelector(".label")?.getBoundingClientRect();
-      expect(label?.width, name).toBeGreaterThan(8);
+      const one = buttonOf(element, name);
+      expect([one.tabIndex, one.hasAttribute("tabindex")], name).toEqual([0, false]);
+      expect(one.querySelector(".label")?.getBoundingClientRect().width, name).toBeGreaterThan(8);
     }
-    expect(root.activeElement?.textContent).toBe("Next");
-    expect(stops()).toEqual(["Next"]);
+    // The bar's arrows go down and up its pair alone, round it, and none goes across.
     await moves(root, [
-      ["{ArrowRight}", "Demo"],
-      ["{ArrowRight}", "Zoom in"],
-      ["{ArrowLeft}", "Demo"],
-      ["{ArrowLeft}", "Next"],
-      ["{ArrowLeft}", "Zoom out"],
-      ["{ArrowUp}{ArrowDown}", "Zoom out"],
-      ["{Home}", "Next"],
+      ["{ArrowDown}", "Zoom out"],
+      ["{ArrowDown}", "Zoom in"],
+      ["{ArrowUp}", "Zoom out"],
+      ["{ArrowRight}{ArrowLeft}", "Zoom out"],
+      ["{Home}", "Zoom in"],
       ["{End}", "Zoom out"],
     ]);
+    // The row's buttons take none of the bar's keys.
+    buttonOf(element, "Next").focus();
+    await moves(root, [["{ArrowDown}{ArrowRight}{Home}", "Next"]]);
+    expect(stops()).toEqual(["Zoom out"]);
     element.setAttribute("lang", "ru");
     const russian = labelsFor("ru").labels;
     await expect
@@ -598,18 +605,160 @@ test("a worked example's toolbar is a row named so in the element's language, of
           .getByRole("toolbar", { name: russian.exampleButtons, exact: true }),
       )
       .toBeVisible();
-    expect(shown()).toEqual([russian.next, russian.demo, russian.zoomIn, russian.zoomOut]);
-    // Out of the example the bar is the sheet's again, and the stop stays where the focus left it.
+    expect(shown(row)).toEqual([russian.zoomIn, russian.zoomOut]);
+    expect(shown(actions)).toEqual([russian.next, russian.demo]);
+    // Out of the example the bar is the sheet's again, and the row goes: the focus on Next, which
+    // goes with it, goes to the bar's first button, and the stop of Tab with it.
     element.workedExample = undefined;
     await settle();
     expect(row.getAttribute("aria-label")).toBe(russian.sheetButtons);
     expect(row.getAttribute("aria-orientation")).toBe("vertical");
-    expect(shown()).toHaveLength(7);
+    expect(shown(row)).toHaveLength(7);
+    expect(actions.hidden).toBe(true);
+    expect(root.activeElement?.textContent).toBe(russian.pen);
+    expect(stops()).toEqual([russian.pen]);
+    // A worked example again, the focus on the bar as it leaves: the stop stays where it was.
+    element.workedExample = workedExample();
+    buttonOf(element, russian.zoomOut).focus();
+    element.workedExample = undefined;
+    expect(root.activeElement?.textContent).toBe(russian.zoomOut);
     expect(stops()).toEqual([russian.zoomOut]);
   } finally {
     Reflect.deleteProperty(navigator, "maxTouchPoints");
   }
 });
+
+test("a consumer's buttons in the slot actions stand in a worked example's row after Next, Demo and a line, on its glass, take the pointer, and come after Demo in the order of Tab; the line shows only while the slot has any", async () => {
+  const before = pageButton("Before");
+  const { element, root, actions } = await sheet();
+  const after = pageButton("After");
+  element.workedExample = workedExample();
+  await settle();
+  const line = actions.querySelector<HTMLElement>(".line");
+  const slot = actions.querySelector("slot");
+  if (!line || !slot) throw new Error("the row has no line and no slot");
+  expect([slot.name, line.getAttribute("aria-hidden"), line.hidden]).toEqual([
+    "actions",
+    "true",
+    true,
+  ]);
+  const own = consumerButton();
+  const clicks = vi.fn();
+  own.addEventListener("click", clicks);
+  element.append(own);
+  await settle();
+  expect(slot.assignedElements()).toEqual([own]);
+  expect(line.hidden).toBe(false);
+  // Across the row, in its order, each within its glass.
+  const glass = actions.getBoundingClientRect();
+  const boxes = [buttonOf(element, "Next"), buttonOf(element, "Demo"), line, own].map((each) =>
+    each.getBoundingClientRect(),
+  );
+  for (const [n, box] of boxes.entries()) {
+    expect(box.left, `${n}`).toBeGreaterThanOrEqual((boxes[n - 1]?.right ?? glass.left) - 0.5);
+    expect(box.top, `${n}`).toBeGreaterThanOrEqual(glass.top);
+    expect(box.bottom, `${n}`).toBeLessThanOrEqual(glass.bottom);
+  }
+  expect(boxes.at(-1)?.right).toBeLessThanOrEqual(glass.right);
+  // A pointer on the consumer's button meets it, over the sheet, and clicks it.
+  const { clientX, clientY } = middle(own);
+  expect(document.elementFromPoint(clientX, clientY)).toBe(own);
+  await userEvent.click(own);
+  expect(clicks).toHaveBeenCalledOnce();
+  // Tab: the bar's one stop, Next, Demo, the consumer's button, and what follows the element.
+  before.focus();
+  for (const to of ["Zoom in", "Next", "Demo"]) {
+    await userEvent.tab();
+    expect(root.activeElement?.textContent).toBe(to);
+  }
+  await userEvent.tab();
+  expect(document.activeElement).toBe(own);
+  await userEvent.tab();
+  expect(document.activeElement).toBe(after);
+  await userEvent.tab({ shift: true });
+  await userEvent.tab({ shift: true });
+  expect(root.activeElement?.textContent).toBe("Demo");
+  // The slot empty again, the line goes; a button given in markup, before the element is
+  // upgraded, brings it from the start.
+  own.remove();
+  await settle();
+  expect(line.hidden).toBe(true);
+  const markup = document.createElement("div");
+  markup.innerHTML = `<novatrail-canvas><button slot="actions">Continue</button></novatrail-canvas>`;
+  document.body.append(markup);
+  made.push(markup);
+  const early = markup.querySelector("novatrail-canvas");
+  if (!(early instanceof NovatrailCanvas)) throw new Error("the element was not upgraded");
+  early.workedExample = workedExample();
+  await settle();
+  expect(early.shadowRoot?.querySelector<HTMLElement>(".tools.row .line")?.hidden).toBe(false);
+});
+
+test("a consumer's button in the slot actions shows only in a worked example's row: not on a sheet, nor with tools-hidden, where it is out of the order of Tab too", async () => {
+  const { element, actions } = await sheet(400, 600);
+  const own = consumerButton();
+  element.append(own);
+  await settle();
+  const visible = (expected: boolean) => {
+    expect(own.getBoundingClientRect().width > 0).toBe(expected);
+    own.focus();
+    expect(document.activeElement === own).toBe(expected);
+    own.blur();
+  };
+  expect(actions.hidden).toBe(true);
+  visible(false);
+  element.workedExample = workedExample();
+  await settle();
+  visible(true);
+  element.toggleAttribute("tools-hidden", true);
+  await settle();
+  expect(actions.getBoundingClientRect().width).toBe(0);
+  visible(false);
+  element.removeAttribute("tools-hidden");
+  await settle();
+  visible(true);
+});
+
+/** The places a worked example's row is tried in: an element with a height, one taller than the
+ * window, one narrower than the row would be, and each away from the window's left edge. */
+const ROWS = [
+  { name: "an element 400 × 600", width: 400, height: 600 },
+  { name: "an element 300 wide and taller than the window", width: 300, height: 1200 },
+  { name: "an element 200 wide", width: 200, height: 600 },
+];
+
+test.each(ROWS)(
+  "in $name, a worked example's row stands in the middle of it across, 16 pixels above the bottom of the part in sight, 56 pixels tall and round at its ends, and no wider than the element less 32 pixels",
+  async ({ width, height }) => {
+    const { element, actions } = await sheet(width, height);
+    element.style.marginLeft = "10px";
+    const own = consumerButton();
+    element.append(own);
+    element.workedExample = workedExample();
+    await settle();
+    const box = element.getBoundingClientRect();
+    const row = actions.getBoundingClientRect();
+    expect(row.left + row.width / 2).toBeCloseTo(box.left + box.width / 2, 0);
+    expect(row.bottom).toBeCloseTo(Math.min(box.bottom, window.innerHeight) - 16, 0);
+    expect(row.height).toBeCloseTo(56, 1);
+    expect(getComputedStyle(actions).borderRadius).toBe("28px");
+    expect(row.width).toBeLessThanOrEqual(width - 32 + 0.5);
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+    // A row narrower than its buttons scrolls them inside its glass, and the focus brings each of
+    // them, the element's and the consumer's, whole into sight there, within its padding (2.4.11).
+    if (width === 200) {
+      expect(actions.scrollWidth).toBeGreaterThan(actions.clientWidth);
+      for (const button of [own, buttonOf(element, "Next"), buttonOf(element, "Demo")]) {
+        button.focus();
+        // WebKit scrolls to it at the next update of the layout.
+        await settle();
+        const shown = button.getBoundingClientRect();
+        expect(shown.left, button.textContent ?? "").toBeGreaterThanOrEqual(row.left + 6 - 0.5);
+        expect(shown.right, button.textContent ?? "").toBeLessThanOrEqual(row.right - 6 + 0.5);
+      }
+    }
+  },
+);
 
 test("an eraser given before the element is upgraded, with a task without it, leaves the pen and no warning", () => {
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -633,15 +782,15 @@ test("every button is at least 44 CSS pixels square, in English and in Russian, 
   // A device with touch, in pen mode: the bar shows every button it has (R29).
   Object.defineProperty(navigator, "maxTouchPoints", { value: 5, configurable: true });
   try {
-    const { element, row } = await sheet(400);
+    const { element, root } = await sheet(400);
     PEN_MODE.on = true;
-    // A sheet's seven buttons, then a worked example's four (R42).
+    // A sheet's seven buttons, then a worked example's four: its bar's two and its row's (R42).
     for (const count of [7, 4]) {
       if (count === 4) element.workedExample = workedExample();
       for (const tag of ["en", "ru"]) {
         element.setAttribute("lang", tag);
         await settle();
-        const shown = row.querySelectorAll("button:not([hidden])");
+        const shown = root.querySelectorAll("button:not([hidden])");
         expect(shown).toHaveLength(count);
         for (const each of shown) {
           const rect = each.getBoundingClientRect();
@@ -838,21 +987,23 @@ test("the keyboard's focus on an icon button shows its tooltip, the arrows move 
   expect(document.activeElement).toBe(before);
 });
 
-test("on a worked example Next and Demo, which show their labels, have no tooltip, and the zoom's buttons have theirs above the row", async () => {
+test("on a worked example Next and Demo, which show their labels, have no tooltip, nor has the consumer's button, and the zoom's buttons have theirs beside the bar", async () => {
   const { element, root, row } = await sheet(400, 600);
+  const own = consumerButton();
+  element.append(own);
   element.workedExample = workedExample();
   await off();
   const tip = tipOf(root);
-  for (const name of ["Next", "Demo"]) {
-    await userEvent.hover(buttonOf(element, name));
-    expect(said(tip), name).toBeNull();
+  for (const one of [buttonOf(element, "Next"), buttonOf(element, "Demo"), own]) {
+    await userEvent.hover(one);
+    expect(said(tip), one.textContent ?? "").toBeNull();
   }
   const zoomIn = buttonOf(element, "Zoom in");
   await userEvent.hover(zoomIn);
   expect(said(tip)).toBe("Zoom in");
   const shown = tip.getBoundingClientRect();
-  expect(shown.bottom).toBeLessThanOrEqual(row.getBoundingClientRect().top);
-  expect(shown.left + shown.width / 2).toBeCloseTo(middle(zoomIn).clientX, 0);
+  expect(shown.left).toBeGreaterThanOrEqual(row.getBoundingClientRect().right);
+  expect(shown.top + shown.height / 2).toBeCloseTo(middle(zoomIn).clientY, 0);
 });
 
 test.runIf(devtools)(

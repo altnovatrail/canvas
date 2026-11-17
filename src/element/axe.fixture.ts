@@ -84,9 +84,9 @@ export function contrast(a: string, b: string): number {
 export const WORKBOOK_INCOMPLETE: readonly string[] = ["color-contrast"];
 
 /** What axe leaves incomplete on a worked example on a sheet: the contrast of the labels of Next
- * and Demo, whose row stands over the sheet's canvas and pictures, which axe takes for images, so
- * that it cannot tell their background (R84). a11y.test.ts measures it against the glass over the
- * paper. */
+ * and Demo, and of the consumer's buttons after them, whose row stands over the sheet's canvas and
+ * pictures, which axe takes for images, so that it cannot tell their background (R84). a11y.test.ts
+ * measures Next's and Demo's against the glass over the paper. */
 export const EXAMPLE_INCOMPLETE: readonly string[] = ["color-contrast"];
 
 /** A kind of canvas axe looks at: how to put one on the page, and what axe leaves incomplete. */

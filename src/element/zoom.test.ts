@@ -202,11 +202,11 @@ test("the zoom is the page's: a press on one sheet lays out every other, and a n
   expect(three.view().k).toBeCloseTo(0.6, 6);
   // A stroke under way on the first: a press on another sheet's Zoom in does nothing.
   const writing = press(one.canvas, one.view(), 100, 100, 300);
-  button(two.element, "Zoom in").click();
+  buttonOf(two.element, "Zoom in").click();
   await settle();
   expect(PAGE_ZOOM.value).toBe(1.5);
   writing.lift();
-  button(two.element, "Zoom in").click();
+  buttonOf(two.element, "Zoom in").click();
   await settle();
   expect(PAGE_ZOOM.value).toBe(1.75);
   expect(one.view().k).toBeCloseTo(0.7, 6);
