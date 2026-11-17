@@ -21,7 +21,7 @@ canvas knows no accounts, no api and no subject, and holds no data of its own: n
 
 ## Its place in NovaTrail
 
-canvas is a component of [NovaTrail](https://github.com/altnovatrail/spec), a universal open platform for adaptive learning, interactive lessons and AI tutoring. Its card is [architecture 3.2](https://github.com/altnovatrail/spec/blob/main/docs/architecture.md#32-canvas--canvases) of spec.
+canvas is a component of [NovaTrail](https://github.com/altnovatrail/spec), a universal open platform for adaptive learning, interactive lessons and AI tutoring. Its card is [architecture 3.2 spec](https://github.com/altnovatrail/spec/blob/main/docs/architecture.md#32-canvas--canvases).
 
 - **app** builds the package in and gives it the task and the tutor's marks; app keeps the learner's strokes on the device and sends the picture of the work to api, since canvas itself calls no network.
 - **spec** gives it the module format, the element's contract with app and the eval protocol of the sample file.

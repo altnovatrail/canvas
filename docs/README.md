@@ -7,7 +7,7 @@ The repository is cloned with `git clone --recurse-submodules`: `spec/` is a git
 - [architecture.md](architecture.md) — the component: what it does and does not do, its data and links, and what is still to decide.
 - [decisions.md](decisions.md) — the decision log: what was decided, why, and what was rejected.
 - [sources.md](sources.md) — the records of external facts, each with its source, its date and its quote; [measurements.md](measurements.md) — the results of measurements.
-- `plan/` — the archives of done epics, one file each, in Russian.
+- `plan/` — the archives of done epics, one file each, in Russian, with the bodies of the tasks done outside an epic in its time or after it (RUN.md, rule 9).
 - [RUN.md](../RUN.md) — the work plan, in epics; its other tables are in `run/`: the technical debt is [run/DEBT.md](../run/DEBT.md), the questions to the author [run/QUESTIONS.md](../run/QUESTIONS.md).
 
 ## Code
@@ -30,7 +30,7 @@ The repository is cloned with `git clone --recurse-submodules`: `spec/` is a git
 
 ## Releases
 
-A release of canvas carries the package's archive, which npm publishes at the same version, the samples page, the generator of a module's eval set and the synthetic samples' archive, each signed (architecture 3.4; R08, R50, R66, R68).
+A release of canvas carries six files and `SHA256SUMS`: the package's archive, which npm publishes at the same version, the synthetic samples' archive and the list of what each shows, the samples page, the generator of a module's eval set, and LICENSE (architecture 3.4; R08, R50, R66, R68).
 
 ### The package
 
