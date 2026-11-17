@@ -130,8 +130,9 @@ export interface HandsSheet {
 /**
  * What a pointer down on the sheet does:
  * - "writes": it may write or erase, and does while the sheet says it is the writer;
- * - "waits": a finger in pen mode, waiting for a second to scroll with;
- * - "scrolls": one of the two fingers of a gesture;
+ * - "waits": a finger in pen mode, waiting for a second to scroll with, or to go past the slop
+ *   and drag the sheet alone (R84);
+ * - "scrolls": the finger that drags the sheet, or one of the two fingers of a gesture;
  * - "palm": too big for a finger, it does nothing until it lifts;
  * - "idle": it does nothing until it lifts.
  */
@@ -157,10 +158,10 @@ interface At {
   readonly y: number;
 }
 
-/** Two fingers scrolling. */
+/** One finger dragging the sheet, in pen mode, or two fingers scrolling. */
 interface Gesture {
-  readonly fingers: readonly [number, number];
-  /** Their middle when the gesture began. */
+  readonly fingers: readonly [number] | readonly [number, number];
+  /** Their middle when the gesture began: where one finger came down. */
   readonly from: At;
   /** Their middle at the last step, once it has gone past the slop. */
   last: At | undefined;
@@ -180,10 +181,13 @@ interface Gesture {
  * - Without pen mode the first finger writes. A second that comes down within `PAIR_MS`, before the
  *   first has gone `SLOP_PX`, takes the first one's stroke away, and the two scroll. A second that
  *   comes later does nothing.
- * - In pen mode a finger writes nothing, and two that come down within `PAIR_MS` scroll.
+ * - In pen mode a finger writes nothing, and two that come down within `PAIR_MS` scroll. One that
+ *   goes further than `SLOP_PX` alone, before a second comes, drags the sheet: the second does
+ *   nothing then (R84; the second 2026-11-14 amendment to R90 spec).
  * - A third finger does nothing. When one of the two lifts, the other does nothing until it lifts.
- * - Two fingers scroll by the travel of their middle on the screen, past its first `SLOP_PX`: along
- *   one axis alone if they went `RAIL` times further along it than along the other, or else both.
+ * - Two fingers scroll by the travel of their middle on the screen, and one by its own, past its
+ *   first `SLOP_PX`: along one axis alone if it went `RAIL` times further along it than along the
+ *   other, or else both.
  * - Any other pointer, a mouse or one of no type, writes when nothing does, whatever the mode.
  */
 export class Hands {
@@ -207,7 +211,7 @@ export class Hands {
     return this.#hands.has(pointerId);
   }
 
-  /** Whether two fingers make a gesture now: they wait for their slop, or scroll. */
+  /** Whether fingers make a gesture now: two wait for their slop, or they scroll. */
   get scrolling(): boolean {
     return this.#gesture !== undefined;
   }
@@ -235,6 +239,17 @@ export class Hands {
     hand.x = contact.x;
     hand.y = contact.y;
     hand.travel = Math.max(hand.travel, Math.hypot(contact.x - hand.x0, contact.y - hand.y0));
+    // A finger of pen mode that has gone past the slop with no second drags the sheet alone (R84).
+    if (hand.role === "waits" && this.#gesture === undefined && hand.travel > SLOP_PX) {
+      hand.role = "scrolls";
+      this.#gesture = {
+        fingers: [contact.pointerId],
+        from: { x: hand.x0, y: hand.y0 },
+        last: undefined,
+        across: true,
+        down: true,
+      };
+    }
     if (hand.role === "scrolls") this.#step();
     return hand.role === "writes" && this.#sheet.writer() === contact.pointerId;
   }
@@ -346,14 +361,14 @@ export class Hands {
   }
 
   /**
-   * The two fingers' middle has moved: past the slop, the sheet goes with it, along the axes the
-   * gesture chose as it passed it.
+   * The two fingers' middle has moved, or the one finger: past the slop, the sheet goes with it,
+   * along the axes the gesture chose as it passed it.
    */
   #step(): void {
     const gesture = this.#gesture;
     if (gesture === undefined) return;
     const one = this.#hands.get(gesture.fingers[0]);
-    const two = this.#hands.get(gesture.fingers[1]);
+    const two = gesture.fingers.length === 2 ? this.#hands.get(gesture.fingers[1]) : one;
     if (one === undefined || two === undefined) return;
     const middle = middleOf(one, two);
     if (gesture.last === undefined) {

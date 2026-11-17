@@ -8,13 +8,14 @@
 // marks of a submission hold on to the learner's strokes, and a frame shows where each is, over
 // the work (T14; R26). The history of writing comes in and goes out, an event tells of every
 // action, and the work for checking is the crop with the context of its submission (T15; R27).
-// Above it all stands the element's own row of buttons — the tools the task allows, undo and
-// clearing — labelled in the element's `lang` (T41; R28). On a tablet a pen's touch puts the page
+// Over it all stand the element's own buttons — the tools the task allows, undo and clearing —
+// labelled in the element's `lang` (T41; R28), on a vertical bar of glass at its left edge (T121;
+// R84). On a tablet a pen's touch puts the page
 // in pen mode, where a finger writes nothing and a button lets it write again, a palm writes
 // nothing, and two fingers scroll (T35; R29). The task comes in the names of the module format
 // 0.4, checked as its schema checks it, and the module's manifest gives the height of a digit and
-// the statement's language (T44; R32). Up and Down in the row scroll what two fingers would, with
-// a single pointer (T45; R33). The workbook's lines, laid out on its page, stand on the template in
+// the statement's language (T44; R32). In pen mode one finger drags the sheet too (T121; R84). The
+// workbook's lines, laid out on its page, stand on the template in
 // place of the grid — numbers, text and boxes, which a screen reader reads in the task's order (T51;
 // R35, R36). Each stroke is in one box or in none, by a rule of whole numbers, and `filled` tells
 // which boxes hold one: a filled box's frame is thicker, and its name says so (T48; R37). A
@@ -36,7 +37,7 @@
 // a ring when the keyboard brings the focus there (T93; R33); for a `lang` the labels are not in,
 // the container is in theirs and the column in the element's (T106; R74). The row's Zoom in and Zoom out step
 // the page's zoom of the sheet from its fit to twice it, and a zoomed sheet scrolls across as well
-// as down, with Left and Right in the row, two fingers and the keys (T94).
+// as down, with two fingers, the wheel and the keys (T94).
 
 import type {
   CanvasElement,
@@ -159,6 +160,12 @@ export const TAG = "novatrail-canvas";
 const INK = "#111";
 /** The colour of the sheet unless the consumer's theme gives one. */
 const PAPER = "#fff";
+/**
+ * The colour of the tool in use and of the focus on the bar unless the consumer's theme gives one,
+ * and the bar's glass: the interface mockup's (R84; R148 spec).
+ */
+const ACCENT = "#0071E3";
+const GLASS = "rgba(255, 255, 255, 0.76)";
 /** The event the element sends after every action on the sheet, with the history's new events. */
 const HISTORY_CHANGE = "historychange";
 /** The event the element sends when the learner chooses another tool with its buttons. */
@@ -183,32 +190,29 @@ const MARK_CORNER = 6;
  */
 const ERASER_RADIUS_PX = 10;
 
-/**
- * How much of what it shows a press of Up or Down scrolls (R33): four fifths, as WebKit pages on
- * an iPad, so that the last lines stay in sight. T22 tries it on devices.
- */
-const UP_DOWN = 4 / 5;
-
 // The statement and the sheet stand in a column of their own, as wide as the element up to
 // 1000 CSS pixels and in its middle beyond, and scroll in a container of their own, by the
 // browser's own scrolling: the wheel, the scroll bar and the keyboard work as anywhere on a page.
 // The page's zoom widens the column with the sheet, to twice its fit, and the container scrolls
 // it across too, left to right whatever the page's direction, while the statement and a demo's
 // parts stay as wide as the fit and stick to its left, in the element's own direction: they wrap
-// as before, and scroll down alone (T94). Left and Right stand in that order in a row that runs
-// right to left too: they point to the sides of the screen. The layers of the sheet stand in its visible part, the stage, which sticks to the
-// container's top and left, and each shows what lies there, shifted in the frame the ink is drawn
-// in (R18, R23; architecture 3.2 in docs/architecture.md).
-// Above the column, as wide, stands the row of the element's own buttons, outside the container's
-// scrolling: it sticks to the top of whatever scrolls the element, as far down as the consumer's
-// --novatrail-canvas-top says, while the element is in sight, over the sheet as it scrolls by
-// (R28). In a low window, where the row would cover more than a quarter of what it sticks in, it
-// stands in its place instead, `loose`, and goes with the scrolling (1.4.10, 2.4.11). A button in
-// focus shows a ring in the ink's colour, two pixels out, that the row's side margins keep on its
-// paper; an unavailable one is paler by its colour, not its opacity, which would pale the ring too
-// (2.4.7, 1.4.11). Nothing in the element moves but the scrolling, which jumps (2.3.3). The
-// element is as tall as the row, the statement and the sheet unless it is given a height: then
-// the statement and the sheet scroll in it, under the row. A worked example's open
+// as before, and scroll down alone (T94). The layers of the sheet stand in its visible part, the
+// stage, which sticks to the container's top and left, and each shows what lies there, shifted in
+// the frame the ink is drawn in (R18, R23; architecture 3.2 in docs/architecture.md).
+// Over the container, in the same cell of the frame's grid, stands the rail of the element's own
+// buttons: a band as tall as the part of the element in sight, which takes no pointer, sticking to
+// the top of whatever scrolls the element, as far down as the consumer's --novatrail-canvas-top
+// says, and in its middle, 16 pixels from the left edge, the bar of buttons: 52 pixels wide, round
+// at its ends, of the mockup's glass — the fill the consumer's theme gives, blurred behind, or the
+// paper alone where nothing blurs — over the sheet as it scrolls by (R84; R148 spec). A bar taller
+// than the band scrolls inside its glass (1.4.10). A worked example's buttons stand in a row of the
+// same glass at the band's bottom instead. The tool in use is filled with the accent at an eighth,
+// its icon in the accent; a button in focus shows a ring in the accent; an unavailable one is paler
+// by its colour, not its opacity, which would pale the ring too (2.4.7, 1.4.11). A button's
+// tooltip stands beside it, white on near-black, as the mockup has it. Nothing in the element moves
+// but the scrolling, which jumps, and no tooltip fades (2.3.3). The element is as tall as the
+// statement and the sheet unless it is given a height: then the statement and the sheet scroll in
+// it, under the bar. A worked example's open
 // parts stand between the statement and the sheet, and the region that tells of them is out of
 // sight, but not out of the tree a screen reader reads, where a hidden region would tell nothing
 // (R42). A picture's frame there stands in its item's line, from its top, so that the item's
@@ -216,8 +220,7 @@ const UP_DOWN = 4 / 5;
 // picture on an area of the sheet stands on the layer of the author's demo, and the sheet scrolls
 // to a hidden box of the area in its own flow, which neither paints nor takes a pointer (T61). On
 // the canvas the browser neither scrolls nor zooms: the pointer writes, and two fingers scroll by
-// the element's own code (R29), as Up and Down of the row do with a single pointer, a pair the
-// row wraps together (R33).
+// the element's own code (R29), and in pen mode one finger too (R84).
 // The canvas and the buttons take pointer events only as the element does: a consumer's
 // pointer-events: none on the element stops the writing and the buttons' pointer, though not
 // their keys (R20, R28). A worked example's canvas takes no pointer at all: a finger or a pen on
@@ -234,28 +237,63 @@ const UP_DOWN = 4 / 5;
 const STYLE = `
 :host { display: flex; flex-direction: column; isolation: isolate; writing-mode: horizontal-tb; }
 :host([hidden]) { display: none; }
+.frame {
+  position: relative; flex: 1 1 auto; min-height: 0; display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+}
+.viewport {
+  grid-area: 1 / 1; min-height: 0; overflow-x: hidden; overflow-y: auto; overflow-anchor: none;
+  outline: none; -webkit-tap-highlight-color: transparent;
+}
+.rail {
+  grid-area: 1 / 1; align-self: start; position: sticky; top: var(--novatrail-canvas-top, 0px);
+  z-index: 1; box-sizing: border-box; height: min(100%, 100dvh - var(--novatrail-canvas-top, 0px));
+  padding: 16px 0; display: flex; align-items: center; pointer-events: none;
+}
+.rail.example { align-items: flex-end; justify-content: center; }
 .tools {
-  position: sticky; top: var(--novatrail-canvas-top, 0px); z-index: 1; flex: none;
-  box-sizing: border-box; width: min(100%, ${K_MAX * SHEET.width}px); margin: 0 auto;
-  padding: 8px 4px; display: flex; flex-wrap: wrap; gap: 8px;
-  background: var(--novatrail-canvas-paper, ${PAPER}); color: var(--novatrail-canvas-ink, ${INK});
+  pointer-events: auto; box-sizing: border-box; flex: none; width: 52px; max-height: 100%;
+  margin: 0 0 0 16px; padding: 4px; border-radius: 26px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
+  font-size: 14px; line-height: 1.2; color: var(--novatrail-canvas-ink, ${INK});
+  background: var(--novatrail-canvas-glass, ${GLASS});
+  -webkit-backdrop-filter: blur(22px) saturate(180%); backdrop-filter: blur(22px) saturate(180%);
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.08), 0 8px 28px rgba(0, 0, 0, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.04);
 }
-.tools.loose { position: static; }
-.tools .demo, .tools .choice, .tools .updown, .tools .zoom, .tools .across {
-  display: flex; gap: 8px; margin-inline-end: 16px;
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .tools { background: var(--novatrail-canvas-paper, ${PAPER}); }
 }
-.tools:dir(rtl) .across { flex-direction: row-reverse; }
+.example .tools {
+  width: auto; max-width: calc(100% - 32px); max-height: none; margin: 0; padding: 6px;
+  border-radius: 28px; flex-direction: row; gap: 4px; overflow-x: auto; overflow-y: hidden;
+}
+.tools .demo, .tools .choice, .tools .zoom {
+  display: flex; flex-direction: column; gap: 2px; flex: none;
+}
+.example .tools .demo, .example .tools .zoom { flex-direction: row; gap: 4px; }
+.tools .line {
+  flex: none; width: 24px; height: 1px; margin: 4px 0; background: rgba(0, 0, 0, 0.1);
+}
+.example .tools .line { width: 1px; height: 24px; margin: 0 4px; }
 .tools button {
-  box-sizing: border-box; min-width: 44px; min-height: 44px; padding: 0 8px; margin: 0;
-  font: inherit; color: inherit; background: transparent; cursor: pointer;
-  border: 1px solid currentColor; border-radius: 6px;
+  box-sizing: border-box; flex: none; min-width: 44px; min-height: 44px; margin: 0;
+  padding: 0 14px 0 10px; display: flex; align-items: center; justify-content: center; gap: 6px;
+  font: inherit; font-weight: 500; white-space: nowrap; color: inherit; background: transparent;
+  cursor: pointer; border: none; border-radius: 22px;
+}
+.tools button.icon { width: 44px; height: 44px; padding: 0; }
+.tools button.icon .label {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
 }
 .tools [aria-checked="true"] {
-  background: var(--novatrail-canvas-ink, ${INK}); color: var(--novatrail-canvas-paper, ${PAPER});
-  border-color: var(--novatrail-canvas-ink, ${INK});
+  background: color-mix(in srgb, var(--novatrail-canvas-accent, ${ACCENT}) 12%, transparent);
+  color: var(--novatrail-canvas-accent, ${ACCENT});
 }
 .tools button:focus-visible {
-  outline: 2px solid var(--novatrail-canvas-ink, ${INK}); outline-offset: 2px;
+  outline: 2px solid var(--novatrail-canvas-accent, ${ACCENT}); outline-offset: 0;
 }
 .tools [aria-disabled="true"] {
   color: color-mix(
@@ -265,20 +303,19 @@ const STYLE = `
 }
 @supports not (color: color-mix(in srgb, red 40%, blue)) {
   .tools [aria-disabled="true"] { opacity: 0.4; }
+  .tools [aria-checked="true"] { background: transparent; }
 }
 .tools [hidden] { display: none; }
-.tools button svg {
-  display: inline-block; width: 1.125em; height: 1.125em; margin-inline-end: 4px;
-  vertical-align: -0.25em; fill: currentColor;
-}
+.tools button svg { display: block; flex: none; width: 20px; height: 20px; fill: currentColor; }
 .tools:dir(rtl) svg.mirrored { transform: scaleX(-1); }
-.frame {
-  position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
+.tip {
+  position: absolute; left: var(--tip-x, 76px); top: var(--tip-y, 0px); z-index: 2;
+  transform: translateY(-50%); pointer-events: auto; white-space: nowrap;
+  font-size: 12.5px; font-weight: 500; line-height: 1; padding: 8px 10px; border-radius: 9px;
+  background: rgba(29, 29, 31, 0.92); color: #fff; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
 }
-.viewport {
-  flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overflow-anchor: none;
-  outline: none; -webkit-tap-highlight-color: transparent;
-}
+.tip.above { transform: translate(-50%, -100%); }
+.tip[hidden] { display: none; }
 .viewport.zoomed { overflow-x: auto; direction: ltr; }
 .ring { position: absolute; inset: 0; z-index: 0; pointer-events: none; display: none; }
 .viewport:focus-visible + .ring {
@@ -355,12 +392,16 @@ canvas {
   .print rect.filled { stroke: Highlight; }
   canvas { color: CanvasText; }
   .marks rect { stroke: Highlight; }
-  .tools { background: Canvas; color: CanvasText; }
-  .tools button { background: ButtonFace; color: ButtonText; border-color: ButtonBorder; }
+  .tools { background: Canvas; color: CanvasText; border: 1px solid CanvasText; }
+  .tools .line { background: CanvasText; }
+  .tools button {
+    background: ButtonFace; color: ButtonText; border: 1px solid ButtonBorder;
+  }
   .tools [aria-checked="true"] {
     background: Highlight; color: HighlightText; border-color: Highlight;
   }
   .tools [aria-disabled="true"] { color: GrayText; border-color: GrayText; }
+  .tip { background: Canvas; color: CanvasText; border: 1px solid CanvasText; }
   .tools button:focus-visible, .viewport:focus-visible + .ring { outline-color: Highlight; }
 }
 `;
@@ -517,15 +558,13 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   readonly #statement = new Statement(this.#pictures);
   /** A worked example's open parts, under its statement, and the region that tells of them (R42). */
   readonly #parts = new Parts(DEMO_IDS, this.#pictures);
-  /** The element's own buttons, above the statement and the sheet (R28). */
+  /** The element's own buttons, on a bar over the sheet's left edge (R28, R84). */
   readonly #tools = new Tools(
     {
       choose: (tool) => this.#choose(tool),
       undo: () => this.undo(),
       clear: () => this.clear(),
-      upOrDown: (onward) => this.#step(onward, "y"),
       zoom: (larger) => this.#zoomBy(larger),
-      leftOrRight: (onward) => this.#step(onward, "x"),
       // The finger writes again on every sheet of the page, with no event: the next pen's touch
       // puts the page back in pen mode (R29).
       fingers: () => {
@@ -579,33 +618,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    */
   #latch: Latch | null | undefined;
   #latchAcross: Latch | null | undefined;
-  /**
-   * A scroll of the page, or of an ancestor of the element in the page's own tree, heard on its way
-   * down: Up or Down may have come to an end, or left one (R33). Other scrollers are none of theirs.
-   */
-  readonly #heard = (event: Event): void => {
-    const target = event.target;
-    if (target === document || (target instanceof Element && holds(target, this))) {
-      // A new --novatrail-canvas-top changes no size: the next scroll is the first to hear of it,
-      // by one read of the row's style, and only a new offset asks anew whether the row sticks.
-      if (getComputedStyle(this.#tools.element).top !== this.#topSeen) this.#stick();
-      this.#edges();
-    }
-  };
-  /**
-   * The page grown or shrunk, or the window, the scroller the row sticks in or the row itself: what
-   * scrolls the element may have room now, or none, and the row may cover too much of it to stick.
-   */
+  /** The page grown or shrunk, or the window: what scrolls the element may have room now, or none. */
   readonly #resized = (): void => {
-    this.#stick();
     this.#region();
-    this.#edges();
   };
   readonly #page = new ResizeObserver(this.#resized);
-  /** The scroll container the row sticks in, which `#page` watches, or null for the page's viewport. */
-  #port: Element | null = null;
-  /** The row's `top` as the last check of whether it sticks read it: the consumer's offset. */
-  #topSeen = "";
   #unwatchPen: (() => void) | undefined;
   #unwatchZoom: (() => void) | undefined;
   /** The page's zoom as the sheet is laid out by it (T94). */
@@ -720,8 +737,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#sheet.append(this.#stage, this.#parts.spot);
     this.#column.append(this.#statement.element, this.#parts.list, this.#parts.status, this.#sheet);
     this.#viewport.append(this.#column);
-    this.#wrapper.append(this.#viewport, this.#ring);
-    root.append(this.#tools.element, this.#wrapper);
+    // The bar comes first, as the row of buttons before it did: Tab reaches it before the sheet.
+    this.#wrapper.append(this.#tools.rail, this.#viewport, this.#ring);
+    root.append(this.#wrapper);
     this.#zoomTo(PAGE_ZOOM.value);
     this.#lay(NO_TASK);
     this.#refresh();
@@ -1110,13 +1128,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     // The page's zoom, on every sheet of it (T94): it may have changed while the element was away.
     this.#zoomTo(PAGE_ZOOM.value);
     this.#unwatchZoom = PAGE_ZOOM.watch(() => this.#zoomed());
-    // A scroll does not bubble, but the document hears every one of its tree on the way down. A
-    // page that grows or shrinks scrolls nothing, and neither does a window of another size.
-    document.addEventListener("scroll", this.#heard, { capture: true, passive: true });
+    // A page that grows or shrinks scrolls nothing, and neither does a window of another size.
     this.#page.observe(document.documentElement);
-    // The row wraps anew with the element's width, its language, the canvas kind and the finger's
-    // button, and grows or shrinks.
-    this.#page.observe(this.#tools.element);
     window.addEventListener("resize", this.#resized);
     this.#refresh();
   }
@@ -1251,9 +1264,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#unwatchPen = undefined;
     this.#unwatchZoom?.();
     this.#unwatchZoom = undefined;
-    document.removeEventListener("scroll", this.#heard, { capture: true });
     this.#page.disconnect();
-    this.#port = null;
+    this.#tools.disconnect();
     window.removeEventListener("resize", this.#resized);
     // A stroke that ended here may be the one the other rows of the page waited for.
     PEN_MODE.settle();
@@ -1618,9 +1630,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * the canvas's top left corner is that of the visible part, and the sheet's width gives `k`, the
    * one on the screen, after whatever transform the page puts on the element. The container's
    * rectangle gives the part of the canvas it shows: with the statement in sight, the canvas
-   * goes on below the container's bottom. The row of buttons above the container hides what it
-   * covers, once it sticks over the sheet as the page scrolls the element by (R28); in its place,
-   * in a low window, it stands above the container and hides nothing of it.
+   * goes on below the container's bottom. The bar of buttons over the sheet takes what is under it
+   * itself: a pointer there presses a button, and writes nothing (R84).
    */
   #view(): Screen | undefined {
     const canvas = this.#canvas.getBoundingClientRect();
@@ -1630,11 +1641,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const vx = (canvas.left - sheet.left) / k;
     const vy = (canvas.top - sheet.top) / k;
     const port = clientBoxOf(this.#viewport);
-    // The row ends where the container begins, unless it sticks over it.
-    const row = this.#tools.element.getBoundingClientRect();
     const shown = {
       left: Math.max(canvas.left, port.left),
-      top: Math.max(canvas.top, port.top, row.bottom),
+      top: Math.max(canvas.top, port.top),
       right: Math.min(canvas.right, port.right),
       bottom: Math.min(canvas.bottom, port.bottom),
     };
@@ -1658,8 +1667,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /**
    * The top and the left of the visible part from the scroll and the last layout, without reading
    * the layout again: the stage sticks to the container's top once the sheet's top has gone past
-   * it, and to its left so. Up or Down, Left or Right may have come to an end of the container, or
-   * left one.
+   * it, and to its left so.
    */
   #scrolled(): void {
     if (this.#k > 0) {
@@ -1667,24 +1675,6 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       this.#vx = Math.max(0, this.#viewport.scrollLeft - this.#sheetAtX) / this.#k;
     }
     this.#request();
-    this.#edges();
-  }
-
-  /**
-   * Up or Down was pressed (R33), or along `x` Left or Right (T94): what two fingers would scroll
-   * that way goes by four fifths of what it shows in sight. It is chosen anew at every press, so
-   * that a container at its end hands the scroll on at the next. While a pointer writes or erases
-   * on a sheet of the page, nothing moves under it.
-   */
-  #step(onward: boolean, axis: Axis): void {
-    const latch = PEN_MODE.writing ? undefined : this.#scrollerFor(onward, axis);
-    if (latch !== undefined) {
-      const seen = this.#seen(latch.target, axis);
-      const step = Math.max(1, Math.round((UP_DOWN * seen) / latch.scale));
-      const by = onward ? step : -step;
-      latch.target.scrollBy({ [axis === "y" ? "top" : "left"]: by, behavior: "instant" });
-    }
-    this.#edges();
   }
 
   /**
@@ -1734,82 +1724,19 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * How much of what a scroller shows is in sight, down the screen: within the ancestors that clip
-   * it and the visual viewport, and below the row of buttons while the row sticks over its top, or
-   * below the consumer's band, --novatrail-canvas-top, while the row stands in its place in a low
-   * window. A scroller out of sight counts whole. Across the screen, the row covers nothing (T94).
-   */
-  #seen(target: Element | Window, axis: Axis = "y"): number {
-    const { start, end, whole } = sightOf(target, axis);
-    if (axis === "x") return end > start ? end - start : whole;
-    const bottom = end;
-    let top = start;
-    // The row hides the top while it sticks there, as far down as the consumer's offset puts it. A
-    // row that stands in its place, in a low window, leaves the consumer's band over it alone.
-    const row = this.#tools.element;
-    if (this.#tools.sticks) {
-      const box = row.getBoundingClientRect();
-      if (box.top <= top + offsetOf(row, 0) * scaleOf(row, box) + 0.5) {
-        top = Math.max(top, box.bottom);
-      }
-    } else {
-      top = Math.max(top, this.#band(target));
-    }
-    return bottom > top ? bottom - top : whole;
-  }
-
-  /**
-   * Whether the row sticks (R28): while it is no taller than a quarter of what it sticks in, below
-   * the consumer's offset. In a lower window, or once it wraps over more of it, it stands in its
-   * place, above the statement, and goes with the scrolling, as WCAG's technique C34 un-fixes a
-   * sticky header (1.4.10, 2.4.11). Its place and its size are the same either way, so the choice
-   * changes nothing it is made from. The scroller it sticks in is watched for its size. Only an
-   * element on the page asks: what calls this goes when the element leaves it.
-   */
-  #stick(): void {
-    const room = roomOf(this.#tools.element);
-    if (room.port !== this.#port) {
-      if (this.#port !== null) this.#page.unobserve(this.#port);
-      if (room.port !== null) this.#page.observe(room.port);
-      this.#port = room.port;
-    }
-    const row = this.#tools.element;
-    const tall = row.getBoundingClientRect().height;
-    if (tall > 0 && room.height > 0) this.#tools.stick(4 * tall <= room.height - room.offset);
-    this.#topSeen = getComputedStyle(row).top;
-  }
-
-  /**
-   * Where the consumer's band over the top of what the row sticks in ends, down the screen: its
-   * offset, --novatrail-canvas-top, below the top of the scroller or of the window — for a target
-   * that is or lies within what the row sticks in, and above everything for any other.
+   * Where the consumer's band over the top of what the bar's rail sticks in ends, down the screen:
+   * its offset, --novatrail-canvas-top, below the top of the scroller or of the window — for a
+   * target that is or lies within what the rail sticks in, and above everything for any other.
    */
   #band(target: Element | Window | undefined): number {
-    const room = roomOf(this.#tools.element);
-    // The band stands over the top of what the row sticks in, and so over a scroller within it,
-    // but not over the page's when the row sticks in a scroller of its own.
+    const room = roomOf(this.#tools.rail);
+    // The band stands over the top of what the rail sticks in, and so over a scroller within it,
+    // but not over the page's when the rail sticks in a scroller of its own.
     const within =
       room.port === null
         ? target !== undefined
         : target instanceof Element && (target === room.port || holds(room.port, target));
     return within ? room.top + room.offset : Number.NEGATIVE_INFINITY;
-  }
-
-  /**
-   * Up and Down as the scrolling now is (R33), and Left and Right while the sheet is zoomed (T94):
-   * each stands unavailable while what two fingers would scroll its way can go no further. The
-   * element hears its container, the page and the ancestors in the page's own tree scroll, and the
-   * page and the window change size, but not the scrolling in another shadow tree: a press asks
-   * anew.
-   */
-  #edges(): void {
-    if (!this.isConnected) return;
-    const above = this.#scrollerFor(false) !== undefined;
-    const below = this.#scrollerFor(true) !== undefined;
-    const zoomed = this.#zoom > 1;
-    const before = zoomed && this.#scrollerFor(false, "x") !== undefined;
-    const after = zoomed && this.#scrollerFor(true, "x") !== undefined;
-    this.#tools.edges(above, below, before, after);
   }
 
   /**
@@ -1917,8 +1844,6 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       this.#canvas.height = height;
     }
     this.#draw();
-    // A container of another height, or a statement, may give Up or Down somewhere to go, or none.
-    this.#edges();
   }
 
   /** A new density — the window on another screen, the page zoomed — lays the canvas out anew. */
@@ -2094,30 +2019,21 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * An item of the list, or an area of the sheet, comes into sight at once, as near as it is (R42),
-   * and then out from under the row of buttons, should the row stick over where it came to: what
-   * scrolls back up goes back as far as the row covers it. A row in its place, in a low window,
-   * covers nothing, and the consumer's band, --novatrail-canvas-top, is what it comes out from
-   * under then. A margin of scrolling would hold for
-   * every scroller of the chain alike — the sheet's container, which the row stands above, and the
-   * page, which it sticks over. An area of the sheet taller than what is in sight comes by its top
-   * from below, but by its bottom from above, and then the row's cover brings its top back into
-   * sight, under the row (T61).
+   * and then out from under the consumer's band, --novatrail-canvas-top, should the band cover
+   * where it came to: what scrolls back up goes back as far as the band covers it. A margin of
+   * scrolling would hold for every scroller of the chain alike — the sheet's container and the
+   * page. An area of the sheet taller than what is in sight comes by its top from below, but by its
+   * bottom from above, and then the band's cover brings its top back into sight (T61). The bar of
+   * buttons covers nothing at the top: it stands at the left edge (R84).
    */
   #bringIntoSight(item: HTMLElement): void {
     item.scrollIntoView({ block: "nearest", behavior: "instant" });
-    // A scroller that comes to its top hands the rest on to the next, as Up does (R33). A scroller
-    // goes again only while each of its scrolls leaves less covered than the last: a row that the
-    // element's bottom pushed up from where it sticks comes back down as the page scrolls, over
-    // what the scroll brought out, and the next brings it out again (T94).
+    // A scroller that comes to its top hands the rest on to the next. A scroller goes again only
+    // while each of its scrolls leaves less covered than the last (T94).
     const covered = new Map<Element | Window, number>();
     for (;;) {
       const latch = this.#scrollerFor(false);
-      // A row in its place, in a low window, covers nothing of it: the consumer's band may, over
-      // what the row sticks in.
-      const over = this.#tools.sticks
-        ? this.#tools.element.getBoundingClientRect().bottom
-        : this.#band(latch?.target);
-      const cover = over - item.getBoundingClientRect().top;
+      const cover = this.#band(latch?.target) - item.getBoundingClientRect().top;
       if (cover <= EDGE || latch === undefined) return;
       const last = covered.get(latch.target);
       if (last !== undefined && cover >= last - EDGE) return;
@@ -2592,36 +2508,6 @@ function scrolledOf(element: Element, axis: Axis): number {
 function scrollsOn(element: Element, onward: boolean, axis: Axis = "y"): boolean {
   const at = scrolledOf(element, axis);
   return onward ? at < overflowOf(element, axis) - EDGE : at > EDGE;
-}
-
-/**
- * Where what a scroller shows is in sight down the screen, or across it along `x` (T94): within
- * the ancestors that clip it and the visual viewport, from `start` to `end` — and how much it
- * shows whole, for a scroller out of sight.
- */
-function sightOf(
-  target: Element | Window,
-  axis: Axis,
-): { readonly start: number; readonly end: number; readonly whole: number } {
-  const down = axis === "y";
-  const sight = window.visualViewport;
-  let start = (down ? sight?.offsetTop : sight?.offsetLeft) ?? 0;
-  let end = start + ((down ? sight?.height : sight?.width) ?? (down ? innerHeight : innerWidth));
-  let whole = end - start;
-  if (target instanceof Element) {
-    const own = clientBoxOf(target);
-    whole = down ? own.bottom - own.top : own.right - own.left;
-    // The scroller, and every ancestor that clips it, up to the page, whose part is the sight.
-    for (let node: Element | null = target; node !== null; node = parentOf(node)) {
-      if (node === document.documentElement) break;
-      const style = node === target ? undefined : getComputedStyle(node);
-      if (style !== undefined && (down ? style.overflowY : style.overflowX) === "visible") continue;
-      const clip = node === target ? own : clientBoxOf(node);
-      start = Math.max(start, down ? clip.top : clip.left);
-      end = Math.min(end, down ? clip.bottom : clip.right);
-    }
-  }
-  return { start, end, whole };
 }
 
 /** Whether an element holds another in the flat tree, across the borders of shadow trees. */
