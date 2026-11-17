@@ -217,7 +217,7 @@ test.each(KINDS.filter(({ name }) => name.startsWith("a worked example")))(
   },
 );
 
-test("a bar taller than the band it stands in scrolls inside its glass and is still one stop of Tab, and End brings its last button into sight (1.4.10)", async () => {
+test("a bar taller than the band it stands in scrolls inside its glass and is still one stop of Tab, and End brings its last button whole into the glass's sight, as focus() does in Chromium and WebKit (1.4.10, 2.4.11)", async () => {
   const { root, row, viewport } = await placed(made, 400, 300, { task: sheetTask() });
   expect(row.scrollHeight).toBeGreaterThan(row.clientHeight);
   await userEvent.tab();

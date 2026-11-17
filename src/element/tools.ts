@@ -404,7 +404,29 @@ export class Tools {
     else if (event.key === "End") next = shown.at(-1);
     else return;
     event.preventDefault();
-    next?.focus();
+    if (next === undefined) return;
+    next.focus();
+    this.#bringIn(next);
+  }
+
+  /**
+   * A bar that scrolls inside its glass brings the button in focus wholly into its view (2.4.11):
+   * Firefox's focus() leaves one that is in sight in part where it is. The bar alone scrolls, not
+   * what scrolls the element.
+   */
+  #bringIn(button: HTMLButtonElement): void {
+    // Within the glass's padding, as the first button and the last stand at the bar's ends.
+    const outer = this.element.getBoundingClientRect();
+    const style = getComputedStyle(this.element);
+    const top = outer.top + Number.parseFloat(style.paddingTop);
+    const bottom = outer.bottom - Number.parseFloat(style.paddingBottom);
+    const left = outer.left + Number.parseFloat(style.paddingLeft);
+    const right = outer.right - Number.parseFloat(style.paddingRight);
+    const box = button.getBoundingClientRect();
+    if (box.bottom > bottom) this.element.scrollTop += box.bottom - bottom;
+    else if (box.top < top) this.element.scrollTop -= top - box.top;
+    if (box.right > right) this.element.scrollLeft += box.right - right;
+    else if (box.left < left) this.element.scrollLeft -= left - box.left;
   }
 
   /**

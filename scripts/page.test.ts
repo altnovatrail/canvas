@@ -578,9 +578,9 @@ describe("opened from a file", () => {
       const workbook = await page.locator("novatrail-canvas").boundingBox();
       if (!workbook) throw new Error("the workbook is not shown");
       const inBox = async (dx: number) => {
-        await page.mouse.move(workbook.x + 200 + dx, workbook.y + 200);
+        await page.mouse.move(workbook.x + 200 + dx, workbook.y + 140);
         await page.mouse.down();
-        await page.mouse.move(workbook.x + 230 + dx, workbook.y + 230, { steps: 4 });
+        await page.mouse.move(workbook.x + 230 + dx, workbook.y + 170, { steps: 4 });
         await page.mouse.up();
       };
       await inBox(0);

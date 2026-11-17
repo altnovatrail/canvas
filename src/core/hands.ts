@@ -56,7 +56,7 @@ export const RAIL = 2;
  * it lives in memory alone: nothing is stored or sent, and a new page starts without it.
  *
  * It knows, too, whether any sheet of the page is written on: a row of buttons changes between the
- * strokes of the whole page alone, for a row that wraps moves the sheets below it as well.
+ * strokes of the whole page alone, for a bar that grows moves its buttons under the hand that writes.
  */
 export class PenMode {
   #on = false;
