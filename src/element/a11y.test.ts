@@ -1,16 +1,16 @@
 // The element by axe-core (T90 in RUN.md; R70 in docs/decisions.md): every kind of canvas has no
 // violation of WCAG 2.2 level AA that axe finds in its shadow tree (R90 spec), and a violation put
 // into it fails the helper. axe cannot tell the background of a workbook's printed lines, which the
-// layer of input covers, nor that of a worked example's labelled buttons or of a tooltip, which
-// stand over the canvas and the pictures of the sheet, which axe takes for images: their contrast
-// is this test's own, against the glass or the tooltip's fill over the paper, as the bar's ring of
-// focus is. The same kinds in forced colours are forced-colors.test.ts's.
+// layer of input covers, nor that of a worked example's labelled buttons, which stand on glass over
+// the canvas and the pictures of the sheet, which axe takes for images: their contrast is this
+// test's own, against the glass over the paper, as the bar's ring of focus is. A tooltip's fill is
+// opaque, and axe tells its contrast itself. The same kinds in forced colours are forced-colors.test.ts's.
 
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 import { sheetTask } from "../core/tasks.fixture.js";
 import { axeOf, contrast, KINDS, WORKBOOK_INCOMPLETE } from "./axe.fixture.js";
-import { buttonOf, placed, settle } from "./pointer.fixture.js";
+import { buttonOf, placed, rest, settle } from "./pointer.fixture.js";
 
 const made: HTMLElement[] = [];
 
@@ -93,7 +93,21 @@ test("a violation in the shadow tree fails the helper, and so does an incomplete
   await expect(axeOf(element)).rejects.toThrow(/button-name/);
   nameless.remove();
   await axeOf(element);
-  await expect(axeOf(element, ["color-contrast"])).rejects.toThrow(/incomplete nothing/);
+  await expect(axeOf(element, ["color-contrast"])).rejects.toThrow(
+    /incomplete nothing, not color-contrast:\ncolor-contrast: decided/,
+  );
+});
+
+test("a tooltip the mouse shows over the sheet, white on its opaque fill, is one axe tells the contrast of, and finds none to fault", async () => {
+  const { element } = await placed(made, 400, undefined, { task: sheetTask() });
+  try {
+    await userEvent.hover(buttonOf(element, "Undo"));
+    const tip = element.shadowRoot?.querySelector<HTMLElement>(".tip");
+    expect(tip?.hidden).toBe(false);
+    await axeOf(element);
+  } finally {
+    await rest();
+  }
 });
 
 /**
@@ -186,13 +200,13 @@ test.each([
     expect(zoomOut.getAttribute("aria-disabled")).toBe("true");
     // The unavailable button is paler by its colour, between the ink and the paper.
     expect(getComputedStyle(zoomOut).color).not.toBe(getComputedStyle(bar).color);
-    // Its tooltip shows, over the canvas, which axe takes for an image, so that it cannot tell the
-    // tooltip's background: 1.4.3's «at least 4.5:1», over the paper, is this test's own.
+    // Its tooltip shows, over the canvas, which axe takes for an image: the tooltip's fill is
+    // opaque, so that axe tells its contrast without looking behind it, 1.4.3's «at least 4.5:1».
     const tip = root.querySelector<HTMLElement>(".tip");
     if (!tip || tip.hidden) throw new Error("the button in focus shows no tooltip");
     const { color, backgroundColor } = getComputedStyle(tip);
-    expect(contrast(color, over(backgroundColor, paperOf(element)))).toBeGreaterThanOrEqual(4.5);
-    await axeOf(element, ["color-contrast"]);
+    expect(contrast(color, backgroundColor)).toBeGreaterThanOrEqual(4.5);
+    await axeOf(element);
   },
 );
 
