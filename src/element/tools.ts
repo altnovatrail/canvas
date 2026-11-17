@@ -20,9 +20,9 @@
 // part, and Demo, a disclosure button that hides the whole demo and shows it again, are actions,
 // not tools (R42; R90 spec): each shows its label beside its icon, a stop of Tab of its own, in a
 // row of glass at the bottom of the element, and after a line the slot `actions`, where the
-// consumer puts its own buttons — app's Continue —, as the mockup has one row (R84; В85 in
-// run/QUESTIONS.md). A button that goes gives its stop of Tab and the focus to the first button
-// shown. This module is no entry point of the package.
+// consumer puts its own buttons — app's Continue —, as the mockup has one row (R84; the
+// 2026-11-17 amendment to R36 spec). A button that goes gives its stop of Tab and the focus to
+// the first button shown. This module is no entry point of the package.
 
 import type { Tool } from "../core/task.js";
 import { SVG, write } from "./attributes.js";

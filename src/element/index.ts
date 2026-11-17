@@ -1148,9 +1148,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * The element's `lang` came, changed or went: its buttons and a workbook's boxes are labelled in
    * it, or in English for a language their labels are not in, and for none (R28, R36). Or
    * `tools-hidden` did: while the element has it, the bar is out of sight and of the accessibility
-   * tree, as `app` hides it on a phone under its tutor's sheet (R84; В83 in run/QUESTIONS.md). An
-   * attribute the element had before it was defined comes here just after the constructor, which
-   * reads no attribute.
+   * tree, as `app` hides it on a phone under its tutor's sheet (R84; the 2026-11-17 amendment to
+   * R36 spec). An attribute the element had before it was defined comes here just after the
+   * constructor, which reads no attribute.
    */
   attributeChangedCallback(name: string): void {
     if (name === "tools-hidden") {
