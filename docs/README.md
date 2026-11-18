@@ -1,6 +1,6 @@
 # docs — the documents of canvas
 
-What [README.md](../README.md) leaves out: the documents, the code and its recipes, and the release files with the commands that take and check them. README.md holds only what the component is and its place in NovaTrail, with no commands (T125).
+What [README.md](../README.md) leaves out: the documents, the code and its recipes, and the release files with the commands that take and check them. README.md holds only what the component is and its place in NovaTrail, with no commands (repositories 2.3 spec).
 
 The repository is cloned with `git clone --recurse-submodules`: `spec/` is a git submodule, and the checks need it ([CLAUDE.md](../CLAUDE.md), Environment).
 
@@ -34,7 +34,7 @@ A release of canvas carries six files and `SHA256SUMS`: the package's archive, w
 
 ### The package
 
-The app takes the package from npm at an exact version, and spec's npm package, whose types the element's contract is in, at the version of the tag its own `spec` submodule stands on, not the one in canvas's `dependencies`: the types of the contract are structural, so `tsc` finds a difference of shape where the two meet (R73 spec; the T88 amendment to R12):
+The app takes the package from npm at an exact version, and spec's npm package, whose types the element's contract is in, at the version of the tag its own `spec` submodule stands on, not the one in canvas's `dependencies`: the types of the contract are structural, so `tsc` finds a difference of shape where the two meet (R73 spec; R12):
 
 ```sh
 npm install --save-exact @altnovatrail/canvas@<version>
