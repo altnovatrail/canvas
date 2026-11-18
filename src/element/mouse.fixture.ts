@@ -1,7 +1,7 @@
 // The page's mouse for the element's tests in Chromium, WebKit and Firefox, with nothing of the
 // element's probe: the trial consumer, which goes through the package's entry points alone, takes
-// it from here, and the tests that read the probe take it through pointer.fixture.ts. Like the tests, the build
-// leaves this module out (tsconfig.build.json), and the package never has it.
+// it from here, and the tests that read the probe take it through pointer.fixture.ts. Like the
+// tests, the build leaves this module out (tsconfig.build.json), and the package never has it.
 
 import { userEvent } from "vitest/browser";
 

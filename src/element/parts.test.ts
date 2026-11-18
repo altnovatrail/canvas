@@ -40,9 +40,8 @@ import { PAGE_ZOOM } from "./session.js";
 // band, --novatrail-canvas-top: the row of glass stands at the bottom, over no part's top. DEMO,
 // the demo of the tests, has four parts: a paragraph, a picture beside the sheet, a picture on an
 // area of it, and a paragraph. The pictures' files come from the consumer's media, each reference
-// once, as the example comes, with the statement's (T64). A picture on an area stands on the layer
-// of the author's demo, stretched over its area, and the sheet scrolls to the area as it opens
-// (T61).
+// once, as the example comes, with the statement's. A picture on an area stands on the layer
+// of the author's demo, stretched over its area, and the sheet scrolls to the area as it opens.
 
 const made: HTMLElement[] = [];
 // The decodes the element asks for, which arrive() waits for.
@@ -53,7 +52,7 @@ afterEach(() => {
   for (const element of made.splice(0)) element.remove();
   window.scrollTo(0, 0);
   vi.restoreAllMocks();
-  // The page's zoom (T94): the next test starts at the fit.
+  // The page's zoom (R73): the next test starts at the fit.
   while (PAGE_ZOOM.step(false)) {}
 });
 
@@ -82,7 +81,7 @@ async function demo(height?: number, parent?: HTMLElement) {
 /** The items of the list, as nodes. */
 const itemsOf = (list: HTMLOListElement): Element[] => [...list.children];
 
-/** The pictures on areas of the sheet, on the layer of the author's demo, in its order (T61). */
+/** The pictures on areas of the sheet, on the layer of the author's demo, in its order. */
 const onTheSheet = (root: ShadowRoot): SVGImageElement[] => [
   ...root.querySelectorAll<SVGImageElement>(".show image"),
 ];
@@ -245,7 +244,7 @@ test("a picture that only decorates is its number alone in the region: beside th
   expect(status.textContent).toBe("Part 2 of 2.");
   expect(list.lastElementChild?.childNodes).toHaveLength(0);
   expect(root.querySelectorAll('.parts [role="img"]')).toHaveLength(0);
-  // On the sheet it stands all the same (T61).
+  // On the sheet it stands all the same.
   expect(onTheSheet(root)).toHaveLength(1);
 });
 
@@ -794,7 +793,7 @@ test("on a workbook the demo fills the example's boxes with their values as its 
   expect(width).toBe(16);
   const left = Number(box.getAttribute("x"));
   expect(Number(five.getAttribute("x"))).toBe(left + Math.floor((100 - width) / 2));
-  // The value is no part of its box's name, and no screen reader is kept from it (T107).
+  // The value is no part of its box's name, and no screen reader is kept from it.
   expect(boxes().map((rect) => rect.getAttribute("aria-label"))).toEqual(["Окошко 1", "Окошко 2"]);
   expect(five.hasAttribute("aria-hidden")).toBe(false);
   const list = root.querySelector("ol.parts");
@@ -936,7 +935,7 @@ test("a value the demo writes in a box is a node of its own in the lines' langua
     ["five", "de"],
   ]);
   // Without a manifest the value is in the element's own language, and for a lang the labels are
-  // not in, the column's (T106), while the box's words are in English.
+  // not in, the column's, while the box's words are in English.
   element.manifest = undefined;
   expect(langOf(value())).toBe("ru");
   element.lang = "de";

@@ -1,4 +1,4 @@
-// The page's pen mode (R29) and its zoom (T94): one of each for every sheet of the page, the mode
+// The page's pen mode (R29) and its zoom (R73): one of each for every sheet of the page, the mode
 // from a pen's first touch on any of them until the learner asks for the finger, the zoom as the
 // learner last stepped it, till the page is loaded again. The next task is a new element (R20),
 // and both stay. They are states of the interface in memory, not data: nothing is stored or sent.

@@ -1,43 +1,47 @@
 // The package's entry point @altnovatrail/canvas: the canvas as a custom element, one for every
 // canvas kind, with its markup in an open shadow root (R07). Importing it registers the element,
-// once: a page has one element of this name. So far it is the handwriting sheet with its input,
-// one pointer at a time (RUN.md, T09; R18), its undo and clearing (T33; R19). Its eraser takes
-// strokes off whole, by the path of a press, as the tool or a pen's eraser, and the sheet keeps the
-// history of writing (T10; R22). The sheet is a stack of layers, the task's grid on its template
-// and the task's statement above it, its look the consumer's to theme (T11; R23). The tutor's
-// marks of a submission hold on to the learner's strokes, and a frame shows where each is, over
-// the work (T14; R26). The history of writing comes in and goes out, an event tells of every
-// action, and the work for checking is the crop with the context of its submission (T15; R27).
-// Over it all stand the element's own buttons — the tools the task allows, undo and clearing —
-// labelled in the element's `lang` (T41; R28), on a vertical bar of glass at its left edge (T121;
-// R84). On a tablet a pen's touch puts the page
-// in pen mode, where a finger writes nothing and a button lets it write again, a palm writes
-// nothing, and two fingers scroll (T35; R29). The task comes in the names of the module format
-// 0.4, checked as its schema checks it, and the module's manifest gives the height of a digit and
-// the statement's language (T44; R32). In pen mode one finger drags the sheet too (T121; R84). The
-// workbook's lines, laid out on its page, stand on the template in
-// place of the grid — numbers, text and boxes, which a screen reader reads in the task's order (T51;
-// R35, R36). Each stroke is in one box or in none, by a rule of whole numbers, and `filled` tells
-// which boxes hold one: a filled box's frame is thicker, and its name says so (T48; R37). A
-// workbook's work for checking is the crop of each filled box, with the table of the boxes' strokes
-// for its context (T49; R38). A lesson's worked example it shows on a sheet the learner does not
-// write on: its statement above the sheet, its grid, and a row without the tools of writing, while
-// a finger or a pen scrolls the sheet as the browser scrolls the statement (T59; R42). The parts of
-// its demo the learner opens one at a time with the row's Next, into a list above the sheet that a
-// polite region tells a screen reader of, and hides and shows with Demo; app keeps how far the
-// learner has gone by `demoState` and `demochange` (T60; R42). The pictures of the statement and of
-// the demo come from the consumer's media, one file for each reference, all of them as the task or
-// the example comes: a part opened shows its picture at once (T64; R42). A picture on an area of
-// the sheet stands on the layer of the author's demo, over its area, and the sheet scrolls to the
-// area as the part opens (T61; R42). A worked example on a workbook lays its lines out as a task's,
-// and a part of its demo that fills a box writes the box's value in it (T85; R61). The types of
-// its contract with app are spec's, of @altnovatrail/spec/canvas: the element implements its CanvasElement, and the package puts the
-// element and its events in the DOM's maps (T69; R07). The keyboard goes into the sheet and out:
-// a container that scrolls is a region named by the canvas kind, with a stop of Tab of its own and
-// a ring when the keyboard brings the focus there (T93; R33); for a `lang` the labels are not in,
-// the container is in theirs and the column in the element's (T106; R74). The row's Zoom in and Zoom out step
-// the page's zoom of the sheet from its fit to twice it, and a zoomed sheet scrolls across as well
-// as down, with two fingers, the wheel and the keys (T94).
+// once: a page has one element of this name. The types of its contract with app are spec's, of
+// @altnovatrail/spec/canvas: the element implements its CanvasElement, and the package puts the
+// element and its events in the DOM's maps (R07).
+//
+// The handwriting sheet takes its input one pointer at a time (R18), with undo and clearing (R19).
+// Its eraser takes strokes off whole, by the path of a press, as the tool or a pen's eraser, and
+// the sheet keeps the history of writing (R22). The sheet is a stack of layers, the task's grid on
+// its template and the task's statement above it, its look the consumer's to theme (R23). The
+// tutor's marks of a submission hold on to the learner's strokes, and a frame shows where each is,
+// over the work (R26). The history of writing comes in and goes out, an event tells of every
+// action, and the work for checking is the crop with the context of its submission (R27). Over it
+// all stand the element's own buttons — the tools the task allows, undo and clearing —, labelled
+// in the element's `lang` (R28), on a vertical bar of glass at its left edge (R84). On a tablet a
+// pen's touch puts the page in pen mode, where a finger writes nothing and a button lets it write
+// again, a palm writes nothing, and two fingers scroll (R29), one finger too (R84).
+// The task comes in the names of the module format 0.4, checked as its schema checks it, and the
+// module's manifest gives the height of a digit and the statement's language (R32; R60).
+//
+// The workbook's lines, laid out on its page, stand on the template in place of the grid —
+// numbers, text and boxes, which a screen reader reads in the task's order (R35; R36). Each stroke
+// is in one box or in none, by a rule of whole numbers, and `filled` tells which boxes hold one: a
+// filled box's frame is thicker, and its name says so (R37). A workbook's work for checking is the
+// crop of each filled box, with the table of the boxes' strokes for its context (R38).
+//
+// A lesson's worked example it shows on a sheet the learner does not write on: its statement above
+// the sheet, its grid, and a bar without the tools of writing, while a finger or a pen scrolls the
+// sheet as the browser scrolls the statement. The parts of its demo the learner opens one at a time
+// with Next, into a list above the sheet that a polite region tells a screen reader of, and hides
+// and shows with Demo; app keeps how far the learner has gone by `demoState` and `demochange`. The
+// pictures of the statement and of the demo come from the consumer's media, one file for each
+// reference, all of them as the task or the example comes: a part opened shows its picture at
+// once. A picture on an area of the sheet stands on the layer of the author's demo, over its area,
+// and the sheet scrolls to the area as the part opens (R42). A worked example on a workbook lays
+// its lines out as a task's, and a part of its demo that fills a box writes the box's value in it
+// (R61).
+//
+// The keyboard goes into the sheet and out: a container that scrolls is a region named by the
+// canvas kind, with a stop of Tab of its own and a ring when the keyboard brings the focus there
+// (R33); for a `lang` the labels are not in, the container is in theirs and the column in the
+// element's (R74). Zoom in and Zoom out step the page's zoom of the sheet from its fit to twice
+// it, and a zoomed sheet scrolls across as well as down, with two fingers, the wheel and the keys
+// (R73).
 
 import type {
   CanvasElement,
@@ -115,8 +119,8 @@ import { type DemoControls, type RowKind, Tools } from "./tools.js";
  * CanvasElement has it, what its events tell and the work it gives for checking, here, and the data
  * — the history of writing, the context of a submission, the filled slots and the state of a demo
  * — through the DOM-free part. The entry point gives them under spec's names, the same types, the
- * media (T73) and the tutor's marks (T16) too. The crop and a task with its temporary tools are
- * the element's own (R26, R41).
+ * media and the tutor's marks too. The crop and a task with its temporary tools are the element's
+ * own (R26, R41).
  */
 export type {
   Box,
@@ -175,8 +179,8 @@ const DEMO_CHANGE = "demochange";
 /** What Next and Demo control, by their IDs in the shadow root: the region, and the list (R42). */
 const DEMO_IDS: DemoControls = { status: "demo-status", parts: "demo-parts" };
 /**
- * The colour of the tutor's frames unless the consumer's theme gives one: a blue, for now, and not
- * a red, which would read as «wrong» (E4 in RUN.md, «Не входит»).
+ * The colour of the tutor's frames unless the consumer's theme gives one: a blue, and not a red,
+ * which would read as «wrong».
  */
 const MARK = "#2563eb";
 /** How far a frame stands off the points of its strokes, in sheet units, as canvas-api's (R26). */
@@ -186,7 +190,7 @@ const MARK_CORNER = 6;
 
 /**
  * How near a stroke's ink the eraser takes it, in CSS pixels: the same on every screen, whatever
- * the sheet's scale (R22). T22 tries it on devices.
+ * the sheet's scale (R22).
  */
 const ERASER_RADIUS_PX = 10;
 
@@ -196,32 +200,32 @@ const ERASER_RADIUS_PX = 10;
 // The page's zoom widens the column with the sheet, to twice its fit, and the container scrolls
 // it across too, left to right whatever the page's direction, while the statement and a demo's
 // parts stay as wide as the fit and stick to its left, in the element's own direction: they wrap
-// as before, and scroll down alone (T94). The layers of the sheet stand in its visible part, the
-// stage, which sticks to the container's top and left, and each shows what lies there, shifted in
-// the frame the ink is drawn in (R18, R23; architecture 3.2 in docs/architecture.md).
+// as at the fit, and scroll down alone (R73). The layers of the sheet stand in its visible part,
+// the stage, which sticks to the container's top and left, and each shows what lies there, shifted
+// in the frame the ink is drawn in (R18, R23).
 // Over the container, in the same cell of the frame's grid, stands the rail of the element's own
 // buttons: a band as tall as the part of the element in sight and as wide as nothing, sticking to
 // the top of whatever scrolls the element, as far down as the consumer's --novatrail-canvas-top
 // says, and in its middle, 16 pixels from the left edge, the bar of buttons: 52 pixels wide, round
 // at its ends, of the mockup's glass — the fill the consumer's theme gives, blurred behind, or the
 // paper alone where nothing blurs — over the sheet as it scrolls by (R84; R148 spec). A bar taller
-// than the band scrolls inside its glass (1.4.10). A worked example's bar holds the zoom's pair
-// alone, and its Next and Demo stand in a row of the same glass at the band's bottom, the
+// than the band scrolls inside its glass (WCAG 1.4.10). A worked example's bar holds the zoom's
+// pair alone, and its Next and Demo stand in a row of the same glass at the band's bottom, the
 // consumer's buttons of the slot actions after them (R84). The tool in use is filled with the
 // accent at an eighth, its icon in the accent; a button in focus shows a ring in the accent; an
-// unavailable one is paler by its colour, not its opacity, which would pale the ring too (2.4.7,
-// 1.4.11). A button's tooltip stands beside it, white on near-black, as the mockup has it. Nothing
-// in the element moves but the scrolling, which jumps, and no tooltip fades (2.3.3). The element is
-// as tall as the statement and the sheet unless it is given a height: then the statement and the
-// sheet scroll in it, under the bar. A worked example's open parts stand between the statement and
-// the sheet, and the region that tells of them is out of sight, but not out of the tree a screen
-// reader reads, where a hidden region would tell nothing (R42). A picture's frame there stands in
-// its item's line, from its top, so that the item's number stands at the top too, as a paragraph's
-// does, and not at the picture's bottom (T64). A picture on an area of the sheet stands on the
-// layer of the author's demo, and the sheet scrolls to a hidden box of the area in its own flow,
-// which neither paints nor takes a pointer (T61). On the canvas the browser neither scrolls nor
-// zooms: the pointer writes, and two fingers scroll by the element's own code (R29), and in pen
-// mode one finger too (R84).
+// unavailable one is paler by its colour, not its opacity, which would pale the ring too (WCAG
+// 2.4.7, 1.4.11). A button's tooltip stands beside it, white on near-black, as the mockup has it.
+// Nothing in the element moves but the scrolling, which jumps, and no tooltip fades (WCAG 2.3.3).
+// The element is as tall as the statement and the sheet unless it is given a height: then the
+// statement and the sheet scroll in it, under the bar. A worked example's open parts stand between
+// the statement and the sheet, and the region that tells of them is out of sight, but not out of
+// the tree a screen reader reads, where a hidden region would tell nothing (R42). A picture's
+// frame there stands in its item's line, from its top, so that the item's number stands at the
+// top too, as a paragraph's does, and not at the picture's bottom. A picture on an area of the
+// sheet stands on the layer of the author's demo, and the sheet scrolls to a hidden box of the
+// area in its own flow, which neither paints nor takes a pointer (R42). On the canvas the browser
+// neither scrolls nor zooms: the pointer writes, and two fingers scroll by the element's own code
+// (R29), and in pen mode one finger too (R84).
 // The canvas and the buttons take pointer events only as the element does: a consumer's
 // pointer-events: none on the element stops the writing and the buttons' pointer, though not
 // their keys (R20, R28). A worked example's canvas takes no pointer at all: a finger or a pen on
@@ -417,10 +421,10 @@ const sheets = new WeakMap<Document, CSSStyleSheet>();
  * Gives the element's shadow root its style, as a sheet the root adopts, and not a `<style>` in
  * its tree: a consumer's content security policy that allows no inline style, as app's
  * `style-src 'self'`, blocks the one and not the other, and the element asks of the policy only
- * `img-src blob:` (R51; the second amendment of 2026-11-02 to R36 spec). A root adopts only a sheet
- * made for its own document, by that document's window, and an element moved into another document
- * comes there without its sheets: it adopts that document's sheet then. A document without a
- * window, which can make no sheet, leaves the element unstyled till it comes into one that can.
+ * `img-src blob:` (R51; R36 spec). A root adopts only a sheet made for its own document, by that
+ * document's window, and an element moved into another document comes there without its sheets:
+ * it adopts that document's sheet then. A document without a window, which can make no sheet,
+ * leaves the element unstyled till it comes into one that can.
  */
 function adoptStyle(root: ShadowRoot): void {
   const owner = root.ownerDocument;
@@ -455,7 +459,7 @@ interface ClientBox {
   readonly down: number;
 }
 
-/** The axes a scroll goes along: across the sheet, for Left and Right, and down it (T94). */
+/** The axes a scroll goes along: across the sheet and down it (R73). */
 type Axis = "x" | "y";
 
 /** The view of the sheet, with the visible part's top left corner and size on the screen. */
@@ -514,7 +518,7 @@ function marksLayer(): SVGSVGElement {
   return svg;
 }
 
-/** An HTML layer of the sheet, empty in the first code: the module's widget, from stage 4. */
+/** An HTML layer of the sheet, for the module's widget from stage 4: empty till then. */
 function htmlLayer(name: string): HTMLDivElement {
   const div = document.createElement("div");
   div.className = name;
@@ -530,25 +534,25 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /**
    * The wrapper, which does not scroll, of the container that scrolls and of the ring of its focus
    * over it: an outline of the container itself would stand under the sheet's paper and stage,
-   * which are positioned in it (T93).
+   * which are positioned in it (R33).
    */
   readonly #wrapper = document.createElement("div");
   readonly #viewport = document.createElement("div");
   readonly #ring = document.createElement("div");
   readonly #column = document.createElement("div");
   readonly #sheet = document.createElement("div");
-  /** The sheet's visible part, where its layers stand, bottom to top (concepts 8 spec; R23). */
+  /** The sheet's visible part, where its layers stand, bottom to top (R23). */
   readonly #stage = document.createElement("div");
   /** The author's template: a sheet's grid, or a workbook's lines, a list of its items (R36). */
   readonly #template = svgLayer("template");
   readonly #grid = document.createElementNS(SVG, "path");
   readonly #print = document.createElementNS(SVG, "g");
   readonly #lines = document.createElementNS(SVG, "g");
-  /** The module's widget, from stage 4 (R16 spec): empty for now. */
+  /** The module's widget, from stage 4 (R16 spec): empty till then. */
   readonly #widget = htmlLayer("widget");
-  /** The author's demo: a worked example's pictures on areas of the sheet (T61; R42). */
+  /** The author's demo: a worked example's pictures on areas of the sheet (R42). */
   readonly #show = svgLayer("show");
-  /** The tutor's layer, in two: the sketch under the learner's work, the marks over it (T14). */
+  /** The tutor's layer, in two: the sketch under the learner's work, the marks over it (R26). */
   readonly #sketch = svgLayer("sketch");
   /** The learner's work: the ink. */
   readonly #canvas = document.createElement("canvas");
@@ -618,7 +622,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   #finger = false;
   /**
    * What two fingers scroll in the gesture under way, down and across, each chosen at the first
-   * step that goes along its axis (T94): undefined till then, and null when nothing scrolls so.
+   * step that goes along its axis (R73): undefined till then, and null when nothing scrolls so.
    */
   #latch: Latch | null | undefined;
   #latchAcross: Latch | null | undefined;
@@ -633,7 +637,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   readonly #ported = new ResizeObserver(() => this.#fit());
   #unwatchPen: (() => void) | undefined;
   #unwatchZoom: (() => void) | undefined;
-  /** The page's zoom as the sheet is laid out by it (T94). */
+  /** The page's zoom as the sheet is laid out by it (R73). */
   #zoom = 0;
   #tool: Tool = "pen";
   #task: Task | undefined;
@@ -652,7 +656,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   #rects: readonly SVGRectElement[] = [];
   /**
    * The texts of the values a worked example's demo has written in its boxes, one for each frame
-   * that has had one (T85; R60).
+   * that has had one (R61).
    */
   #values: (SVGTextElement | undefined)[] = [];
   #taken = new WeakMap<Stroke, number>();
@@ -705,7 +709,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    */
   #k = 0;
   #sheetAt = 0;
-  /** The sheet's left in the container's content, as laid out then, in CSS pixels (T94). */
+  /** The sheet's left in the container's content, as laid out then, in CSS pixels (R73). */
   #sheetAtX = 0;
   /** The top and the left of the visible part, in sheet units, kept from the last scroll. */
   #vy = 0;
@@ -777,7 +781,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#canvas.addEventListener("transitionend", () => this.#request());
     this.#canvas.addEventListener("transitioncancel", () => this.#request());
     this.#viewport.addEventListener("scroll", () => this.#scrolled(), { passive: true });
-    // A container that has nothing to scroll any more keeps its stop of Tab while it has the focus.
+    // A container left with nothing to scroll keeps its stop of Tab while it has the focus.
     this.#viewport.addEventListener("blur", () => this.#region());
 
     attachProbe(this, () => ({
@@ -865,7 +869,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * A lesson's worked example (R42; R58 spec): the open view of a segment `worked_example` of the
    * module format 0.4 — its statement, which the element shows above the sheet as a task's (R23),
    * the grid of its sheet or the lines of its workbook, and the parts of the author's demo, which
-   * on a workbook fill the lines' boxes with their values (T85). The type is spec's (R73 spec; R41).
+   * on a workbook fill the lines' boxes with their values (R61). The type is spec's (R73 spec; R41).
    * The element shows a task or a worked example, not both: an example while a task is given, while
    * the sheet has a history of writing, or while a stroke or an erasing is under way, is a
    * TypeError, and so is one the schema refuses, at its field. `undefined` takes the example off,
@@ -975,13 +979,13 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * What gives the files of the pictures, by their references, as the contract has it (the
-   * 2026-11-02 amendment to R36 spec; R07): a task's statement's, and a
-   * worked example's — its statement's and every part's of its demo, which it asks for as the
-   * example comes, before the learner opens them (R42). A reference is asked for once, whichever
-   * pictures show it, and its file stays while the task or the example names it. Until a picture's
-   * file comes, or if it never does, its frame shows what it shows in words. A new function serves
-   * the references that have no file yet, and stops no load the last one began.
+   * What gives the files of the pictures, by their references, as the contract has it (R07;
+   * R36 spec): a task's statement's, and a worked example's — its statement's and every part's of
+   * its demo, which it asks for as the example comes, before the learner opens them (R42). A
+   * reference is asked for once, whichever pictures show it, and its file stays while the task or
+   * the example names it. Until a picture's file comes, or if it never does, its frame shows what
+   * it shows in words. A new function serves the references that have no file yet, and stops no
+   * load the last one began.
    */
   get media(): Media | undefined {
     return this.#pictures.media;
@@ -1087,12 +1091,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * workbook where an answer cell is, by its item and its slot (R39). A mark holds on to the
    * strokes the model saw there and is drawn around those of them the sheet shows, as they are now
    * — a cell's around its box too: new strokes do not move it, and when all of them are erased it
-   * is gone, till undo brings them back. A box of a workbook that was empty is framed alone (the
-   * second 2026-11-03 amendment to R74 spec). A box that comes near no stroke, and a cell on a
-   * sheet, which takes no zones, have no frame: the question is asked without one. The type is
-   * spec's (R83 spec; T16). A submission goes
-   * back to a sheet whose history holds its strokes, as its digest tells (R27), and a workbook's
-   * to a page of its boxes: one of other strokes or other boxes is a TypeError, and so are marks
+   * is gone, till undo brings them back. A box of a workbook that was empty is framed alone (R74
+   * spec). A box that comes near no stroke, and a cell on a sheet, which takes no zones, have no
+   * frame: the question is asked without one. The type is spec's (R83 spec). A submission goes back
+   * to a sheet whose history holds its strokes, as its digest tells (R27), and a workbook's to a
+   * page of its boxes: one of other strokes or other boxes is a TypeError, and so are marks
    * given before the task and the history they hold on to, and marks that are not marks. A new
    * history, and a new page, put the marks back on their strokes, or take them off. `undefined`
    * takes the marks off. Every value is checked as it comes, and marks equal to those shown write
@@ -1134,7 +1137,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       unwatch();
       unenlist();
     };
-    // The page's zoom, on every sheet of it (T94): it may have changed while the element was away.
+    // The page's zoom, on every sheet of it (R73): it may have changed while the element was away.
     this.#zoomTo(PAGE_ZOOM.value);
     this.#unwatchZoom = PAGE_ZOOM.watch(() => this.#zoomed());
     // A page that grows or shrinks scrolls nothing, and neither does a window of another size.
@@ -1148,9 +1151,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * The element's `lang` came, changed or went: its buttons and a workbook's boxes are labelled in
    * it, or in English for a language their labels are not in, and for none (R28, R36). Or
    * `tools-hidden` did: while the element has it, the bar is out of sight and of the accessibility
-   * tree, as `app` hides it on a phone under its tutor's sheet (R84; the 2026-11-17 amendment to
-   * R36 spec). An attribute the element had before it was defined comes here just after the
-   * constructor, which reads no attribute.
+   * tree, as `app` hides it on a phone under its tutor's sheet (R84; R36 spec). An attribute the
+   * element had before it was defined comes here just after the constructor, which reads no
+   * attribute.
    */
   attributeChangedCallback(name: string): void {
     if (name === "tools-hidden") {
@@ -1166,7 +1169,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * The demo's list says a box it fills in the labels' language, around its value, which is a node
-   * of its own in the parts' language: "Box 1.2: " and "5" (T107); its open items too, anew.
+   * of its own in the parts' language: "Box 1.2: " and "5" (R61); its open items too, anew.
    * Without `lang` the labels are English, as the element's own.
    */
   #nameBoxes(tag: string | null = this.getAttribute("lang")): void {
@@ -1234,17 +1237,16 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The picture of the work, for the `picture` of a stored work that app puts on the server
-   * (contracts/README.md spec, section 15; R83), a method of the agreement with app (the second
-   * 2026-11-17 amendment to R36 spec): the PNG of the strokes the surface shows, with no
-   * condition — the whole sheet, or the workbook's whole page with its draft, one pixel a unit,
-   * 1000 × 1400, whatever is filled and whether the work was sent to be checked or not; an empty
-   * surface, and a worked example's, is white. The strokes are those `exportWork()` takes, as the
-   * history has them: not the stroke under way, but those under an eraser not yet lifted. Each is
-   * the outline the screen fills, black on white with no theme and no template, and the pixels go
-   * through the crop's encoder, grey a byte each: so the picture looks as the sheet does, and holds
-   * at most 1,576,640 bytes, for the encoder spends at most 9 bits on a byte of a row, under the
-   * 4 MiB of a stored work.
+   * The picture of the work, for the `picture` of a stored work that app puts on the server, a
+   * method of the agreement with app (R83; R36 spec): the PNG of the strokes the surface shows,
+   * with no condition — the whole sheet, or the workbook's whole page with its draft, one pixel a
+   * unit, 1000 × 1400, whatever is filled and whether the work was sent to be checked or not; an
+   * empty surface, and a worked example's, is white. The strokes are those `exportWork()` takes, as
+   * the history has them: not the stroke under way, but those under an eraser not yet lifted. Each
+   * is the outline the screen fills, black on white with no theme and no template, and the pixels
+   * go through the crop's encoder, grey a byte each: so the picture looks as the sheet does, and
+   * holds at most 1,576,640 bytes, for the encoder spends at most 9 bits on a byte of a row, under
+   * the 4 MiB of a stored work.
    */
   async exportPicture(): Promise<Blob> {
     // A pixel a unit: the ink is 3 px wide, as on a screen of a pixel a unit.
@@ -1438,7 +1440,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * Each box of the lines as it now is (R36, R37): its frame, thicker when it is filled, and its
    * name in the labels' language, by the element's `lang` — "Box" alone in its line, numbered by
    * its slot among several, and "filled" when it is. A value a worked example's demo wrote in it is
-   * no part of its name: its text after the frame says it, in the lines' language (T107). Only
+   * no part of its name: its text after the frame says it, in the lines' language (R61). Only
    * what has changed is written.
    */
   #markBoxes(): void {
@@ -1674,7 +1676,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /**
    * The sheet's top in the container's content, in CSS pixels as laid out: under the statement —
    * or, along `x`, its left: its margin in the middle of a wide container, and none once it is
-   * wider (T94).
+   * wider (R73).
    */
   #sheetEdge(axis: Axis): number {
     const port = clientBoxOf(this.#viewport);
@@ -1698,7 +1700,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * Zoom in or Zoom out was pressed (T94): the page's zoom goes a step larger or smaller, and every
+   * Zoom in or Zoom out was pressed (R73): the page's zoom goes a step larger or smaller, and every
    * sheet of the page is laid out by it — but not while a pointer writes or erases on one of them,
    * for nothing moves under it.
    */
@@ -1707,7 +1709,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The page's zoom has changed (T94): the sheet is laid out by it at once, its top left corner in
+   * The page's zoom has changed (R73): the sheet is laid out by it at once, its top left corner in
    * sight staying where it was on the sheet, and the row shows what the zoom can do now.
    */
   #zoomed(): void {
@@ -1719,7 +1721,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /**
    * The column and the container as wide as a zoom asks, and whether that is another than the
    * last: the column widens with the sheet, and the container scrolls it across while the zoom is
-   * beyond the fit (T94).
+   * beyond the fit (R73).
    */
   #zoomTo(zoom: number): boolean {
     if (zoom === this.#zoom) return false;
@@ -1733,7 +1735,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /**
    * The statement and a demo's parts keep the element's own direction while the zoomed container
    * runs left to right: the direction the element computes, by an attribute or by a style, as the
-   * last layout read it (T94).
+   * last layout read it (R73).
    */
   #keepDirection(): void {
     if (this.#zoom <= 1 || !this.isConnected) return;
@@ -1789,7 +1791,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * Two fingers moved right on the screen by `dx` CSS pixels and down it by `dy` (R29), and what
    * they scroll goes with them. The gesture's first step down chooses what it scrolls down, for the
    * whole gesture, and its first step across, while the sheet is zoomed, what it scrolls across
-   * (T94): the sheet's own container if it can go that way, or else the nearest ancestor of the
+   * (R73): the sheet's own container if it can go that way, or else the nearest ancestor of the
    * element that scrolls and can, or else the page. A container at its end hands the scroll on at
    * the next gesture, not within this one. The steps of an event add up, and its end scrolls them
    * at once.
@@ -1825,7 +1827,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * What scrolls on down the content, for `onward`, or back up it — or, along `x`, on right across
-   * it or back left (T94).
+   * it or back left (R73).
    */
   #scrollerFor(onward: boolean, axis: Axis = "y"): Latch | undefined {
     if (scrollsOn(this.#viewport, onward, axis)) {
@@ -1853,7 +1855,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /**
    * The stage takes the visible part of the sheet, and the canvas a pixel of its buffer for each
    * device pixel: its size on the screen times the density (R18). The layers follow in the same
-   * frame. However large the zoom, the canvas is no larger than the container (T94).
+   * frame. However large the zoom, the canvas is no larger than the container (R73).
    */
   #layout(): void {
     // The content of a new size, or the container, may overflow it now, or no more.
@@ -2007,11 +2009,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The values a worked example's demo has written in the boxes of its workbook (T85; R60): each in
+   * The values a worked example's demo has written in the boxes of its workbook (R61): each in
    * the middle of its box, on the line's baseline, at the width the layout gives its text, as the
    * lines' texts are; none while the demo is hidden. A value is a text of its own just after its
    * box's frame, which a screen reader reads after the box, in the lines' language, as the lines'
-   * texts are (T107; 3.1.2). Only what changed is written.
+   * texts are (R61; WCAG 3.1.2). Only what changed is written.
    */
   #showFills(fills: ReadonlyMap<string, string>): void {
     const page = this.#laid;
@@ -2069,7 +2071,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * where it came to: what scrolls back up goes back as far as the band covers it. A margin of
    * scrolling would hold for every scroller of the chain alike — the sheet's container and the
    * page. An area of the sheet taller than what is in sight comes by its top from below, but by its
-   * bottom from above, and then the band's cover brings its top back into sight (T61). The bar of
+   * bottom from above, and then the band's cover brings its top back into sight (R42). The bar of
    * buttons covers nothing at the top: it stands at the left edge, and a worked example's row at
    * the bottom, where a scroll margin keeps what comes from below above it (R84).
    */
@@ -2081,7 +2083,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     item.style.setProperty("scroll-margin-bottom", `${under}px`);
     item.scrollIntoView({ block: "nearest", behavior: "instant" });
     // A scroller that comes to its top hands the rest on to the next. A scroller goes again only
-    // while each of its scrolls leaves less covered than the last (T94).
+    // while each of its scrolls leaves less covered than the last (R73).
     const covered = new Map<Element | Window, number>();
     for (;;) {
       const latch = this.#scrollerFor(false);
@@ -2126,9 +2128,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * it, and the keyboard scrolls it: in Safari a container that nothing in it can take the focus in
    * scrolls by no key without (R90 spec; WebKit's bug 277290). Without a height of its own the
    * element scrolls with the page and has no stop of Tab, and neither has one whose task fits. A
-   * container that holds the focus keeps all three till the focus leaves it, not the window (T93).
+   * container that holds the focus keeps all three till the focus leaves it, not the window (R33).
    * Across, it scrolls while the sheet is zoomed, and an element without a height has a region
-   * then too, if its sheet is wider than it (T94); unzoomed, it hides what overflows across.
+   * then too, if its sheet is wider than it (R73); unzoomed, it hides what overflows across.
    */
   #region(): void {
     if (!this.isConnected) return;
@@ -2145,11 +2147,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * The region's name: the canvas kind's, or a worked example's, in the labels' language, which
    * the row's buttons are named in. For a `lang` the labels are not in, the container is in
    * theirs, English, and the column, all the container holds, in the element's: the name is said
-   * in the language it is in, and the statement, the parts and the sheet as before (T106; R74).
+   * in the language it is in, and the statement, the parts and the sheet in the element's (R74).
    * With a `lang` the labels are in, the name is in the element's language already, and both are
    * in it, by an attribute of their own: Firefox gives a shadow tree no language of its host, and
    * WebKit takes no new one into the tree, though HTML has a node whose parent is a shadow root
-   * take its host's (T111). Without a `lang` the element's language is the page's, which no
+   * take its host's (R78). Without a `lang` the element's language is the page's, which no
    * attribute could name, and neither has one.
    */
   #nameRegion(): void {
@@ -2365,7 +2367,7 @@ function near({ x, y }: InkPoint, box: Box, reach: number): boolean {
  * An item of a workbook's lines (R36): its number, then its text and its boxes in the order they
  * are read, each where the layout put it. The item is an `<svg>` of its own place and size, which
  * shows what it holds beyond its edges, and its parts lie from its origin: Firefox brings a group
- * into view as a point at its origin, and only a box with a size whole (measurements 1.5 and 1.6).
+ * into view as a point at its origin, and only a box with a size whole.
  * A piece of text is fitted to its width by SVG, whatever the font, and its size is never read.
  */
 function itemOf(item: PageItem): SVGSVGElement {
@@ -2595,7 +2597,7 @@ function clientBoxOf(element: Element): ClientBox {
 }
 
 /**
- * How much the page scales an element down the screen, or across it along `x` (T94): 1 unless an
+ * How much the page scales an element down the screen, or across it along `x` (R73): 1 unless an
  * ancestor transforms it. `box` is its rectangle on the screen, when the caller has it already.
  */
 function scaleOf(element: Element, box?: DOMRect, axis: Axis = "y"): number {

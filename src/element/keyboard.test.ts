@@ -18,13 +18,14 @@ import {
 } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
-// The sheet from the keyboard (T93; R33): the element's own scroll container, while its content
+// The sheet from the keyboard (R33): the element's own scroll container, while its content
 // overflows it, is a region named by the canvas kind, with a stop of Tab of its own, so that the
 // keyboard scrolls it in Safari too, where a container that nothing in it can take the focus in
 // scrolls by no key (R90 spec; WebKit's bug 277290). Tab goes into it from the bar and out of it to
-// what follows the element (2.1.2), and the keys scroll it as the browser scrolls a container. An
-// element without a height of its own scrolls with the page and has no such stop, and neither has
-// one whose task fits. A ring shows the focus the keyboard brought, over the sheet (2.4.7).
+// what follows the element (WCAG 2.1.2), and the keys scroll it as the browser scrolls a
+// container. An element without a height of its own scrolls with the page and has no such stop,
+// and neither has one whose task fits. A ring shows the focus the keyboard brought, over the sheet
+// (WCAG 2.4.7).
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -153,7 +154,7 @@ test("the keys scroll the container in focus as the browser scrolls one, and the
   ];
   // The browsers scroll from the keyboard smoothly: the next key comes once the place the key
   // scrolls to has held for three frames, not after a time, which a loaded host outlasts, nor on a
-  // scrollend, which the scroll of the key before may send late (R75; T111). A key that never gets
+  // scrollend, which the scroll of the key before may send late (R75). A key that never gets
   // there stops the waiting after 600 frames, and the check says where it is.
   for (const [keys, check] of steps) {
     await userEvent.keyboard(keys);
@@ -277,7 +278,7 @@ test("for a lang the labels are not in, the container is in theirs and the colum
   element.setAttribute("lang", "");
   apart("", "Worked example");
   // A lang the labels are in: both have it, for Firefox gives a shadow tree no language of its host,
-  // and WebKit takes no new one into it (T111).
+  // and WebKit takes no new one into it.
   for (const tag of ["ru-RU", "en-GB", "ru"]) {
     element.setAttribute("lang", tag);
     expect(langs()).toEqual([tag, tag]);

@@ -7,14 +7,6 @@ Open tasks outside the current epic, each as its body, in Russian (R154 spec, R1
 
 ## Tasks outside an epic
 
-#### T134. Комментарии кода по R160 spec: `src/element/`
-
-- **Цель:** комментарии `src/element/` — по R160 spec, «Comments», как в T133; JSDoc экспортируемого API, который уходит в типы пакета, держит его контракт.
-- **Сделать:** как в T133. `src/element/` — в путях релиза: мерж выпускает следующую версию линии.
-- **Зависит от:** T128.
-- **Как проверить:** `just ci`; `just -f spec/justfile docs-check-repo`; проверки по `.claude/rules/element.md`; `/code-review high`.
-- **Разделы:** R160 spec, R32 spec; R08.
-
 #### T135. Комментарии кода по R160 spec: `page/`, `scripts/`, `emulators/`, `probe/`, `.github/` и justfile
 
 - **Цель:** комментарии остального кода и настроек — по R160 spec, «Comments», как в T133: TypeScript, скрипты оболочки, YAML workflow и justfile.

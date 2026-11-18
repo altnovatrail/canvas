@@ -1,5 +1,5 @@
 // Written by scripts/icons.ts — `just icons` — from @iconify-json/material-symbols 1.2.99:
-// Material Symbols by Google, under the Apache License 2.0 (R46 in docs/decisions.md; R78 spec).
+// Material Symbols by Google, under the Apache License 2.0 (R46; R78 spec).
 // ci-lint fails unless it is what the script writes, so it is never edited by hand. This module is
 // no entry point of the package.
 
@@ -85,7 +85,7 @@ export type IconName = keyof typeof ICONS;
 /**
  * Each value of the row, by its button's key: the icon in outline, the one the button shows while
  * chosen — the same for a value without a fill — and whether the icon is mirrored in a row that
- * runs right to left (architecture 6 spec).
+ * runs right to left (R78 spec).
  */
 export const ROW = {
   next: {

@@ -421,7 +421,7 @@ test.runIf(devtools)(
     timeout: budget(786),
   },
   async () => {
-    // Tall enough for the pen at 400 (T94): the bar over the sheet takes none of its height (R84).
+    // Tall enough for the pen at 400: the bar over the sheet takes none of its height (R84).
     const { element, canvas, viewport, view } = await sheet(400, 400);
     const finger = fingerAt(1, canvas, view(), 200, 200);
     await touches("touchStart", [finger]);

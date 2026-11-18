@@ -1,10 +1,10 @@
-// The element by axe-core (T90 in RUN.md; R70 in docs/decisions.md): every kind of canvas has no
-// violation of WCAG 2.2 level AA that axe finds in its shadow tree (R90 spec), and a violation put
-// into it fails the helper. axe cannot tell the background of a workbook's printed lines, which the
-// layer of input covers, nor that of a worked example's labelled buttons, which stand on glass over
-// the canvas and the pictures of the sheet, which axe takes for images: their contrast is this
-// test's own, against the glass over the paper, as the bar's ring of focus is. A tooltip's fill is
-// opaque, and axe tells its contrast itself. The same kinds in forced colours are forced-colors.test.ts's.
+// The element by axe-core (R70): every kind of canvas has no violation of WCAG 2.2 level AA that
+// axe finds in its shadow tree (R90 spec), and a violation put into it fails the helper. axe cannot
+// tell the background of a workbook's printed lines, which the layer of input covers, nor that of a
+// worked example's labelled buttons, which stand on glass over the canvas and the pictures of the
+// sheet, which axe takes for images: their contrast is this test's own, against the glass over the
+// paper, as the bar's ring of focus is. A tooltip's fill is opaque, and axe tells its contrast
+// itself. The same kinds in forced colours are forced-colors.test.ts's.
 
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
@@ -72,7 +72,7 @@ test.each(KINDS.filter(({ incomplete }) => incomplete === WORKBOOK_INCOMPLETE))(
     const texts = [...(root?.querySelectorAll(".print text") ?? [])];
     if (!paper) throw new Error("the element has no sheet");
     expect(texts.length).toBeGreaterThan(0);
-    // 1.4.3 Contrast (Minimum): «at least 4.5:1» for text of the size of the lines.
+    // WCAG 1.4.3 Contrast (Minimum): «at least 4.5:1» for text of the size of the lines.
     const background = getComputedStyle(paper).backgroundColor;
     for (const text of texts) {
       expect(contrast(getComputedStyle(text).fill, background)).toBeGreaterThanOrEqual(4.5);
@@ -189,9 +189,9 @@ test.each([
         "0px",
       ]);
       expect(style.outlineColor).toBe(accent);
-      // 1.4.11 Non-text Contrast: «at least 3:1 against adjacent color(s)» — the glass over the
-      // paper outside the ring, and inside it the button's own fill over that glass: the accent at
-      // an eighth on the tool in use. An opacity would pale the ring with its button.
+      // WCAG 1.4.11 Non-text Contrast: «at least 3:1 against adjacent color(s)» — the glass over
+      // the paper outside the ring, and inside it the button's own fill over that glass: the accent
+      // at an eighth on the tool in use. An opacity would pale the ring with its button.
       for (const adjacent of [glass, over(style.backgroundColor, glass)]) {
         expect(contrast(style.outlineColor, adjacent)).toBeGreaterThan(3);
       }
@@ -201,7 +201,8 @@ test.each([
     // The unavailable button is paler by its colour, between the ink and the paper.
     expect(getComputedStyle(zoomOut).color).not.toBe(getComputedStyle(bar).color);
     // Its tooltip shows, over the canvas, which axe takes for an image: the tooltip's fill is
-    // opaque, so that axe tells its contrast without looking behind it, 1.4.3's «at least 4.5:1».
+    // opaque, so that axe tells its contrast without looking behind it, WCAG 1.4.3's «at least
+    // 4.5:1».
     const tip = root.querySelector<HTMLElement>(".tip");
     if (!tip || tip.hidden) throw new Error("the button in focus shows no tooltip");
     const { color, backgroundColor } = getComputedStyle(tip);
@@ -228,7 +229,7 @@ test.each(KINDS.filter(({ name }) => name.startsWith("a worked example")))(
       ["Next", false],
       ["Demo", false],
     ]);
-    // 1.4.3 Contrast (Minimum): «at least 4.5:1» for text of the size of the labels.
+    // WCAG 1.4.3 Contrast (Minimum): «at least 4.5:1» for text of the size of the labels.
     for (const button of labelled) {
       const { color, backgroundColor } = getComputedStyle(button);
       expect(contrast(color, over(backgroundColor, glass))).toBeGreaterThanOrEqual(4.5);

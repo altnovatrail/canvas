@@ -71,7 +71,7 @@ function inPrint(print: SVGGElement, shape: SVGGraphicsElement, x: number, y: nu
 
 /**
  * What an element of the print shows on the screen: an item, by its parts, for Firefox gives an
- * inner `<svg>` a box that is not its item's (measurements 1.6).
+ * inner `<svg>` a box that is not its item's.
  */
 function shownOf(element: Element): { top: number; bottom: number } {
   const boxes = [...(element.children.length > 0 ? element.children : [element])].map((part) =>
@@ -143,7 +143,7 @@ test("every piece of text starts and ends where the layout puts it, on its basel
         expect(Math.abs(last.y - baseline), where).toBeLessThan(0.05);
         // What is drawn: the glyphs' boxes, which a small scale rounds by a unit or two, and which
         // Firefox takes by its own extents of the glyphs, a "(" alone a seventh of the size wider
-        // than its advance (T111).
+        // than its advance.
         const box = text.getBBox();
         const corner = inPrint(print, text, box.x, box.y);
         expect(Math.abs(corner.x - left), where).toBeLessThan(3);
@@ -640,7 +640,7 @@ test("a mark of a box stands round the box and its ink, 10 units off, read by it
     marks: [onBox(1, 1, "Look at this box"), onBox(2, 1, "Nothing here")],
   };
   await settle();
-  // The empty box's mark is the second amendment of 2026-11-03 to R74 spec: round its box alone.
+  // The empty box's mark rounds its box alone (R74 spec).
   expect(probe(element).marks).toEqual([
     { name: "Look at this box", ids: [1], frame: padded(first) },
     { name: "Nothing here", ids: [], frame: padded(empty) },

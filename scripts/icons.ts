@@ -1,7 +1,7 @@
-// The icons of the row's buttons (R46 in docs/decisions.md; R78 spec): Material Symbols, in the
-// style Rounded, from the npm package of the set at the version package-lock.json pins, and of it
-// only the icons the row shows. It writes the module the element draws them from and NOTICE, which
-// names the set the package embeds:
+// The icons of the row's buttons (R46; R78 spec): Material Symbols, in the style Rounded, from the
+// npm package of the set at the version package-lock.json pins, and of it only the icons the row
+// shows. It writes the module the element draws them from and NOTICE, which names the set the
+// package embeds:
 //
 //   node scripts/icons.ts           write src/element/icons.ts and NOTICE
 //   node scripts/icons.ts --check   write nothing, and fail unless both are what it would write
@@ -35,12 +35,11 @@ export interface Value {
 }
 
 /**
- * The values of the row, as the table of architecture 6 of spec names them, each by its button's
- * key in labels.ts, the two of the page's zoom among them since spec took them by В76 (T94; Д219
- * spec); the four that scrolled the sheet left the row with its buttons (R84). Demo has two, as the
- * demo is shown or hidden. One thing is
- * left out: the table fills the finger's icon while its mode is on, but the mode hides the button
- * (R29), so the fill would never show and is not embedded (R46).
+ * The values of the row, as spec's table of values names them, each by its button's key in
+ * labels.ts, the two of the page's zoom among them (R78 spec; R73); no button scrolls the sheet
+ * (R84). Demo has two, as the demo is shown or hidden. One thing is left out: the table fills the
+ * finger's icon while its mode is on, but the mode hides the button (R29), so the fill would never
+ * show and is not embedded (R46).
  */
 export const TABLE: Readonly<Record<string, Value>> = {
   next: { base: "arrow-forward", filled: false, mirrored: true },
@@ -106,7 +105,7 @@ export function module(set: IconSet, version: string, table = TABLE): string {
     ([name, icon]) => `${JSON.stringify(name)}: ${JSON.stringify(icon)},`,
   );
   return `// Written by scripts/icons.ts — \`just icons\` — from ${SET} ${version}:
-// Material Symbols by Google, under the Apache License 2.0 (R46 in docs/decisions.md; R78 spec).
+// Material Symbols by Google, under the Apache License 2.0 (R46; R78 spec).
 // ci-lint fails unless it is what the script writes, so it is never edited by hand. This module is
 // no entry point of the package.
 
@@ -121,7 +120,7 @@ export type IconName = keyof typeof ICONS;
 /**
  * Each value of the row, by its button's key: the icon in outline, the one the button shows while
  * chosen — the same for a value without a fill — and whether the icon is mirrored in a row that
- * runs right to left (architecture 6 spec).
+ * runs right to left (R78 spec).
  */
 export const ROW = {
 ${row.join("\n")}

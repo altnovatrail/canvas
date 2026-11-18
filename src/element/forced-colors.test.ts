@@ -178,7 +178,7 @@ test("with forced colours the bar takes the system's colours, its glass the canv
   // An icon is the colour of its button's text, whatever the mode makes it (R46).
   expect(getComputedStyle(iconOf(eraser)).fill).toBe(system("ButtonText"));
   expect(getComputedStyle(iconOf(pen)).fill).toBe(system("HighlightText"));
-  // Nothing to undo yet, and no smaller zoom than the fit (T94).
+  // Nothing to undo yet, and no smaller zoom than the fit (R73).
   for (const unavailable of [undo, zoomOut]) {
     expect(unavailable.getAttribute("aria-disabled")).toBe("true");
     expect(getComputedStyle(unavailable).color).toBe(system("GrayText"));
@@ -377,7 +377,7 @@ test.each(KINDS)(
   "$name has no violation that axe finds in forced colours either (T90)",
   async ({ put, incomplete, clear = incomplete }) => {
     // The selected tool is in the system's Highlight and HighlightText, whose contrast is the
-    // system's, in every engine: Firefox's own palette has them 2.94 to 1, white on #3399ff (T111).
+    // system's, in every engine: Firefox's own palette has them 2.94 to 1, white on #3399ff (R70).
     // The bar's glass is the mode's opaque Canvas, and axe tells what stands on it (R84).
     await axeOf(await put(made), clear, highlight());
   },

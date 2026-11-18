@@ -22,12 +22,12 @@ import {
 import { probe } from "./probe.js";
 import { PAGE_ZOOM, PEN_MODE } from "./session.js";
 
-// The page's zoom of the sheet in a browser (T94; R90 spec): Zoom in and Zoom out step it from the
+// The page's zoom of the sheet in a browser (R73; R90 spec): Zoom in and Zoom out step it from the
 // sheet's fit to twice it, for every sheet of the page, and a zoomed sheet scrolls across as well
 // as down — by the wheel, the keys, a finger in pen mode and two fingers, for the bar has no
 // buttons that scroll it (R84) — its statement staying as wide as the fit. The workbook's printed
-// lines grow with it, as 1.4.4 asks; the canvas stays as small as the container, and the input,
-// the eraser and the work for checking stay in units of the sheet.
+// lines grow with it, as WCAG 1.4.4 asks; the canvas stays as small as the container, and the
+// input, the eraser and the work for checking stay in units of the sheet.
 
 const made: HTMLElement[] = [];
 afterEach(async () => {
@@ -127,8 +127,7 @@ test("a zoom keeps the top left corner in sight where it was on the sheet, and a
   const { vy } = view();
   expect(vy).toBeGreaterThan(0);
   // Where the corner is, to half a unit, and in WebKit to a device pixel of the screen at the zoom
-  // shown: WebKit scrolls by whole pixels, so the corner the element asks for lands within one
-  // (T111).
+  // shown: WebKit scrolls by whole pixels, so the corner the element asks for lands within one.
   const near = (got: number, want: number) =>
     expect(Math.abs(got - want)).toBeLessThanOrEqual(
       server.browser === "webkit" ? 1 / (devicePixelRatio * view().k) : 0.5,

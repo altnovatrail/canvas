@@ -19,7 +19,7 @@ afterEach(() => {
   for (const element of made.splice(0)) element.remove();
 });
 
-/** The PNG file's first eight bytes (PNG Third Edition, 5.2). */
+/** The PNG signature, the file's first eight bytes (PNG Third Edition, 5.2). */
 const SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
 
 /** A stroke of a pen along these points, each [x, y, pressure], a millisecond apart from `t`. */

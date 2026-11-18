@@ -15,23 +15,22 @@ import { type Anchor, SHEET } from "../core/index.js";
 import { type Marks, NovatrailCanvas, type Task } from "./index.js";
 import { rest } from "./mouse.fixture.js";
 
-// The trial consumer (R27, R28, R32, R38, R39, R41, R42, R83; RUN.md, T15, T41, T44, T49, T53, T55,
-// T57, T59, T60, T69, T73, T120): a page that takes the element as app is to take it. The types of
-// the contract it takes from spec's package, as app does (R74 spec), and only the element's own
-// from the package: the tutor's marks, the task with its tools and the picture of the work. It
-// gives the task and the module's manifest, of spec's types as app holds them, the media and the
-// language, keeps the history of writing as historychange tells it and gives it back, hears the
-// learner's choice of tool, reads which answer slots are filled, takes the work for checking at
-// Check, and gives the tutor's marks back with their submission's context, then opens the sheet
-// again in a new element. On a workbook it writes in the boxes and beside them, reads which are
-// filled, takes the crop of each filled box and the picture of its whole page, and gives a mark on
-// a box back. A lesson's worked example it gives to a new element, where the learner writes
-// nothing, opens the parts of its demo and hides it, while app keeps how far the learner has gone,
-// as demochange tells it, and gives that back to a new element. It goes through the package's entry
-// points alone, never the probe the other tests read. It writes as a script does: pointer events on
-// the canvas in the element's open shadow root, at the points the canvas's rectangle gives. The
-// learner's erasing, undo and clearing go through the sheet's own buttons, and the workbook's boxes
-// are found the same way, by their roles and their Russian names.
+// The trial consumer (R27, R28, R32, R38, R39, R41, R42, R83): a page that takes the element as app
+// is to take it. The types of the contract it takes from spec's package, as app does (R74 spec),
+// and only the element's own from the package: the tutor's marks, the task with its tools and the
+// picture of the work. It gives the task and the module's manifest, of spec's types as app holds
+// them, the media and the language, keeps the history of writing as historychange tells it and
+// gives it back, hears the learner's choice of tool, reads which answer slots are filled, takes the
+// work for checking at Check, and gives the tutor's marks back with their submission's context,
+// then opens the sheet again in a new element. On a workbook it writes in the boxes and beside
+// them, reads which are filled, takes the crop of each filled box and the picture of its whole
+// page, and gives a mark on a box back. A lesson's worked example it gives to a new element, where
+// the learner writes nothing, opens the parts of its demo and hides it, while app keeps how far the
+// learner has gone, as demochange tells it, and gives that back to a new element. It goes through
+// the package's entry points alone, never the probe the other tests read. It writes as a script
+// does: pointer events on the canvas in the element's open shadow root, at the points the canvas's
+// rectangle gives. The learner's erasing, undo and clearing go through the sheet's own buttons, and
+// the workbook's boxes are found the same way, by their roles and their Russian names.
 
 const made: HTMLElement[] = [];
 // The mouse an earlier test or file left where an element now stands would show a button's
@@ -92,8 +91,8 @@ const MODULE: open.Manifest = {
 const PATH = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="60"><rect width="200" height="60" fill="#eee"/></svg>`;
 
 /**
- * app gives the files of the pictures through the contract, as spec's CanvasElement has them (the
- * 2026-11-02 amendment to R36 spec).
+ * app gives the files of the pictures through the contract, as spec's CanvasElement has them
+ * (R36 spec).
  */
 function media(element: CanvasElement): void {
   element.media = async () => new Blob([PATH], { type: "image/svg+xml" });
@@ -630,7 +629,7 @@ test("app's path on a workbook: write in its boxes and beside them, read which a
     expect(crop.type).toBe("image/png");
     expect(crop.signature).toEqual(SIGNATURE);
     expect(crop.decoded).toEqual(crop.size);
-    // The box's stroke alone, in the middle of a crop of R25's least side, and paper round it.
+    // The box's stroke alone, in the middle of a crop of the least side, and paper round it (R25).
     expect(crop.size).toEqual([200, 200]);
     expect(Math.min(crop.grey(100, 99), crop.grey(100, 100))).toBeLessThan(128);
     expect(crop.grey(100, 60)).toBe(255);
@@ -641,7 +640,7 @@ test("app's path on a workbook: write in its boxes and beside them, read which a
   ]);
   expect(JSON.parse(JSON.stringify(work.submission))).toEqual(work.submission);
   // The work app puts on the server while the profile's storage is on has the picture of the whole
-  // page, its draft too, by the agreement's method (the second 2026-11-17 amendment to R36 spec; R83).
+  // page, its draft too, by the agreement's method (R83; R36 spec).
   const picture = await decoded(await sheet.exportPicture());
   expect([picture.type, picture.signature, picture.size]).toEqual([
     "image/png",

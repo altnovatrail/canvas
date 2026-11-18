@@ -1,7 +1,7 @@
 // Type-checked by ci-lint and never built: the element's interface as a consumer's types see it
 // (R07, R27, R28, R32, R37, R38, R39, R42). What a consumer may do type-checks; each line under a
 // directive must be an error, and were it not, the directive would go unused, and that would be the
-// error instead. The types of the contract are spec's (R74 spec; T69): the element is its
+// error instead. The types of the contract are spec's (R74 spec): the element is its
 // CanvasElement, and the entry point gives the same types as spec's package.
 
 import type * as spec from "@altnovatrail/spec/canvas";
@@ -34,7 +34,7 @@ import type {
 } from "./index.js";
 
 /**
- * The entry point's types of the contract are spec's, under spec's names (R74 spec; T69): a copy
+ * The entry point's types of the contract are spec's, under spec's names (R74 spec): a copy
  * that went its own way would be false here. The DOM's map of events holds the contract's, each
  * event's type, which the package puts there. The data's types the DOM-free part checks the same.
  */
@@ -168,20 +168,20 @@ sheet.task = { ...posts, canvas: { kind: "handwriting_sheet", tools: ["pen"] } }
 
 // @ts-expect-error The tools are the element's own: the contract's task has no tools (R41).
 held.task = { ...posts, canvas: { kind: "handwriting_sheet", tools: ["pen"] } };
-// The media are the contract's: app gives them through it (the 2026-11-02 amendment to R36 spec).
+// The media are the contract's: app gives them through it (R36 spec).
 held.media = async (ref) => new Blob([ref]);
 held.media = undefined;
 // @ts-expect-error A picture's file comes as a Blob, not as its address.
 held.media = async (ref: string) => ref;
-// The tutor's marks are the contract's too, with the submission's context (R83 spec; T16).
+// The tutor's marks are the contract's too, with the submission's context (R83 spec).
 held.marks = sheet.marks;
 held.marks = undefined;
 // @ts-expect-error Nor the commands undo and clear: the element's own buttons call them (R28).
 held.undo();
 // @ts-expect-error The same for clear.
 held.clear();
-// The picture of the work is the contract's: app puts it as a stored work's picture (the second
-// 2026-11-17 amendment to R36 spec; R83).
+// The picture of the work is the contract's: app puts it as a stored work's picture (R36 spec;
+// R83).
 export const agreed: Promise<Blob> = held.exportPicture();
 // @ts-expect-error exportPNG() is gone (R27): the picture of the work is exportPicture() (R83).
 sheet.exportPNG();

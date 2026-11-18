@@ -4,17 +4,18 @@ import { SHORT } from "../core/pages.fixture.js";
 import { sheetTask, workbookTask, workedExample } from "../core/tasks.fixture.js";
 import { consumerButton, placed, settle, spacer } from "./pointer.fixture.js";
 
-// The bar of buttons in a narrow or a low window (T121; R84, R90 spec): the rail it stands in the
-// middle of sticks over what scrolls the element, below the consumer's --novatrail-canvas-top, as
-// tall as the part of the element in sight, and the bar, 52 CSS px wide at the element's left edge,
-// is never wider than that: at 320 CSS px the page does not scroll sideways (1.4.10), as the
+// The bar of buttons in a narrow or a low window (R84; R90 spec): the rail it stands in the middle
+// of sticks over what scrolls the element, below the consumer's --novatrail-canvas-top, as tall as
+// the part of the element in sight, and the bar, 52 CSS px wide at the element's left edge, is
+// never wider than that: at 320 CSS px the page does not scroll sideways (WCAG 1.4.10), as the
 // mockup's "Two sizes" has it. A bar taller than its rail, less the rail's margins of 16 px, scrolls
-// inside its glass, and the keyboard's focus brings each of its buttons into sight there (2.4.11).
-// A button's ring of focus, two pixels outside its edge, stays on the glass, which clips what
-// overflows it (2.4.7). The window of 1.4.10 is 320 × 256 CSS px: 1280 × 1024 at a zoom of 400 %.
-// Each test sets the window it needs, and the next starts at Vitest's own, 414 × 896, whose body
-// has no margin. A worked example's row of Next, Demo and the consumer's buttons, at the bottom,
-// keeps within the element less 16 px at each side, and scrolls inside its glass across.
+// inside its glass, and the keyboard's focus brings each of its buttons into sight there (WCAG
+// 2.4.11). A button's ring of focus, two pixels outside its edge, stays on the glass, which clips
+// what overflows it (WCAG 2.4.7). The window of WCAG 1.4.10 is 320 × 256 CSS px: 1280 × 1024 at a
+// zoom of 400 %. Each test sets the window it needs, and the next starts at Vitest's own,
+// 414 × 896, whose body has no margin. A worked example's row of Next, Demo and the consumer's
+// buttons, at the bottom, keeps within the element less 16 px at each side, and scrolls inside its
+// glass across.
 
 const made: HTMLElement[] = [];
 afterEach(async () => {
@@ -100,7 +101,7 @@ test("a worked example in a window of 320 × 256: its row of Next, Demo and the 
   expect(row.bottom).toBeCloseTo(256 - 16, 0);
 });
 
-/** The low places a sheet's bar is tried in: a window of 1.4.10, and an element given a height. */
+/** Where a sheet's bar is tried low: a window of WCAG 1.4.10, and an element given a height. */
 const LOW: readonly {
   readonly name: string;
   readonly put: () => ReturnType<typeof placed>;

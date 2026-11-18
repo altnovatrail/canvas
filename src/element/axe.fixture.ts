@@ -1,10 +1,10 @@
-// axe-core over the element's shadow tree, in the tests in a browser (T90 in RUN.md; R70 in
-// docs/decisions.md): app's CI does not look into the canvas's element, so canvas's own does (R90
-// spec). The rules are those of WCAG 2.0, 2.1 and 2.2 at levels A and AA (wcag.fixture.ts). Its
-// target-size measures 2.5.8, 24 × 24 CSS px; the 44 × 44 of 2.5.5, which R90 spec asks of canvas
-// too, is the bar's own test (R28). What axe cannot tell it leaves incomplete: a test names those
-// it expects of its kind of canvas, so that a new one does not pass in silence. Like the tests, the
-// build leaves this module out, and the package never has it.
+// axe-core over the element's shadow tree, in the tests in a browser (R70): app's CI does not look
+// into the canvas's element, so canvas's own does (R90 spec). The rules are those of WCAG 2.0, 2.1
+// and 2.2 at levels A and AA (wcag.fixture.ts). Its target-size measures WCAG 2.5.8,
+// 24 × 24 CSS px; the 44 × 44 of WCAG 2.5.5, which R90 spec asks of canvas too, is the bar's own
+// test (R28). What axe cannot tell it leaves incomplete: a test names those it expects of its kind
+// of canvas, so that a new one does not pass in silence. Like the tests, the build leaves this
+// module out, and the package never has it.
 
 import axe from "axe-core";
 import { expect, vi } from "vitest";
@@ -30,7 +30,7 @@ export type Pair = readonly [foreground: string, background: string];
  * Run axe over a root — the element, whose open shadow root it enters — and throw, naming each rule
  * and node, on any violation, and on incomplete rules other than those named. A node of
  * color-contrast in one of the system's pairs is none of the element's: in forced colours its text
- * and background are the system's, of a pair it defines for the node's role (T111).
+ * and background are the system's, of a pair it defines for the node's role (R70).
  */
 export async function axeOf(
   root: Element,
