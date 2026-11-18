@@ -641,7 +641,7 @@ test("app's path on a workbook: write in its boxes and beside them, read which a
   ]);
   expect(JSON.parse(JSON.stringify(work.submission))).toEqual(work.submission);
   // The work app puts on the server while the profile's storage is on has the picture of the whole
-  // page, its draft too, by the package's own method until spec's agreement names it (R83; В82).
+  // page, its draft too, by the agreement's method (the second 2026-11-17 amendment to R36 spec; R83).
   const picture = await decoded(await sheet.exportPicture());
   expect([picture.type, picture.signature, picture.size]).toEqual([
     "image/png",

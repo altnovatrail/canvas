@@ -180,8 +180,9 @@ held.marks = undefined;
 held.undo();
 // @ts-expect-error The same for clear.
 held.clear();
-// @ts-expect-error The picture of the work is the package's own until spec's agreement names it (В82).
-held.exportPicture();
+// The picture of the work is the contract's: app puts it as a stored work's picture (the second
+// 2026-11-17 amendment to R36 spec; R83).
+export const agreed: Promise<Blob> = held.exportPicture();
 // @ts-expect-error exportPNG() is gone (R27): the picture of the work is exportPicture() (R83).
 sheet.exportPNG();
 // @ts-expect-error null is no history: undefined, and undefined alone, is the empty one.

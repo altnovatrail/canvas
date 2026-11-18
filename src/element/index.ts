@@ -1235,7 +1235,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * The picture of the work, for the `picture` of a stored work that app puts on the server
-   * (contracts/README.md spec, section 15; R83): the PNG of the strokes the surface shows, with no
+   * (contracts/README.md spec, section 15; R83), a method of the agreement with app (the second
+   * 2026-11-17 amendment to R36 spec): the PNG of the strokes the surface shows, with no
    * condition — the whole sheet, or the workbook's whole page with its draft, one pixel a unit,
    * 1000 × 1400, whatever is filled and whether the work was sent to be checked or not; an empty
    * surface, and a worked example's, is white. The strokes are those `exportWork()` takes, as the

@@ -13,8 +13,8 @@ function legal(version: string): LegalSet {
 }
 
 /**
- * A build of the adults' sets of v0.18.14 of spec: the measurement's alone here (T102, T111, T113,
- * T117, T119, T123).
+ * A build of the adults' sets of v0.18.27 of spec: the measurement's alone here (T102, T111, T113,
+ * T117, T119, T123, T127).
  */
 const adults: PageTexts = { measurement: legal("measure-3") };
 /** A build with a current set for every purpose. */
