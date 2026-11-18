@@ -7,14 +7,6 @@ Open tasks outside the current epic, each as its body, in Russian (R154 spec, R1
 
 ## Tasks outside an epic
 
-#### T132. Тексты без истории: architecture 3.7–3.10
-
-- **Цель:** разделы 3.7–3.10 [docs/architecture.md](../docs/architecture.md) — код и инструменты, рабочая тетрадь, поля задачи и пример, доступность — без истории (R160 spec).
-- **Сделать:** как в T130. Предел `architecture 3.7` в `docs-budgets.json` — снизить по размеру раздела (R145 spec).
-- **Зависит от:** T128.
-- **Как проверить:** `just -f spec/justfile docs-check-repo`; `/code-review high`.
-- **Разделы:** R160 spec, R145 spec; architecture 3.7, 3.8, 3.9, 3.10.
-
 #### T133. Комментарии кода по R160 spec: `src/core/` и `src/eval/`
 
 - **Цель:** комментарии `src/core/` и `src/eval/` говорят только то, чего не скажут код и имена: почему, ограничение, ловушку, контракт экспортируемого API (R160 spec, «Comments»).
