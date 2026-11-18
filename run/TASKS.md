@@ -6,3 +6,59 @@ Open tasks outside the current epic, each as its body, in Russian (R154 spec, R1
 - A new task outside an epic goes here as a body, its number the one free when it is written down (RUN.md, Citations). When done, the body leaves for the archive (RUN.md rule 9).
 
 ## Tasks outside an epic
+
+#### T129. Тексты без истории: CLAUDE.md, README, `docs/README.md`, правила частей и architecture 1–2
+
+- **Цель:** CLAUDE.md, README.md, AGENTS.md, `docs/README.md`, `.claude/rules/*.md` и разделы 1 и 2 [docs/architecture.md](../docs/architecture.md) держат текущее состояние, а не историю (R160 spec).
+- **Сделать:** убрать хроники версий, статусов и повышений, даты и номера задач там, где они рассказывают историю; документ называет файл, где задано значение (`package.json`, `justfile`, `scripts/legal.ts`, подмодуль), а не значение; архитектура описывает текущее устройство и ссылается на решение номером, не пересказывая его; ссылка на поправку записи `spec`, которую тег переписал на месте, — на саму запись. Свои записи журнала — только те, что задача меняет, переписать на месте целиком (R160 spec). Пределы разделов в `docs-budgets.json` — не выше нужного.
+- **Зависит от:** T128.
+- **Как проверить:** `just -f spec/justfile docs-check-repo`; `/code-review high`.
+- **Разделы:** R160 spec, R143 spec, R145 spec; RULES.md spec — The bar; architecture 1, 2.
+
+#### T130. Тексты без истории: architecture 3.1–3.3
+
+- **Цель:** разделы 3.1–3.3 [docs/architecture.md](../docs/architecture.md) описывают текущее устройство движка и слоёв, логических координат листа и стыковки с `app`, без истории (R160 spec).
+- **Сделать:** как в T129 — без хроник, дат и номеров задач; значения — именем файла; решения — номером, без пересказа; ссылки на поправки переписанных записей `spec` — на запись. Предел `architecture 3.3` в `docs-budgets.json` — снизить по размеру раздела (R145 spec).
+- **Зависит от:** T128.
+- **Как проверить:** `just -f spec/justfile docs-check-repo`; `/code-review high`.
+- **Разделы:** R160 spec, R145 spec; architecture 3.1, 3.2, 3.3.
+
+#### T131. Тексты без истории: architecture 3.4–3.6
+
+- **Цель:** разделы 3.4–3.6 [docs/architecture.md](../docs/architecture.md) — публикация и релиз, файл образца, шаги страницы образцов — без истории (R160 spec).
+- **Сделать:** как в T130. Предел `architecture 3.4` в `docs-budgets.json` — снизить по размеру раздела (R145 spec).
+- **Зависит от:** T128.
+- **Как проверить:** `just -f spec/justfile docs-check-repo`; `/code-review high`.
+- **Разделы:** R160 spec, R145 spec; architecture 3.4, 3.5, 3.6.
+
+#### T132. Тексты без истории: architecture 3.7–3.10
+
+- **Цель:** разделы 3.7–3.10 [docs/architecture.md](../docs/architecture.md) — код и инструменты, рабочая тетрадь, поля задачи и пример, доступность — без истории (R160 spec).
+- **Сделать:** как в T130. Предел `architecture 3.7` в `docs-budgets.json` — снизить по размеру раздела (R145 spec).
+- **Зависит от:** T128.
+- **Как проверить:** `just -f spec/justfile docs-check-repo`; `/code-review high`.
+- **Разделы:** R160 spec, R145 spec; architecture 3.7, 3.8, 3.9, 3.10.
+
+#### T133. Комментарии кода по R160 spec: `src/core/` и `src/eval/`
+
+- **Цель:** комментарии `src/core/` и `src/eval/` говорят только то, чего не скажут код и имена: почему, ограничение, ловушку, контракт экспортируемого API (R160 spec, «Comments»).
+- **Сделать:** убрать пересказ кода, историю, номера задач и разделов документов; где причина — решение, ограничение одной фразой и номер в конце, `(R25)`. Строки, названия тестов и сгенерированный код — не комментарии, их не трогать. Код не менять.
+- **Зависит от:** T128.
+- **Как проверить:** `just ci`; `just -f spec/justfile docs-check-repo` — номера в комментариях; проверки по `.claude/rules/eval.md`; `/code-review high`.
+- **Разделы:** R160 spec, R32 spec; RULES.md spec — The bar.
+
+#### T134. Комментарии кода по R160 spec: `src/element/`
+
+- **Цель:** комментарии `src/element/` — по R160 spec, «Comments», как в T133; JSDoc экспортируемого API, который уходит в типы пакета, держит его контракт.
+- **Сделать:** как в T133. `src/element/` — в путях релиза: мерж выпускает следующую версию линии.
+- **Зависит от:** T128.
+- **Как проверить:** `just ci`; `just -f spec/justfile docs-check-repo`; проверки по `.claude/rules/element.md`; `/code-review high`.
+- **Разделы:** R160 spec, R32 spec; R08.
+
+#### T135. Комментарии кода по R160 spec: `page/`, `scripts/`, `emulators/`, `probe/`, `.github/` и justfile
+
+- **Цель:** комментарии остального кода и настроек — по R160 spec, «Comments», как в T133: TypeScript, скрипты оболочки, YAML workflow и justfile.
+- **Сделать:** как в T133. `.devcontainer/` — заготовка `spec` (R79 spec): его не трогать.
+- **Зависит от:** T128.
+- **Как проверить:** `just ci`; `just -f spec/justfile docs-check-repo`; проверки по `.claude/rules/page.md` и `.claude/rules/ci.md`; `/code-review high`.
+- **Разделы:** R160 spec, R32 spec, R79 spec.

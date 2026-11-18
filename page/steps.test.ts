@@ -12,10 +12,7 @@ function legal(version: string): LegalSet {
   return { version, notice: [{ paragraph: [{ text: "The notice." }] }], gist: "Суть." };
 }
 
-/**
- * A build of the adults' sets of v0.18.27 of spec: the measurement's alone here (T102, T111, T113,
- * T117, T119, T123, T127).
- */
+/** A build of the adults' sets of spec's release: the measurement's alone here. */
 const adults: PageTexts = { measurement: legal("measure-3") };
 /** A build with a current set for every purpose. */
 const approved: PageTexts = {

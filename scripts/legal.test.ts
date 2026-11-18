@@ -1,11 +1,3 @@
-// The reader of the legal texts (T89 in RUN.md; R69 in docs/decisions.md): every vector of reading
-// that spec's release file carries gives exactly what it says (section 7 of the legal part's
-// README), every text of the file is shown, the file is held to its sum and to the tag spec/ stands
-// on, and the sets the build takes — the measurement's and the eval set's in the release of
-// v0.18.27, of the versions that apply from 2026-11-16, and all three in the part for tests (T102,
-// T109, T110, T111, T113, T117, T119, T123, T127).
-// From version 3 of the part a reading is on a day (T111).
-
 import { copyFileSync, cpSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
@@ -148,9 +140,8 @@ describe("the release file", () => {
       const part = partIn(folder);
       const reading = readingOf(validatorOf(schema), part, null, todayInUtc());
       if (!("current" in reading)) throw new Error("spec's part is refused");
-      // At v0.18.27, from 2026-11-16, the sets of the adults are in force at the versions whose
-      // notices give the upload link 12 hours at most, and the child's is still a draft (R139
-      // spec, R141 spec).
+      // The release's adults' sets are in force at the versions whose notices give the upload link
+      // 12 hours at most, and the child's is still a draft (R139 spec, R141 spec).
       expect(reading.current.sets).toEqual({ measure: 3, "eval-set": 2 });
       expect(Object.keys(part.files)).toContain("texts/privacy-policy/2.ru.md");
       for (const [file, bytes] of Object.entries(part.files)) {
