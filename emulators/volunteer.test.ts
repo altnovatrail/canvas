@@ -1,6 +1,6 @@
-// The volunteer's way through the samples page (T78 in RUN.md; R54 in docs/decisions.md), on a
-// device of the test's own: the steps the page owns and those the device owns, the files kept,
-// a second pass only after the device failed, and the two builds' ways of T22 (R65).
+// The volunteer's way through the samples page (R54), on a device of the test's own: the steps the
+// page owns and those the device owns, the files kept, a second pass only after the device failed,
+// and the two builds' ways (R65).
 
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

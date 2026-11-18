@@ -1,9 +1,9 @@
-// The watch the drivers of the samples page put into it (T78 in RUN.md; R54 in
-// docs/decisions.md): its pure parts, and the watch itself in the page's build opened by file:// in
-// Chrome Headless Shell from the toolchain stage (R13), as the drivers use it in the emulators — a
-// stroke, a save, the workbook's page, and a page that asks for the network, which it must see;
-// and the scripts of T22's moves (R65): a stroke cancelled, the eraser and undo, two fingers, the
-// page opened anew with a file opened in it, and the test build's child's session.
+// The watch the drivers of the samples page put into it (R54): its pure parts, and the watch itself
+// in the page's build opened by file:// in Chrome Headless Shell from the toolchain stage (R13), as
+// the drivers use it in the emulators — a stroke, a save, the workbook's page, and a page that
+// asks for the network, which it must see; and the scripts of the checklist's moves (R65): a stroke
+// cancelled, the eraser and undo, two fingers, the page opened anew with a file opened in it, and
+// the test build's child's session.
 
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -96,7 +96,7 @@ describe("the pure parts", () => {
     // Wholly above the window, or a strip of it too thin to draw in: no stroke.
     expect(strokeIn({ x: 0, y: -900, width: 100, height: 800, view: 1000 })).toBeUndefined();
     expect(strokeIn({ x: 0, y: 980, width: 100, height: 800, view: 1000 })).toBeUndefined();
-    // The sheet's second stroke, to the right of the first and apart from it (T22).
+    // The sheet's second stroke, to the right of the first and apart from it (R65).
     expect(strokeIn({ x: 10, y: 100, width: 500, height: 400, view: 1000 }, true)).toEqual([
       [310, 220],
       [410, 300],
@@ -212,7 +212,7 @@ describe("the pure parts", () => {
 describe("in the page's build", () => {
   let folder: string;
   let file: string;
-  /** The test build, with the legal texts' part for tests alone (T84, T89; R59, R69). */
+  /** The test build, with the legal texts' part for tests alone (R59, R69). */
   let tested: string;
   let browser: Browser;
 
@@ -250,8 +250,8 @@ describe("in the page's build", () => {
   }
 
   /** Wait for a frame of the page, as the drivers do before each stroke: the element the page was
-   * given is laid out only in a frame, its ResizeObserver's, and until then its canvas is 0 px tall,
-   * so a stroke lands beside it and the sheet holds none (T104 in RUN.md). */
+   * given is laid out only in a frame, its ResizeObserver's, and until then its canvas is 0 px
+   * tall, so a stroke lands beside it and the sheet holds none. */
   async function framed(page: Page): Promise<void> {
     expect(await page.evaluate(PAINT)).toBe(0);
     await until(page, PAINTED);
@@ -263,7 +263,7 @@ describe("in the page's build", () => {
     const page = await opened(file);
     try {
       expect(await read(page)).toMatchObject({ watched: true, defined: true, tasks: TASKS });
-      // The start, as the drivers go through it (T20): then the sheet is there, laid out a frame on.
+      // Through the start, as the drivers go (R58): then the sheet is there, laid out a frame on.
       expect(await page.evaluate(START)).toBe(true);
       await framed(page);
       // The spy on Blob keeps a blob the browser makes a Blob to the page, as the element asks.
@@ -284,7 +284,7 @@ describe("in the page's build", () => {
         await page.mouse.move(x2, y2, { steps: 8 });
         await page.mouse.up();
       };
-      // The markup the drivers make, through the page's form: then the page saves (T81).
+      // The markup the drivers make, through the page's form: then the page saves.
       const markUp = async () => {
         await page.evaluate(MARKUP);
         await until(page, MARKING);
@@ -369,7 +369,7 @@ describe("in the page's build", () => {
       expect(after.events).toBe(before.events);
       expect(after.scrolled).toBeGreaterThan(before.scrolled);
       expect(await page.evaluate(clickButton("Нет такой"))).toBe(false);
-      // The sheet saved, then the page opened anew and its file opened in it (T87).
+      // The sheet saved, then the page opened anew and its file opened in it (R64).
       await page.evaluate(MARKUP);
       await until(page, MARKING);
       expect(await page.evaluate(MARK)).toBe(true);
@@ -447,8 +447,8 @@ describe("in the page's build", () => {
   test("written into a copy of the page, sees a request its own script makes first thing", {
     timeout: budget(535),
   }, async () => {
-    // The page's own script asks for the network first thing: the failure T78 must catch. Its
-    // policy is worked out again, as the builder does, so that the script still runs.
+    // The page's own script asks for the network first thing: the failure the emulators' run must
+    // catch. Its policy is worked out again, as the builder does, so that the script still runs.
     const built = readFileSync(file, "utf8");
     const start = built.indexOf("<script>") + "<script>".length;
     const script = built.slice(start, built.lastIndexOf("</script>"));

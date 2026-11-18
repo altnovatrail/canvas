@@ -1,6 +1,6 @@
-// The files the samples page saved in the emulators (T78 in RUN.md; R54, R55 in
-// docs/decisions.md), read in the toolchain stage by the workflow's job of the saved files once
-// each device's job has left its own in the folder saved/ of its artifact:
+// The files the samples page saved in the emulators (R54, R55), read in the toolchain stage by the
+// workflow's job of the saved files once each device's job has left its own in the folder saved/
+// of its artifact:
 //
 //   node emulators/saved.ts <version> <folder>...
 //
@@ -8,12 +8,11 @@
 // version, with a task and with strokes. A folder of the release build holds an adult's
 // measurement under its set in force: an adult's, with its history, one sheet in their own hand
 // and one workbook imitating a child's. A folder of the test build, whose name ends in -test,
-// holds a child's session under the test set: the final geometry and the code typed (T22; R59).
+// holds a child's session under the test set: the final geometry and the code typed (R59, R65).
 // Each folder must hold a sheet's and a workbook's, of one code, the code of the page's one
-// opening. spec's sample-check holds the same files to the protocol after it, markup and all
-// (T81). The strokes are the code's, drawn by the drivers. The code of src/ imports its modules by
-// the names of their builds, so the reader comes through Vite's loader, as scripts/page.ts takes
-// the tasks.
+// opening. spec's sample-check holds the same files to the protocol after it, markup and all. The
+// strokes are the code's, drawn by the drivers. The code of src/ imports its modules by the names
+// of their builds, so the reader comes through Vite's loader, as scripts/page.ts takes the tasks.
 
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -23,10 +22,10 @@ import type { Sample } from "../src/eval/sample.ts";
 import { CHILD_CODE } from "./watch.ts";
 
 /** The version of the measurement's set of texts a release build carries: the current one of spec's
- * legal part at the tag spec/ stands on, which scripts/page.test.ts holds the build to (T102). */
+ * legal part at the tag spec/ stands on, which scripts/page.test.ts holds the build to. */
 export const RELEASE_TEXTS = "measure-3";
 
-/** Which build a folder's files came from: the test build's folders end in -test (T22). */
+/** Which build a folder's files came from: the test build's folders end in -test (R65). */
 export type Built = "release" | "test";
 
 /** The build of a run's folder, by its name. */

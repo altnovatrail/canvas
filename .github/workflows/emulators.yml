@@ -1,18 +1,18 @@
-# The probe of a page opened from a file, in an emulator or a browser on a runner of GitHub (T74
-# and T80 in RUN.md; R54 in docs/decisions.md): no tablets of the author's own, so the emulators
-# stand in for them, in the software they run. Each job builds the probe, hands its files out from
-# the runner as a release of GitHub does, and lets the browser download and open them; screenshots,
-# trees and reports are its artifact. Android runs in the toolchain stage of
-# .devcontainer/Dockerfile; the runners of macOS have no Docker, so their jobs take the Dockerfile's
-# Node through setup-node. The pen, the palm and iCloud need real tablets: debt Д7 in run/DEBT.md.
+# The probe of a page opened from a file, in an emulator or a browser on a runner of GitHub (R54):
+# no tablets of the author's own, so the emulators stand in for them, in the software they run.
+# Each job builds the probe, hands its files out from the runner as a release of GitHub does, and
+# lets the browser download and open them; screenshots, trees and reports are its artifact.
+# Android runs in the toolchain stage of .devcontainer/Dockerfile; the runners of macOS have no
+# Docker, so their jobs take the Dockerfile's Node through setup-node. The pen, the palm and iCloud
+# need real tablets.
 name: Emulators
 
 on:
   pull_request:
     paths:
-      # The probe alone: it has answered its question (T29, T74, T80), and a change of the drivers'
-      # shared parts in emulators/ is checked by the samples page's workflow, page.yml, which takes
-      # them every time. The probe runs on them by workflow_dispatch when it is wanted (T81).
+      # The probe alone: it has answered its question, and a change of the drivers' shared parts in
+      # emulators/ is checked by the samples page's workflow, page.yml, which takes them every
+      # time. The probe runs on them by workflow_dispatch when it is wanted.
       - "probe/**"
       - ".github/workflows/emulators.yml"
       # The toolchain stage the job runs the probe in. spec's toolchain.sh, which builds or loads
@@ -40,10 +40,10 @@ jobs:
           persist-credentials: false
           submodules: true
 
-      # The probe needs nothing but Node: no npm ci. The toolchain stage comes from the cache, by the
-      # key, the file and the image of page.yml and .github's shared workflows, which a push to main
-      # fills (R57). This workflow runs on no push, so it saves nothing: spec's script loads the file
-      # and removes it, or, handed no file, only builds — the emulator wants the disk.
+      # The probe needs nothing but Node: no npm ci. The toolchain stage comes from the cache, by
+      # the key, the file and the image of page.yml and .github's shared workflows, which a push to
+      # main fills (R57). This workflow runs on no push, so it saves nothing: spec's script loads
+      # the file and removes it, or, handed no file, only builds — the emulator wants the disk.
       - name: Toolchain image from the cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -109,7 +109,7 @@ jobs:
 
   # The iPad Simulator on both iPadOS the volunteers may have: 27, on the image GitHub still calls a
   # public preview, and 26.5 on the stable one. WebDriverAgent, built from its tag by the image's
-  # Xcode or taken from the cache of that build (R80), taps for the driver (T80).
+  # Xcode or taken from the cache of that build (R80), taps for the driver.
   ipad:
     name: iPad ${{ matrix.ios }}
     runs-on: ${{ matrix.runner }}
@@ -194,7 +194,7 @@ jobs:
           if-no-files-found: error
 
   # Safari on macOS, the file opened from the Downloads folder as Finder opens it, through the
-  # system's safaridriver (T80).
+  # system's safaridriver.
   safari:
     name: Safari on macOS
     runs-on: macos-26

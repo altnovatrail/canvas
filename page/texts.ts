@@ -1,12 +1,11 @@
-// Every text the samples page's script writes, in one place (T81 in RUN.md; R56 in
-// docs/decisions.md); the template, page/index.html, holds the few words that never change — the
-// heading and two labels — so that a reader of the template sees them. The screens are in Russian
-// alone, and a translation by the rules of UI packages' translations (R91 spec; epic E10 in RUN.md)
-// goes here and there. A notice is no text of the page's: it comes from spec's release,
-// legal-<n>.tar.gz, in English, with its gist in Russian (T89; R130 spec; R69). The statements and
-// where the file goes are the page's words, here.
+// Every text the samples page's script writes, in one place (R56); the template, page/index.html,
+// holds the few words that never change — the heading and two labels — so that a reader of the
+// template sees them. The screens are in Russian alone, and a translation by the rules of UI
+// packages' translations (R91 spec) goes here and there. A notice is no text of the page's: it
+// comes from spec's release, legal-<n>.tar.gz, in English, with its gist in Russian (R130 spec;
+// R69). The statements and where the file goes are the page's words, here.
 
-/** The kinds of task the samples page offers (T21): a sheet, an essay — a sheet whose answer is the
+/** The kinds of task the samples page offers (R62): a sheet, an essay — a sheet whose answer is the
  * whole sheet — and a workbook's page. */
 export type TaskKind = "sheet" | "essay" | "workbook";
 
@@ -30,7 +29,7 @@ export const LACKS = {
     "Сочинение отмечено как непрочитываемое, а текст вписан: уберите текст или отметку.",
 } as const;
 
-/** What the start still lacks before writing (T20, T84): the purpose, the code, the statements. */
+/** What the start still lacks before writing (R58, R59): the purpose, the code, the statements. */
 export const START_LACKS = {
   purpose: "Выберите, для чего образец.",
   code: "Введите свой код писавшего или попросите новый.",
@@ -42,8 +41,7 @@ export const START_LACKS = {
   statements: "Отметьте все заявления: без них дальше нельзя.",
 } as const;
 
-/** Why a purpose is closed, or what an open one is limited to (T20, T89; docs/architecture.md,
- * 3.6). */
+/** Why a purpose is closed, or what an open one is limited to (R58, R69). */
 export const PURPOSE_NOTES = {
   measurementNoSet: "Закрыт, пока текст согласия на образцы замера не утверждён.",
   evalSetNoSet:
@@ -54,7 +52,7 @@ export const PURPOSE_NOTES = {
     "Закрыт, пока текст согласия на него не утверждён: образец ребёнка делается только по утверждённой форме родителя или опекуна.",
 } as const;
 
-/** The statements without which the adult goes no further (T20, T84, T89): of age, and of the
+/** The statements without which the adult goes no further (R58, R59, R69): of age, and of the
  * right to make the agreement where the adult lives (П-6; R124 spec), and of the form of the set's
  * version, signed and accepted — for a child's session, the parent's or guardian's (П-10). */
 export const STATEMENTS = {
@@ -65,8 +63,8 @@ export const STATEMENTS = {
 } as const;
 
 /** Where the file goes once it is saved, as each set's notice says (R125 spec, R126 spec): by the
- * organizer's upload link, which works for 12 hours at most from the session (the 2026-11-13
- * amendment to R125 spec), and then off the device. */
+ * organizer's upload link, which works for 12 hours at most from the session (R125 spec), and then
+ * off the device. */
 export const HAND_OVER = {
   measurement:
     "Отправьте файл организатору замера по ссылке на загрузку, которую он дал: она работает не дольше 12 часов. Когда организатор получит файл, сотрите его с устройства.",
@@ -83,7 +81,7 @@ export const TEXTS = {
   version: (version: string) => `Версия страницы: ${version}.`,
   github: "Страницу скачивают с GitHub, и GitHub видел IP-адрес того, кто её скачал.",
   purpose: { measurement: "замер", evalSet: "eval-набор модуля", child: "сеанс образца ребёнка" },
-  /** The step of the code, for an adult's own code and for a child's (T84). The template holds the
+  /** The step of the code, for an adult's own code and for a child's (R59). The template holds the
    * adult's words too, so that every label has its text before the script runs. */
   code: {
     measurement: {
@@ -104,34 +102,33 @@ export const TEXTS = {
   newChildCode: (code: string, version: string) =>
     `Новый код ребёнка: ${code}. Впишите его в форму согласия родителя или опекуна версии ${version}: по нему отзывают согласие и удаляют образцы ребёнка. Страница его не запомнит.`,
   notice: (purpose: string, version: string) => `Уведомление: ${purpose}, тексты версии ${version}`,
-  /** A legal text's gist in Russian, before the English text, which is the one in force (privacy 7
-   * spec; R116 spec). */
+  /** A legal text's gist in Russian, before the English text, which is the one in force (R116 spec,
+   * R130 spec). */
   gist: (gist: string) => `Коротко: ${gist}`,
   inEnglish: "Ниже — полный текст уведомления. Действует он, на английском языке.",
   summary: (purpose: string, code: string | undefined, version: string, child = false) =>
     `${purpose}${code ? `, ${child ? "код ребёнка" : "код писавшего"} ${code}` : ""}, тексты версии ${version}.`,
-  /** Who writes and who marks up in a child's session (docs/architecture.md, 3.6). */
+  /** Who writes and who marks up in a child's session (R59). */
   childWrites: "Пишет ребёнок. Размечаете вы — со слов ребёнка, после письма.",
-  /** Where Safari on an iPad puts a download, which the page cannot see (В30; the 2026-10-22
-   * addition to П-10): Apple's guide to iPadOS 27, «Customize your Safari settings on iPad», read
-   * 2026-11-09, in English: its Russian page did not show the passage. */
+  /** Where Safari on an iPad puts a download, which the page cannot see; its menu named in English
+   * too, for the Russian page of Apple's guide did not show the passage (R59). */
   ipadDownloads:
     "На iPad проверьте до сохранения, куда Safari кладёт загрузки: «Настройки» → «Приложения» → Safari → «Загрузки» (Settings → Apps → Safari → Downloads). Нужно «На iPad» (On My iPad), а не iCloud Drive: иначе файл ребёнка уйдёт в облако Apple.",
   restart:
     "Назначение, код и заявления можно сменить только новым открытием страницы, а написанное не сохранено. Начать заново?",
   offline:
     "Страница работает без сети: всё, что ей нужно, — в этом файле. Образец сохраняется файлом на этом устройстве.",
-  /** What the picker calls a task, by its kind (T21): a sheet whose answer is the whole sheet is an
+  /** What the picker calls a task, by its kind (R62): a sheet whose answer is the whole sheet is an
    * essay. */
   taskKind: { sheet: "Лист", essay: "Сочинение", workbook: "Тетрадь" } satisfies Record<
     TaskKind,
     string
   >,
   task: (kind: string, id: string) => `${kind}: ${id}`,
-  /** A template's instance, by its seed (T101). */
+  /** A template's instance, by its seed (R71). */
   instance: (kind: string, id: string, seed: string) => `${kind}: ${id}, зерно ${seed}`,
   bank: (path: string) => `Банк ${path}`,
-  /** The group of a module's tasks, which only an eval set takes (T101). */
+  /** The group of a module's tasks, which only an eval set takes (R71). */
   module: (module: string) => `Модуль ${module}`,
   writer: "Кто писал:",
   writerOwn: "взрослый, своим почерком",
@@ -155,7 +152,8 @@ export const TEXTS = {
   partText: "Что написано (рисунок — словами, со всеми числами и подписями):",
   crossedOut: "зачёркнута",
   illegible: "написана неразборчиво нарочно",
-  /** The same flag in a child's session: whether on purpose, the adult marking it up cannot know. */
+  /** The same flag in a child's session: whether on purpose, the adult marking it up cannot
+   * know. */
   illegibleChild: "написана неразборчиво — не прочесть и со слов ребёнка",
   finalAnswer: "итоговый ответ задачи",
   firstError: "Первая ошибка в решении:",
@@ -175,9 +173,9 @@ export const TEXTS = {
   lacks: "Чтобы сохранить, осталось:",
   startLacks: "Чтобы начать, осталось:",
   leave: "Написанное не сохранено. Перейти к другой задаче?",
-  /** An essay's markup (T21): its text as written, the writer's mistakes kept, or that it cannot be
-   * read as a whole; the marks of its criteria are the organizer's, after the writing (spec's
-   * contracts/README.md, «The markup»). */
+  /** An essay's markup (R56): its text as written, the writer's mistakes kept, or that it cannot
+   * be read as a whole; the marks of its criteria are the organizer's, after the writing
+   * (R95 spec). */
   essayText: "Текст сочинения, как написан, — с ошибками, с переносами строк:",
   essayIllegible: "сочинение не прочесть целиком",
   essayMarks: "Оценки критериев ставит организатор после письма — страница их не ставит.",
@@ -185,7 +183,7 @@ export const TEXTS = {
   boxFrame: (box: string) => `Окошко ${box}`,
 } as const;
 
-/** The words of the mode that opens a sample file (T87; R64): what the file says, field by field,
+/** The words of the mode that opens a sample file (R64): what the file says, field by field,
  * and what the page does with it — nothing but show it. */
 export const OPEN = {
   about:

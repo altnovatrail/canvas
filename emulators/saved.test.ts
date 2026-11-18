@@ -1,7 +1,6 @@
-// The check of the files the samples page saved in the emulators (T78 in RUN.md; R54, R55 in
-// docs/decisions.md), on the example samples of examples/, which the code wrote (R48), made the
-// page's own: by a person, of its measurement's set in force and of one opening's code; and, of the test build,
-// a child's session (T22; R59).
+// The check of the files the samples page saved in the emulators (R54, R55), on the example samples
+// of examples/, which the code wrote (R48), made the page's own: by a person, of its measurement's
+// set in force and of one opening's code; and, of the test build, a child's session (R59, R65).
 
 import { readFileSync } from "node:fs";
 import { PersonSchema, Writer } from "@altnovatrail/contracts/novatrail/eval/v1/sample_pb.js";

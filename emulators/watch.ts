@@ -1,11 +1,11 @@
-// What the drivers of the samples page watch in it (T78 in RUN.md; R54 in docs/decisions.md), in
-// Chrome on Android and in Safari in the iPad Simulator alike: the policy's violations, the page's
-// errors, the requests it made and the files it handed to a download. The watch is a script that
-// runs before the page's own: on Android DevTools puts it into the page, and for Safari, which no
-// WebDriver lets a script into before the page's own, it is written into a copy of the page,
-// its hash beside the script's in the policy (watched()). A driver's own scripts run outside the
-// page's policy. Nothing of the page's own changes: the spies on Blob and URL.createObjectURL only
-// keep a copy of the text of each blob the page hands to a link.
+// What the drivers of the samples page watch in it (R54), in Chrome on Android and in Safari in the
+// iPad Simulator alike: the policy's violations, the page's errors, the requests it made and the
+// files it handed to a download. The watch is a script that runs before the page's own: on Android
+// DevTools puts it into the page, and for Safari, which no WebDriver lets a script into before the
+// page's own, it is written into a copy of the page, its hash beside the script's in the policy
+// (watched()). A driver's own scripts run outside the page's policy. Nothing of the page's own
+// changes: the spies on Blob and URL.createObjectURL only keep a copy of the text of each blob the
+// page hands to a link.
 
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -15,16 +15,16 @@ import { hash } from "../scripts/csp.ts";
 export const TITLE = "NovaTrail — страница образцов";
 /** The save button's text, as the screen shows it. */
 export const SAVE = "Сохранить образец";
-/** The tasks the build offers before the start — every task of tutor's file (T21), then the 769 of
- * modules the copy of their open views gives a kind (T101) — and the first of the workbook among
+/** The tasks the build offers before the start — every task of tutor's file (R62), then the 769 of
+ * modules the copy of their open views gives a kind (R71) — and the first of the workbook among
  * them, after the banks of sheets of tutor's file (scripts/page.ts). */
 export const TASKS = 825;
 export const WORKBOOK = "16";
 
 /** The build the workflow's build job wrote with scripts/page.ts. */
 export const BUILD = "build/page";
-/** The test build, with the legal texts' part for tests alone (T84, T89; R59, R69), as the workflow
- * serves it: its file named apart, for Chrome keeps both downloads in one list (T22). */
+/** The test build, with the legal texts' part for tests alone (R59, R69), as the workflow serves
+ * it: its file named apart, for Chrome keeps both downloads in one list (R65). */
 export const TEST_BUILD = "build/page-test-served";
 
 /** The page's one file among a build's. */
@@ -61,7 +61,7 @@ export const WATCH = `(() => {
   addEventListener("error", (event) => { watch.errors.push(String(event.message).slice(0, 200)); });
   addEventListener("unhandledrejection", (event) => { watch.errors.push(String(event.reason).slice(0, 200)); });
   // The text of a blob made of strings, kept as it is made: reading the blob back races Safari's
-  // download of it, which fails the read (T78).
+  // download of it, which fails the read.
   const texts = new WeakMap();
   const Native = Blob;
   window.Blob = class extends Native {
@@ -113,7 +113,7 @@ export function boxOf(selector: string): string {
 /** A script that asks the page for two frames of its rendering and marks when the second has come,
  * and one that says whether it has: the element the picker gave lays itself out only in a frame,
  * and Safari of the iPad Simulator has drawn none for seconds after the picker changed, so that a
- * stroke drawn then found no element laid out to take it (run 42704340066, T21). */
+ * stroke drawn then found no element laid out to take it. */
 export const PAINT =
   "(window.__canvasPainted = false, requestAnimationFrame(() => requestAnimationFrame(() => { window.__canvasPainted = true; })), 0)";
 export const PAINTED = "window.__canvasPainted === true";
@@ -125,9 +125,9 @@ export function blobAt(index: number): string {
 
 /** A script that draws a stroke on the element by pointer events of the page's own, from one point
  * of the window to another, of a pointer's type: what the iPad's driver draws with, for WebDriver's
- * actions in Safari of the simulator reached a window other than the session's, or hung (T81). The
+ * actions in Safari of the simulator reached a window other than the session's, or hung (R65). The
  * element takes them as it takes a finger's; what a real pen or palm does is the hardware's to
- * show (Д7 in run/DEBT.md). It gives the strokes the sheet holds then. */
+ * show. It gives the strokes the sheet holds then. */
 export function strokeBy(
   from: readonly [number, number],
   to: readonly [number, number],
@@ -140,7 +140,7 @@ export function strokeBy(
 /** A script that moves pointers of the page's own over the element together, each from its point
  * to its own, and ends them all with one kind of event: one pointer is a stroke, ended by
  * pointerup or, as a browser that takes the touch back ends it, by pointercancel; two of a touch
- * are the fingers that scroll the sheet (R29; T22). It gives the strokes the sheet holds then. */
+ * are the fingers that scroll the sheet (R29, R65). It gives the strokes the sheet holds then. */
 export function pointersBy(
   paths: readonly (readonly [readonly [number, number], readonly [number, number]])[],
   type: "touch" | "pen" | "mouse",
@@ -183,7 +183,7 @@ function rowButton(label: string): string {
 }
 
 /** A script that presses a button of the element's row by its own click(), as the iPad's driver
- * presses the page's buttons (T81); whether there was one. */
+ * presses the page's buttons (R65); whether there was one. */
 export function clickButton(label: string): string {
   return `(() => {
   const button = ${rowButton(label)};
@@ -229,9 +229,9 @@ export const AS_CHILD = `(() => {
   return radio?.checked === true;
 })()`;
 
-/** A script that reads the test build's start before anything is chosen (T22; R58, R59): the eval
+/** A script that reads the test build's start before anything is chosen (R58, R59, R65): the eval
  * set open with no note, for the part for tests has its set in force and the build the tasks of
- * modules (T101), and the measurement and a child's session open, as JSON. */
+ * modules (R71), and the measurement and a child's session open, as JSON. */
 export const TEST_START = `JSON.stringify((() => {
   const radio = (value) => document.querySelector('input[name="purpose"][value="' + value + '"]');
   return {
@@ -246,9 +246,9 @@ export const TEST_START = `JSON.stringify((() => {
 export const CHILD_CODE = "T22CHILD";
 
 /** A script that goes through the start of a child's session as the adult who leads it would
- * (T84; R59): the session chosen, the statements ticked, a new code asked — which the page shows
- * for a form and begins nothing with — and then the form's code typed, and «Начать». What came of
- * each, as JSON. */
+ * (R59): the session chosen, the statements ticked, a new code asked — which the page shows for a
+ * form and begins nothing with — and then the form's code typed, and «Начать». What came of each,
+ * as JSON. */
 export const CHILD_START = `JSON.stringify((() => {
   const input = (field, value) => {
     field.value = value;
@@ -281,14 +281,14 @@ export const CHILD_START = `JSON.stringify((() => {
 export const CHILD_FLAG = `(document.querySelector('[data-part="0"] input[data-flag="illegible"]')?.parentElement?.textContent ?? "").includes("со слов ребёнка")`;
 
 /** A script that opens the page anew, as a person does to begin again (R11): the start, with the
- * section that opens a file below it (T87). */
+ * section that opens a file below it (R64). */
 export const REOPEN = "(setTimeout(() => location.reload(), 0), 0)";
 
 /** Whether the page shows its start and the section that opens a sample file. */
 export const OPEN_SHOWN = `document.getElementById("start")?.hidden === false && document.getElementById("open")?.hidden === false`;
 
 /** A script that gives the section of the page that opens a file a sample's text as a file chosen
- * (T87): the page's own way to read it, not the system's picker, which only hardware shows (Д7).
+ * (R64): the page's own way to read it, not the system's picker, which only hardware shows (R65).
  * The text is the script's first argument where the driver passes one, or else in it. */
 export function chooseFile(text?: string): string {
   const given = text === undefined ? "arguments[0]" : JSON.stringify(text);
@@ -302,7 +302,7 @@ export function chooseFile(text?: string): string {
 })()`;
 }
 
-/** What the page shows of a sample file it opened (T87), as JSON: whether the view is there, how
+/** What the page shows of a sample file it opened (R64), as JSON: whether the view is there, how
  * many strokes it draws as shown and as not shown at the end, whether its checkbox of those is
  * there, and how many crops it shows and how many of them the browser has decoded. */
 export const VIEWED = `JSON.stringify((() => {
@@ -338,9 +338,8 @@ export const SHOW_HIDDEN = `(() => {
 })()`;
 
 /** A script that goes through the page's start as an adult would under the measurement's set in
- * force (T20, T102):
- * the measurement, a new writer's code, every statement ticked, and «Начать». Whether the sheet is
- * there then: false while the start lacks something. */
+ * force (R58, R72): the measurement, a new writer's code, every statement ticked, and «Начать».
+ * Whether the sheet is there then: false while the start lacks something. */
 export const START = `(() => {
   document.querySelector('input[name="purpose"][value="measurement"]').click();
   document.querySelector('input[name="code"][value="new"]').click();
@@ -421,7 +420,7 @@ export interface Box {
 
 /** A stroke inside the part of an element the window shows: from a point a fifth into it to one
  * a little lower and to the right, as in the build's own test; the second stroke of a sheet to the
- * right of the first, apart from it (T22). None when the window shows less than a strip of it. */
+ * right of the first, apart from it (R65). None when the window shows less than a strip of it. */
 export function strokeIn(
   box: Box,
   second = false,
@@ -561,7 +560,7 @@ export function served(folder: string, file: string): { step: string; ok: boolea
  * script's in its policy: nothing else of it changes. Safari in the simulator opens this copy,
  * since no WebDriver of it can put a script into a page before the page's own runs, and a
  * violation of the page's first moment would go unseen: Safari's ReportingObserver gives no
- * report from before it came (T78). */
+ * report from before it came. */
 export function watched(page: string): string {
   const at = page.indexOf("<script>");
   if (at < 0 || page.indexOf("<script>", at + 1) >= 0)

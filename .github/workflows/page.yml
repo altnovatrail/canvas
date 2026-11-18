@@ -1,17 +1,16 @@
-# The samples page in the emulators, on each pull request that changes what goes into it (T78 in
-# RUN.md; R54, R55 in docs/decisions.md): no tablets of the author's own, so the emulators stand in
-# for them, in the software they run. Each device's job builds the page itself, so that none waits
-# for another (T81); Chrome in an Android emulator downloads it and opens it from the download,
-# and Safari in the iPad Simulator opens it from the runner — a page opened from a file does not
-# run on an iPad (В64 in RUN.md). In each the driver goes through the page's start (T20), draws a
-# stroke, marks it up through the page's form, saves the sheet's and the workbook's samples, and
-# sees that the page asked for nothing and broke no rule of its policy; the saved files are then
-# read as sample files and held to the protocol by spec's sample-check (T81). The strokes are the
-# code's: no handwriting goes into a run. The pen, the palm and iCloud need real tablets: debt Д7
-# in run/DEBT.md.
+# The samples page in the emulators, on each pull request that changes what goes into it (R54,
+# R55): no tablets of the author's own, so the emulators stand in for them, in the software they
+# run. Each device's job builds the page itself, so that none waits for another; Chrome in an
+# Android emulator downloads it and opens it from the download, and Safari in the iPad Simulator
+# opens it from the runner — a page opened from a file does not run on an iPad. In each the driver
+# goes through the page's start, draws a stroke, marks it up through the page's form, saves the
+# sheet's and the workbook's samples, and sees that the page asked for nothing and broke no rule of
+# its policy; the saved files are then read as sample files and held to the protocol by spec's
+# sample-check. The strokes are the code's: no handwriting goes into a run. The pen, the palm and
+# iCloud need real tablets.
 #
 # The workflow runs on every pull request, with Android alone, and with the iPad too on a push to
-# main, of the same paths, and by hand (T20): main holds the cache of the toolchain stage every pull
+# main, of the same paths, and by hand: main holds the cache of the toolchain stage every pull
 # request reads (R57), and its run checks the iPad before a release. Its first job decides whether
 # the emulators have anything to check: a skipped job counts as a success, so the one check main
 # requires, the last job, stands on every pull request, and one of the documents alone waits for
@@ -80,14 +79,14 @@ jobs:
           echo "$changed"
           echo "page=$([[ -n "$changed" ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
-  # The tablet of Android 16 of the probe (T74). The page is built here, as the release builds it:
+  # The tablet of Android 16 of the probe. The page is built here, as the release builds it:
   # scripts/page.ts in the toolchain stage, from the tree, with nothing but the packages the lock
   # file pins, its version none of a release. It is downloaded from the runner's server as from a
   # release of GitHub, where the emulator reaches it on its own localhost through adb reverse
   # (emulators/android.sh). The files it saved are read and held to the protocol here too, in the
-  # same stage. The test build, with the legal texts' part for tests alone (T89), goes the same
-  # way after the release's, a child's session on it (T22; R65), and is kept as an artifact of its
-  # own (T84; R58, R59): no release carries it.
+  # same stage. The test build, with the legal texts' part for tests alone, goes the same way after
+  # the release's, a child's session on it (R65), and is kept as an artifact of its own (R58,
+  # R59): no release carries it.
   android:
     name: Android
     needs: changes
@@ -105,9 +104,9 @@ jobs:
       # everything it installs by exact version, digest, sha256 and snapshot, so the image the cache
       # holds is the one it builds. The key, the file and the image novatrail-toolchain are those of
       # .github's shared workflows and spec's toolchain.sh, which builds it here too, so that every
-      # workflow keeps one entry (R42 .github; the T116 amendment to R57). Only a push to main saves
-      # it, the entry every pull request reads; a pull request's would serve its own re-runs alone.
-      # Saved as soon as it is built, so that a run whose emulator fails later still fills it.
+      # workflow keeps one entry (R42 .github; R57). Only a push to main saves it, the entry every
+      # pull request reads; a pull request's would serve its own re-runs alone. Saved as soon as it
+      # is built, so that a run whose emulator fails later still fills it.
       - name: Toolchain image from the cache
         id: toolchain
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -140,7 +139,7 @@ jobs:
         run: rm -f -- "$RUNNER_TEMP/novatrail-toolchain.tar"
 
       # Both builds and their servers: the release's on 8080, the test build's on 8081, its file
-      # named apart, for Chrome keeps both downloads in one list (T22).
+      # named apart, for Chrome keeps both downloads in one list.
       - name: Pages and their servers
         run: |
           mkdir -p build/page-android build/page-android-test
@@ -176,8 +175,7 @@ jobs:
           script: bash emulators/android.sh emulators/page-android.ts build/page-android
 
       # Read as the page's own — its purpose, writer, versions and one writer's code, a child's
-      # under the test build (T22) — and held to the protocol by spec's sample-check, markup and all
-      # (T81).
+      # under the test build — and held to the protocol by spec's sample-check, markup and all.
       - name: Saved files
         run: |
           docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp \
@@ -204,8 +202,8 @@ jobs:
           if-no-files-found: warn
 
       # The test build, whose screens of the eval set and of a child's session the release keeps
-      # closed, kept as built above: its file has the release build's name, samples-page_v0.0.0.html,
-      # so the artifact's name tells them apart.
+      # closed, kept as built above: its file has the release build's name,
+      # samples-page_v0.0.0.html, so the artifact's name tells them apart.
       - name: Test build kept
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -217,13 +215,13 @@ jobs:
 
   # Safari in the iPad Simulator, iPadOS 26.5 on the stable image, with the image's own Xcode:
   # safaridriver loses Simulator.app after a switch by xcode-select. Not iPadOS 27: on the image
-  # xcode-27 safaridriver finds no session host in the simulator (T78), and the probe alone runs
-  # there, through WebDriverAgent (T80). The runners of macOS have no Docker, so the page is built
-  # with the Dockerfile's Node through setup-node, from the same tree and lock file.
+  # xcode-27 safaridriver finds no session host in the simulator, and the probe alone runs there,
+  # through WebDriverAgent. The runners of macOS have no Docker, so the page is built with the
+  # Dockerfile's Node through setup-node, from the same tree and lock file.
   #
-  # Not on a pull request (В66 in RUN.md, answered by the author at T20's planning): the job takes
-  # 7 to 10 minutes and as many again waiting for a runner of macOS, while its driver works two; a
-  # pull request waits for Android alone, and a fault only Safari sees shows on main before a release.
+  # Not on a pull request (R54): the job takes 7 to 10 minutes and as many again waiting for
+  # a runner of macOS, while its driver works two; a pull request waits for Android alone, and a
+  # fault only Safari sees shows on main before a release.
   ipad:
     name: iPad 26.5
     needs: changes

@@ -1,14 +1,14 @@
-// The steps before writing on the samples page (T20, T84, T89 in RUN.md; R11, R58, R59, R69 in
-// docs/decisions.md; docs/architecture.md, section 3.6): which purposes the build's sets of texts
-// and its tasks open — a child's session among them — and why the others are closed, the
-// statements each asks for, the writer's code the person types, and what the start still lacks.
-// No DOM: page/main.ts shows what this decides, and every word is page/texts.ts's or a set's.
+// The steps before writing on the samples page (R11, R58, R59, R69): which purposes the build's
+// sets of texts and its tasks open — a child's session among them — and why the others are
+// closed, the statements each asks for, the writer's code the person types, and what the start
+// still lacks. No DOM: page/main.ts shows what this decides, and every word is page/texts.ts's or
+// a set's.
 
 import type { LegalSet, PageTexts } from "./sets.js";
 import { HAND_OVER, PURPOSE_NOTES, START_LACKS, STATEMENTS } from "./texts.js";
 
 /** What a start begins: the measurement or a module's eval set, which an adult writes for, or a
- * child's session, whose samples are of the measurement, written by the child (T84). */
+ * child's session, whose samples are of the measurement, written by the child (R59). */
 export type PurposeKey = "measurement" | "evalSet" | "child";
 
 /** A purpose as the start offers it: open or not, and a word on why. */
@@ -21,10 +21,9 @@ export interface Offered {
 
 /** The purposes under a build's texts, for a build with or without tasks of modules, a child's
  * session last. Each opens with a current set of its own (R130 spec): the author approves the
- * adults' and a child's consent apart, and one with none is closed (T102). The eval set opens only
- * where the build has tasks of modules too:
- * a module's eval set takes samples of its own module's tasks alone (contracts/README.md of spec,
- * «Eval sets»), and a sample of a task of tutor would be refused there. */
+ * adults' and a child's consent apart, and one with none is closed (R72). The eval set opens only
+ * where the build has tasks of modules too: a module's eval set takes samples of its own module's
+ * tasks alone (R95 spec), and a sample of a task of tutor would be refused there. */
 export function purposes(texts: PageTexts, moduleTasks: boolean): Offered[] {
   const closed = (key: PurposeKey, note: string): Offered => ({ key, open: false, note });
   let evalSet: Offered = { key: "evalSet", open: true };

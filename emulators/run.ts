@@ -1,9 +1,9 @@
-// The journal of a run in an emulator or a simulator (R54 in docs/decisions.md): the probe's
-// drivers (T74, T80 in RUN.md) and the samples page's (T78) write it alike. Each step says what it
-// did, whether it did it, and whose failure a failed step is: the device's — the emulator, the
-// browser, the download, the driver's way into the page — or the page's own. A failure of the
-// device may be the runner's luck and earns one more pass; a failure of the page never does. The
-// log goes to the console and to the run's folder, which the workflow keeps as its artifact.
+// The journal of a run in an emulator or a simulator (R54): the probe's drivers and the samples
+// page's write it alike. Each step says what it did, whether it did it, and whose failure a failed
+// step is: the device's — the emulator, the browser, the download, the driver's way into the page
+// — or the page's own. A failure of the device may be the runner's luck and earns one more pass; a
+// failure of the page never does. The log goes to the console and to the run's folder, which the
+// workflow keeps as its artifact.
 
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";

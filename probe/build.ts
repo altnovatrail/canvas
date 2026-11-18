@@ -1,5 +1,5 @@
-// The two files of the probe of a page opened from a file (T29 in RUN.md; R52 in
-// docs/decisions.md), from one source, probe/page.html with probe/probe.js inline:
+// The two files of the probe of a page opened from a file (R52), from one source, probe/page.html
+// with probe/probe.js inline:
 //
 //   node probe/build.ts <folder>
 //
@@ -8,7 +8,7 @@
 // none, so that a request it makes shows whether the network or the policy stopped it. One source
 // keeps the two from drifting apart, and the hashes are worked out rather than typed. Nothing of
 // the probe is in the package or in a release's paths: a probe goes out as a pre-release of its own
-// (T29). Run from the repository's root, as the recipes run their scripts.
+// (R52). Run from the repository's root, as the recipes run their scripts.
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";

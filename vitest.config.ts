@@ -1,13 +1,13 @@
-// The tests, in three projects (R12 in docs/decisions.md). The DOM-free part, the sample file of
-// src/eval/, the scripts, the probe of a page opened from a file (R52) and the drivers of the
-// emulators (R54) run in Node: the probe's test drives Chrome Headless Shell itself, by file://
-// addresses, which a browser project never opens. The element runs in the three engines CI checks
-// — Chrome Headless Shell, WebKit and Firefox from the toolchain stage of .devcontainer/Dockerfile,
-// through Playwright (R13, R79 spec) — and once more with forced colours, a mode of the browser's
-// context that only its own file runs in, in Chromium and Firefox: WebKit has none to emulate
-// (R23). Each instance's name ends in its engine, which ci-test and ci-engines pick the runs by:
-// Vitest's v8 coverage works in Chromium alone, so WebKit and Firefox run apart, without it. Each project names its own files: the spec submodule beside
-// them has tests of its own, which are not canvas's.
+// The tests, in three projects (R12). The DOM-free part, the sample file of src/eval/, the
+// scripts, the probe of a page opened from a file (R52) and the drivers of the emulators (R54) run
+// in Node: the probe's test drives Chrome Headless Shell itself, by file:// addresses, which a
+// browser project never opens. The element runs in the three engines CI checks — Chrome Headless
+// Shell, WebKit and Firefox from the toolchain stage of .devcontainer/Dockerfile, through
+// Playwright (R13, R79 spec) — and once more with forced colours, a mode of the browser's context
+// that only its own file runs in, in Chromium and Firefox: WebKit has none to emulate (R23). Each
+// instance's name ends in its engine, which ci-test and ci-engines pick the runs by: Vitest's v8
+// coverage works in Chromium alone, so WebKit and Firefox run apart, without it. Each project
+// names its own files: the spec submodule beside them has tests of its own, which are not canvas's.
 import { playwright } from "@vitest/browser-playwright";
 import { defaultExclude, defineConfig } from "vitest/config";
 
@@ -16,12 +16,12 @@ const FORCED_COLOURS = "src/element/forced-colors.test.ts";
 export default defineConfig({
   test: {
     // The coverage of the tests, which ci-test asks for by --coverage and .github's TypeScript
-    // wrapper sends to Codecov (R43 in docs/decisions.md): one lcov report of all three projects,
-    // coverage/lcov.info, as the wrapper takes it. V8 counts it, in Node and in Chromium alike.
-    // What it covers is the code of src/: the package's, every module of it, those no test loads
-    // too, at zero, and the sample file of src/eval/, which is no part of the package (R48). The
-    // scripts check the package after the tests, and the demo page is tried by hand. WebKit and
-    // Firefox run without coverage, in a run of their own.
+    // wrapper sends to Codecov (R43): one lcov report of all three projects, coverage/lcov.info,
+    // as the wrapper takes it. V8 counts it, in Node and in Chromium alike. What it covers is the
+    // code of src/: the package's, every module of it, those no test loads too, at zero, and the
+    // sample file of src/eval/, which is no part of the package (R48). The scripts check the
+    // package after the tests, and the demo page is tried by hand. WebKit and Firefox run without
+    // coverage, in a run of their own.
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],

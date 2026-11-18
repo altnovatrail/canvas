@@ -1,8 +1,8 @@
-// Waiting for a sign within a time, for the drivers of the emulators (T83 in RUN.md; R54 in
-// docs/decisions.md). A wait counted in tries lasts as long as its tries take: a try of
-// uiautomator's dump takes two or three seconds, and "five seconds" of them took fifteen. A wait
-// here lasts the seconds it is given, however long each try takes, so a device that does not show
-// the sign fails the pass in the time the step allows, and the run's second pass comes sooner.
+// Waiting for a sign within a time, for the drivers of the emulators (R54). A wait counted in tries
+// lasts as long as its tries take: a try of uiautomator's dump takes two or three seconds, and
+// "five seconds" of them took fifteen. A wait here lasts the seconds it is given, however long each
+// try takes, so a device that does not show the sign fails the pass in the time the step allows,
+// and the run's second pass comes sooner.
 
 import { setTimeout as sleep } from "node:timers/promises";
 

@@ -1,9 +1,9 @@
-// An Android emulator and the Chrome on it, as the drivers of the probe (T74 in RUN.md) and of the
-// samples page (T78) use them (R54 in docs/decisions.md). They run in the toolchain stage's
-// container on the runner's network, once android-emulator-runner has the emulator up, with the
-// runner's adb mounted in (emulators/android.sh). A driver taps what a person would tap, by the
-// bounds uiautomator gives each node on the screen, and reads the page through Chrome's DevTools
-// socket, which adb forwards to port 9222. Screenshots go into the run's folder.
+// An Android emulator and the Chrome on it, as the drivers of the probe and of the samples page use
+// them (R54). They run in the toolchain stage's container on the runner's network, once
+// android-emulator-runner has the emulator up, with the runner's adb mounted in
+// (emulators/android.sh). A driver taps what a person would tap, by the bounds uiautomator gives
+// each node on the screen, and reads the page through Chrome's DevTools socket, which adb forwards
+// to port 9222. Screenshots go into the run's folder.
 
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
@@ -19,7 +19,7 @@ const MAIN = `${CHROME}/com.google.android.apps.chrome.Main`;
  * debuggable image from this file; and its bubbles of help over a page opened from a download,
  * enabled by default in Chrome 133 (components/feature_engagement/public/feature_constants.cc,
  * tag 133.0.6943.137): uiautomator reads the bubble's window alone, and the page's button under it
- * was not found for fifty seconds (T83). */
+ * was not found for fifty seconds. */
 const FLAGS =
   "_ --disable-fre --no-default-browser-check --no-first-run --disable-features=IPH_CCTMinimized,IPH_CCTHistory";
 /** Answers that let a download go on or put Chrome's offers away, as a person would give them:
@@ -31,7 +31,7 @@ export const AWAY = /^(Download|Download anyway|Keep|No thanks|Don.t allow|Not n
 export const HOST = "localhost";
 /** The runner's port that emulators/android.sh forwards Chrome's DevTools socket to. */
 const DEVTOOLS_PORT = 9222;
-/** How long an adb command of the recovery may take before it counts as failed (T124). */
+/** How long an adb command of the recovery may take before it counts as failed (R54). */
 const ADB_WAIT = 15_000;
 
 /** A node of uiautomator's dump: its text, its description, its bounds on the screen and, where
@@ -126,7 +126,7 @@ export const PAGE_VIEW = "android.webkit.WebView";
 
 /** The node of the page's own view: a node of Chrome itself, whose bounds hold even while the tree
  * of the page inside it lags behind a scroll — on a first pass it still showed the top of the page
- * when the page had scrolled to its foot (T20). */
+ * when the page had scrolled to its foot. */
 export function pageView(all: readonly Node[]): Node | undefined {
   return all.find(
     ({ className, bounds: [x1, y1, x2, y2] }) => className === PAGE_VIEW && x2 > x1 && y2 > y1,
@@ -134,7 +134,8 @@ export function pageView(all: readonly Node[]): Node | undefined {
 }
 
 /** How the page's CSS pixels lie on the screen, from its view's bounds and the page's ratio of
- * device pixels: a box the page gives is from the corner of its view, as getBoundingClientRect has it. */
+ * device pixels: a box the page gives is from the corner of its view, as getBoundingClientRect has
+ * it. */
 export function placed(view: Node, ratio: number): (x: number, y: number) => [number, number] {
   const [x1, y1] = view.bounds;
   return (x, y) => [Math.round(x1 + x * ratio), Math.round(y1 + y * ratio)];
@@ -259,8 +260,8 @@ export class Android {
     return execFileSync(this.adb, ["shell", command], { encoding: "utf8", maxBuffer: 1 << 26 });
   }
 
-  /** Whether adb reaches the device: a runner's emulator went offline in the middle of a run on
-   * 2026-11-16, twice, and nothing brought it back before the run's end (T124). */
+  /** Whether adb reaches the device: a runner's emulator can go offline in the middle of a run,
+   * and nothing brings it back by itself before the run's end (R54). */
   online(): boolean {
     try {
       const state = execFileSync(this.adb, ["get-state"], {
@@ -281,16 +282,15 @@ export class Android {
   }
 
   /** The forwards emulators/android.sh sets, set again: DevTools to port 9222 and the servers'
-   * ports back to the runner's. A forward goes with the connection it was set on (sources 7.11 in
-   * docs/sources.md), and a device that adb lost may have come back by itself; setting one anew
-   * replaces it. */
+   * ports back to the runner's. A forward goes with the connection it was set on, and a device
+   * that adb lost may have come back by itself; setting one anew replaces it. */
   forward(ports: readonly string[]): void {
     this.adbRun(["forward", `tcp:${DEVTOOLS_PORT}`, "localabstract:chrome_devtools_remote"]);
     for (const port of ports) this.adbRun(["reverse", `tcp:${port}`, `tcp:${port}`]);
   }
 
   /** Chrome stopped, for a pass or a build to begin afresh: the emulator brought back first where
-   * adb has lost it, and the forwards set again either way (T124). */
+   * adb has lost it, and the forwards set again either way (R54). */
   async reset(ports: readonly string[], pause = 3000): Promise<void> {
     if (!this.online()) {
       this.run.log("the emulator is offline: adb reconnects it");
@@ -422,7 +422,7 @@ export class Android {
     this.stopChrome();
     this.view("about:blank");
     // Chrome in front is enough: an empty page shows no words to wait for, and a wait for words
-    // took the whole two minutes of every run (T81).
+    // took the whole two minutes of every run.
     await this.focused(120);
     // Its offers put away until three looks in a row find none.
     let quiet = 0;
@@ -447,7 +447,7 @@ export class Android {
   async openDownload(file: string): Promise<string> {
     const start = Date.now();
     // The seconds after which Chrome's menu is tried, each once, while neither has come: as late
-    // as the fifteenth and thirty-fifth tries of uiautomator came before (T83).
+    // as the fifteenth and thirty-fifth tries of uiautomator came before.
     const menuAt = [45, 90];
     const how = await until(120, async () => {
       const all = this.screen();

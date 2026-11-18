@@ -1,6 +1,6 @@
-// The generator's file (T96 in RUN.md; R68 in docs/decisions.md): one ES module for Node that
-// writes a module's synthetic samples as writeModuleSamples does, byte for byte, with no package of
-// npm beside it, the same bytes on every build, and the license notices of all it carries.
+// The generator's file (R68): one ES module for Node that writes a module's synthetic samples as
+// writeModuleSamples does, byte for byte, with no package of npm beside it, the same bytes on every
+// build, and the license notices of all it carries.
 
 import { execFileSync, spawnSync } from "node:child_process";
 import { copyFileSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
@@ -14,7 +14,7 @@ import { temporary } from "./folders.fixture.ts";
 import { buildGenerator, fileName, header } from "./generator.ts";
 import { moduleDigests, writeModuleSamples } from "./synthetic-module.ts";
 
-/** grade-3-math 0.2.0 of the release of modules v0.2.0, which ci-licenses verifies (T86). */
+/** grade-3-math 0.2.0 of the release of modules v0.2.0, which ci-licenses verifies. */
 const PACKAGE = fileURLToPath(MODULE_PACKAGE);
 
 /** The calls ci-licenses makes: one sample of each task of the package, seeds 201 to 212. */

@@ -1,6 +1,6 @@
 # The samples of the samples page and the device checks: handwriting, with the time and pressure of
-# every stroke. They stay out of git, and no agent opens them: CLAUDE.md, .claude/settings.json and
-# R15 in docs/decisions.md.
+# every stroke. They stay out of git, and no agent opens them: CLAUDE.md, .claude/settings.json
+# (R15).
 /samples/
 
 # What npm ci installs from package-lock.json.

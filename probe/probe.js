@@ -1,9 +1,9 @@
-// The probe of a page opened from a file (T29 in RUN.md; R52 in docs/decisions.md): what the
-// samples page's build would meet once a volunteer has downloaded it from a release and opened it
-// on a device. probe/build.ts puts this script inline into both files of the probe, one with the
-// policy the build would carry and one without it. The report holds only what it may: numbers,
-// flags, the browser's string, the file's name without its folders and the probe's version. No
-// path, no message of an error, no point of a stroke.
+// The probe of a page opened from a file (R52): what the samples page's build would meet once a
+// volunteer has downloaded it from a release and opened it on a device. probe/build.ts puts this
+// script inline into both files of the probe, one with the policy the build would carry and one
+// without it. The report holds only what it may: numbers, flags, the browser's string, the file's
+// name without its folders and the probe's version. No path, no message of an error, no point of
+// a stroke.
 
 /** The probe's version, in the report and in the keys it stores. */
 const PROBE = "2";

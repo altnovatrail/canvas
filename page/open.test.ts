@@ -1,6 +1,6 @@
-// What the samples page shows of a sample file it opens (T87 in RUN.md; R64 in docs/decisions.md),
-// on the synthetic examples of every composition in examples/ (R48): the strokes the file holds and
-// those a history erased, a workbook's boxes, the crops and the markup in words.
+// What the samples page shows of a sample file it opens (R64), on the synthetic examples of every
+// composition in examples/ (R48): the strokes the file holds and those a history erased, a
+// workbook's boxes, the crops and the markup in words.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

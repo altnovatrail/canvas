@@ -1,19 +1,18 @@
-// The samples page (T19, T81 in RUN.md; R55, R56 in docs/decisions.md): a build of its own of the
-// element <novatrail-canvas>, one HTML file that opens from a file on the device and goes to no
-// network (R25 spec; R07, R11). scripts/page.ts builds it and puts the tasks in: every task of
-// tutor's file of open tasks in tasks/, bank by bank (T21; R62), with its open view and the
-// sample's reference to it, worked out at the build (R49). The page takes the element as a
-// consumer does, through its properties and events (the 2026-11-02 amendment to R07), and saves a
-// sample as a file on the device.
+// The samples page (R55, R56): a build of its own of the element <novatrail-canvas>, one HTML
+// file that opens from a file on the device and goes to no network (R25 spec; R07, R11).
+// scripts/page.ts builds it and puts the tasks in: every task of tutor's file of open tasks in
+// tasks/, bank by bank (R62), with its open view and the sample's reference to it, worked out at
+// the build (R49). The page takes the element as a consumer does, through its properties and
+// events (R07), and saves a sample as a file on the device.
 //
-// First the start (T20; R58): the purpose — the measurement, or a module's eval set — as the sets
-// of texts the build carries open them (R11; T89, R69), the writer's code for the measurement,
-// typed or new and never remembered, the purpose's notice and the statements without which the
-// person goes no further. Below the purposes, a child's session (T84; R59): the adult who leads it
-// types the child's code from the form accepted, or asks a new one for a form, without the child.
-// Once begun, they hold for this opening alone: another needs the page opened anew.
+// First the start (R58): the purpose — the measurement, or a module's eval set — as the sets of
+// texts the build carries open them (R11, R69), the writer's code for the measurement, typed or
+// new and never remembered, the purpose's notice and the statements without which the person goes
+// no further. Below the purposes, a child's session (R59): the adult who leads it types the
+// child's code from the form accepted, or asks a new one for a form, without the child. Once
+// begun, they hold for this opening alone: another needs the page opened anew.
 //
-// The writer writes, then marks the writing up (T81): on a sheet, the parts of the solution — the
+// The writer writes, then marks the writing up (R56): on a sheet, the parts of the solution — the
 // element's groups of strokes, which the writer joins — with their texts and flags, the final
 // answer and the first error; on an essay, its text as written; on a workbook, every box. The
 // element frames on the sheet what is being marked, and the page shows the crops the model would
@@ -21,10 +20,10 @@
 // child writes and the adult marks up, from what the child says. The page remembers nothing: not a
 // sheet half written either. Every text is page/texts.ts's or a set's.
 //
-// Below the start, a sample file opens to be looked at (T87; R64): its strokes, drawn from the file
-// alone with what a history erased apart, its crops and its markup in words, for whoever looks in it
-// for a name or a contact before it goes on (R110 spec). Nothing of it is changed, kept or sent, and
-// back to the start is the page opened anew.
+// Below the start, a sample file opens to be looked at (R64): its strokes, drawn from the file
+// alone with what a history erased apart, its crops and its markup in words, for whoever looks in
+// it for a name or a contact before it goes on (R110 spec). Nothing of it is changed, kept or
+// sent, and back to the start is the page opened anew.
 
 import { Purpose, Writer } from "@altnovatrail/contracts/novatrail/eval/v1/sample_pb.js";
 import { cellsOf } from "../src/core/boxes.js";
@@ -87,7 +86,7 @@ interface PageTask {
   readonly bank: string;
   readonly task: Task;
   readonly open: OpenTask;
-  /** The module and version whose manifest and media the task takes, "<ID> <version>" (T101). */
+  /** The module and version whose manifest and media the task takes, "<ID> <version>" (R71). */
   readonly module?: string;
 }
 
@@ -114,7 +113,7 @@ function versionFor(purpose: PurposeKey): string {
   if (version === undefined) throw new TypeError(`the build has no texts for ${purpose}`);
   return version;
 }
-/** Whether a task of the build is a module's: only an eval set takes it, and only it (T101). */
+/** Whether a task of the build is a module's: only an eval set takes it, and only it (R71). */
 const ofModule = ({ open }: PageTask) => open.reference.source?.case === "modules";
 const moduleTasks = data.tasks.some(ofModule);
 
@@ -675,14 +674,14 @@ function current(): { id: string; text: string } | undefined {
   return { id: sample.id, text: sampleText(sample) };
 }
 
-/** Save the sample as a file on the device: a link to a blob of the page's own (T29, T74). */
+/** Save the sample as a file on the device: a link to a blob of the page's own (R55). */
 function save(): void {
   const sample = current();
   if (!sample) return;
   savedAt = sheet?.history.length ?? 0;
   const link = make("a");
   link.href = URL.createObjectURL(new Blob([sample.text], { type: "application/json" }));
-  // Named by its ID alone, as an eval set of a module lays its files out (T101).
+  // Named by its ID alone, as an eval set of a module lays its files out (R71).
   link.download = `${sample.id}.json`;
   document.body.append(link);
   link.click();
@@ -749,7 +748,7 @@ function purposeChoices(): void {
 }
 
 /** A purpose's notice: a legal text's gist in Russian, then its English text, which is the one in
- * force (privacy 7 spec). */
+ * force (R130 spec). */
 function noticeOf(own: LegalSet): HTMLElement[] {
   const english = make("div", "", { lang: "en", class: "legal" });
   english.append(...noticeNodes(own.notice));
@@ -820,8 +819,8 @@ function startShown(changedPurpose: boolean): void {
   startLacks(missing);
 }
 
-/** The code's step for an adult's own code or a child's: its words, and nothing kept of the other's,
- * for the two codes are two people's. */
+/** The code's step for an adult's own code or a child's: its words, and nothing kept of the
+ * other's, for the two codes are two people's. */
 function codeStep(purpose: "measurement" | "child"): void {
   codeFor = purpose;
   const words = TEXTS.code[purpose];
@@ -843,7 +842,7 @@ function begin(): void {
   begun = hasCode(purpose) && code ? { purpose, code } : { purpose };
   const child = purpose === "child";
   byId("start").hidden = true;
-  // Writing has begun: a file is opened from the start alone (T87).
+  // Writing has begun: a file is opened from the start alone (R64).
   byId("open").hidden = true;
   byId("summary-text").textContent = TEXTS.summary(
     TEXTS.purpose[purpose],
@@ -858,7 +857,7 @@ function begin(): void {
   byId("summary").hidden = false;
   byId("work").hidden = false;
   // An eval set takes the tasks of modules alone, and the measurement and a child's session those
-  // of tutor's file alone (T101): the others leave the picker.
+  // of tutor's file alone (R71): the others leave the picker.
   for (const option of [...picker.options]) {
     const task = data.tasks[Number(option.value)];
     if (!task || ofModule(task) !== (purpose === "evalSet")) option.remove();
@@ -982,8 +981,8 @@ function markupShown(view: SampleView): Node[] {
   return nodes;
 }
 
-/** The sample the person chose, read and shown: nothing of it is changed, kept or sent (R64). A file
- * that is no sample is said so, and nothing is drawn. */
+/** The sample the person chose, read and shown: nothing of it is changed, kept or sent (R64). A
+ * file that is no sample is said so, and nothing is drawn. */
 async function opened(): Promise<void> {
   const chosen = byId<HTMLInputElement>("open-file");
   const file = chosen.files?.[0];
@@ -1040,10 +1039,10 @@ async function opened(): Promise<void> {
 }
 
 // The page's script runs: the words for where it does not — an iPad's Files, which shows the page
-// without its script (В64; the 2026-11-08 amendment to R25 spec; T85) — go.
+// without its script (R25 spec) — go.
 byId("no-script").remove();
 words();
-// A group of the picker for each bank and each module, in the build's order (T21, T101); a
+// A group of the picker for each bank and each module, in the build's order (R62, R71); a
 // template's instance is named by its seed.
 const banks = new Map<string, HTMLOptGroupElement>();
 for (const [index, { kind, bank, task, open, module }] of data.tasks.entries()) {

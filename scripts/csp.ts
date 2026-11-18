@@ -1,8 +1,8 @@
-// The policy of a page opened from a file (R52 and R55 in docs/decisions.md): no network, and the
-// page's own style and script by their hashes, in a <meta> element, for a page from a file gets no
-// headers. The probe of T29 tried it on every device a volunteer opens the page on (T29, T74, T80),
-// and the samples page carries it (T19). A hash covers the text of an inline element as the
-// browser reads it, its UTF-8 bytes: a carriage return the parser drops would make it miss.
+// The policy of a page opened from a file (R52, R55): no network, and the page's own style and
+// script by their hashes, in a <meta> element, for a page from a file gets no headers. The probe of
+// a page from a file tries it on the devices a volunteer opens the page on (R52, R54), and the
+// samples page carries it. A hash covers the text of an inline element as the browser reads it,
+// its UTF-8 bytes: a carriage return the parser drops would make it miss.
 
 import { createHash } from "node:crypto";
 

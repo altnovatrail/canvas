@@ -1,9 +1,9 @@
-// The tasks of modules the samples page carries (T101 in RUN.md; R71 in docs/decisions.md): the
-// open views module-kit open writes of a release of modules (R43 module-kit), as a copy in
-// tasks/modules-<tag>/, since the build of a release runs with no network, token or spec/ and so
-// cannot run module-kit itself. just modules-open fetches module-kit's binary and the packages the
-// index names, has spec's release-verify accept each, runs module-kit open with the seeds of the
-// justfile, and gives this script what it wrote:
+// The tasks of modules the samples page carries (R71): the open views module-kit open writes of a
+// release of modules (R43 module-kit), as a copy in tasks/modules-<tag>/, since the build of a
+// release runs with no network, token or spec/ and so cannot run module-kit itself.
+// just modules-open fetches module-kit's binary and the packages the index names, has spec's
+// release-verify accept each, runs module-kit open with the seeds of the justfile, and gives this
+// script what it wrote:
 //
 //   node scripts/modules.ts packages <module-index.json>
 //   node scripts/modules.ts copy <what module-kit open wrote> <copy>

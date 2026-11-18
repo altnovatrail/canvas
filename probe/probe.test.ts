@@ -1,8 +1,8 @@
-// The probe of a page opened from a file (T29 in RUN.md; R52 in docs/decisions.md), in Chrome
-// Headless Shell from the toolchain stage, through the playwright package package-lock.json pins
-// (R13): both files built into a folder of their own and opened by file://, as a volunteer opens a
-// page downloaded from a release. On devices the probe runs by hand (T29) and in emulators (T74);
-// here it is checked before it goes out.
+// The probe of a page opened from a file (R52), in Chrome Headless Shell from the toolchain stage,
+// through the playwright package package-lock.json pins (R13): both files built into a folder of
+// their own and opened by file://, as a volunteer opens a page downloaded from a release. On
+// devices the probe runs by hand (R52) and in emulators (R54); here it is checked before it goes
+// out.
 
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -14,7 +14,7 @@ import { hash, policy, styleOf } from "../scripts/csp.ts";
 import { budget } from "../src/core/budget.fixture.ts";
 import { build, CSP, OPEN, PAGE, pages, SCRIPT } from "./build.ts";
 
-/** What a report may hold, and nothing else: T29 names the fields. */
+/** What a report may hold, and nothing else: R52 names the fields. */
 const FIELDS = [
   "coalescedEvents",
   "file",
@@ -217,11 +217,11 @@ describe("opened from a file", () => {
     const drawn = await report(page);
     expect(drawn.pointers.mouse?.events).toBeGreaterThanOrEqual(7);
     expect(drawn.pointers.mouse?.coalesced).toBeGreaterThanOrEqual(5);
-    // The file opened again in a page of its own, as a volunteer comes back to it, not reloaded: on a
-    // loaded machine the first document after a reload of a file in Chrome Headless Shell may read
-    // the storage empty, and keep reading it so, while another page of the file reads the write
-    // (R75). The page that wrote is closed first, so that nothing of it keeps the write alive. The
-    // probe itself reloads on the devices (T29, T74).
+    // The file opened again in a page of its own, as a volunteer comes back to it, not reloaded:
+    // on a loaded machine the first document after a reload of a file in Chrome Headless Shell may
+    // read the storage empty, and keep reading it so, while another page of the file reads the
+    // write (R75). The page that wrote is closed first, so that nothing of it keeps the write
+    // alive. The probe itself reloads on the devices (R52, R54).
     const context = page.context();
     await page.close();
     const again = await context.newPage();

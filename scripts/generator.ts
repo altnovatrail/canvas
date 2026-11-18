@@ -1,11 +1,11 @@
-// The build of the generator's file (T96 in RUN.md; R68 in docs/decisions.md): the synthetic samples
-// of a module's eval set, scripts/synthetic-module.ts, as one ES module for Node with no package of
-// npm beside it, which every release carries and modules checks by spec's release-verify (R77 spec):
+// The build of the generator's file (R68): the synthetic samples of a module's eval set,
+// scripts/synthetic-module.ts, as one ES module for Node with no package of npm beside it, which
+// every release carries and modules checks by spec's release-verify (R77 spec):
 //
 //   node scripts/generator.ts <folder> <version>
 //
 // writes <folder>/synthetic-module_v<version>.mjs and prints its path. The file has two modes:
-// --module writes samples, and --digest prints the digests of the tasks' open views (T97). Vite's
+// --module writes samples, and --digest prints the digests of the tasks' open views. Vite's
 // API bundles scripts/synthetic-module.main.ts for Node, as the page's builder bundles the page
 // (R55): every package inside, Node's own modules outside, the code as it is written and not
 // minified, so that a reader of modules sees what runs in its CI. The file opens with a comment

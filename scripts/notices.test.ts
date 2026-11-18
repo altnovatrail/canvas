@@ -1,5 +1,5 @@
-// The license notices a file of a release carries (R55, R68 in docs/decisions.md): which packages a
-// bundle carries, and the text of each one's license, or why the build stops.
+// The license notices a file of a release carries (R55, R68): which packages a bundle carries, and
+// the text of each one's license, or why the build stops.
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";

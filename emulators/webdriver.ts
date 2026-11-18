@@ -1,6 +1,6 @@
-// A client of W3C WebDriver, for the safaridriver of a runner of macOS (R54 in docs/decisions.md):
-// Safari on macOS in the probe (T80 in RUN.md), and Safari in the iPad Simulator for the samples
-// page (T78). safaridriver answers on port 4444 of the runner, which the workflow starts it on.
+// A client of W3C WebDriver, for the safaridriver of a runner of macOS (R54): Safari on macOS in
+// the probe, and Safari in the iPad Simulator for the samples page. safaridriver answers on port
+// 4444 of the runner, which the workflow starts it on.
 
 /** safaridriver's address on the runner. */
 export const SAFARIDRIVER = "http://127.0.0.1:4444";
@@ -12,7 +12,7 @@ export function isPath(path: string): boolean {
 
 /** How long a command may take, in milliseconds: a new session connects to Safari, which has
  * taken minutes on a runner; any other command answers within a second or two when the browser
- * does, and one that hung took the whole of a wait of 90 s before the run's second pass (T83). */
+ * does, and one that hung took the whole of a wait of 90 s before the run's second pass. */
 export function timeoutOf(method: string, path: string): number {
   if (method === "POST" && path === "/session") return 120_000;
   // A navigation answers once the page has loaded.

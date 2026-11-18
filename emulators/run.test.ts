@@ -1,5 +1,5 @@
-// The journal of a run in an emulator (R54 in docs/decisions.md): whose failure a run's end is,
-// and the summary its job shows.
+// The journal of a run in an emulator (R54): whose failure a run's end is, and the summary its job
+// shows.
 
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

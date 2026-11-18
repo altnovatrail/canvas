@@ -1,5 +1,5 @@
 // After npm pack of a release's copy, in just release-files: the archive that goes out is the
-// package at the release's version, the way a consumer takes it (R08 in docs/decisions.md).
+// package at the release's version, the way a consumer takes it (R08).
 //
 //   npm pack --json … | node scripts/release.ts <version>
 //

@@ -1,13 +1,13 @@
-// The legal texts of the samples page (T89 in RUN.md; R69 in docs/decisions.md): spec's release
-// file legal-<n>.tar.gz, which ci-licenses verifies by release-verify (R77 spec) and the build
-// holds to its sum, read as section 5 of the legal part's README gives — the passport's schema
-// first, then the rules in the order of its table (R130 spec). The archive is git archive's of spec's legal/ at
-// the tag, so it carries the schema and the vectors of reading too: the build reads the part
-// against that schema, and the tests read the vectors through this same reader. A third reader,
-// beside spec's own check and api's; spec's text, not its code, is what it follows, for canvas's
-// code reads nothing of spec/. What the page takes of a part is the current set of each purpose —
-// the notice in English as blocks, its gist in Russian, and the set's version — or nothing for a
-// purpose whose set has no version in force.
+// The legal texts of the samples page (R69): spec's release file legal-<n>.tar.gz, which
+// ci-licenses verifies by release-verify (R77 spec) and the build holds to its sum, read as the
+// README of spec's legal part gives — the passport's schema first, then the rules in the order of
+// its table (R130 spec). The archive is git archive's of spec's legal/ at the tag, so it carries
+// the schema and the vectors of reading too: the build reads the part against that schema, and the
+// tests read the vectors through this same reader. A third reader, beside spec's own check and
+// api's; spec's text, not its code, is what it follows, for canvas's code reads nothing of spec/.
+// What the page takes of a part is the current set of each purpose — the notice in English as
+// blocks, its gist in Russian, and the set's version — or nothing for a purpose whose set has no
+// version in force.
 //
 // The build reads the part with no release before it, as legal-check-dir reads a copy's folder:
 // legal.in-force-unchanged is spec's own history, which its CI checked against the release before
@@ -16,9 +16,9 @@
 //
 // From version 3 of the part a version in force applies from its day, in_force_since, and a reader
 // reads the part on a day of its own, a date in UTC: the build of the samples page on the day of its
-// build (section 2). The current version is the newest in force whose day has come, and the next
-// one the version that becomes current on the nearest day still to come; a set applies from the day
-// it was approved, so the page takes the current set alone.
+// build. The current version is the newest in force whose day has come, and the next one the
+// version that becomes current on the nearest day still to come; a set applies from the day it was
+// approved, so the page takes the current set alone.
 
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -60,8 +60,8 @@ export const PURPOSE_SETS = Object.freeze({
   child: "child-sample",
 });
 
-/** A part as section 5 reads it: the passport as YAML reads it, and the files under texts/ by their
- * paths from the part, each its text or its bytes. */
+/** A part as its reader reads it: the passport as YAML reads it, and the files under texts/ by
+ * their paths from the part, each its text or its bytes. */
 export interface Part {
   readonly passport: unknown;
   readonly files: Readonly<Record<string, string | Uint8Array>>;
@@ -80,7 +80,8 @@ export type Reading =
   | { readonly current: Versions; readonly next: Versions }
   | { readonly refused_by: string; readonly names: readonly string[] };
 
-/** The step of the schema, and the rules of section 5 in the order of its table. */
+/** The step of the schema, and the rules of reading in the order of the table of the legal part's
+ * README. */
 export const SCHEMA = "schema";
 export const RULES = [
   "legal.files",
@@ -93,18 +94,18 @@ export const RULES = [
 
 const IN_FORCE = "in_force";
 /** The privacy policy, whose section "Who we are" names the operator, and that section's heading,
- * of the second level (R115 spec; section 5). */
+ * of the second level (R115 spec). */
 export const POLICY = "privacy-policy";
 const WHO_WE_ARE = "Who we are";
 /** A day as a reader reads the part on it. */
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
-/** Where the notice and the form of a set stand (section 4). */
+/** Where the notice and the form of a set stand. */
 const SET_PLACES: readonly (readonly ["notice" | "form", TextPlace])[] = [
   ["notice", "samples_page"],
   ["form", "form"],
 ];
 /** What a version of a text never holds: HTML, an image, and a link of any form — an autolink of
- * GitHub's flavour and one in <…> among them, which mdast gives as links (section 4). */
+ * GitHub's flavour and one in <…> among them, which mdast gives as links. */
 const FORBIDDEN = new Set([
   "html",
   "image",
@@ -126,7 +127,7 @@ function byCodeUnits(a: string, b: string): number {
 }
 
 /** The validator of the passport's schema, with the options spec's check names: every error, and
- * format an annotation alone (JSON Schema 2020-12 validation, 7.2.1). */
+ * format an annotation alone, the default of JSON Schema 2020-12. */
 export function validatorOf(schema: unknown): ValidateFunction {
   const ajv = new Ajv2020({
     allErrors: true,
@@ -137,9 +138,9 @@ export function validatorOf(schema: unknown): ValidateFunction {
   return ajv.compile(schema as object);
 }
 
-/** The paths ajv's errors name, each once, in the order of code units (section 5): the fields from
- * the root joined by ".", a missing or unknown field at the path it would have, a key a map refuses
- * as it stands; an error of if is left out, since its then or its else names the place. */
+/** The paths ajv's errors name, each once, in the order of code units: the fields from the root
+ * joined by ".", a missing or unknown field at the path it would have, a key a map refuses as it
+ * stands; an error of if is left out, since its then or its else names the place. */
 export function namesOf(errors: readonly ErrorObject[]): string[] {
   const paths = new Set<string>();
   for (const error of errors) {
@@ -161,7 +162,7 @@ export function namesOf(errors: readonly ErrorObject[]): string[] {
 }
 
 /** The file of a version of a text, by its path from the part, or of its translation into the
- * language of a tag (section 2 of the part's README, from the part's version 2). */
+ * language of a tag, from the part's version 2. */
 export function fileOf(id: string, version: number, tag?: string): string {
   return tag === undefined ? `texts/${id}/${version}.md` : `texts/${id}/${version}.${tag}.md`;
 }
@@ -196,7 +197,7 @@ function treeOf(text: string) {
 }
 
 /** A text's Markdown tree as a version of a text is written — CommonMark with GitHub's tables and
- * nothing else of its flavour (section 4) —, as the page shows it: a ~word~ or a [ ] is text. */
+ * nothing else of its flavour —, as the page shows it: a ~word~ or a [ ] is text. */
 function shownTreeOf(text: string) {
   return fromMarkdown(text, {
     extensions: [gfmTable()],
@@ -442,13 +443,13 @@ function isDay(text: string): boolean {
   );
 }
 
-/** The day in UTC, YYYY-MM-DD, that a build reads the part on (section 2). */
+/** The day in UTC, YYYY-MM-DD, that a build reads the part on. */
 export function todayInUtc(now = new Date()): string {
   return now.toISOString().slice(0, 10);
 }
 
-/** A part read as section 5 gives on the day today, YYYY-MM-DD, with validate the passport's schema
- * and previous the part of the release before, or null when there is none to read. */
+/** A part read by its rules on the day today, YYYY-MM-DD, with validate the passport's schema and
+ * previous the part of the release before, or null when there is none to read. */
 export function readingOf(
   validate: ValidateFunction,
   part: Part,
@@ -484,9 +485,8 @@ export function readingOf(
   };
 }
 
-/** A YAML file's value, by YAML 1.2 under its Core schema, as the module format reads its files
- * (README of spec's format, §4): one document, no repeated key and no alias; a TypeError
- * otherwise. */
+/** A YAML file's value, by YAML 1.2 under its Core schema, as the module format reads its files:
+ * one document, no repeated key and no alias; a TypeError otherwise. */
 export function yamlOf(text: string, where: string): unknown {
   const document = parseDocument(text, { version: "1.2", schema: "core", uniqueKeys: true });
   const [error] = document.errors;
@@ -502,9 +502,9 @@ function filesUnder(root: string, at: string): string[] {
   });
 }
 
-/** The part in a folder of the layout of section 3 — VERSION, legal.yaml and texts/ — as its
- * reader takes it; a part with no texts/ has no files. The passport's format is the version in
- * VERSION, which the schema holds to the one it knows (section 2). */
+/** The part in a folder of the part's layout — VERSION, legal.yaml and texts/ — as its reader
+ * takes it; a part with no texts/ has no files. The passport's format is the version in VERSION,
+ * which the schema holds to the one it knows. */
 export function partIn(folder: string): Part {
   const version = readFileSync(join(folder, "VERSION"), "utf8");
   if (!VERSION.test(version))

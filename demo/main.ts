@@ -1,36 +1,16 @@
-// The page to try the element on by hand, as app is to have it (RUN.md, T15; R27 in
-// docs/decisions.md). The element's own buttons switch its tool and undo and clear (T41; R28): the
-// page gives the element its language and the task the tools it allows, and counts the learner's
-// choices of tool that toolchange tells; a pen's eraser erases whichever the tool is, if the task
-// allows the eraser (T10; R22). The page keeps the history of writing as historychange tells it,
-// listening on the element itself, as app is to; Reopen puts a new element in place of the old
-// one with that history and the marks given, as a page opened again would, and Next task a new,
-// empty one. Each element has a task in the names of the module format 0.3 — its grid and its
-// tools, which the page's controls change by a new task, and its statement above the sheet, with a
-// picture the page draws and one that never comes — and the module's manifest, whose height of
-// digits the page's control changes (T44; R32). Dark theme sets the element's custom properties
-// (T11; R23). A workbook's task takes the lines of a page of the layout's corpus, those that do not
-// fit among them, in the font and the explanation language the page's controls give (T51; R35,
-// R36). The counter tells how many of its boxes are filled (T48; R37), and Check sends the crop of
-// each filled box, which the page shows with its place and its size (T49; R38); a box picked comes
-// back to the element as a mark of the tutor's on it (T53; R39). A lesson's worked example is a new
-// element too, of the grid the controls give, on which the learner writes nothing, and Check finds
-// no work (T59; R42). Its row's Next opens the parts of its demo one at a time and Demo hides and
-// shows them; the page keeps how far the learner has gone as demochange tells it, and gives it back
-// to the next element and the next example, after the example, as app is to (T60; R42). The
-// page's picture comes into the statement and into the demo, beside the sheet and on an area of it,
-// from one call of its media, as the example comes (T64; R42); the one on the area stands on the
-// sheet, over its area, and the sheet scrolls to it as its part opens (T61).
-// Under the sheet the page draws the groups of the strokes the history leaves, after every
-// historychange, by the sheet's rule or by the pause and the reaches its fields give (T12; R24),
-// and their crop for checking at the height of digits the manifest gives, with the frames of those
-// groups and the crop's size at every height of eval (T13; R25). Check takes the work for checking
-// from exportWork() and stops the writing for a moment, as while the models think: the page keeps
-// the submission, and a box dragged over its crop, or a group picked, comes back to the element as
-// a mark of the tutor's, which holds on to the strokes it takes and follows them as they are
-// written over, erased and undone (T14; R26). The page reads what the element made of the marks
-// through the probe of the tests. Its tasks are its own, made up, and it keeps nothing once it is
-// closed. just demo serves it.
+// The page to try the element on by hand, as app is to have it (R27): it listens on the element
+// itself, as app is to, and gives a new element for each task, a reopened sheet and a worked
+// example (R20). It shows the element's own buttons, in the language the page gives and with the
+// tools the task allows (R28), and a pen's eraser, which erases whatever the tool is if the task
+// allows the eraser (R22); a task in the names of the module format and its manifest's
+// height of digits (R32); the dark theme by the element's custom properties (R23); a workbook's
+// page of the layout's corpus, its filled boxes and their crops (R35, R36, R37, R38); a worked
+// example, whose progress it gives back to the next element as app is to, with the page's picture
+// from one call of its media (R42). Under the sheet it draws the stroke groups and the crop for
+// checking at every height of eval (R24, R25), and a box dragged over the crop, a group or a box
+// picked comes back to the element as a tutor's mark, which holds on to its strokes (R26, R39).
+// The page reads what the element made of the marks through the probe of the tests. Its tasks are
+// its own, made up, and it keeps nothing once it is closed.
 
 import { CROP, type Crop, cropOf, tokensOf } from "../src/core/crop.js";
 import { GROUP_RULE, type Group, type GroupRule, groupsOf, rectOf } from "../src/core/groups.js";
