@@ -1,8 +1,8 @@
 // spec's test vectors of the rules the sheet shares with the eval runner of tutor — the groups of
-// strokes, the crop, the snapping of a model's box and the boxes of a workbook (R94 spec;
-// contracts/README.md, section 12) — as the npm package @altnovatrail/contracts gives them at the
-// tag of spec that canvas stands on, and what turns their messages into the sheet's own types. The
-// vectors are spec's, in the protocol's form; the sheet's tests hold its code to them (T16).
+// strokes, the crop, the snapping of a model's box and the boxes of a workbook (R94 spec) — as the
+// npm package @altnovatrail/contracts gives them at the tag of spec that canvas stands on, and what
+// turns their messages into the sheet's own types. The vectors are spec's, in the protocol's form;
+// the sheet's tests hold its code to them.
 
 import boxes from "@altnovatrail/contracts/vectors/eval/v1/boxes.json" with { type: "json" };
 import crops from "@altnovatrail/contracts/vectors/eval/v1/crops.json" with { type: "json" };
@@ -67,9 +67,8 @@ export interface ProtocolEvent {
 const PRESSURE = 0.5;
 
 /**
- * A protocol's history as the element keeps it (contracts/README.md, section 12): an event's kind
- * is the field it sets, its `t` is `t_ms`, a stroke's kind is its pointer and a point's `t` its
- * `t_ms`.
+ * A protocol's history as the element keeps it: an event's kind is the field it sets, its `t` is
+ * `t_ms`, a stroke's kind is its pointer and a point's `t` its `t_ms`.
  */
 export function historyOf(events: readonly ProtocolEvent[]): HistoryEvent[] {
   return events.map((event): HistoryEvent => {
@@ -113,7 +112,7 @@ export function tenthsTo({ minX, minY, maxX, maxY }: Box): TenthsBox {
   return { ymin: minY, xmin: minX, ymax: maxY, xmax: maxX };
 }
 
-/** A box in units as the protocol's, in whole tenths, as the rules take a place (section 12). */
+/** A box in units as the protocol's, in whole tenths, as the rules take a place (R94 spec). */
 export function tenthsOf({ minX, minY, maxX, maxY }: Box): TenthsBox {
   return tenthsTo({
     minX: tenths(minX),

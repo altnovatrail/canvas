@@ -30,10 +30,10 @@ function sheetOf(template: Template): SheetTemplate {
 // Copies of the task examples and the open-view vectors of the module format at spec v0.14.0
 // (spec/format/examples/task/ and spec/format/vectors/open-view/task/): code and tests read nothing
 // of spec/, so a move to a new tag compares them with `git -C spec diff <old> <new> -- format/`
-// (R32). The format is version 0.4 since spec v0.10.0, and no draft (R64 spec). Each is written as
-// a change to what the examples share, with its keys in their order: a valid example as its
-// open view, as app gets it, and an invalid one with its open fields and the closed field at fault,
-// its other closed fields left as those the examples share.
+// (R32). The format is version 0.4, and no draft (R64 spec). Each is written as a change to what
+// the examples share, with its keys in their order: a valid example as its open view, as app gets
+// it, and an invalid one with its open fields and the closed field at fault, its other closed
+// fields left as those the examples share.
 
 /**
  * The closed fields of a task, of its items and of their answer slots and boxes (R51 spec, R56 spec,
@@ -881,7 +881,7 @@ test("a task with its closed fields is no open view: a TypeError at the first of
   expect(() => taskOf({ ...OPEN_VIEWS["workbook-lines"], items: [line] })).toThrow(
     /^task\.items\[0\]\.skills: no field of an item of a workbook$/,
   );
-  // What the format has closed since: the solution, what helps on the way, the template (R56 spec,
+  // The format's other closed fields: the solution, what helps on the way, the template (R56 spec,
   // R57 spec, R60 spec), the simpler case of an item and the check of each answer slot and box.
   const later: [string, unknown][] = [
     ["solution", RUNGS.solution],

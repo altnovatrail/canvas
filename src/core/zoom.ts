@@ -1,12 +1,12 @@
 /**
- * The zooms of the sheet, from its fit to twice it, by quarters (T94): the learner steps through
+ * The zooms of the sheet, from its fit to twice it, by quarters (R73): the learner steps through
  * them with the row's Zoom in and Zoom out, so that the workbook's printed lines, and the ink, can
  * be read at 200 % (WCAG 1.4.4, by the technique G178; R90 spec).
  */
 export const ZOOMS: readonly number[] = [1, 1.25, 1.5, 1.75, 2];
 
 /**
- * The page's zoom (T94): one for every sheet of the page, from 100 % when the page is loaded, as
+ * The page's zoom (R73): one for every sheet of the page, from 100 % when the page is loaded, as
  * the pen mode is (R29). The next task is a new element (R20), and the zoom stays: a learner who
  * needs it larger asks once. It lives in memory alone: nothing is stored or sent.
  */

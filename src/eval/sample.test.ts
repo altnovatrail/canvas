@@ -31,7 +31,7 @@ import {
 } from "./sample.js";
 
 // The sheets and the pages of these tests are the synthetic ones of the tests of the groups, the
-// crop and the boxes, drawn by code: no hand wrote them (CLAUDE.md). The files they write into
+// crop and the boxes, drawn by code: no hand wrote them (R15). The files they write into
 // examples/ are synthetic samples, one of each composition, which spec's sample-check holds to the
 // protocol in ci-licenses (R48).
 

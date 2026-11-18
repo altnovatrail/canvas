@@ -84,7 +84,7 @@ export function neighboursOf(
 /**
  * The rectangle of a group on the sheet: the box around the points of its strokes, in sheet units,
  * of the geometry it is given — the raw strokes on the device, the recorded ones in a sample (R09).
- * Its box in the fractions of a cut-out is the cut-out's (T13).
+ * Its box in the fractions of a cut-out is the cut-out's.
  */
 export function rectOf(ids: readonly number[], strokes: readonly Stroke[]): Box {
   const wanted = new Set(ids);

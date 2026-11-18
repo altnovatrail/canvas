@@ -12,9 +12,8 @@ import { closed, record, shown, whole } from "./fields.js";
 
 /**
  * The version of the module format the element reads: while the format is v0, the platform reads
- * its current version alone, and a module of another — 0.2 too — is refused with the reason (R44
- * spec; README of the format, §2). The format's rules of a module's versions are module-kit's and
- * api's: the element compares none (R32).
+ * its current version alone, and a module of another is refused with the reason (R44 spec). The
+ * format's rules of a module's versions are module-kit's and api's: the element compares none (R32).
  */
 export const FORMAT = "0.4";
 

@@ -1,7 +1,7 @@
 // A lesson's worked example (R58 spec; R42): the open view of a segment `worked_example`, of spec's
 // type WorkedExample (R73 spec; R41) — its statement, the handwriting sheet or the workbook the
 // author's demo is shown on, and the demo's parts in order: paragraphs, pictures beside the sheet,
-// pictures on areas of a sheet, and on a workbook the boxes it fills (format 0.4; T85, R60). The
+// pictures on areas of a sheet, and on a workbook the boxes it fills (format 0.4; R61). The
 // element checks it as the schema does, every object closed (R32), and by the format's rules
 // lesson.areas, lesson.example-fills and lesson.workbook-page too: an area lies on the sheet, the
 // demo fills each box of the lines once, and the lines fit the page, each value its box. What the
@@ -248,7 +248,7 @@ function sameLine(a: ExampleLine, b: ExampleLine): boolean {
 
 /**
  * What a worked example is shown on: a handwriting sheet and its grid, or a workbook, and no tools,
- * for the learner does not write on it (README of the format, §21).
+ * for the learner does not write on it (R42).
  */
 function exampleCanvasOf(value: unknown, path: string): ExampleCanvas {
   const canvas = closed(value, path, ["kind", "grid", "grid_step"], "a worked example's canvas");

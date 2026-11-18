@@ -46,11 +46,11 @@ interface Live {
 }
 
 /**
- * The strokes of one sheet, from the pointer's samples (R18; architecture 3.1 in
- * docs/architecture.md). One pointer writes at a time, with its primary button: a second pointer,
- * and any other button, write nothing while a stroke is under way. A finished stroke goes to the
- * handler the recorder is made with — onto the work on the sheet (R19). Its points take their time
- * from the sheet's clock, which the sheet's other actions keep too (R22).
+ * The strokes of one sheet, from the pointer's samples (R18). One pointer writes at a time, with
+ * its primary button: a second pointer, and any other button, write nothing while a stroke is
+ * under way. A finished stroke goes to the handler the recorder is made with — onto the work on
+ * the sheet (R19). Its points take their time from the sheet's clock, which the sheet's other
+ * actions keep too (R22).
  */
 export class Recorder {
   readonly #finished: (stroke: Stroke) => void;

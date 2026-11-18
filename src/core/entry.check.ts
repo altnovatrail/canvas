@@ -3,7 +3,7 @@
 // crop, the snapping and the boxes are not, though the eval protocol has taken them (R94 spec),
 // nor is the workbook's layout. Were the entry to give one of them, the directive over it would go
 // unused, and that would be the error. The data's types of the contract are spec's, the same types
-// (R74 spec; T69), and the tutor's marks are among them (R83 spec; T16).
+// (R27; R74 spec), and the tutor's marks are among them (R83 spec).
 
 import type * as spec from "@altnovatrail/spec/canvas";
 import type * as open from "@altnovatrail/spec/formatv0/open";

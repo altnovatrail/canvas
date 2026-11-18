@@ -1,9 +1,6 @@
 import { SHEET } from "./sheet.js";
 
-/**
- * How a task rules the sheet (concepts 8 spec): in squares, in lines or in dots, as concepts 16.1
- * spec's illustration names them.
- */
+/** How a task rules the sheet: in squares, in lines or in dots. */
 export type GridKind = "squares" | "lines" | "dots";
 
 /** The grid of a sheet: its kind and its step, in sheet units. */
@@ -24,8 +21,8 @@ export const GRID_STEP_MIN = 20;
 export const GRID_STEP_MAX = 500;
 
 /**
- * The grid of a sheet whose task gives none, or that has no task: squares of 50 units. concepts 8
- * spec knows no sheet without a grid (R23).
+ * The grid of a sheet whose task gives none, or that has no task: squares of 50 units. spec knows
+ * no sheet without a grid (R23).
  */
 export const DEFAULT_GRID: Grid = Object.freeze({ kind: "squares", step: GRID_STEP });
 

@@ -45,9 +45,9 @@ import {
 import { cellsForCheck } from "./submission.js";
 import { erased } from "./workbooks.fixture.js";
 
-// The tutor's marks on the sheet (R26), on strokes code draws, as every test's strokes are
-// (CLAUDE.md): the synthetic sheets, crowded sheets of a seeded generator, and a few strokes of a
-// test's own. A submission is what the element gives with its crop (R27): the crop's numbers, the
+// The tutor's marks on the sheet (R26), on strokes code draws, as every test's strokes are (R15):
+// the synthetic sheets, crowded sheets of a seeded generator, and a few strokes of a test's own. A
+// submission is what the element gives with its crop (R27): the crop's numbers, the
 // groups and their digest. The rule of snapping is checked against the rule written out once more
 // in BigInt from its words — the box laid on the sheet by the crop's sheet_box — where nothing
 // rounds.
@@ -450,7 +450,7 @@ describe("the digest of a submission", () => {
   const { work } = staircase();
   const strokes = work.strokes;
   const groups = groupsOf(strokes);
-  // At 32 px, as the digest was first written: the test pins how it is written, not the default.
+  // At 32 px, not the default: the test pins how the digest is written, whatever the default.
   const crop = cropOf(strokes, groups, 32);
   if (crop === null) throw new Error("the sheet has no crop");
   const digest = digestOf(strokes, crop, groups);
@@ -918,7 +918,7 @@ describe("the rule written out once more", () => {
   });
 });
 
-/** A case of spec's vectors of the snapping (contracts/README.md, section 12). */
+/** A case of spec's vectors of the snapping (R94 spec). */
 interface SnapCase {
   readonly name: string;
   readonly digit_height: number;

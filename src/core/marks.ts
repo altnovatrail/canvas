@@ -61,7 +61,7 @@ export const SNAP_RULE: SnapRule = Object.freeze({
  * its place names it, its item and its place among the item's cells, each from 1 (R51 spec).
  *
  * The tutor's marks of one submission, with the submission's context, are spec's types too, of the
- * same contract (R83 spec; T16): a mark is a frame, so far, with where it is and the name a screen
+ * same contract (R74 spec; R83 spec): a mark is a frame, with where it is and the name a screen
  * reader gives it, in the consumer's words — the element words nothing. Where it is: a group of
  * strokes by its label, an answer cell by its place, or a box on the crop the model saw,
  * [ymin, xmin, ymax, xmax] in whole thousandths of its height and width, min < max (R53 spec). On a
@@ -161,8 +161,8 @@ export function snapOf(
  * box's the strokes it snaps to; an answer cell's holds none on a sheet, which takes no zones.
  * `cells` are the boxes of a workbook's page, in the task's order, and null on a sheet: there a
  * cell's mark holds the strokes of its row of the table, with its box; one of a box not in the
- * table, an empty one, holds its box alone, and one of a box not on the page holds none (R39; the
- * second 2026-11-03 amendment to R74 spec).
+ * table, an empty one, holds its box alone, and one of a box not on the page holds none (R39;
+ * R74 spec).
  *
  * A submission of other strokes is a TypeError: a stroke of its groups the sheet does not know, or
  * a digest the sheet's strokes of those IDs do not give with the submission's numbers (R27). A
@@ -288,8 +288,7 @@ function cellsPlacesOf(
     if (cell === undefined) return null;
     const { left, top, width, height } = cell.box;
     const frame = { minX: left, minY: top, maxX: left + width, maxY: top + height };
-    // A box the submission found empty is framed alone (the second 2026-11-03 amendment to R74
-    // spec; R39).
+    // A box the submission found empty is framed alone (R39; R74 spec).
     if (row === undefined) return { ids: [], box: frame, cell: frame };
     return {
       ids: [...row.ids].sort(byNumber),

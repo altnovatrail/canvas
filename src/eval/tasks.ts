@@ -1,13 +1,12 @@
 // The tasks the synthetic samples and the samples page answer (R49, R62): the open views of a file
 // of open tasks of a release of tutor, which the tree holds as it came and ci-licenses verifies by
-// spec's release-verify (R77 spec). A sample names its task without its key (R05 spec): the
+// spec's release-verify (R77 spec). A sample names its task without its key (R93 spec): the
 // release's tag, the file's digest, the bank, the bank's digest as the file gives it, the task's
-// ID, and the digest of its open view, as the module format takes a digest (contracts/README.md,
-// section «The sample file»). The file is of the version of the module format the element reads, or
-// it is refused (T77, T85, T99). A task holds the fields of the open view alone, at
-// every depth, or the file is refused (T21; R62): what a sample or the samples page takes of it is
-// open. Of a task, the samples take only its ID, its kind of canvas and a workbook's items, which
-// have the shape the layout of a page reads (R35).
+// ID, and the digest of its open view, as the module format takes a digest. The file is of the
+// version of the module format the element reads, or it is refused. A task holds the fields of the
+// open view alone, at every depth, or the file is refused (R62): what a sample or the samples page
+// takes of it is open. Of a task, the samples take only its ID, its kind of canvas and a
+// workbook's items, which have the shape the layout of a page reads (R35).
 
 import type { TaskReferenceSchema } from "@altnovatrail/contracts/novatrail/eval/v1/sample_pb.js";
 import type * as open from "@altnovatrail/spec/formatv0/open";
@@ -59,8 +58,7 @@ export function openTasksOf(
   if (format !== "tutor-open-tasks" || version !== 0 || !Array.isArray(banks)) {
     throw new TypeError("a file of open tasks is tutor-open-tasks of the version 0, with banks");
   }
-  // The platform reads only the current version of the format (README of the format, §2): tutor's
-  // file is of 0.4 from v0.1.22 on, and the exception for 0.3 is gone (Д158 in RUN.md of spec; T99).
+  // The platform reads the current version of the module format alone (R44 spec).
   if (module_format_version !== FORMAT) {
     throw new TypeError(`a file of open tasks is of the module format ${FORMAT}, the element's`);
   }
@@ -94,7 +92,7 @@ export function openTasksOf(
 }
 
 /**
- * The open views of tasks of modules the samples page carries (T101; R71): what module-kit open
+ * The open views of tasks of modules the samples page carries (R71): what module-kit open
  * wrote of a release of modules, with the seeds of the templates' instances, as a copy in
  * tasks/modules-<tag>/ that ci-licenses holds to what module-kit writes anew, and the SHA-256 of its
  * open-views.json. A new release of modules or new seeds come in by raising these, the justfile's
@@ -126,11 +124,11 @@ const SEED = /^(0|[1-9]\d*)$/;
  * The tasks of modules of the open views module-kit open wrote, given as the text of its
  * open-views.json (R43 module-kit). Each task holds the fields of the open view alone, or the file is
  * refused, as tutor's is, and its digest has to be the one the open view's canonical text gives: so
- * a sample's digest is module-kit's, which modules' eval-match holds it to (the T59 amendment to R25
- * modules). The source of a sample is the release of modules that published the package, whose
- * index holds it (ModuleSource of the contracts), and a template's instance names its seed. A file
- * of another format, of another version of the module format than the element's, or a task of
- * another digest is a TypeError.
+ * a sample's digest is module-kit's, which modules' eval-match holds it to (R25 modules). The
+ * source of a sample is the release of modules that published the package, whose index holds it
+ * (ModuleSource of the contracts), and a template's instance names its seed. A file of another
+ * format, of another version of the module format than the element's, or a task of another digest
+ * is a TypeError.
  */
 export function openViewsOf(text: string, sha256: (text: string) => string): ModuleViews[] {
   const file = JSON.parse(text) as {
@@ -214,7 +212,7 @@ const MODULE_ID = /^[a-z][a-z0-9]*(-[a-z0-9]+)*\/[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const TAG = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
-/** The tasks of a module's package, as the synthetic samples of its eval set take them (T86). */
+/** The tasks of a module's package, as the synthetic samples of its eval set take them (R63). */
 export interface ModuleTasks {
   /** The module's ID, its version and the digest of its package. */
   readonly module: string;
@@ -225,7 +223,7 @@ export interface ModuleTasks {
 }
 
 /** A task of a package the generator draws no sample of: why, and the digest of its open view,
- * which a person's sample of it names (T97), unless it is a template, which has no open view. */
+ * which a person's sample of it names, unless it is a template, which has no open view. */
 export interface RefusedTask {
   readonly refused: string;
   readonly openViewDigest?: string;
@@ -233,14 +231,14 @@ export interface RefusedTask {
 
 /**
  * The tasks of a module's package as `module-kit build` writes it, given the texts of its
- * inventory.json and server.json, for samples that name the release of modules `tag` (R110 spec;
- * section 25 of the module format). The inventory is of the module format the element reads, and
- * names server.json by its digest and size; the package's digest is that of the inventory's text.
- * Of the canonical view the samples take each task's open view alone, which the walk of the open
- * view projects from it, as the server does (section 6). The generator draws a sheet whose one
- * answer slot is anywhere on it and a page of a workbook: a template, whose instance by a seed is
- * module-kit's, and a choice, an essay or a zone are refused, each with why. `sha256` gives the
- * SHA-256 of a text's UTF-8 bytes in hexadecimal. A package out of shape is a TypeError.
+ * inventory.json and server.json, for samples that name the release of modules `tag` (R110 spec).
+ * The inventory is of the module format the element reads, and names server.json by its digest
+ * and size; the package's digest is that of the inventory's text. Of the canonical view the
+ * samples take each task's open view alone, which the walk of the open view projects from it, as
+ * the server does. The generator draws a sheet whose one answer slot is anywhere on it and a page
+ * of a workbook: a template, whose instance by a seed is module-kit's, and a choice, an essay or a
+ * zone are refused, each with why. `sha256` gives the SHA-256 of a text's UTF-8 bytes in
+ * hexadecimal. A package out of shape is a TypeError.
  */
 export function moduleTasksOf(
   inventoryText: string,
@@ -408,9 +406,8 @@ type Closed = "refuse" | "drop";
 /**
  * The open view of an object, by its shape, at every depth. A field of another name is closed, or no
  * field of the format: a walk that refuses names where it is in a TypeError, and one that drops
- * leaves it out, as the open view does (section 6 of the module format). A field of the shape that
- * holds what the shape does not say — an object for a leaf — is a TypeError either way, since a
- * closed field could hide in it.
+ * leaves it out, as the open view does. A field of the shape that holds what the shape does not
+ * say — an object for a leaf — is a TypeError either way, since a closed field could hide in it.
  */
 function openOf(
   value: unknown,
@@ -460,8 +457,8 @@ function canvasOf(task: object, name: string): OpenTask["canvas"] {
  * The canonical text of a JSON value, which a digest is taken of: as RFC 8785 writes it, which for
  * the data of the module format is its members in the order of their names' UTF-16 code units, no
  * white space, integers in decimal digits, and strings escaping only `"`, `\` and the control
- * characters (section 25 of the module format). JSON.stringify writes strings and integers so.
- * A number that is no integer is a RangeError: the format has none.
+ * characters. JSON.stringify writes strings and integers so. A number that is no integer is a
+ * RangeError: the format has none.
  */
 export function canonicalText(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalText).join(",")}]`;

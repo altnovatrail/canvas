@@ -4,8 +4,8 @@
 // widened by 120 thousandths of its size — 12 units of a box of 100, short of the 16 to halfway to
 // the next box — and it is no wider and no taller than the box and 30 units on each side: a
 // fraction's bar wider than the box is its own, and a line through the whole line is not. The
-// core's entry point does not give the rule. It is the eval protocol's now, as the sheet wrote it,
-// and spec's test vectors pin it (R94 spec; T16).
+// core's entry point does not give the rule. It is the eval protocol's too, and spec's test vectors
+// pin it (R94 spec).
 
 import type { Filled, Filling } from "@altnovatrail/spec/canvas";
 import { extentOf, tenths } from "./geometry.js";
@@ -29,7 +29,7 @@ export interface BoxRule {
   readonly limit: number;
 }
 
-/** The rule the workbook has (R37): the sweep of T48 chose it. */
+/** The rule the workbook has (R37). */
 export const BOX_RULE: BoxRule = Object.freeze({ margin: 120, limit: 1600 });
 
 /**

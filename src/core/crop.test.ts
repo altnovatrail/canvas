@@ -36,7 +36,7 @@ import {
   whole,
 } from "./sheets.fixture.js";
 
-// The crop's rule (R25) on strokes code draws, as every test's strokes are (CLAUDE.md): the
+// The crop's rule (R25) on strokes code draws, as every test's strokes are (R15): the
 // synthetic sheets, each with the median a teacher sees on it, set down before any run; crowded
 // sheets of a seeded generator, places to hundredths, which the rule rounds; and a few strokes of a
 // test's own. The rule's numbers are checked against the rule written out once more in BigInt,
@@ -463,7 +463,7 @@ describe("the rule written out once more", () => {
   });
 });
 
-/** A case of spec's vectors of the crop (contracts/README.md, section 12). */
+/** A case of spec's test vectors of the crop (R94 spec). */
 interface CropCase {
   readonly name: string;
   readonly strokes: readonly FinalStroke[];

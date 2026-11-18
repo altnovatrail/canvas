@@ -449,9 +449,8 @@ test("every sequence of six writes, erasings, clears and undos agrees with a sta
   expect(broken).toEqual([]);
   // Of all 15,625 sequences of six steps, each checks the stack it ends with, and each of the
   // 19,530 sheets their first steps make is checked once: an expect for every check, at every step
-  // of every sequence, took most of the time, past thirty seconds on a loaded runner. The time of
-  // its timeout is an estimate till a green run of CI gives its line: 1.2 s in a free container,
-  // times 2.6, the runner's time to the container's for the sweep before.
+  // of every sequence, takes past thirty seconds on a loaded runner. The timeout is 1.2 s in a free
+  // container, times 2.6, the runner's time to the container's.
 });
 
 describe("a history given to the sheet", () => {
@@ -639,7 +638,7 @@ describe("a history given to the sheet", () => {
       expect(() => Work.restore(value, new Clock()), String(message)).toThrow(message);
     }
     // Times checked for their order alone: a write later than its last point, and strokes that
-    // overlap in time, as several pointers at once would write them (T35).
+    // overlap in time, as several pointers at once would write them.
     const overlapping: HistoryEvent[] = [
       {
         kind: "write",

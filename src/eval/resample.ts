@@ -1,9 +1,9 @@
-// The final geometry of a sample (R09; contracts/README.md, section 11): the strokes a sheet shows,
-// without the time, the pressure, the order and the direction they were written in. Each stroke
-// runs in its canonical direction, its points go along it a step apart, and the strokes are
-// numbered by their place. The step keeps every point that holds the stroke's box, so the box,
-// the bundles and h_med — every number of a crop — are the same as of the points as they came
-// (the 2026-10-25 amendment to R09; R25): only the pixels move, and too little to see (R48).
+// The final geometry of a sample (R09): the strokes a sheet shows, without the time, the pressure,
+// the order and the direction they were written in. Each stroke runs in its canonical direction,
+// its points go along it a step apart, and the strokes are numbered by their place. The step keeps
+// every point that holds the stroke's box, so the box, the bundles and h_med — every number of a
+// crop — are the same as of the points as they came (R25): only the pixels move, and too little to
+// see (R48).
 
 import { type Box, tenths } from "../core/geometry.js";
 import type { Point } from "../core/screen.js";
