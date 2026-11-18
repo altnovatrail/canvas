@@ -4,10 +4,10 @@
 // device: the widths of the text come from the canvas's own table (widths.ts), and SVG fits the
 // text to them. Short lines stand two to a row, in the task's order; a long line takes the page's
 // width and wraps. A task whose lines do not fit is a TypeError: nothing shrinks. The numbers and
-// the rule are the format's since 0.4, its page.yaml and its test vectors, which the npm package
-// @altnovatrail/spec carries and the tests hold the layout to (README of the format, §14; R60):
-// they change only with the format, for histories know neither the task nor the layout (R34). The
-// core's entry point does not give the layout.
+// the rule are the module format's, its page.yaml and its test vectors, which the npm package
+// @altnovatrail/spec carries and the tests hold the layout to (R60; R51 spec): they change only
+// with the format, for histories know neither the task nor the layout (R34). The core's entry
+// point does not give the layout.
 
 import { SHEET } from "./sheet.js";
 import type { WorkbookItem } from "./task.js";
@@ -36,7 +36,7 @@ export interface Layout {
   readonly margin: number;
 }
 
-/** The layout the workbook has (R35): the sweep of T47 chose it around the box the author chose. */
+/** The layout the workbook has: a sweep chose it around the box the author chose (R35). */
 export const LAYOUT: Layout = Object.freeze({
   size: 30,
   boxWidth: 100,
@@ -171,7 +171,7 @@ function measuresOf(layout: Layout): Measures {
 /**
  * The width of a text as one piece on one line, in whole units: its words and the spaces between
  * them, as the layout measures a fragment of a piece (R35). A worked example's value is held to its
- * box's width by it (README of the format, §21: lesson.workbook-page; R60), and drawn at it.
+ * box's width by it (the format's rule lesson.workbook-page; R60), and drawn at it.
  */
 export function pieceWidth(text: string, layout: Layout = LAYOUT): number {
   const words = wordsOf(text);

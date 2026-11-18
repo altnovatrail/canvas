@@ -1,12 +1,11 @@
 // The sample file of the eval protocol (R48; R93–R95 spec): one sample of writing on a sheet or a
 // page of a workbook, the message Sample of novatrail.eval.v1, one JSON file to a sample. The
-// samples page writes it (T20), and so does the code that draws the synthetic samples (T18); the
-// eval runner of tutor reads it, and spec's sample-check holds each file to the rules of the
-// protocol (contracts/README.md, section «The sample file»). What a sample holds its purpose and
-// its writer set (R09): a sample of measurement by an adult keeps the history of writing, one of
-// an eval set and one of a child the final geometry. Its crops are drawn from the strokes the file
-// holds, by the rules the sheet shares with the runner (R94 spec). This module is no part of the
-// package: no consumer of the element writes samples (R48).
+// samples page writes it, and so does the code that draws the synthetic samples; the eval runner
+// of tutor reads it, and spec's sample-check holds each file to the rules of the protocol. What a
+// sample holds its purpose and its writer set (R09): a sample of measurement by an adult keeps the
+// history of writing, one of an eval set and one of a child the final geometry. Its crops are
+// drawn from the strokes the file holds, by the rules the sheet shares with the runner (R94 spec).
+// This module is no part of the package: no consumer of the element writes samples (R48).
 
 import {
   type CropSetSchema,
@@ -47,8 +46,8 @@ export interface PersonOrigin {
 
 /**
  * What code that draws a sample gives: its seed, an unsigned integer of 64 bits in decimal digits.
- * The page did not write it, so it has canvas_version "0.0.0" and text_set_version "none" (the
- * 2026-11-07 amendment to R93 spec).
+ * The page did not write it, so it has canvas_version "0.0.0" and text_set_version "none"
+ * (R93 spec).
  */
 export interface SyntheticOrigin {
   readonly synthetic: { readonly seed: string };
@@ -77,7 +76,7 @@ export interface SampleInput {
   readonly origin: PersonOrigin | SyntheticOrigin;
   /** The writer's code (`writerCode`): a sample of measurement has one, an eval set's none. */
   readonly writerCode?: string;
-  /** The task the sample answers, without its key (R05 spec): as the caller found it. */
+  /** The task the sample answers, without its key (R93 spec): as the caller found it. */
   readonly task: MessageInitShape<typeof TaskReferenceSchema>;
   readonly surface: Surface;
   readonly markup: MessageInitShape<typeof MarkupSchema>;
@@ -242,7 +241,7 @@ export function personId(random: Uint8Array): string {
 
 /**
  * A writer's code, at random: 8 digits and capital letters, 40 bits, of the first 8 of the random
- * bytes given (R09). The page makes it, and the adult writes it down beside the consent (T20).
+ * bytes given (R09). The page makes it, and the adult writes it down beside the consent.
  */
 export function writerCode(random: Uint8Array): string {
   return lettersOf(random, 8, CODE_LETTERS);
@@ -333,7 +332,7 @@ function finalStroke(id: number, points: readonly Point[]): Stroke {
   return { id, kind: "", points: points.map(({ x, y }) => ({ x, y, t: 0, p: 0 })) };
 }
 
-/** The strokes of a workbook its boxes hold: the draft goes nowhere (R53 spec). */
+/** The strokes of a workbook its boxes hold: the draft goes nowhere (R09). */
 function inBoxes(
   strokes: readonly Stroke[],
   table: readonly { ids: readonly number[] }[],

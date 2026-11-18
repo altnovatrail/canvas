@@ -9,8 +9,7 @@ import type { Point } from "../core/screen.js";
 import { CROP_SHEETS, SHEETS } from "../core/sheets.fixture.js";
 import { byPlace, canonical, finalPoints, resampled, STEP } from "./resample.js";
 
-// The sheets are the synthetic ones of the crop's tests, drawn by code: no hand wrote them
-// (CLAUDE.md).
+// The sheets are the synthetic ones of the crop's tests, drawn by code: no hand wrote them (R15).
 
 const at = (x: number, y: number): Point => ({ x, y });
 

@@ -1,10 +1,11 @@
 // The synthetic samples (R49; R38 spec): sample files whose strokes code draws from a seed, with no
-// hand behind them (CLAUDE.md), each with the markup of what it drew, for tasks of tutor's file of
-// open tasks. tutor's CI checks that its eval runner reads them (T32 tutor); they measure nothing
-// of AI. A module's eval set takes them too, on the tasks of the module's package (T86; R110 spec):
-// a sample of the eval set by an adult, of a task and a seed its caller names. A seed gives its sample byte for byte, and its ID (R09). The code knows no key and no
-// subject (R05, R25): the numbers it writes, a solution's first error among them, are the seed's,
-// and say nothing of whether the solution is right (the 2026-11-08 amendment to R95 spec).
+// hand behind them (R15), each with the markup of what it drew, for tasks of tutor's file of open
+// tasks. tutor's CI checks that its eval runner reads them; they measure nothing of AI. A module's
+// eval set takes them too, on the tasks of the module's package (R110 spec): a sample of the eval
+// set by an adult, of a task and a seed its caller names. A seed gives its sample byte for byte,
+// and its ID (R09). The code knows no key and no subject (R93 spec; R02 spec): the numbers it
+// writes, a solution's first error among them, are the seed's, and say nothing of whether the
+// solution is right (R95 spec).
 
 import {
   type AnswerSlotNoteSchema,
@@ -26,7 +27,7 @@ import { type Font, fontOf, GLYPHS, Hand, random, spot, TUTOR, widthOf } from ".
 import { type Sample, type Surface, sampleOf, syntheticId, writerCode } from "./sample.js";
 import type { OpenTask, OpenTasks } from "./tasks.js";
 
-/** What a synthetic sample shows, which its file does not say (T32 tutor): one line each. */
+/** What a synthetic sample shows, which its file does not say: one line each. */
 export const SCENARIOS = Object.freeze({
   right: "a solution of lines and its final answer, ringed, with no first error",
   wrong: "the same, with a first error the seed chose",
@@ -118,7 +119,7 @@ export function syntheticSample(entry: Entry, tasks: OpenTasks): Synthetic {
 }
 
 /**
- * The sample of a module's eval set of a task and a seed (T86; R110 spec): a sample of the eval set
+ * The sample of a module's eval set of a task and a seed (R110 spec): a sample of the eval set
  * by an adult, in their own hand or imitating a child's, which the seed chooses with the scenario,
  * one of those of the task's canvas.
  */

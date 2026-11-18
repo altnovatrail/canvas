@@ -17,7 +17,7 @@ import {
 } from "./synthetic.js";
 import { moduleTasksOf, type OpenTask, type OpenTasks, openTasksOf, TUTOR_FILE } from "./tasks.js";
 
-// Every stroke of these samples the code draws from a seed: no hand wrote any (CLAUDE.md). Whether
+// Every stroke of these samples the code draws from a seed: no hand wrote any (R15). Whether
 // a file keeps the protocol's rules is spec's sample-check's to say, which ci-licenses runs on the
 // whole set (R93 spec): these tests hold the generator to what it says it draws.
 

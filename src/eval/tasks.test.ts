@@ -75,8 +75,7 @@ test("a file of another format, a bank or a task short of what it needs, is refu
     banks: [{ bank: "b.json", digest: "sha256:0", tasks }],
   });
   expect(open({ format: "tutor-open-tasks", version: 1, banks: [] })).toThrow(TypeError);
-  // Of the version of the module format the element reads, and no other: the exception for 0.3 is
-  // gone with tutor's file of 0.4 (T77, T85, T99).
+  // Of the version of the module format the element reads, and no other.
   for (const other of ["0.2", "0.3", "0.5", undefined, 0.4, ["0.4"]]) {
     expect(open({ ...bank([]), module_format_version: other })).toThrow("module format 0.4");
   }
@@ -112,7 +111,7 @@ function changed(...changes: readonly (readonly [Place, unknown])[]): unknown {
 const opened = (file: unknown) => () =>
   openTasksOf(file, TUTOR_FILE.tag, TUTOR_FILE.sha256, sha256);
 
-// Closed fields of a task of the module format, and what is no field at all (T21; R62).
+// Closed fields of a task of the module format, and what is no field at all (R62).
 test.each<readonly [string, Place, unknown, string]>([
   ["solution", ["solution"], "5", "workbook-01: solution is no field"],
   ["traps", ["traps"], [], "workbook-01: traps is no field"],
@@ -205,7 +204,7 @@ test("a module's package gives each task the open view module-kit gives, by the 
 });
 
 /** The digests of the open views of english-essays 0.2.0's tasks — five essays and three choices of
- * a first sentence, none of which the generator draws —, as module-kit open v0.3.0 gave them (T98). */
+ * a first sentence, none of which the generator draws —, as module-kit open v0.3.0 gave them. */
 const MODULE_KIT_ESSAYS: Record<string, string> = {
   "a-day-you-remember-1": "ceb479179124f5eed1e7eed69b58dc6c4400cb283a81e1bd4a7d2e80b329798f",
   "best-first-sentence-1": "cc5418e741d51c3120837474b1393b8018752e68acc08e4c91a02fc650d89553",
@@ -235,8 +234,8 @@ test("the essays and choices of english-essays 0.2.0 are refused with the digest
   expect(digests).toEqual(MODULE_KIT_ESSAYS);
 });
 
-// What the generator draws no sample of (T86; R63): each kept, with why, and with the digest of its
-// open view, which a person's sample of it names (T97), but a template, which has none.
+// What the generator draws no sample of (R63): each kept, with why, and with the digest of its
+// open view, which a person's sample of it names, but a template, which has none.
 test.each([
   ["a template", (task: Json) => (task.template = { parameters: {} }), "a template"],
   [
@@ -319,7 +318,7 @@ test("a sheet of one answer slot anywhere drops its closed fields, and a package
   );
 });
 
-/** The copy of the open views of modules the samples page carries (T101). */
+/** The copy of the open views of modules the samples page carries (R71). */
 const views = readFileSync(
   new URL(`../../tasks/modules-${MODULES_FILE.tag}/open-views.json`, import.meta.url),
 );
@@ -333,7 +332,7 @@ test("the copy of the open views is the one module-kit wrote: its sum, its modul
     ["novatrail/grade-3-math", "0.3.0", 12],
     ["novatrail/olympiad-math", "0.3.0", 863],
   ]);
-  // The board module of tutor's check board (T112): eleven sheets, each with its one place anywhere,
+  // The board module of tutor's check board: eleven sheets, each with its one place anywhere,
   // published by the release the page takes.
   const board = modules[0];
   expect(

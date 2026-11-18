@@ -25,7 +25,7 @@ export interface Contact {
 /**
  * A touch wider or taller than this, in CSS pixels, is a palm (R29). WebKit on iPadOS gives a touch
  * twice its contact's radius, a fingertip's 40–60 px by one report, so canvas-api's 30 px would
- * take most fingers there for palms. T22 measures it on the devices.
+ * take most fingers there for palms. No tablet has measured it.
  */
 export const PALM_PX = 100;
 
@@ -44,9 +44,9 @@ export const SLOP_PX = 8;
 
 /**
  * Two fingers that have gone this many times further along one axis than along the other, when
- * they pass the slop, scroll along that axis alone for the rest of the gesture (T94): a scroll
+ * they pass the slop, scroll along that axis alone for the rest of the gesture (R73): a scroll
  * down a zoomed sheet does not wander sideways, nor one across it up and down. Between, they go
- * both ways. T22 tries it on devices.
+ * both ways.
  */
 export const RAIL = 2;
 
@@ -121,8 +121,8 @@ export interface HandsSheet {
    */
   scroll(dx: number, dy: number, fresh: boolean): void;
   /**
-   * Whether the sheet scrolls across at all now: a zoomed sheet does (T94). A gesture on a sheet
-   * that does not goes by its travel down alone, as before.
+   * Whether the sheet scrolls across at all now: a zoomed sheet does (R73). A gesture on a sheet
+   * that does not goes by its travel down alone.
    */
   across(): boolean;
 }
@@ -173,7 +173,7 @@ interface Gesture {
 /**
  * The hands on a sheet (R29): which pointer may write, which is a palm, and which two fingers
  * scroll, for a pen, fingers and a mouse on one screen.
- * - One pointer writes at a time, as before (R18), and the sheet's recorder and eraser say which.
+ * - One pointer writes at a time (R18), and the sheet's recorder and eraser say which.
  * - A pen's touch puts the page in pen mode and takes away the stroke of a touch under way: it was
  *   a palm. While a pen or a mouse writes, a touch does nothing until it lifts.
  * - A touch wider or taller than `PALM_PX`, at its `pointerdown` or at any move, is a palm: it does
@@ -183,7 +183,7 @@ interface Gesture {
  *   comes later does nothing.
  * - In pen mode a finger writes nothing, and two that come down within `PAIR_MS` scroll. One that
  *   goes further than `SLOP_PX` alone, before a second comes, drags the sheet: the second does
- *   nothing then (R84; the second 2026-11-14 amendment to R90 spec).
+ *   nothing then (R84; R90 spec).
  * - A third finger does nothing. When one of the two lifts, the other does nothing until it lifts.
  * - Two fingers scroll by the travel of their middle on the screen, and one by its own, past its
  *   first `SLOP_PX`: along one axis alone if it went `RAIL` times further along it than along the
@@ -380,7 +380,7 @@ export class Hands {
     if (one === undefined || two === undefined) return;
     const middle = middleOf(one, two);
     if (gesture.last === undefined) {
-      // A sheet that does not scroll across counts the travel down alone, as before T94.
+      // A sheet that does not scroll across counts the travel down alone.
       const dx = this.#sheet.across() ? middle.x - gesture.from.x : 0;
       const dy = middle.y - gesture.from.y;
       const gone = Math.hypot(dx, dy);

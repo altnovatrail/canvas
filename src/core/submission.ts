@@ -57,8 +57,8 @@ export function workForCheck(strokes: readonly Stroke[], digit: number): WorkFor
  * with its item and its slot, in the task's order, and the context of the submission: the table and
  * its digest. The draft goes nowhere. A page with no box filled has no work to check, and gives
  * null, though it holds draft. The crops are frozen, not their bytes, which no freezing holds; the
- * context is frozen through. One crop of every box's strokes, which spec may choose (В45 in
- * RUN.md), is `croppedOf` of the table's strokes with the table's rows for groups.
+ * context is frozen through. One crop of every box's strokes, which spec may choose, is
+ * `croppedOf` of the table's strokes with the table's rows for groups (R38).
  */
 export function cellsForCheck(
   strokes: readonly Stroke[],

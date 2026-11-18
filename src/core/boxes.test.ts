@@ -339,10 +339,9 @@ test("the rule is its words: a second writing of it, in BigInt, agrees on the co
       }
     }
   }
-  // Every rule on the corpus, 200 crowds and the boxes that overlap, each stroke placed twice.
 });
 
-/** A case of spec's vectors of the boxes (contracts/README.md, section 12). */
+/** A case of spec's vectors of the boxes (R94 spec). */
 interface BoxCase {
   readonly name: string;
   readonly boxes: readonly (PageBox & { readonly answer_slot: CellPlace })[];

@@ -137,7 +137,7 @@ const VALID: readonly (readonly [string, Manifest, { digit: number; lang: string
 /**
  * The vectors of the rule manifest.format-version: while the format is v0, a reader reads only
  * its current version, and refuses a module of the one before, of the one after and of one the
- * format never had (README of the format, §2).
+ * format never had (R44 spec).
  */
 const VERSIONS: readonly (readonly [string, Manifest])[] = [
   ["next-minor", { ...VECTOR, module_format_version: "0.5" }],

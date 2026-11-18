@@ -1,10 +1,9 @@
 import { SHEET } from "./sheet.js";
 
 /**
- * Where the sheet is on the screen, one view for every layer (R06; architecture 3.2 in
- * docs/architecture.md): `k` CSS pixels to a logical unit, for the sheet fits the width of its
- * area times the page's zoom, and `vx` and `vy`, the left and the top of the sheet's visible part,
- * in units (T94).
+ * Where the sheet is on the screen, one view for every layer (R06): `k` CSS pixels to a logical
+ * unit, for the sheet fits the width of its area times the page's zoom, and `vx` and `vy`, the left
+ * and the top of the sheet's visible part, in units (R73).
  */
 export interface View {
   readonly k: number;
@@ -21,7 +20,7 @@ export interface Point {
 /**
  * The most CSS pixels to a unit of the sheet's fit: on a wide screen the sheet fits at most 1000
  * CSS pixels wide, a pixel to a unit as on the picture of the work, and stands in the middle (R23).
- * The page's zoom takes it beyond that, to twice the fit (T94).
+ * The page's zoom takes it beyond that, to twice the fit (R73).
  */
 export const K_MAX = 1;
 
@@ -32,7 +31,7 @@ export function scaleFor(width: number): number {
 
 /**
  * `k` for a sheet laid out in an area `width` CSS pixels wide: it fits the width, up to `K_MAX`,
- * times the page's `zoom` (T94). This is the layout's `k`, before any transform the page puts on
+ * times the page's `zoom` (R73). This is the layout's `k`, before any transform the page puts on
  * the element; input takes `k` from the sheet's rectangle on the screen, by `scaleFor`.
  */
 export function fitScale(width: number, zoom = 1): number {
@@ -41,8 +40,8 @@ export function fitScale(width: number, zoom = 1): number {
 
 /**
  * The point of the sheet under a point of the screen, given in CSS pixels from the top left corner
- * of the sheet's visible part. A point beyond the sheet is clamped to its edge, as in spec 4.2 of
- * canvas-api: a pointer captured by the sheet goes on writing on its edge.
+ * of the sheet's visible part. A point beyond the sheet is clamped to its edge: a pointer captured
+ * by the sheet goes on writing on its edge.
  */
 export function toSheet(view: View, x: number, y: number): Point {
   return {

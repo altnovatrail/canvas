@@ -8,9 +8,9 @@
 // and the fold of a history into the strokes it leaves, so that a consumer
 // reads a history it keeps without the DOM (R27). The code runs without the DOM, but spec's
 // declarations of the element's contract, which its types come from, name the DOM's types too: a
-// consumer without the DOM's types skips them with skipLibCheck (T69). The rules of the groups, the
+// consumer without the DOM's types skips them with skipLibCheck (R27). The rules of the groups, the
 // crop and the snapping stay inside: the eval protocol has taken them as they are, and spec's test
-// vectors pin them (R94 spec; T16).
+// vectors pin them (R94 spec).
 
 export type { Box } from "@altnovatrail/spec/canvas";
 export type { Filling } from "./boxes.js";

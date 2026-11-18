@@ -294,12 +294,11 @@ describe("the layout of a workbook's page", () => {
   });
 });
 
-// The layout by spec's page (T85; R60): the numbers of format/page.yaml and its test vectors
-// format/vectors/pages/, which the npm package @altnovatrail/spec carries as JSON (README of the
-// format, §§9 and 14). They began as canvas's own, vectors/pages.json (R35), and spec made them the
-// format's rule (R108 spec): the element lays a page out by the same numbers, and its tests hold its
-// layout to the vectors. vectors/pages.json stays as it was last written, a record the decisions of
-// E6 name, and no test writes it any more.
+// The layout by spec's page: the numbers of format/page.yaml and its test vectors
+// format/vectors/pages/, which the npm package @altnovatrail/spec carries as JSON, are the format's
+// rule: the element lays a page out by the same numbers, and its tests hold its layout to the
+// vectors (R60; R51 spec). vectors/pages.json is a record the log's decisions name: no test reads
+// or writes it.
 
 const require = createRequire(import.meta.url);
 /** The page of format/page.yaml, as the package gives it. */

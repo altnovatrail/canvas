@@ -195,8 +195,8 @@ describe("the PNG", () => {
       [300, 200],
       [1, 1],
       [1568, 3],
-      // The picture of the work, the whole surface (R83): 1,576,640 bytes at most, 1.5 MiB, under
-      // the 4 MiB of a stored work (contracts/README.md spec, section 15).
+      // The picture of the work, the whole surface: 1,576,640 bytes at most, 1.5 MiB, under the
+      // 4 MiB of a stored work (R83).
       [1000, 1400],
     ] as const) {
       const png = encodePNG(noise(width, height, width), width, height);

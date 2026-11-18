@@ -30,10 +30,7 @@ export const CROP = Object.freeze({
   edge: 1568,
   tokens: 1568,
   patch: 28,
-  /**
-   * The height of a digit a crop is drawn at unless the module's manifest says another, px: 24
-   * since the module format 0.2, with or without a manifest.
-   */
+  /** The height of a digit a crop is drawn at, px, unless a module's manifest names another. */
   digit: 24,
   /**
    * The heights of digits a sample's crops are drawn at, px, as the eval protocol names them,
@@ -66,7 +63,6 @@ export interface Crop extends CropNumbers {
   readonly line: number;
 }
 
-/** A stroke as the crop sees it: the box of its points in tenths. */
 /**
  * The bundles of the strokes on a sheet (R25): strokes no lower than `CROP.flat`, joined by a chain
  * of boxes that touch or overlap, whenever each was written. Each bundle by its IDs ascending, the

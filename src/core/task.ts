@@ -98,11 +98,10 @@ export interface SheetCanvas {
   /** The grid's step in sheet units, a whole number from 20 to 500: 50 unless given. */
   readonly grid_step?: number;
   /**
-   * The tools the task allows (concepts 8 spec; R28), the element's own field until the format has
-   * one: the canvas takes "pen" and "eraser", and passes over the names it does not know — a
-   * ruler, a calculator — which are app's to show or come with new versions of the canvas. The
-   * pen and the eraser unless given; a list without the pen is a TypeError, for the canvas writes
-   * with it.
+   * The tools the task allows (R28), the element's own field until the format has one: the canvas
+   * takes "pen" and "eraser", and passes over the names it does not know — a ruler, a calculator —
+   * which are app's to show or come with new versions of the canvas. The pen and the eraser unless
+   * given; a list without the pen is a TypeError, for the canvas writes with it.
    */
   readonly tools?: readonly string[];
 }
@@ -114,8 +113,8 @@ export interface WorkbookCanvas {
 }
 
 /**
- * The canvas of a task as a consumer gives it: spec's, and the tools the task allows (concepts 8
- * spec; R28), the element's own field until the format has one.
+ * The canvas of a task as a consumer gives it: spec's, and the tools the task allows (R28), the
+ * element's own field until the format has one.
  */
 export interface Canvas extends open.Canvas {
   readonly tools?: readonly string[];
@@ -218,7 +217,7 @@ export function taskOf(value: unknown): CheckedTask {
 
 /**
  * What the statement gives and what the task asks to find, as the task has them: the element checks
- * them and shows neither, for the chips are app's to show (architecture 3.1 spec).
+ * them and shows neither, for the chips are app's to show (R57 spec).
  */
 function askedOf({
   givens,

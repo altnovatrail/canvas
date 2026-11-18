@@ -45,8 +45,9 @@ export function replay(history: readonly HistoryEvent[]): Stroke[] {
  * the four, at a time from 0 that never goes back along the history; a stroke must have a new ID, a
  * whole number from 1, and one point at least, each on the sheet, with a pressure from 0 to 1, its
  * times never going back and none after the time it landed. Times are checked for their order
- * alone: with several pointers at once (T35) strokes may overlap in time. Whether the actions keep
- * the rules of the stack, the work on the sheet checks as it replays them (`Work.restore`).
+ * alone: strokes may overlap in time, as several pointers at once would write them. Whether the
+ * actions keep the rules of the stack, the work on the sheet checks as it replays them
+ * (`Work.restore`).
  */
 export function historyOf(value: unknown): HistoryEvent[] {
   if (!Array.isArray(value)) throw new TypeError(`history: a list of events, not ${shown(value)}`);
