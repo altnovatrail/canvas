@@ -687,6 +687,14 @@ Read 2026-11-02 (architecture 3.4; T70 and T71 in [RUN.md](../RUN.md)):
 - `time`: 1.2.98 — 2026-11-07T07:04:35Z, 1.2.99 — 2026-11-12T06:12:51Z, 1.2.100 — 2026-11-14T16:45:07Z, 1.2.101 — 2026-11-17T07:17:19Z; `dist-tags.latest` is 1.2.101;
 - 1.2.99: `license` is `Apache-2.0`, `dependencies` is `{ '@iconify/types': '*' }`, `dist.integrity` is `sha512-c7CBI249CmvZDeT7sml1iwKEjsbiB8NUG2Bg1KPd7jnvLQ/8iQv7TQWnqq9a2357SkPjnyVTxxTgkWO2rlUtCw==`, the same as `package-lock.json`; its `info.json` — "Material Symbols", 15,810 icons, license "Apache 2.0", `Apache-2.0`.
 
+### 7.13. `picomatch` and GHSA-fc5q-39xc-vjpf
+
+(R12, its T126 amendment on alert #35), read 2026-11-18:
+
+- [OSV, GHSA-fc5q-39xc-vjpf](https://osv.dev/vulnerability/GHSA-fc5q-39xc-vjpf): "picomatch vulnerable to ReDoS through single-branch repeated extglobs", npm `picomatch`, `introduced` 0, `last_affected` 4.0.7, severity HIGH, CWE-1333, reviewed by GitHub 2026-11-17T15:56:42Z;
+- `npm view picomatch versions` ends with 4.0.5, 4.0.6, 4.0.7; `npm ls picomatch --all`: 4.0.7, under `vite` 8.3.6 — itself and through `tinyglobby` 0.2.17 and `fdir` 6.5.0 — and `vitest` 5.1.0, marked `dev` in `package-lock.json`;
+- code scanning, alert #35 of Scorecard, created 2026-11-17T16:19:17Z: "score is 9: 1 existing vulnerabilities detected: Warn: Project is vulnerable to: https://osv.dev/GHSA-fc5q-39xc-vjpf".
+
 ## 8. Licenses and contribution
 
 ### 8.1. Apache License 2.0
