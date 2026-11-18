@@ -1,9 +1,8 @@
 // What a test sees of an element beyond its interface: its strokes, the stroke under way, what the
 // eraser is about to take, its view of the sheet, how many outlines it has drawn, the tutor's
-// marks it shows and what each pointer down on it does (R29). The history of writing is the
-// element's own property now (R27). This module is no entry point of the package, so the
-// element's interface stays what the tasks of the sheet make it (R07, R12, R19, R22, R27, R29;
-// RUN.md, T10, T14, T15, T33, T34, T35).
+// marks it shows and what each pointer down on it does (R29). The history of writing is not here:
+// it is the element's own property (R27). This module is no entry point of the package, so the
+// element's interface stays what its decisions make it (R07, R12, R19, R22, R27, R29).
 
 import type { Box } from "../core/geometry.js";
 import type { Role } from "../core/hands.js";
@@ -18,7 +17,7 @@ export interface Probe {
   readonly live: Stroke | undefined;
   /** The IDs of the strokes the eraser under way has come near, or none between presses. */
   readonly pending: readonly number[];
-  /** How many outlines of strokes the element has computed so far. */
+  /** How many outlines of strokes the element has computed since it was built. */
   readonly outlines: number;
   /** Where the sheet is on the screen, or nothing while the element is not laid out. */
   readonly view: View | undefined;

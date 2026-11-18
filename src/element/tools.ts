@@ -6,23 +6,21 @@
 // one. Undo and Clear with nothing to take back or to clear stay where the focus can reach them,
 // marked unavailable: a last undo from the keyboard leaves the focus where it was. Zoom in and Zoom
 // out step the page's zoom of the sheet, from its fit to twice it, each unavailable at its end
-// (T94). In pen mode a last button lets a finger write again (R29). The sheet has no buttons that
-// scroll it: a hand drags it, the wheel and the keys scroll it (R84; the second 2026-11-14
-// amendment to R90 spec).
+// (R73). In pen mode a last button lets a finger write again (R29). The sheet has no buttons that
+// scroll it: a hand drags it, the wheel and the keys scroll it (R84; R90 spec).
 // The buttons of the bar show an icon alone, of the set every NovaTrail package of the interface
 // draws from (R46; R78 spec): each is named by its label, in the element's language (labels.ts),
 // which only a screen reader reads, and shows it in a tooltip of its own on the pointer's hover and
-// on the keyboard's focus, which Escape dismisses and the pointer can move onto (the 2026-11-14
-// amendment to R90 spec; WCAG 1.4.13). The bar is named by the canvas kind's buttons: the sheet's
-// or the workbook's (R36), for the kind's own name is the scroll container's (T93). A lesson's
-// worked example names it too, and has no tools of writing: the learner does not write on its
-// sheet, and its bar holds the zoom's pair alone. Its demo's buttons, Next, which opens the next
-// part, and Demo, a disclosure button that hides the whole demo and shows it again, are actions,
-// not tools (R42; R90 spec): each shows its label beside its icon, a stop of Tab of its own, in a
-// row of glass at the bottom of the element, and after a line the slot `actions`, where the
-// consumer puts its own buttons — app's Continue —, as the mockup has one row (R84; the
-// 2026-11-17 amendment to R36 spec). A button that goes gives its stop of Tab and the focus to
-// the first button shown. This module is no entry point of the package.
+// on the keyboard's focus, which Escape dismisses and the pointer can move onto (R90 spec; WCAG
+// 1.4.13). The bar is named by the canvas kind's buttons: the sheet's or the workbook's (R36), for
+// the kind's own name is the scroll container's (R28). A lesson's worked example names it too, and
+// has no tools of writing: the learner does not write on its sheet, and its bar holds the zoom's
+// pair alone. Its demo's buttons, Next, which opens the next part, and Demo, a disclosure button
+// that hides the whole demo and shows it again, are actions, not tools (R42; R90 spec): each shows
+// its label beside its icon, a stop of Tab of its own, in a row of glass at the bottom of the
+// element, and after a line the slot `actions`, where the consumer puts its own buttons — app's
+// Continue —, as the mockup has one row (R84; R36 spec). A button that goes gives its stop of Tab
+// and the focus to the first button shown. This module is no entry point of the package.
 
 import type { Tool } from "../core/task.js";
 import { SVG, write } from "./attributes.js";
@@ -265,7 +263,7 @@ export class Tools {
    * The bar as the sheet now is. Only what has changed is written. A worked example's has no tools
    * of writing, no undo and no clearing, for the learner does not write on its sheet, and its row
    * has Next, unavailable while the demo is hidden or open whole, and Demo, expanded while the demo
-   * is shown (R42). Zoom in and Zoom out stand unavailable at their ends (T94). The tool in use
+   * is shown (R42). Zoom in and Zoom out stand unavailable at their ends (R73). The tool in use
    * shows its icon filled, and Demo's icon points down while the demo is shown, and along the row
    * while it is hidden (R46).
    */
@@ -455,7 +453,7 @@ export class Tools {
     return this.#buttons.filter((button) => !button.hidden);
   }
 
-  /** The first button the bar shows: Zoom in and Zoom out are on every bar (T94). */
+  /** The first button the bar shows: Zoom in and Zoom out are on every bar (R73). */
   #first(): HTMLButtonElement {
     return this.#shown()[0] ?? this.#zoomIn;
   }
@@ -469,8 +467,8 @@ export class Tools {
 /**
  * Glass that scrolls inside itself — the bar down, a worked example's row across — brings what has
  * the focus wholly into its view, within its padding, as the first button and the last stand at its
- * ends (2.4.11): Firefox's focus() leaves one in sight in part where it is, and so do all three
- * engines in a row. The glass alone scrolls, not what scrolls the element.
+ * ends (WCAG 2.4.11): Firefox's focus() leaves one in sight in part where it is, and so do all
+ * three engines in a row. The glass alone scrolls, not what scrolls the element.
  */
 function bringIn(glass: HTMLElement, item: Element): void {
   const outer = glass.getBoundingClientRect();

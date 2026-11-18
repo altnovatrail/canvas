@@ -1,11 +1,11 @@
 // The pointer of the element's tests in Chromium, WebKit and Firefox: a sheet put on the page, the
 // client point over a point of it, a level stroke that a script makes, real input through
 // Chromium's DevTools protocol — a mouse, a pen and touches (R29) — the pixels of a screenshot,
-// Chromium's own accessibility tree and an element given its properties before it was upgraded; and for the pictures, a picture's
-// file — an SVG, or a PNG of four colours — a load the test settles, the wait for the files that
-// came, and what changes in a node (R23, R42). The tests take them from here rather than each
-// keeping a copy. Like the tests, the build leaves this module out (tsconfig.build.json), and the
-// package never has it.
+// Chromium's own accessibility tree and an element given its properties before it was upgraded;
+// and for the pictures, a picture's file — an SVG, or a PNG of four colours — a load the test
+// settles, the wait for the files that came, and what changes in a node (R23, R42). The tests take
+// them from here rather than each keeping a copy. Like the tests, the build leaves this module out
+// (tsconfig.build.json), and the package never has it.
 
 import { vi } from "vitest";
 import { cdp, page, server } from "vitest/browser";

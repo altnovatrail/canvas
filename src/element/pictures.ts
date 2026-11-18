@@ -8,9 +8,8 @@
 // no entry point of the package.
 
 // What gives the file of a picture of a task or a worked example is spec's type, Media, of the
-// contract of canvas and app (the 2026-11-02 amendment to R36 spec; R07): the consumer's, for the
-// canvas goes to no network (repositories 2.1 spec). app takes the files from what api serves, the
-// samples page from its own build.
+// contract of canvas and app (R36 spec; R07): the consumer's, for the canvas goes to no network.
+// app takes the files from what api serves, the samples page from its own build.
 
 import type { Media } from "@altnovatrail/spec/canvas";
 

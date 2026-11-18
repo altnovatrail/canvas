@@ -89,7 +89,7 @@ export function framed(pictures: Pictures, part: PicturePart): Framed {
         frame.replaceChildren(image);
       };
       // A browser that keeps the decoded address at hand has the picture whole at once, as
-      // Chromium does; another decodes it again, and the frame shows its words till then (T64).
+      // Chromium does; another decodes it again, and the frame shows its words till then (R42).
       if (image.complete && image.naturalWidth > 0) {
         swap();
         return;

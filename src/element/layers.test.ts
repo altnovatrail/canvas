@@ -11,9 +11,9 @@ import { NovatrailCanvas } from "./index.js";
 import { at, level, screenshot, sheetWork } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
-// The sheet's layers in a browser (R23): the stack in the order of concepts 8 spec, one view for
-// every layer at any width and scroll — the author's demo too (T61) — the cap of k, the task's
-// grid, the theme, and the task as a property. A worked example's canvas takes no pointer (R42).
+// The sheet's layers in a browser (R23): the stack in its order, one view for every layer at any
+// width and scroll — the author's demo too (R42) — the cap of k, the task's grid, the theme, and
+// the task as a property. A worked example's canvas takes no pointer (R42).
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -91,7 +91,7 @@ test("the sheet is a stack of layers in the order of concepts 8 spec, and of the
   const sheetBox = root.querySelector(".sheet");
   if (!sheetBox) throw new Error("the element has no sheet");
   // The bar of the element's own buttons sets no pointer-events of its own either (R28), the
-  // zoom's pair (T94), the finger's button of pen mode (R29) and a worked example's row of Next and
+  // zoom's pair (R73), the finger's button of pen mode (R29) and a worked example's row of Next and
   // Demo (R42, R84) too. The rail it stands in, as tall as the element in sight, is as wide as
   // nothing: the bar stands out of it, and beside the bar the pointer is on the sheet (R84).
   const bar = root.querySelector(".tools");
@@ -128,7 +128,7 @@ test("a worked example's canvas alone takes no pointer, the stage keeps the menu
   expect([...stage.children]).toEqual(layers);
   expect(getComputedStyle(canvas).pointerEvents).toBe("none");
   expect(getComputedStyle(stage).pointerEvents).toBe("auto");
-  // A long press or a right click opens no menu over the sheet, on the stage now as on the canvas.
+  // A long press or a right click opens no menu over the sheet, on the stage as on the canvas.
   for (const target of [stage, canvas]) {
     const menu = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
     target.dispatchEvent(menu);
@@ -145,7 +145,7 @@ test("a worked example's canvas alone takes no pointer, the stage keeps the menu
 test("every layer shows the sheet by one view, whatever the width and the scroll, and the sheet is at most 1000 CSS pixels wide, in the middle", async () => {
   for (const width of [400, 1000, 1400]) {
     const { element, root, canvas, viewport, view } = await sheet(width, 300);
-    // The template, the author's demo (T61), the tutor's sketch and the marks.
+    // The template, the author's demo (R42), the tutor's sketch and the marks.
     const svgs = [...root.querySelectorAll<SVGSVGElement>(".stage > svg")];
     expect(svgs.map((svg) => svg.getAttribute("class"))).toEqual([
       "template",

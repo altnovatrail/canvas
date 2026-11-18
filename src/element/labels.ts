@@ -1,6 +1,6 @@
 // The labels of the element's own buttons, of a workbook's boxes and of the parts of a worked
 // example's demo, in the languages of the interface, English and Russian (R92 spec), by the shared
-// rules of the packages' translations (R91 spec; R28, R29, R33, R36, R37, R42; T91 in RUN.md):
+// rules of the packages' translations (R91 spec; R28, R29, R33, R36, R37, R42):
 // - the language is the element's own `lang`, looked up as RFC 4647 does it, and English stands for
 //   any other, under a `lang` of its own;
 // - a label with a number or a word in it is one string with named places, «Часть {n} из {total}.»,
@@ -8,14 +8,13 @@
 // - no label counts a thing, so none has forms of number yet. The first that does takes CLDR's
 //   categories, `other` always among them, chosen by `Intl.PluralRules` of the label's language;
 // - no label tells the learner's gender (R70 spec) or speaks as the AI in the first person (П-15);
-// - the buttons' words are those of the table of words of architecture 6 spec, the two of the
-//   page's zoom among them since spec took them by В76 (T94; Д219 spec); the four that scrolled the
-//   sheet left the row with their buttons (R84).
+// - the buttons' words are those of spec's table of words, the two of the page's zoom among them
+//   (R91 spec; R73); no button scrolls the sheet, so no label says a direction (R84).
 // This module is no entry point of the package.
 
 /**
  * What the element says: its scroll container the canvas kind's name, or a worked example's, and
- * the row of buttons a name of its own, that of the kind's buttons (T93), the name of the group of
+ * the row of buttons a name of its own, that of the kind's buttons (R28), the name of the group of
  * tools and each button, a workbook's box its name, and the number of a part of a demo the element
  * tells of. A label with places names them in braces.
  */
@@ -36,7 +35,7 @@ export interface Labels {
   readonly eraser: string;
   readonly undo: string;
   readonly clear: string;
-  /** The buttons of the page's zoom, a step larger and a step smaller (T94). */
+  /** The buttons of the page's zoom, a step larger and a step smaller (R73). */
   readonly zoomIn: string;
   readonly zoomOut: string;
   /** The button that lets a finger write again, in pen mode (R29). */
@@ -123,10 +122,10 @@ export const LANGUAGES: readonly string[] = [...LABELS.keys()];
 type Labelled = { readonly lang: string; readonly labels: Labels };
 
 /**
- * The labels for a language tag, and the language they are in. The tag is looked up as RFC 4647,
- * section 3.4, does it: in lower case, cut subtag by subtag from its end until the table has what
- * is left, a single-letter subtag going with the subtag after it. English stands for any other
- * tag, and for none.
+ * The labels for a language tag, and the language they are in. The tag is looked up as RFC 4647's
+ * Lookup does it: in lower case, cut subtag by subtag from its end until the table has what is
+ * left, a single-letter subtag going with the subtag after it. English stands for any other tag,
+ * and for none.
  */
 export function labelsFor(tag: string | null): Labelled {
   return lookup(tag) ?? { lang: "en", labels: ENGLISH };
@@ -140,7 +139,7 @@ export function knows(tag: string | null): boolean {
   return lookup(tag) !== undefined;
 }
 
-/** The labels the table has for a tag, by RFC 4647, section 3.4, or none. */
+/** The labels the table has for a tag, by RFC 4647's Lookup, or none. */
 function lookup(tag: string | null): Labelled | undefined {
   let range = (tag ?? "").toLowerCase();
   while (range !== "") {
@@ -176,7 +175,7 @@ export function say(label: string, values: Readonly<Record<string, string | numb
 
 /**
  * A label with its places filled by name but one, which it is cut at: what comes before that place
- * and what comes after it, for a node of its own to stand between them (T107). A label that names
+ * and what comes after it, for a node of its own to stand between them (R61). A label that names
  * the place not once is a TypeError, and so is a place the values do not give, as with `say`.
  */
 export function sayAround(

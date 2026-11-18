@@ -3,7 +3,7 @@ import { cdp } from "vitest/browser";
 import { sheetTask, workedExample } from "../core/tasks.fixture.js";
 import { buttonOf, devtools, placed, settle, spacer } from "./pointer.fixture.js";
 
-// Motion and the learner's wish for less of it (T92; WCAG 2.3.3, which R90 spec asks of canvas):
+// Motion and the learner's wish for less of it (WCAG 2.3.3, which R90 spec asks of canvas):
 // nothing in the element moves but the scrolling, and its scrolls jump to where they go — two
 // fingers and a part of a worked example brought into sight — whatever smoothness the
 // page asks of its scrolling. The style animates nothing: its one transition, of the canvas's

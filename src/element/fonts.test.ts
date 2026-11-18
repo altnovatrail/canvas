@@ -2,7 +2,7 @@
 // its numbers are the canvas's own, each the mean of Liberation Sans and Liberation Serif, and the
 // text SVG fits to them keeps its shape — what the fitting stretches or squeezes stays within an
 // eighth in either font. A font of another width, as Liberation Mono, is fitted all the same: its
-// text is measured, and only bounded. T22 measures the fonts of the devices.
+// text is measured, and only bounded. The devices' own fonts are not measured here.
 
 import { afterAll, expect, test } from "vitest";
 import { isBox, LAYOUT, pageOf } from "../core/page.js";

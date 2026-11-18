@@ -6,9 +6,9 @@
 // picture is, which shows the picture once the element's pictures have its file and what it shows
 // in words till then. A picture on an area of the sheet is read by its words here, while the
 // picture itself stands on the layer of the author's demo, stretched over its area, the later part
-// over the earlier, and nothing stands there till its file is decoded (T61). A box of a workbook
+// over the earlier, and nothing stands there till its file is decoded (R42). A box of a workbook
 // the demo fills is read as the box, in the labels' language, and its value, a node of its own in
-// the parts' language, which the element writes in the box itself too (T85, T107). This module is
+// the parts' language, which the element writes in the box itself too (R61). This module is
 // no entry point of the package.
 
 import {
@@ -36,7 +36,7 @@ export interface Told {
 
 /**
  * What a part that fills a box says: the box, in the labels' language, around the value the demo
- * wrote in it, which is in the parts' own (T107). Without a value the box is `before` alone.
+ * wrote in it, which is in the parts' own (R61). Without a value the box is `before` alone.
  */
 export interface FillWords {
   /** The labels' words before the value: "Box 1.2: ". */
@@ -202,9 +202,9 @@ export class Parts {
   }
 
   /**
-   * What a part that fills a box says, as nodes (T107; 3.1.2): the labels' words, each run a span
-   * in their language, and the value a span of its own between them, in the language given, or
-   * with none, the one it inherits.
+   * What a part that fills a box says, as nodes (R61; WCAG 3.1.2): the labels' words, each run a
+   * span in their language, and the value a span of its own between them, in the language given,
+   * or with none, the one it inherits.
    */
   #fillNodes(part: FillPart, valueLang: string | null): HTMLSpanElement[] {
     const { before, value, after, lang } = this.#fillWords(part);
@@ -215,7 +215,7 @@ export class Parts {
     return nodes;
   }
 
-  /** An item leaving the list takes its picture off, once, and is no fill's any more. */
+  /** An item leaving the list takes its picture off, once, and leaves the fills. */
   #takeOff(item: Element): void {
     this.#off.get(item)?.();
     this.#off.delete(item);
@@ -256,9 +256,9 @@ export class Parts {
 
   /**
    * A picture on its area of the sheet, at the end of the layer, stretched over the area: its
-   * corners at the area's (README of the format, §21; SVG 2). It shows its file's address once the
-   * element's pictures have it decoded, and nothing till then: its words are in its item. What it
-   * gives back takes the picture off the sheet.
+   * corners at the area's, as the module format's lessons place it (SVG 2). It shows its file's
+   * address once the element's pictures have it decoded, and nothing till then: its words are in
+   * its item. What it gives back takes the picture off the sheet.
    */
   #onTheSheet(part: AreaPicture): () => void {
     const image = document.createElementNS(SVG, "image");

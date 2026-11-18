@@ -25,15 +25,15 @@ import { TIP_GRACE_MS } from "./tools.js";
 
 // The element's own buttons in a browser (R28, R84): a vertical bar of glass over the sheet's left
 // edge, as the interface mockup draws it (R148 spec), a toolbar of the tools the task allows, of
-// undo and clearing and of the zoom's pair (T94), found by its roles and names in the element's
-// language, worked with the pointer and with the keyboard, telling of the learner's choice of
-// tool, standing in the middle of what is in sight of the element and taking no room of its own.
-// Each button shows an icon alone, its label its name and its tooltip, which the pointer's hover
-// and the keyboard's focus show and Escape dismisses (the 2026-11-14 amendment to R90 spec; WCAG
-// 1.4.13). A worked example's bar holds the zoom's pair alone, and its Next and Demo, with their
-// labels beside their icons, stand in a row of the same glass at the bottom, the consumer's buttons
-// of the slot actions after them (R42, R84). The sheet has no buttons that scroll it: a hand drags
-// it, the wheel and the keys scroll it (R84), and the zoom itself is zoom.test.ts's.
+// undo and clearing and of the zoom's pair, found by its roles and names in the element's language,
+// worked with the pointer and with the keyboard, telling of the learner's choice of tool, standing
+// in the middle of what is in sight of the element and taking no room of its own. Each button shows
+// an icon alone, its label its name and its tooltip, which the pointer's hover and the keyboard's
+// focus show and Escape dismisses (R90 spec; WCAG 1.4.13). A worked example's bar holds the zoom's
+// pair alone, and its Next and Demo, with their labels beside their icons, stand in a row of the
+// same glass at the bottom, the consumer's buttons of the slot actions after them (R42, R84). The
+// sheet has no buttons that scroll it: a hand drags it, the wheel and the keys scroll it (R84), and
+// the zoom itself is zoom.test.ts's.
 
 const made: HTMLElement[] = [];
 afterEach(async () => {
@@ -145,7 +145,7 @@ test("the bar is a vertical toolbar of the pen and the eraser, undo and clear, n
   await expect.element(found.clear).toBeVisible();
   expect(row.getAttribute("aria-orientation")).toBe("vertical");
   // The order the arrow keys go through, and the language the names are in. Zoom in and Zoom out
-  // are on every device (T94). The last button is pen mode's, which out of it the bar hides (R29).
+  // are on every device (R73). The last button is pen mode's, which out of it the bar hides (R29).
   // A worked example's Next and Demo are not the bar's: they stand in its row, which a sheet hides.
   expect([...row.querySelectorAll("button")].map((each) => each.textContent)).toEqual([
     "Pen",
@@ -748,7 +748,8 @@ test.each(ROWS)(
     expect(row.width).toBeLessThanOrEqual(width - 32 + 0.5);
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
     // A row narrower than its buttons scrolls them inside its glass, and the focus brings each of
-    // them, the element's and the consumer's, whole into sight there, within its padding (2.4.11).
+    // them, the element's and the consumer's, whole into sight there, within its padding (WCAG
+    // 2.4.11).
     if (width === 200) {
       expect(actions.scrollWidth).toBeGreaterThan(actions.clientWidth);
       for (const button of [own, buttonOf(element, "Next"), buttonOf(element, "Demo")]) {
@@ -1113,7 +1114,7 @@ test.runIf(devtools)(
     buttonOf(element, "Eraser").focus();
     await userEvent.keyboard(" ");
     expect(element.tool).toBe("eraser");
-    // Zoom in's key zooms the sheet, though two fingers would start no gesture then (R29, T94).
+    // Zoom in's key zooms the sheet, though two fingers would start no gesture then (R29; R73).
     const zoomOut = buttonOf(element, "Zoom out");
     await press(buttonOf(element, "Zoom in"));
     expect(zoomOut.getAttribute("aria-disabled")).toBe("true");
