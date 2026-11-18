@@ -546,6 +546,15 @@ At the tag [v0.1.12](https://github.com/altnovatrail/.github/tree/v0.1.12), comm
 - `spec/run/DEBT.md` at v0.18.27, the rows naming `canvas`: Д34, Д45, Д88, Д146, Д238, Д242, Д244 and Д257, their text as at v0.18.14;
 - `gh release verify v0.1.33 -R altnovatrail/.github` — "Release v0.1.33 verified!", the tag is the commit `f1c7e9e6f8245fdbdbc23c4091f3c26350e3a44e`; `git diff --stat v0.1.31 v0.1.33 -- .github/workflows` in a clone of `.github` — `go.yml`, `self-ci.yml` and `self-release.yml` alone, none that `canvas` calls; `.github/actions/toolchain/action.yml`, new in v0.1.32: "The image of the caller's toolchain stage and the caches of Go, for a job of the caller's own that runs Go in that stage".
 
+### 6.20. The move to `spec` v0.18.34
+
+(R86; T128), read 2026-11-18:
+
+- `gh release list -R altnovatrail/spec` — v0.18.34 of 2026-11-18 10:00Z, Latest; `gh release verify v0.18.34 -R altnovatrail/spec` — "Release v0.18.34 verified!", the tag is the commit `46fa5f9794e5923f1b0d54225a70a414d3637034`; `npm view @altnovatrail/spec versions` ends with 0.18.34, and `@altnovatrail/contracts` 0.18.34 depends on `{ "@bufbuild/protobuf": "2.17.0" }`;
+- `git -C spec log --oneline v0.18.27..v0.18.34` — 30 commits, among them T200–T206 spec; `git -C spec diff --stat v0.18.27 v0.18.34 -- format types contracts legal repo-template/kinds` — empty; of `repo-template/files/`, only `RUN.md`, `docs-budgets.json`, `docs/decisions.md`, `run/DEBT.md` and `run/QUESTIONS.md` changed, by R160 spec;
+- `legal-3.tar.gz` of the release v0.18.34 — sha256 `404cb49821afe5231f8fb8f1fd20cb4d579c6bf43f17f03e25b206679240a8a6`; `release-verify spec v0.18.34` — "legal-3.tar.gz: spec v0.18.34, signed by spec's release.yml". Unpacked, it matches the archive of v0.18.27 file for file (`diff -r`);
+- `docs-check-repo` at v0.18.34 with `"entry": 12` and `"comments": true` — 24 entries of the log over 12 KB, R05–R57, now in `entries` of [docs-budgets.json](../docs-budgets.json), and "1216 numbers in comments", none naming a missing entry.
+
 ## 7. Tools, packages and CI
 
 ### 7.1. GitHub Packages
