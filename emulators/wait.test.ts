@@ -1,5 +1,5 @@
-// Waiting for a sign within a time (T83 in RUN.md; R54 in docs/decisions.md), on a clock of the
-// test's own: a wait lasts its seconds, however long each try takes.
+// Waiting for a sign within a time (R54), on a clock of the test's own: a wait lasts its seconds,
+// however long each try takes.
 
 import { expect, test } from "vitest";
 import { type Clock, until } from "./wait.ts";

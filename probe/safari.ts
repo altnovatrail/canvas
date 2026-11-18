@@ -1,17 +1,17 @@
-// The probe of a page opened from a file in Safari on macOS (T80 in RUN.md; R54 in
-// docs/decisions.md), on a runner of macOS. It runs once safaridriver, which the system brings and
-// the workflow enables, listens and emulators/serve.ts hands the probe's files out:
+// The probe of a page opened from a file in Safari on macOS (R54), on a runner of macOS. It runs
+// once safaridriver, which the system brings and the workflow enables, listens and
+// emulators/serve.ts hands the probe's files out:
 //
 //   node probe/safari.ts
 //
 // Safari, driven by safaridriver, downloads each file of the probe into the Downloads folder, the
-// way a volunteer gets it. A page of file:// is no page safaridriver opens — it stays blank — so the
-// file is then opened the way Finder opens it, by `open -a Safari`, and a screenshot of the screen
-// shows what Safari makes of it; the same file opens once more from a folder of its own. The
-// page cannot be read or pressed: AppleScript, the one way into a Safari no WebDriver drives, asks
-// the runner's user for a consent nobody gives. What it found goes into build/probe-safari, which
-// the workflow keeps as its artifact. safaridriver answers on port 4444 and the server on 8080 of
-// the runner; it installs nothing.
+// way a volunteer gets it. A page of file:// is no page safaridriver opens — it stays blank — so
+// the file is then opened the way Finder opens it, by `open -a Safari`, and a screenshot of the
+// screen shows what Safari makes of it; the same file opens once more from a folder of its own.
+// The page cannot be read or pressed: AppleScript, the one way into a Safari no WebDriver drives,
+// asks the runner's user for a consent nobody gives. What it found goes into build/probe-safari,
+// which the workflow keeps as its artifact. safaridriver answers on port 4444 and the server on
+// 8080 of the runner; it installs nothing.
 
 import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs";

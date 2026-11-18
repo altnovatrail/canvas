@@ -1,8 +1,7 @@
-// What the drivers of the Android emulator read off the screen (T74, T78 in RUN.md; R54 in
-// docs/decisions.md): the nodes of a dump of uiautomator, where a tap on one lands, and where a
-// point of the page lies on the screen; and how they ask adb for an emulator gone offline and
-// bring it back, on a stand-in for adb (T124). The run itself is the workflow's, on a runner with
-// an emulator.
+// What the drivers of the Android emulator read off the screen (R54): the nodes of a dump of
+// uiautomator, where a tap on one lands, and where a point of the page lies on the screen; and how
+// they ask adb for an emulator gone offline and bring it back, on a stand-in for adb. The run
+// itself is the workflow's, on a runner with an emulator.
 
 import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";

@@ -1,4 +1,4 @@
-// After just build: the package the way a consumer takes it (R07, R12 in docs/decisions.md).
+// After just build: the package the way a consumer takes it (R07, R12).
 //
 //   node scripts/package.ts
 //

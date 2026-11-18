@@ -1,8 +1,8 @@
-// What the build of the samples page and the copy of the open views of modules share (T101 in
-// RUN.md; R71 in docs/decisions.md): the file module-kit open writes, which tasks the page takes of
-// it, and which files of media/ a task may name. Both scripts/page.ts and scripts/modules.ts take
-// it, so that the copy holds the media of the very tasks the build carries; a module of its own, so
-// that the copy's command loads none of the page's builder.
+// What the build of the samples page and the copy of the open views of modules share (R71): the
+// file module-kit open writes, which tasks the page takes of it, and which files of media/ a task
+// may name. Both scripts/page.ts and scripts/modules.ts take it, so that the copy holds the media
+// of the very tasks the build carries; a module of its own, so that the copy's command loads none
+// of the page's builder.
 
 import type * as open from "@altnovatrail/spec/formatv0/open";
 import type { TaskKind } from "../page/texts.ts";
@@ -31,8 +31,8 @@ export function kindOf(task: ViewTask): TaskKind | undefined {
   return binding === "sheet" ? "essay" : undefined;
 }
 
-/** The types of the pictures a module may carry, by the extension of their files (§21 of the
- * README of the module format). */
+/** The types of the pictures a module may carry, by the extension of their files, as the module
+ * format names them. */
 export const PICTURE_TYPES: Readonly<Record<string, string>> = Object.freeze({
   png: "image/png",
   webp: "image/webp",

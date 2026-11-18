@@ -88,9 +88,8 @@ describe("the release file", () => {
     ]);
   });
 
-  // The runner's time by the ratio of the test below, 4 804 ms there at T111: here, at T113, it
-  // reads the part on eight days in 1 956 ms to the test below's 724 ms, until the log of CI gives
-  // its own line (T111, T113).
+  // No line of CI's log gives this test's time: it is the test below's 4 804 ms on the runner,
+  // scaled by their ratio on one machine, 1 956 ms for the part read on eight days to 724 (R75).
   test("is read on a day: version 3 of the policy is the next until 2026-11-27, then the current, and version 4 from 2026-11-28", {
     timeout: budget(13_000),
   }, () => {

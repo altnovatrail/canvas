@@ -1,6 +1,6 @@
-// The copy of the open views of modules the samples page carries (T101; R71): which packages
-// module-kit open takes of an index, which files the copy holds, and every difference from what
-// module-kit wrote that the check finds. just modules-open runs module-kit itself, in ci-licenses.
+// The copy of the open views of modules the samples page carries (R71): which packages module-kit
+// open takes of an index, which files the copy holds, and every difference from what module-kit
+// wrote that the check finds. just modules-open runs module-kit itself, in ci-licenses.
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";

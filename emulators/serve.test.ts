@@ -1,6 +1,5 @@
-// The server of files for the emulators (T74, T78 in RUN.md; R54 in docs/decisions.md): the
-// headers of a release asset of GitHub or of a page, nothing but the files directly in its folder,
-// and a line of its log for each request.
+// The server of files for the emulators (R54): the headers of a release asset of GitHub or of a
+// page, nothing but the files directly in its folder, and a line of its log for each request.
 
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";

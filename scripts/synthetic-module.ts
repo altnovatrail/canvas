@@ -1,11 +1,10 @@
-// The synthetic samples of a module's eval set (T86, T96 in RUN.md; R110 spec; R63, R68 in
-// docs/decisions.md): one of each task and seed the call names, on the package that module-kit
-// build wrote of the module at the commit the samples go into — its inventory.json and
-// server.json —, naming the newest release of modules by its tag. Into the folder, the module's
-// eval/, go synthetic-<seed>.json files. A file there already of the same seed is written anew when
-// it is a sample of the same task of the same module, which a change of the task's open view
-// re-makes; of any other, the call writes nothing. A template, a choice, an essay or a zone has no
-// sample: the call names each and writes nothing.
+// The synthetic samples of a module's eval set (R110 spec; R63, R68): one of each task and seed the
+// call names, on the package that module-kit build wrote of the module at the commit the samples go
+// into — its inventory.json and server.json —, naming the newest release of modules by its tag.
+// Into the folder, the module's eval/, go synthetic-<seed>.json files. A file there already of the
+// same seed is written anew when it is a sample of the same task of the same module, which a change
+// of the task's open view re-makes; of any other, the call writes nothing. A template, a choice, an
+// essay or a zone has no sample: the call names each and writes nothing.
 //
 // It needs nothing but its arguments, and scripts/generator.ts bundles it with its entry,
 // scripts/synthetic-module.main.ts, into the file every release carries,
@@ -15,8 +14,8 @@
 //   node synthetic-module_v<X.Y.Z>.mjs --digest <package> <task>...
 //
 // The second prints each task's ID and the digest of its open view, by the projection the samples
-// name it by (T97): a module's CI holds people's samples to the package of its commit with it, and
-// a task of a changed open view loses them (R95 spec). A template has no open view, and a task the
+// name it by: a module's CI holds people's samples to the package of its commit with it, and a
+// task of a changed open view loses them (R95 spec). A template has no open view, and a task the
 // package does not have no digest: the call prints the others' lines and names those, exit 1.
 
 import { createHash } from "node:crypto";

@@ -12,7 +12,7 @@
 // of the columns' names: the release's synthetic-samples_v<X.Y.Z>.tsv (R50).
 //
 // The synthetic samples of a module's eval set are scripts/synthetic-module.ts, which the file
-// synthetic-module_v<X.Y.Z>.mjs of every release carries (T96; R63, R68).
+// synthetic-module_v<X.Y.Z>.mjs of every release carries (R63, R68).
 
 import { createHash } from "node:crypto";
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";

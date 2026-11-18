@@ -1,6 +1,6 @@
-// The probe of a page opened from a file in the iPad Simulator (T80 in RUN.md; R54 in
-// docs/decisions.md). probe/ipad.sh runs it on a runner of macOS, once the simulator is booted,
-// WebDriverAgent answers on its port and emulators/serve.ts hands the probe's files out:
+// The probe of a page opened from a file in the iPad Simulator (R54). probe/ipad.sh runs it on a
+// runner of macOS, once the simulator is booted, WebDriverAgent answers on its port and
+// emulators/serve.ts hands the probe's files out:
 //
 //   node probe/ipad.ts
 //
@@ -114,7 +114,7 @@ export function reportOf(all: readonly Element[]): Record<string, unknown> | und
 /** The settings of WebDriverAgent's session that name the app in front. Without them a read of the
  * tree asks the accessibility service which app is active, and on a cold simulator the question
  * hung up to three minutes before WebDriverAgent fell back to "the system's recently active one"
- * (T115). With them it asks that app's state alone, while the app is in front. */
+ * (R80). With them it asks that app's state alone, while the app is in front. */
 export function inFront(bundleId: string): { settings: { defaultActiveApplication: string } } {
   return { settings: { defaultActiveApplication: bundleId } };
 }
@@ -155,8 +155,8 @@ async function call(method: string, path: string, body?: unknown): Promise<unkno
  * the download under way. */
 async function open(bundleId: string): Promise<void> {
   if (session) {
-    // WebDriverAgent has refused an activation once, 400, while Safari had a download under way
-    // (T78): it gets three tries, a while apart.
+    // WebDriverAgent has refused an activation once, 400, while Safari had a download under way:
+    // it gets three tries, a while apart.
     for (let attempt = 1; ; attempt++) {
       try {
         await call("POST", `/session/${session}/wda/apps/activate`, { bundleId });
@@ -315,9 +315,9 @@ async function fromFiles(file: string, name: string): Promise<string> {
   const base = file.replace(/\.html$/, "");
   let opened = place && (await press(labelled(base, "BEGINSWITH", CELL), 10));
   if (place && !opened) {
-    // WebDriverAgent has once found no hittable cell while the folder showed the file (T78): then
-    // a tap on the file's icon, the upper part of its cell — no dialog stands over the folder,
-    // and a tap on the name below would start renaming it.
+    // WebDriverAgent has once found no hittable cell while the folder showed the file: then a tap
+    // on the file's icon, the upper part of its cell — no dialog stands over the folder, and a tap
+    // on the name below would start renaming it.
     const cell = (await screen()).find(
       ({ words, frame: [, , w, h] }) =>
         w > 0 && h > 0 && words.some((word) => word.startsWith(`${base}, `)),

@@ -1,6 +1,5 @@
-// What the driver of Safari on macOS works out for itself (T80 in RUN.md; R54 in
-// docs/decisions.md): which files of the Downloads folder are saved reports. The run itself is
-// the workflow's, on a runner of macOS.
+// What the driver of Safari on macOS works out for itself (R54): which files of the Downloads
+// folder are saved reports. The run itself is the workflow's, on a runner of macOS.
 
 import { expect, test } from "vitest";
 import { reports } from "./safari.ts";

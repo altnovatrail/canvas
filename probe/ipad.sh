@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# The iPad's run of the probe on a runner of macOS (T80 in RUN.md; R54 in docs/decisions.md): an
-# iPad simulator of the iOS runtime IOS names, WebDriverAgent started on it — its build for testing
-# from the workflow's cache, or built from its tag by the runner's Xcode on a miss (R80) —, then
-# probe/ipad.ts. What the run ran on goes into build/probe-ipad beside what it found.
+# The iPad's run of the probe on a runner of macOS (R54): an iPad simulator of the iOS runtime IOS
+# names, WebDriverAgent started on it — its build for testing from the workflow's cache, or built
+# from its tag by the runner's Xcode on a miss (R80) —, then probe/ipad.ts. What the run ran on goes
+# into build/probe-ipad beside what it found.
 set -euo pipefail
 
 : "${IOS:?IOS names the version of the iOS runtime, such as 26.5 or 27}"
@@ -40,9 +40,9 @@ build() {
 }
 
 # WebDriverAgent started from a build for testing of the pinned commit, in the background, its log
-# into the file named, and whether it answered within ten minutes, by the clock (the T83 amendment
-# to R54): on a loaded runner xcodebuild itself has taken 8 minutes to its first line. One that did
-# not answer is stopped, its runner on the simulator too, so that no stale agent holds the port.
+# into the file named, and whether it answered within ten minutes, by the clock (R54, R80): on a
+# loaded runner xcodebuild itself has taken 8 minutes to its first line. One that did not answer
+# is stopped, its runner on the simulator too, so that no stale agent holds the port.
 start() {
   local log=$1 xctestrun
   [[ "$(cat "$products/commit.txt" 2> /dev/null)" == "$wda_commit" ]] || return 1

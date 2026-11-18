@@ -1,20 +1,20 @@
-// The samples page in an Android emulator, on a pull request that changes what goes into it (T78
-// in RUN.md; R54, R55 in docs/decisions.md). emulators/android.sh runs it in CI, in the toolchain
-// stage's container on the runner's network, once the emulator is up and emulators/serve.ts hands
-// out build/page, which the workflow's build job wrote with scripts/page.ts, and the test build
-// beside it on a port of its own:
+// The samples page in an Android emulator, on a pull request that changes what goes into it (R54,
+// R55). emulators/android.sh runs it in CI, in the toolchain stage's container on the runner's
+// network, once the emulator is up and emulators/serve.ts hands out build/page, which the
+// workflow's build job wrote with scripts/page.ts, and the test build beside it on a port of its
+// own:
 //
 //   node emulators/page-android.ts
 //
-// It goes the volunteer's way of emulators/volunteer.ts, as the probe did (T74): Chrome downloads
-// the page's file and opens it from the download, by content://. Then DevTools puts the watch of
+// It goes the volunteer's way of emulators/volunteer.ts, as the probe does: Chrome downloads the
+// page's file and opens it from the download, by content://. Then DevTools puts the watch of
 // emulators/watch.ts into the page and loads it again under it, with the requests it makes
 // recorded. A stroke is drawn through the emulator's own touchscreen, and the save button pressed
-// by a tap. The moves of T22's checklist — a stroke Chrome cancels, the buttons of the element's
-// row, two fingers — are Chrome's own touches, sent through DevTools (R65). The files the page
-// saved come off the device into the run's folder saved/, for the workflow's job of the saved
-// files to read. The release build goes first, then the test build, each a run of its own. The
-// strokes are the code's: no handwriting goes into a run. It needs adb (ADB) and the servers'
+// by a tap. The moves of the emulators' checklist — a stroke Chrome cancels, the buttons of the
+// element's row, two fingers — are Chrome's own touches, sent through DevTools (R65). The files
+// the page saved come off the device into the run's folder saved/, for the workflow's job of the
+// saved files to read. The release build goes first, then the test build, each a run of its own.
+// The strokes are the code's: no handwriting goes into a run. It needs adb (ADB) and the servers'
 // ports (PORT, TEST_PORT).
 
 import { mkdirSync } from "node:fs";
@@ -86,7 +86,7 @@ class Chrome implements Device {
   }
 
   /** The page's saved files in the downloads, by the names it gives them, each quoted for the
-   * shell: nothing else of the folder is touched (T101). */
+   * shell: nothing else of the folder is touched. */
   private saved(): string[] {
     return this.android
       .shell(`ls ${DOWNLOADS}`)
@@ -149,10 +149,10 @@ class Chrome implements Device {
 
   /** Where the page's CSS pixels lie on the screen, and how that was found: from the page's own
    * view, a node of Chrome whose bounds hold while the tree of the page inside it lags behind a
-   * scroll (T20); or, without it, from the save button seen both in the page and on the screen,
-   * scrolled to on each look, which brings that tree up to date (T83). Chrome's own offers, such
-   * as one to translate the page, may stand over the page a while: then it is the device's
-   * failure, not the page's, and the dump is kept. */
+   * scroll; or, without it, from the save button seen both in the page and on the screen, scrolled
+   * to on each look, which brings that tree up to date. Chrome's own offers, such as one to
+   * translate the page, may stand over the page a while: then it is the device's failure, not the
+   * page's, and the dump is kept. */
   private async placing(
     name: string,
   ): Promise<{ toScreen: (x: number, y: number) => [number, number]; how: string } | undefined> {
@@ -275,7 +275,7 @@ class Chrome implements Device {
   }
 
   /** The sheet's file the page saved, as Chrome took it into its downloads, given to the section
-   * that opens a file through DevTools, as a picker would give it (T87). Should Chrome not read it
+   * that opens a file through DevTools, as a picker would give it (R64). Should Chrome not read it
    * there, the page is given its text as a file of its own. */
   async openFile(text: string): Promise<string | undefined> {
     if (!this.tools) throw new Error("no page");
@@ -294,8 +294,8 @@ class Chrome implements Device {
     }
     if (path) {
       try {
-        // The field by its object in the page as it is now: the IDs of DOM's nodes hold only for the
-        // document DevTools last walked, and the page was opened anew since (run 42733192609).
+        // The field by its object in the page as it is now: the IDs of DOM's nodes hold only for
+        // the document DevTools last walked, and the page was opened anew since.
         const found = (await this.tools.send("Runtime.evaluate", {
           expression: 'document.getElementById("open-file")',
         })) as { result?: { objectId?: string } };

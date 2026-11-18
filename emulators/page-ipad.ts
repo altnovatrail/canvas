@@ -1,21 +1,20 @@
 // The samples page in Safari in the iPad Simulator, on a pull request that changes what goes into
-// it (T78 in RUN.md; R54, R55 in docs/decisions.md). emulators/page-ipad.sh runs it on a runner of
-// macOS once the simulator is booted, safaridriver answers and emulators/serve.ts serves the page
-// as pages:
+// it (R54, R55). emulators/page-ipad.sh runs it on a runner of macOS once the simulator is booted,
+// safaridriver answers and emulators/serve.ts serves the page as pages:
 //
 //   node emulators/page-ipad.ts
 //
-// A page opened from a file does not run on an iPad: the Files app shows it in Quick Look (T80;
-// В64 in RUN.md). So Safari opens it from the runner, the way a hosting would serve it, and the
-// question is the element in the WebKit of iPadOS. The page served is the build with the watch of
+// A page opened from a file does not run on an iPad: the Files app shows it in Quick Look. So
+// Safari opens it from the runner, the way a hosting would serve it, and the question is the
+// element in the WebKit of iPadOS. The page served is the build with the watch of
 // emulators/watch.ts written in before its own script; safaridriver drives Safari and reads it on
-// the volunteer's way of emulators/volunteer.ts. A stroke is drawn by the page's own touch events
-// (T81), and so are the moves of T22's checklist — a stroke cancelled, two fingers — while the
+// the volunteer's way of emulators/volunteer.ts. A stroke is drawn by the page's own touch events,
+// and so are the moves of the emulators' checklist — a stroke cancelled, two fingers — while the
 // buttons are pressed by their own click() (R65). Each file the page hands to a download is kept
-// from the watch's copy of its text in the run's folder saved/, for the workflow's job of the saved
-// files; where Safari puts the download the probe saw (T80): "On My iPad", in Downloads. The release
-// build goes first, then the test build on a port of its own, each a run of its own. The strokes
-// are the code's. It needs the simulator's id (UDID) and the version of its iOS (IOS).
+// from the watch's copy of its text in the run's folder saved/, for the workflow's job of the
+// saved files; the probe saw Safari put the download "On My iPad", in Downloads. The release build
+// goes first, then the test build on a port of its own, each a run of its own. The strokes are the
+// code's. It needs the simulator's id (UDID) and the version of its iOS (IOS).
 
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
@@ -125,7 +124,7 @@ class Safari implements Device {
 
   /** A stroke on the element by the page's own pointer events of a touch (strokeBy): WebDriver's
    * actions in Safari of the simulator took a window other than the session's, and the mouse after
-   * them hung (T81). */
+   * them hung (R65). */
   async draw(name: string, second = false): Promise<string | undefined> {
     const sheet = await this.element();
     const stroke = sheet && strokeIn(sheet, second);
@@ -181,7 +180,7 @@ class Safari implements Device {
   }
 
   /** The text of the sheet's file given to the section that opens a file, as a file of the page's
-   * own: the picker of iPadOS is the hardware's to show (T87; Д7). */
+   * own: the picker of iPadOS is the hardware's to show (R65). */
   async openFile(text: string): Promise<string | undefined> {
     await command("POST", `/session/${this.session}/execute/sync`, {
       script: `return ${chooseFile()};`,
@@ -192,8 +191,8 @@ class Safari implements Device {
 
   /** The save button pressed by its own click(): WebDriver's click of the element, in Safari on
    * the iPad Simulator, scrolled the button into view and tapped the sheet below it, a dot of a
-   * stroke the run never meant (run 42537461456). What is checked is the page's way of saving,
-   * not where a tap lands. */
+   * stroke the run never meant. What is checked is the page's way of saving, not where a tap
+   * lands. */
   async press(name: string): Promise<boolean> {
     try {
       await this.evaluate('(document.getElementById("save").click(), 0)');
@@ -246,7 +245,7 @@ function ways(run: Run, build: string, port: string, way: Way): Ways {
   return {
     pass: () => volunteer(run, new Safari(run, file, port), { keep: true, way }),
     // Safari closed and launched anew, for the next session to connect to. A Safari that is no
-    // longer running cannot be terminated, and is launched all the same (T124).
+    // longer running cannot be terminated, and is launched all the same (R54).
     recover: async () => {
       try {
         execFileSync(XCRUN, ["simctl", "terminate", udid, SAFARI], { stdio: "ignore" });

@@ -1,6 +1,6 @@
-// The synthetic samples of a module's eval set (T86, T96 in RUN.md; R63, R68 in
-// docs/decisions.md): what writeModuleSamples writes and refuses, as the generator's file runs it,
-// and the digests of the tasks' open views that moduleDigests prints (T97).
+// The synthetic samples of a module's eval set (R63, R68): what writeModuleSamples writes and
+// refuses, as the generator's file runs it, and the digests of the tasks' open views that
+// moduleDigests prints.
 
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -18,7 +18,7 @@ import { readSample } from "../src/eval/sample.ts";
 import { temporary } from "./folders.fixture.ts";
 import { moduleDigests, writeModuleSamples } from "./synthetic-module.ts";
 
-// The samples of a module's eval set (T86; R63), on grade-3-math 0.2.0 from the release of modules
+// The samples of a module's eval set (R63), on grade-3-math 0.2.0 from the release of modules
 // v0.2.0, which ci-licenses verifies.
 const PACKAGE = fileURLToPath(MODULE_PACKAGE);
 
@@ -133,7 +133,7 @@ test("examples/module-sheet-eval-set.json is a module's sheet, as the generator 
   );
 });
 
-// The digests of the tasks' open views (T97): a module's CI holds people's samples to them.
+// The digests of the tasks' open views: a module's CI holds people's samples to them.
 const TASKS = [
   "comparing-fractions-d1",
   "comparing-fractions-d3",

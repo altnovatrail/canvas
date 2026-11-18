@@ -1,5 +1,5 @@
-// The client of WebDriver for safaridriver (T78, T83 in RUN.md; R54 in docs/decisions.md): what
-// it asks of, and how long it lets each command take.
+// The client of WebDriver for safaridriver (R54): what it asks of, and how long it lets each
+// command take.
 
 import { expect, test } from "vitest";
 import { isPath, timeoutOf } from "./webdriver.ts";

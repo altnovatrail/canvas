@@ -1,13 +1,13 @@
 # canvas's own recipes: the package's build, and the five checks .github's typescript.yml runs in
 # CI, one job each, in a new container of a stage of .devcontainer/Dockerfile — toolchain-core for
 # ci-lint, ci-vuln and ci-licenses, which start no browser, toolchain for the tests — as the
-# runner's user, with HOME=/tmp and with CI from the step's environment (R19 .github; R12 in
-# docs/decisions.md). Only ci-licenses reads spec/: it runs spec's recipes licenses-check-repo,
-# release-verify-npm, release-verify and sample-check, and the licenses job alone gets the
-# submodule. The code and its tests read nothing of spec/, and the documents are checked by spec's
-# own recipe, just -f spec/justfile docs-check-repo. release-files writes the files of a release,
-# for .github's shared release.yml (R08), and synthetic the synthetic samples (R49). One more recipe
-# is for the author's hands: demo serves a page to try the element on.
+# runner's user, with HOME=/tmp and with CI from the step's environment (R19 .github; R12). Only
+# ci-licenses reads spec/: it runs spec's recipes licenses-check-repo, release-verify-npm,
+# release-verify and sample-check, and the licenses job alone gets the submodule. The code and its
+# tests read nothing of spec/, and the documents are checked by spec's own recipe, just -f
+# spec/justfile docs-check-repo. release-files writes the files of a release, for .github's shared
+# release.yml (R08), and synthetic the synthetic samples (R49). One more recipe is for the author's
+# hands: demo serves a page to try the element on.
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
@@ -26,10 +26,10 @@ spec_tag := "v0.18.34"
 legal_file := "legal-3.tar.gz"
 
 # The release of modules whose package of grade-3-math, in tasks/modules-<tag>/, ci-licenses writes
-# synthetic samples of a module's eval set on (T86; R63): ci-licenses verifies the index, and holds
-# the package's inventory to the index's digest of it, as moduleTasksOf holds server.json to the
+# synthetic samples of a module's eval set on (R63): ci-licenses verifies the index, and holds the
+# package's inventory to the index's digest of it, as moduleTasksOf holds server.json to the
 # inventory. The package of english-essays 0.2.0 beside it, whose essays the tests hold to the
-# digests module-kit gives their open views, is held to the index the same way (T98).
+# digests module-kit gives their open views, is held to the index the same way.
 modules_tag := "v0.2.0"
 module_id := "novatrail/grade-3-math"
 module_version := "0.2.0"
@@ -38,7 +38,7 @@ essays_package := "tasks/modules-" + modules_tag + "/novatrail-english-essays-0.
 
 # The release of modules whose tasks the samples page carries for an eval set, the release of
 # module-kit whose open writes their open views, and the seeds of the templates' instances it writes
-# (T101; R71): the copy in tasks/modules-<tag>/ is what that module-kit wrote of that release with
+# (R71): the copy in tasks/modules-<tag>/ is what that module-kit wrote of that release with
 # those seeds, which just modules-open writes and ci-licenses holds it to. MODULES_FILE in
 # src/eval/tasks.ts has the tag and the seeds too, and scripts/modules.test.ts holds them to these.
 page_modules_tag := "v0.2.7"
@@ -98,14 +98,14 @@ ci-vuln:
 # synthetic set too, which no tree holds: tutor's file of open tasks that it answers is verified
 # first, as a file of a release enters NovaTrail, then the set is written into build/synthetic and
 # each of its files checked (R77 spec; R49); so is spec's file of the legal texts, whose sets the
-# samples page carries (T89; R69), and the copy of the open views of modules the page carries is
-# held to what module-kit open writes anew of the release, every file of it verified first (T101;
-# R71; just modules-open). The samples of a module's eval set too: the index of
-# the release of modules whose package of grade-3-math the tree holds is verified, a sample is
-# written of each of its tasks into build/synthetic-module by the generator's file, built as a
-# release carries it, and sample-check holds them, and the example of a module's sheet, as an eval
-# set of their module (T86, T96; R63, R68). sample-check runs buf from the stage toolchain-core,
-# which CI runs ci-licenses in, on the contracts of spec/. spec's recipes run under this same just.
+# samples page carries (R69), and the copy of the open views of modules the page carries is held
+# to what module-kit open writes anew of the release, every file of it verified first, by just
+# modules-open (R71). The samples of a module's eval set too: the index of the release of modules
+# whose package of grade-3-math the tree holds is verified, a sample is written of each of its
+# tasks into build/synthetic-module by the generator's file, built as a release carries it, and
+# sample-check holds them, and the example of a module's sheet, as an eval set of their module
+# (R63, R68). sample-check runs buf from the stage toolchain-core, which CI runs ci-licenses in, on
+# the contracts of spec/. spec's recipes run under this same just.
 ci-licenses:
     {{ quote(just_executable()) }} -f spec/justfile licenses-check-repo package-lock.json licenses.json
     {{ quote(just_executable()) }} -f spec/justfile release-verify-npm package-lock.json
@@ -145,10 +145,9 @@ build: _install
 # so that the package.json of the tree keeps 0.0.0, and scripts/release.ts checks the archive
 # itself and names it. npm pack fixes every file's time and order, scripts/archive.ts writes
 # nothing of the machine or the time, and two builds of the page or of the generator are the same
-# bytes (R66, R68), so a
-# build of the same commit gives the same sums, and the sums are printed for whoever builds it
-# again to compare. The page reads spec's legal texts on the day it is built: a build on another
-# day repeats the release's with SOURCE_DATE_EPOCH at the release's time (R78).
+# bytes (R66, R68), so a build of the same commit gives the same sums, and the sums are printed for
+# whoever builds it again to compare. The page reads spec's legal texts on the day it is built: a
+# build on another day repeats the release's with SOURCE_DATE_EPOCH at the release's time (R78).
 release-files version: build
     #!/usr/bin/env bash
     set -euo pipefail
@@ -187,17 +186,17 @@ synthetic folder list="": _synthetic-build
     cd {{ quote(invocation_directory()) }} && node {{ quote(justfile_directory() / "build/scripts/synthetic.js") }} {{ quote(folder) }} {{ if list == "" { "" } else { quote(list) } }}
 
 # The open views of the tasks of modules the samples page carries, as module-kit open writes them of
-# the release page_modules_tag of modules with the seeds open_seeds (T101; R71; R43 module-kit):
+# the release page_modules_tag of modules with the seeds open_seeds (R71; R43 module-kit):
 # check holds the copy in tasks/modules-<tag>/ to them, and copy writes it anew, for a move to
 # another release or other seeds, after which it prints the sum MODULES_FILE takes. Every file
 # comes from its release and enters only once spec's release-verify has accepted it (R77 spec):
 # module-kit's binary for this machine, the index of the release — the copy's, which copy fetches
 # when the copy has none — and of each module the archive of the package that module-kit open
 # takes, which scripts/modules.ts names by the index's entries: its file is named by the package's
-# digest, in the release of the entry (the second 2026-11-02 amendment to R63 spec). The files are
-# kept in build/modules-open/ by their names, which hold their tags or digests, and checked again
-# on every run, and one the check refuses is removed; the packages are unpacked anew. It reads
-# GitHub and Sigstore, and spec/ has to be checked out: ci-licenses runs it, never a build.
+# digest, in the release of the entry (R63 spec). The files are kept in build/modules-open/ by
+# their names, which hold their tags or digests, and checked again on every run, and one the check
+# refuses is removed; the packages are unpacked anew. It reads GitHub and Sigstore, and spec/ has
+# to be checked out: ci-licenses runs it, never a build.
 modules-open mode="check": _install
     #!/usr/bin/env bash
     set -euo pipefail
@@ -259,14 +258,14 @@ modules-open mode="check": _install
         echo "modules-open: the sha256 of MODULES_FILE in src/eval/tasks.ts is $(sha256sum < "$copy/open-views.json" | cut -d ' ' -f 1)"
     fi
 
-# Write the synthetic samples of a module's eval set into a folder — the module's eval/ — one of each
-# <task>:<seed> called, on the package that module-kit build wrote of the module at the commit the
-# samples go into, naming the newest release of modules by its tag (T86; R110 spec, R63). A file of
+# Write the synthetic samples of a module's eval set into a folder — the module's eval/ — one of
+# each <task>:<seed> called, on the package that module-kit build wrote of the module at the commit
+# the samples go into, naming the newest release of modules by its tag (R110 spec, R63). A file of
 # the same seed is written anew only when it is a sample of the same task; a template, a choice, an
 # essay or a zone is refused. Every path is the caller's, from where just was run. It needs neither
 # spec/ nor git nor module-kit: the package's own files, inventory.json and server.json, are enough.
 # It runs the file every release carries, synthetic-module_v<X.Y.Z>.mjs, built here as version
-# 0.0.0 (T96; R68), so that what modules runs is what canvas's CI tries.
+# 0.0.0 (R68), so that what modules runs is what canvas's CI tries.
 # Its arguments reach Node as they are, each a word of its own: none goes through the shell's text.
 [positional-arguments]
 synthetic-module package tag folder +calls: _generator-build
@@ -292,9 +291,9 @@ fmt: _install
     {{ bin }}/biome check --write
 
 # Serve a page to try the element on by hand — with a mouse, a pen or a finger — as tutor's check
-# board would have it (RUN.md, T34; R20): Vite's dev server on 127.0.0.1:5173, which VS Code
-# forwards to a browser outside the container. It serves the page, the element's sources and the
-# packages they import, and nothing else of the repository; it builds nothing.
+# board would have it (R20): Vite's dev server on 127.0.0.1:5173, which VS Code forwards to a
+# browser outside the container. It serves the page, the element's sources and the packages they
+# import, and nothing else of the repository; it builds nothing.
 demo: _install
     {{ bin }}/vite --config demo/vite.config.ts
 

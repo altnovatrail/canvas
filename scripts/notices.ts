@@ -1,7 +1,7 @@
-// The license notices of a file a release carries (R55, R68 in docs/decisions.md): the samples page
-// of scripts/page.ts and the generator of scripts/generator.ts each bundle code of npm packages,
-// and each carries the text of every package's license in itself. A package under a license off
-// the list, or with no text of its license, stops the build (R12).
+// The license notices of a file a release carries (R55, R68): the samples page of scripts/page.ts
+// and the generator of scripts/generator.ts each bundle code of npm packages, and each carries the
+// text of every package's license in itself. A package under a license off the list, or with no
+// text of its license, stops the build (R12).
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
