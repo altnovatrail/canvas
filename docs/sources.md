@@ -349,6 +349,14 @@ At the tag [v0.1.12](https://github.com/altnovatrail/.github/tree/v0.1.12), comm
   - for Claude `⌈1000/28⌉ × ⌈1400/28⌉` = 36 × 50 = 1800, and for the board's sheet `⌈1000/28⌉ × ⌈600/28⌉` = 36 × 22 = 792;
   - for OpenAI `⌈1000/32⌉ × ⌈1400/32⌉` = 32 × 44 = 1408 patches and 32 × 19 = 608, with the limit of 2500 for `gpt-6-astra` at `high`.
 
+### 5.10. One version of the set of icons in `canvas`, `skill-map` and `app`
+
+(R46 and R12, their T126 amendments), read 2026-11-18 by `gh api`, past the tag `spec/` stands on:
+
+- [`spec`'s decision log at v0.18.26](https://github.com/altnovatrail/spec/blob/v0.18.26/docs/decisions.md), tag at fdb0072, R78 spec, the amendment of 2026-11-17 (T198 `spec`): "`canvas`, `skill-map` and `app` raise the set's package `@iconify-json/material-symbols` together and on purpose, not each by itself: Dependabot raises it in none of them — an `ignore` of the package in the `dependabot.yml` of each —, and each raise is a row of COORDINATION.md: `canvas` and `skill-map` come out with the new version, then `app` takes both with its own set at the same version." and "The first raise is rows 5.20, 6.40 and 6.41: `canvas` goes to 1.2.99, the version of `skill-map` since 0.1.13, and closes its Dependabot pull request #134";
+- [`spec`'s COORDINATION.md](https://github.com/altnovatrail/spec/blob/main/COORDINATION.md) on `main`, row 5.20 for `canvas`: "набор иконок — вместе с `skill-map` и `app`, по строке плана (поправка 2026-11-17 к R78; ответ автора на `app` В73): `@iconify-json/material-symbols` до 1.2.99, версии `skill-map`"; row 6.41 for `app` waits on it;
+- [`skill-map`'s `package.json`](https://github.com/altnovatrail/skill-map/blob/main/package.json) on `main`: `"@iconify-json/material-symbols": "1.2.99"`; its latest release, v0.1.18, came out 2026-11-17T19:37:55Z.
+
 ## 6. Moves to tags of `spec` and `.github`
 
 ### 6.1. The move to `spec` v0.4.1
@@ -671,6 +679,21 @@ Read 2026-11-02 (architecture 3.4; T70 and T71 in [RUN.md](../RUN.md)):
 
 - `client/commandline.cpp`, the help: " get-state                print offline | bootloader | device", " wait-for[-TRANSPORT]-STATE...", "     wait for device to be in a given state" and " reconnect offline        reset offline/unauthorized devices to force reconnect"; `adb reconnect offline` sends `host:reconnect-offline`;
 - `adb_listeners.cpp`: a forward's listener is installed with `transport->AddDisconnect(&listener->disconnect);`, and its function, "Called as a transport disconnect function", does `listener_list.erase(iter);` — a forward goes with the connection it was set on. That the reverses go too is not read: the driver sets them again either way.
+
+### 7.12. `@iconify-json/material-symbols` 1.2.99
+
+(R46, its T126 amendment; R12, its T126 amendment), read 2026-11-18 — the npm registry, `npm view @iconify-json/material-symbols`:
+
+- `time`: 1.2.98 — 2026-11-07T07:04:35Z, 1.2.99 — 2026-11-12T06:12:51Z, 1.2.100 — 2026-11-14T16:45:07Z, 1.2.101 — 2026-11-17T07:17:19Z; `dist-tags.latest` is 1.2.101;
+- 1.2.99: `license` is `Apache-2.0`, `dependencies` is `{ '@iconify/types': '*' }`, `dist.integrity` is `sha512-c7CBI249CmvZDeT7sml1iwKEjsbiB8NUG2Bg1KPd7jnvLQ/8iQv7TQWnqq9a2357SkPjnyVTxxTgkWO2rlUtCw==`, the same as `package-lock.json`; its `info.json` — "Material Symbols", 15,810 icons, license "Apache 2.0", `Apache-2.0`.
+
+### 7.13. `picomatch` and GHSA-fc5q-39xc-vjpf
+
+(R12, its T126 amendment on alert #35), read 2026-11-18:
+
+- [OSV, GHSA-fc5q-39xc-vjpf](https://osv.dev/vulnerability/GHSA-fc5q-39xc-vjpf): "picomatch vulnerable to ReDoS through single-branch repeated extglobs", npm `picomatch`, `introduced` 0, `last_affected` 4.0.7, severity HIGH, CWE-1333, reviewed by GitHub 2026-11-17T15:56:42Z;
+- `npm view picomatch versions` ends with 4.0.5, 4.0.6, 4.0.7; `npm ls picomatch --all`: 4.0.7, under `vite` 8.3.6 — itself and through `tinyglobby` 0.2.17 and `fdir` 6.5.0 — and `vitest` 5.1.0, marked `dev` in `package-lock.json`;
+- code scanning, alert #35 of Scorecard, created 2026-11-17T16:19:17Z: "score is 9: 1 existing vulnerabilities detected: Warn: Project is vulnerable to: https://osv.dev/GHSA-fc5q-39xc-vjpf".
 
 ## 8. Licenses and contribution
 

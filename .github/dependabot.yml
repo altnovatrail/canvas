@@ -26,8 +26,7 @@ updates:
   # tests run in — Chrome Headless Shell, WebKit and Firefox — are no package: they come with the
   # toolchain stage of .devcontainer/Dockerfile, from spec's template, and a pull request that
   # raises playwright stays red until the image and the three revisions there are raised with it,
-  # by hand, with a row «в реестр spec» for the template (R79 spec, R13). One that
-  # raises the set of icons stays red until `just icons` writes the icons and NOTICE anew (R46).
+  # by hand, with a row «в реестр spec» for the template (R79 spec, R13).
   - package-ecosystem: npm
     directory: /
     schedule:
@@ -54,3 +53,7 @@ updates:
       # The runtime of that code is the one @altnovatrail/contracts pins exactly: the sample file's
       # module writes and reads its messages with it, so it moves with that package (R48).
       - dependency-name: "@bufbuild/protobuf"
+      # The set of icons moves only by a row of spec's COORDINATION.md, together with skill-map and
+      # app, which build in the same set at the same version; just icons then writes the icons and
+      # NOTICE anew (the 2026-11-17 amendment to R78 spec; R46).
+      - dependency-name: "@iconify-json/material-symbols"
