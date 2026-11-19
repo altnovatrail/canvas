@@ -45,11 +45,13 @@ export function replay(history: readonly HistoryEvent[]): Stroke[] {
  * the four, at a time from 0 that never goes back along the history; a stroke must have a new ID, a
  * whole number from 1, and one point at least, each on the sheet, with a pressure from 0 to 1, its
  * times never going back and none after the time it landed. Times are checked for their order
- * alone: strokes may overlap in time, as several pointers at once would write them. Whether the
- * actions keep the rules of the stack, the work on the sheet checks as it replays them
- * (`Work.restore`).
+ * alone: strokes may overlap in time, as several pointers at once would write them. On a task from
+ * paper, `paper`, a stroke written on the tracing paper says so, `on: "tracing"`, its points from
+ * the paper's top left corner within the sheet's size; anywhere else `on` is a TypeError
+ * (R87). Whether the actions keep the rules of the stack, the work on the sheet checks as it
+ * replays them (`Work.restore`).
  */
-export function historyOf(value: unknown): HistoryEvent[] {
+export function historyOf(value: unknown, paper = false): HistoryEvent[] {
   if (!Array.isArray(value)) throw new TypeError(`history: a list of events, not ${shown(value)}`);
   const ids = new Set<number>();
   let latest = 0;
@@ -73,7 +75,13 @@ export function historyOf(value: unknown): HistoryEvent[] {
         if (t < end) {
           throw new TypeError(`${path}.t: ${t}, earlier than the stroke's last point, at ${end}`);
         }
-        return frozen({ kind: "write", t, stroke });
+        if (fields.on === undefined) return frozen({ kind: "write", t, stroke });
+        if (fields.on !== "tracing" || !paper) {
+          throw new TypeError(
+            `${path}.on: ${paper ? '"tracing", or none' : "none, on a sheet with no task from paper"}, not ${shown(fields.on)}`,
+          );
+        }
+        return frozen({ kind: "write", t, stroke, on: "tracing" });
       }
       case "erase":
         return frozen({ kind: "erase", t, ids: idsOf(fields.ids, `${path}.ids`) });
@@ -143,7 +151,7 @@ export function sameEvent(value: unknown, event: HistoryEvent): boolean {
   if (given.kind !== event.kind || given.t !== event.t) return false;
   switch (event.kind) {
     case "write":
-      return sameStroke(given.stroke, event.stroke);
+      return given.on === event.on && sameStroke(given.stroke, event.stroke);
     case "erase":
     case "clear":
       return sameIds(given.ids, event.ids);

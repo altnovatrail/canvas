@@ -4,7 +4,7 @@
 >
 > **Rule:** do not re-propose what was rejected without new facts. If a decision has to change, ask the author and rewrite its entry in its place, and every entry the change touches: an entry is its text in force — what was decided, why, what was rejected and where it is described —, git keeps the old text, and the commit says why. An entry that still has dated amendments is rewritten whole, its amendments folded in, when a task touches it (R160 spec).
 >
-> The repository was set up 2026-10-19 from the template of `spec` v0.1.0 (R21 spec). How it comes to differ from the template — tools in the devcontainer, rules in RUN.md — is recorded here as a decision, as R46 canvas-api recorded how it differed from its model. Next number — R87.
+> The repository was set up 2026-10-19 from the template of `spec` v0.1.0 (R21 spec). How it comes to differ from the template — tools in the devcontainer, rules in RUN.md — is recorded here as a decision, as R46 canvas-api recorded how it differed from its model. Next number — R88.
 >
 > Here entries are cited as `R03`, in other repositories as `R03 canvas`. The decisions of `spec` are cited as "R18 spec", MathTrail's as "R37 canvas-api", and in a list as "canvas-api: R37, R38". Each log has its own numbers.
 >
@@ -4907,3 +4907,22 @@ How it is built — [architecture.md](architecture.md), section 3.3.
 - **the composite action `toolchain` in `page.yml` and `emulators.yml`** — it is for a job that runs Go, by the keys of `go.yml` (the T127 amendment to R12).
 
 — R160 spec, R156 spec, R21 spec; sources 6.19, 6.20; R12, R69, R83; `justfile`, `package.json`, `scripts/legal.ts`, `tasks/`, `src/element/interface.check.ts`, `.github/workflows/`, `.devcontainer/`.
+
+## A task from paper
+
+**R87. A task from the learner's paper is its crop, `paper.statement`, laid as tracing paper over a sheet in dots, on a layer of SVG of its own in sheet units: as large as fits within 800 × 700 units in its proportions, at [180, 60] and shown at first, multiplied over the sheet. Its grip "Move the task" moves it by a drag and by the arrow keys, kept wholly on the sheet; the first button of the bar hides and shows it. A stroke begun on the shown paper is the paper's, `on: "tracing"`, from its corner; the work's crop takes in the paper's rectangle with the strokes, by R25, and the crop's picture is laid into it, grey, by our own code.**
+- **The layers:** the paper lies between the demo's layer and the learner's work (concepts 8 spec), `mix-blend-mode: multiply`: the white of the paper lets the dots and the sheet's strokes show, the print stays dark. A thin edge outlines it. Its strokes are drawn over it, moved by its corner, and not at all while it is hidden; they stay in the history and in the work. The sheet's dots stand 25 units apart (`TRACING.dots`).
+- **The size and the place:** the paper shows, and takes strokes, once its picture is decoded: before it a stroke would be kept to the wrong size and the crop drawn stretched. Till then the `tracing` given is checked against the largest paper, 800 × 700, and its place does not hang on its size. A `tracing` the consumer gives is a TypeError when it leaves the paper wholly off the sheet; the grip and the keys keep it wholly on it. The property sends no event; the grip sends `tracingchange` once a drag is let go and after each key, the button after each press.
+- **The grip** is a button of 68 × 44 CSS px above the paper's top edge, with pointer capture; ← → ↑ ↓ move the paper 20 units, with Shift 100; its tooltip is the bar's (R84). **The button** "Hide the task" / "Show the task" changes its name by the state, with no `aria-pressed`: the mockup's state was told twice. Its icon is `article`, filled while the task shows: the mockup's page is `description`, which `app` gives the solution shown (R65 app), and one icon is one value (architecture 6 spec). The region and the bar are "Task from paper" and "Task from paper buttons", «Задача с бумаги» and «Кнопки задачи с бумаги».
+- **The strokes:** a press begun on the shown paper writes on it, its points from the paper's corner, kept to it; an erasing begun on it takes only its strokes, and one begun elsewhere only the sheet's. Undo and Clear act on both. `historyOf` and `Work.restore` keep `on` only with a paper, and a history with `on` given to a sheet is a TypeError.
+- **The work:** `exportWork()` gives `ExportedPaper` — the crop as given, and the PNG of the strokes of both layers on the sheet with the paper's rectangle kept to the sheet, cropped and scaled by R25 —, null without a stroke. The picture is read once, decoded by the browser, to grey by BT.601's luma in whole numbers over white, and laid into the ink's pixels by the mean of the picture's pixels whose centres fall in each, or the nearest when it grows, multiplied: the PNG is the same in every engine. The context's digest gains the line `tracing x y ids`, and marks whose context lay the paper elsewhere are a TypeError.
+
+— *Why:* T228 of spec's RUN.md, by the contract of R162 spec and `types/canvas/index.d.ts`, and the author's answers of 2026-11-19: В79 `spec`, (a) — `canvas` declares 2.5.7 of the paper's drag with the sheet's, the arrow keys beside it; the PNG scaled by the handwriting, R25, `drawn` of the contract unchanged. Sheet units let the paper move with the sheet as it scrolls and zooms, and each task keep its own place (`TracingState.at`).
+
+— *Rejected:*
+- **the paper fixed on the screen, one place for every task**, as the mockup's — the contract places it on the sheet, and the documents win over the mockup (R148 spec);
+- **the picture scaled by the browser's `drawImage`** — its resampling differs between engines, and the crop's bytes would with it;
+- **the crop scaled to the paper's size**, not by R25 — the readers are tuned to R25's height of the handwriting;
+- **a switch with `aria-pressed`** — its name and its state would say the same twice.
+
+— *Consequence:* [architecture.md](architecture.md), sections 3.1, 3.3 and 3.10; `src/core/tracing.ts`, `src/core/submission.ts`, `src/core/marks.ts`, `src/core/history.ts`, `src/core/work.ts`, `src/element/tracing.ts`, `src/element/index.ts`, `src/element/tools.ts`, `src/element/labels.ts`, `scripts/icons.ts`; the wavy line of `WavyLineMark` is T230's. — R162 spec, R74 spec, R90 spec, R148 spec; R22, R24, R25, R26, R28, R84.

@@ -13,6 +13,7 @@ import type {
   DemoChangeEvent,
   DemoState,
   ExportedCell,
+  ExportedPaper,
   ExportedSheet,
   ExportedWork,
   ExportedWorkbook,
@@ -25,10 +26,14 @@ import type {
   Marks,
   Media,
   NovatrailCanvas,
+  PaperSubmission,
+  PaperTask,
   SheetSubmission,
   Tool,
   ToolChange,
   ToolChangeEvent,
+  TracingChangeEvent,
+  TracingState,
   WorkbookSubmission,
   WorkedExample,
 } from "./index.js";
@@ -44,6 +49,7 @@ export type Contract = All<
     Same<CanvasEventMap, spec.CanvasEventMap>,
     Same<DemoChangeEvent, spec.DemoChangeEvent>,
     Same<ExportedCell, spec.ExportedCell>,
+    Same<ExportedPaper, spec.ExportedPaper>,
     Same<ExportedSheet, spec.ExportedSheet>,
     Same<ExportedWork, spec.ExportedWork>,
     Same<ExportedWorkbook, spec.ExportedWorkbook>,
@@ -52,13 +58,18 @@ export type Contract = All<
     Same<Mark, spec.Mark>,
     Same<Marks, spec.Marks>,
     Same<Media, spec.Media>,
+    Same<PaperSubmission, spec.PaperSubmission>,
+    Same<PaperTask, spec.PaperTask>,
     Same<ToolChange, spec.ToolChange>,
     Same<ToolChangeEvent, spec.ToolChangeEvent>,
+    Same<TracingChangeEvent, spec.TracingChangeEvent>,
+    Same<TracingState, spec.TracingState>,
     Same<Filled, spec.Filled>,
     Same<Tool, spec.Tool>,
     Same<GlobalEventHandlersEventMap["historychange"], CanvasEventMap["historychange"]>,
     Same<GlobalEventHandlersEventMap["toolchange"], CanvasEventMap["toolchange"]>,
     Same<GlobalEventHandlersEventMap["demochange"], CanvasEventMap["demochange"]>,
+    Same<GlobalEventHandlersEventMap["tracingchange"], CanvasEventMap["tracingchange"]>,
   ]
 >;
 export const contract: Contract = true;
@@ -136,6 +147,26 @@ sheet.marks = {
  */
 export const filled: Filled | null = sheet.filled;
 export const first: boolean | undefined = sheet.filled?.[0]?.[0];
+/**
+ * A task from paper: its crop, a Blob, as tracing paper over a dotted sheet, where the learner
+ * moves and hides it, which a tracingchange tells; its work holds the crop beside the work's (R87).
+ */
+declare const statement: Blob;
+declare const fromPaper: ExportedPaper;
+sheet.paper = { statement };
+sheet.tracing = { at: [180, 60], hidden: true };
+export const lies: readonly [number, number] | undefined = sheet.tracing?.at;
+sheet.addEventListener("tracingchange", (event: TracingChangeEvent) => event.detail.hidden);
+document.addEventListener("tracingchange", (event) => {
+  const state: TracingState = event.detail;
+  return state;
+});
+export const beside: Blob | undefined = "statement" in done ? done.statement : undefined;
+export const laid: TracingState = fromPaper.submission.tracing;
+sheet.marks = { submission: fromPaper.submission, marks: [] };
+// @ts-expect-error The crop is a Blob, not its address.
+sheet.paper = { statement: "blob:crop" };
+sheet.paper = undefined;
 sheet.history = undefined;
 sheet.history = [];
 /** A lesson's worked example, of spec's type, goes in as it is, and off by undefined (R42). */

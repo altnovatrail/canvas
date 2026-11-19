@@ -17,7 +17,9 @@ import { probe } from "./probe.js";
 /** The work of a sheet for checking, as its exportWork() gives it (R27): a sheet's, and not null. */
 export async function sheetWork(element: NovatrailCanvas): Promise<ExportedSheet> {
   const work = await element.exportWork();
-  if (work === null || !("png" in work)) throw new Error("the sheet gave no work for checking");
+  if (work === null || !("png" in work) || "statement" in work) {
+    throw new Error("the sheet gave no work for checking");
+  }
   return work;
 }
 
