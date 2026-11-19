@@ -4,7 +4,7 @@ import { cropOf } from "./crop.js";
 import { tenths } from "./geometry.js";
 import { groupsOf } from "./groups.js";
 import { historyOf } from "./history.js";
-import { digestOf, marksOf, placesOf } from "./marks.js";
+import { digestOf, marksOf, placesOf, shownOf } from "./marks.js";
 import { rasterOf } from "./raster.js";
 import { stroke } from "./sheets.fixture.js";
 import { paperWorkForCheck } from "./submission.js";
@@ -208,6 +208,75 @@ describe("the work of a task from paper for checking", () => {
     expect(() =>
       placesOf(marks, strokes, null, undefined, { at: [0, 0], onTracing: paper.onTracing }),
     ).toThrow(/lie elsewhere/);
+  });
+
+  test("stands a verdict by the strokes nearest its box, a group each, or at its box", () => {
+    const work = paperWorkForCheck(strokes, paper, tracing, rectOf(at, size), null, 24);
+    if (work === null) throw new Error("no work");
+    const [top, left, bottom, right] = work.submission.crop.sheetBox;
+    const on = ([ymin, xmin, ymax, xmax]: readonly [number, number, number, number]) => ({
+      minX: left + ((right - left) * xmin) / 1000,
+      minY: top + ((bottom - top) * ymin) / 1000,
+      maxX: left + ((right - left) * xmax) / 1000,
+      maxY: top + ((bottom - top) * ymax) / 1000,
+    });
+    const verdict = (box: [number, number, number, number], correct: boolean) => ({
+      kind: "verdict",
+      at: { box },
+      correct,
+      name: "Task",
+    });
+    // The paper's stroke, near the first box and the last; the sheet's, near the second; none
+    // near the third, far right.
+    const far = [0, 900, 100, 1000] as [number, number, number, number];
+    const loose = [0, 0, 300, 150] as [number, number, number, number];
+    const marks = marksOf(
+      stored({
+        submission: work.submission,
+        marks: [
+          verdict([100, 60, 250, 140], true),
+          verdict([800, 150, 1000, 300], false),
+          verdict(far, true),
+          verdict(loose, false),
+        ],
+      }),
+    );
+    const places = placesOf(marks, strokes, null, undefined, paper);
+    expect(places).toEqual([
+      { ids: [], box: { minX: 220, minY: 120, maxX: 220, maxY: 170 }, correct: true },
+      { ids: [], box: { minX: 300, minY: 400, maxX: 300, maxY: 460 }, correct: false },
+      // No strokes within its reach: where the model saw the answer, which may be ink on the photo.
+      { ids: [], box: on(far), correct: true },
+      // The stroke it is nearest stands by a nearer verdict already.
+      { ids: [], box: on(loose), correct: false },
+    ]);
+    const first = places[0];
+    if (!first) throw new Error("no place");
+    expect(shownOf(first, () => undefined)).toEqual(first.box);
+  });
+
+  test("takes a verdict at a box alone, with whether it is right, and on no sheet", () => {
+    const work = paperWorkForCheck(strokes, paper, tracing, rectOf(at, size), null, 24);
+    if (work === null) throw new Error("no work");
+    const of = (mark: object) => () =>
+      marksOf(stored({ submission: work.submission, marks: [mark] }));
+    const box = { box: [0, 0, 500, 500] };
+    expect(of({ kind: "verdict", at: { group: "A" }, correct: true, name: "T" })).toThrow(
+      /a verdict stands at a box alone/,
+    );
+    expect(of({ kind: "verdict", at: box, name: "T" })).toThrow(/correct: whether the answer/);
+    expect(of({ kind: "verdict", at: box, correct: "yes", name: "T" })).toThrow(/correct/);
+    expect(of({ kind: "verdict", at: box, correct: true, name: " " })).toThrow(/name/);
+    expect(of({ kind: "wavy_line", at: box, name: "T" })).toThrow(/"frame" and "verdict" marks/);
+    const { tracing: _, ...sheet } = work.submission;
+    expect(() =>
+      marksOf(
+        stored({
+          submission: sheet,
+          marks: [{ kind: "verdict", at: box, correct: true, name: "T" }],
+        }),
+      ),
+    ).toThrow(/the sheet draws "frame" marks, not "verdict"/);
   });
 
   test("is none with no stroke on the sheet or the paper", () => {

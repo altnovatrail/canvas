@@ -69,7 +69,8 @@ export const SNAP_RULE: SnapRule = Object.freeze({
  * reader gives it, in the consumer's words — the element words nothing. Where it is: a group of
  * strokes by its label, an answer cell by its place, or a box on the crop the model saw,
  * [ymin, xmin, ymax, xmax] in whole thousandths of its height and width, min < max (R53 spec). On a
- * workbook a mark stands on a cell alone (R34).
+ * workbook a mark stands on a cell alone (R34). On a task from paper a mark may be a verdict too, a
+ * tick or a cross at a box alone: the box of an answer its reading gave (R162 spec).
  */
 export type {
   Anchor,
@@ -97,12 +98,15 @@ export interface Paper {
  * ascending order, and the rectangle of their points, in units, as the model saw them. A mark of a
  * workbook's cell has the box of its cell too, which its frame stands round with the ink (R39). A
  * mark of a box the submission found empty holds no strokes, and its `box` is then the cell's own:
- * `shownOf` frames it alone.
+ * `shownOf` frames it alone. A verdict stands by the group of strokes `verdictsOf` gives it, its
+ * `box` theirs, or, with none, by the answer's box laid on the sheet by the crop's `sheetBox`: the
+ * answer may be ink on the photo of the page. `correct` says a tick or a cross (R162 spec).
  */
 export interface Placed {
   readonly ids: readonly number[];
   readonly box: Box;
   readonly cell?: Box;
+  readonly correct?: boolean;
 }
 
 /**
@@ -133,9 +137,10 @@ export function marksOf(value: unknown): Marks {
   // What a mark may stand on: a group of a sheet's, or on a workbook a cell alone.
   const labels =
     "groups" in submission ? new Set(submission.groups.map(({ label }) => label)) : null;
+  const paper = "tracing" in submission && submission.tracing !== undefined;
   return {
     submission,
-    marks: fields.marks.map((mark: unknown, n) => markOf(mark, `marks.marks[${n}]`, labels)),
+    marks: fields.marks.map((mark: unknown, n) => markOf(mark, `marks.marks[${n}]`, labels, paper)),
   };
 }
 
@@ -176,7 +181,7 @@ export function snapOf(
  * `cells` are the boxes of a workbook's page, in the task's order, and null on a sheet: there a
  * cell's mark holds the strokes of its row of the table, with its box; one of a box not in the
  * table, an empty one, holds its box alone, and one of a box not on the page holds none (R39;
- * R74 spec).
+ * R74 spec). A verdict of a task from paper always has its place, its box on the sheet (R162 spec).
  *
  * A submission of other strokes is a TypeError: a stroke of its groups the sheet does not know, or
  * a digest the sheet's strokes of those IDs do not give with the submission's numbers (R27). A
@@ -235,7 +240,10 @@ export function placesOf(
     );
   }
   const tables = new Map(groups.map(({ label, ids }) => [label, ids]));
-  return marks.marks.map(({ at }) => {
+  const verdicts = verdictsOf(marks.marks, crop, groups, byId);
+  return marks.marks.map((mark, n) => {
+    const { at } = mark;
+    if (mark.kind === "verdict") return verdicts.get(n) ?? null;
     let ids: number[] = [];
     if ("group" in at) ids = [...(tables.get(at.group) ?? [])].sort(byNumber);
     else if ("box" in at) ids = snapOf(at.box, crop, sent, rule);
@@ -247,11 +255,12 @@ export function placesOf(
 /**
  * The rectangle a mark shows now (R26): around the points of those of its strokes the sheet shows,
  * in units, or null while it shows none of them. A mark of a box that was empty shows the box
- * itself, always (R39). `shown` gives the box of a stroke's points by its ID while the stroke is
+ * itself, always (R39), and a verdict its box (R162 spec). `shown` gives the box of a stroke's points by its ID while the stroke is
  * on the screen — not erased, nor under the eraser under way (R22). New strokes are none of a
  * mark's.
  */
 export function shownOf(placed: Placed, shown: (id: number) => Box | undefined): Box | null {
+  if (placed.correct !== undefined) return placed.box;
   // A mark of a box that was empty stands round the box alone, whatever is written in it since.
   if (placed.cell !== undefined && placed.ids.length === 0) return placed.cell;
   const boxes = placed.ids.flatMap((id) => shown(id) ?? []);
@@ -412,6 +421,76 @@ function sumOf(lines: readonly string[]): string {
  * number stays below 2^31; the place X of a point is ((x − B.minX) × D′ + mx × H) / H px, in
  * tenths.
  */
+/**
+ * Where each verdict of the marks stands, by its index: by a group of the submission's strokes, one
+ * group a verdict, or by its box alone. A model's box of where it read an answer may be off by half
+ * a line, and the learner's strokes are where the answer is: the pairs of a verdict and a group
+ * whose boxes on the sheet are nearest take each other first, the gap between the boxes before the
+ * distance of their centres, and a group farther than the taller of the two boxes is none of the
+ * verdict's.
+ */
+function verdictsOf(
+  marks: readonly Mark[],
+  crop: CropNumbers,
+  groups: readonly Group[],
+  byId: ReadonlyMap<number, Stroke>,
+): Map<number, Placed> {
+  const boxes = new Map<number, Box>();
+  for (const [n, mark] of marks.entries()) {
+    if (mark.kind === "verdict") boxes.set(n, onSheetOf(mark.at.box, crop));
+  }
+  const inked = groups.map(({ ids }) => {
+    const own = [...ids].sort(byNumber);
+    return { ids: own, box: boxOf(own.flatMap((id) => byId.get(id)?.points ?? [])) };
+  });
+  const pairs: { n: number; g: number; gap: number; apart: number }[] = [];
+  for (const [n, box] of boxes) {
+    for (const [g, group] of inked.entries()) {
+      const gap = Math.hypot(
+        Math.max(0, box.minX - group.box.maxX, group.box.minX - box.maxX),
+        Math.max(0, box.minY - group.box.maxY, group.box.minY - box.maxY),
+      );
+      const reach = Math.max(box.maxY - box.minY, group.box.maxY - group.box.minY);
+      if (gap > reach) continue;
+      const apart = Math.hypot(
+        (box.minX + box.maxX - group.box.minX - group.box.maxX) / 2,
+        (box.minY + box.maxY - group.box.minY - group.box.maxY) / 2,
+      );
+      pairs.push({ n, g, gap, apart });
+    }
+  }
+  pairs.sort((a, b) => a.gap - b.gap || a.apart - b.apart);
+  const placed = new Map<number, Placed>();
+  const taken = new Set<number>();
+  for (const { n, g } of pairs) {
+    const group = inked[g];
+    if (placed.has(n) || taken.has(g) || group === undefined) continue;
+    taken.add(g);
+    placed.set(n, { ids: [], box: group.box, correct: verdictOf(marks[n]) });
+  }
+  for (const [n, box] of boxes) {
+    if (!placed.has(n)) placed.set(n, { ids: [], box, correct: verdictOf(marks[n]) });
+  }
+  return placed;
+}
+
+/** Whether a verdict says right. */
+function verdictOf(mark: Mark | undefined): boolean {
+  return mark?.kind === "verdict" && mark.correct;
+}
+
+/**
+ * A box on the crop, in thousandths of its height and width, laid on the sheet by the crop's
+ * `sheetBox`, in units: where the model saw it.
+ */
+function onSheetOf(box: readonly [number, number, number, number], crop: CropNumbers): Box {
+  const [top, left, bottom, right] = crop.sheetBox;
+  const [ymin, xmin, ymax, xmax] = box;
+  const x = (n: number) => left + ((right - left) * n) / 1000;
+  const y = (n: number) => top + ((bottom - top) * n) / 1000;
+  return { minX: x(xmin), minY: y(ymin), maxX: x(xmax), maxY: y(ymax) };
+}
+
 function withinOf(
   box: readonly [number, number, number, number],
   crop: CropNumbers,
@@ -602,17 +681,37 @@ function numbersOf(value: unknown, path: string, groups: readonly Group[]): Crop
   };
 }
 
-function markOf(value: unknown, path: string, labels: ReadonlySet<string> | null): Mark {
+/**
+ * A mark checked: a frame, or on a task from paper, `paper`, a verdict too, at a box alone and with
+ * whether the answer is right (R162 spec).
+ */
+function markOf(
+  value: unknown,
+  path: string,
+  labels: ReadonlySet<string> | null,
+  paper: boolean,
+): Mark {
   const mark = record(value, path);
-  if (mark.kind !== "frame") {
-    throw new TypeError(`${path}.kind: the sheet draws "frame" marks, not ${shown(mark.kind)}`);
+  const kinds = paper ? '"frame" and "verdict" marks' : '"frame" marks';
+  if (mark.kind !== "frame" && !(paper && mark.kind === "verdict")) {
+    throw new TypeError(`${path}.kind: the sheet draws ${kinds}, not ${shown(mark.kind)}`);
   }
   if (typeof mark.name !== "string" || mark.name.trim() === "") {
     throw new TypeError(
       `${path}.name: what a screen reader names the mark, not ${shown(mark.name)}`,
     );
   }
-  return { kind: "frame", at: anchorOf(mark.at, `${path}.at`, labels), name: mark.name };
+  const at = anchorOf(mark.at, `${path}.at`, labels);
+  if (mark.kind === "frame") return { kind: "frame", at, name: mark.name };
+  if (!("box" in at)) {
+    throw new TypeError(`${path}.at: a verdict stands at a box alone, not ${shown(mark.at)}`);
+  }
+  if (typeof mark.correct !== "boolean") {
+    throw new TypeError(
+      `${path}.correct: whether the answer is right, true or false, not ${shown(mark.correct)}`,
+    );
+  }
+  return { kind: "verdict", at, correct: mark.correct, name: mark.name };
 }
 
 /** Where a mark is: on a sheet, `labels` its groups'; on a workbook, null, a cell alone (R39). */

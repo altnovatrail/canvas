@@ -220,6 +220,20 @@ const DEMO_IDS: DemoControls = { status: "demo-status", parts: "demo-parts" };
  * which would read as «wrong».
  */
 const MARK = "#2563eb";
+/**
+ * The colours of a verdict's tick and cross, over its white halo: a green, and an amber rather than
+ * a red, for «not yet» is no failure; each holds more than 3:1 on white, and the halo holds them
+ * over any sheet or photo of a page (R162 spec).
+ */
+const RIGHT = "#15803d";
+const NOT_YET = "#b45309";
+/** The size of a verdict's halo, in CSS pixels: the same on every screen, whatever the scale. */
+const VERDICT_PX = 28;
+/** How far a verdict stands off the right of its answer's box, in CSS pixels. */
+const VERDICT_GAP_PX = 4;
+/** A verdict's tick and cross, on the 24 × 24 of the halo's circle. */
+const TICK = "M7 12.5l3.5 3.5L17 8.5";
+const CROSS = "M8 8l8 8M16 8l-8 8";
 /** How far a frame stands off the points of its strokes, in sheet units, as canvas-api's (R26). */
 const MARK_PADDING = 10;
 /** The rounding of a frame's corners, in sheet units. */
@@ -446,7 +460,13 @@ canvas {
   fill: none; stroke: var(--novatrail-canvas-mark, ${MARK}); stroke-width: 2px;
   vector-effect: non-scaling-stroke;
 }
-.marks rect.under { opacity: 0.25; }
+.marks rect.under, .marks g.under { opacity: 0.25; }
+.marks .halo { fill: #fff; stroke: rgba(0, 0, 0, 0.2); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.marks .sign {
+  fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;
+}
+.marks .right .sign { stroke: ${RIGHT}; }
+.marks .not-yet .sign { stroke: ${NOT_YET}; }
 @media (forced-colors: active) {
   .sheet { outline: 1px solid CanvasText; }
   .grid { stroke: GrayText; }
@@ -455,6 +475,8 @@ canvas {
   .print rect.filled { stroke: Highlight; }
   canvas { color: CanvasText; }
   .marks rect { stroke: Highlight; }
+  .marks .halo { fill: Canvas; stroke: CanvasText; }
+  .marks .right .sign, .marks .not-yet .sign { stroke: Highlight; }
   .tracing { mix-blend-mode: normal; }
   .tracing .edge { stroke: CanvasText; }
   .grip .bar, .grip.dragging .bar { background: ButtonText; }
@@ -544,13 +566,14 @@ interface Ink {
 }
 
 /**
- * A mark the sheet shows (R26): its name and where it is, its frame on the layer of the marks, the
- * frame as last drawn, in sheet units, and whether the stroke under way is writing over it.
+ * A mark the sheet shows (R26): its name and where it is, its frame on the layer of the marks — a
+ * verdict's tick or cross on its halo (R162 spec) —, the frame as last drawn, in sheet units, and
+ * whether the stroke under way is writing over it.
  */
 interface Shown {
   readonly name: string;
   readonly placed: Placed;
-  readonly rect: SVGRectElement;
+  readonly node: SVGRectElement | SVGGElement;
   frame: Box | null;
   under: boolean;
   /** What the frame's attributes say, so that a frame that has not changed writes nothing. */
@@ -575,6 +598,43 @@ function marksLayer(): SVGSVGElement {
   svg.removeAttribute("aria-hidden");
   svg.setAttribute("role", "none");
   return svg;
+}
+
+/** A frame of a mark, round its place. */
+function frameNode(): SVGRectElement {
+  const rect = document.createElementNS(SVG, "rect");
+  rect.setAttribute("rx", String(MARK_CORNER));
+  return rect;
+}
+
+/**
+ * A verdict of a task from paper (R162 spec): a tick or a cross on a white circle, on the 24 × 24
+ * that its place scales.
+ */
+function verdictNode(correct: boolean): SVGGElement {
+  const g = document.createElementNS(SVG, "g");
+  g.setAttribute("class", correct ? "right" : "not-yet");
+  const halo = document.createElementNS(SVG, "circle");
+  halo.setAttribute("class", "halo");
+  halo.setAttribute("cx", "12");
+  halo.setAttribute("cy", "12");
+  halo.setAttribute("r", "11.5");
+  const sign = document.createElementNS(SVG, "path");
+  sign.setAttribute("class", "sign");
+  sign.setAttribute("d", correct ? TICK : CROSS);
+  g.append(halo, sign);
+  return g;
+}
+
+/**
+ * Where a verdict stands, in sheet units, by its answer's box: off its right edge, at the middle of
+ * its height, its size the same on every screen (`k` CSS pixels to the unit), kept to the sheet.
+ */
+function verdictAt(box: Box, k: number): Box {
+  const size = VERDICT_PX / k;
+  const minX = Math.min(Math.max(box.maxX + VERDICT_GAP_PX / k, 0), SHEET.width - size);
+  const minY = Math.min(Math.max((box.minY + box.maxY - size) / 2, 0), SHEET.height - size);
+  return { minX, minY, maxX: minX + size, maxY: minY + size };
 }
 
 /** An HTML layer of the sheet, for the module's widget from stage 4: empty till then. */
@@ -1758,19 +1818,20 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
           shown !== undefined &&
           shown.name === name &&
           sameItems(shown.placed.ids, placed.ids) &&
-          sameBox(shown.placed.cell ?? null, placed.cell ?? null)
+          sameBox(shown.placed.cell ?? null, placed.cell ?? null) &&
+          shown.placed.correct === placed.correct &&
+          (placed.correct === undefined || sameBox(shown.placed.box, placed.box))
         );
       });
     if (same) return;
-    for (const { rect } of this.#shown) rect.remove();
+    for (const { node } of this.#shown) node.remove();
     this.#shown = marks.map(({ name, placed }) => {
-      const rect = document.createElementNS(SVG, "rect");
-      rect.setAttribute("role", "img");
-      rect.setAttribute("aria-label", name);
-      rect.setAttribute("rx", String(MARK_CORNER));
-      rect.setAttribute("display", "none");
-      this.#marksLayer.append(rect);
-      return { name, placed, rect, frame: null, under: false, drawn: "none" };
+      const node = placed.correct === undefined ? frameNode() : verdictNode(placed.correct);
+      node.setAttribute("role", "img");
+      node.setAttribute("aria-label", name);
+      node.setAttribute("display", "none");
+      this.#marksLayer.append(node);
+      return { name, placed, node, frame: null, under: false, drawn: "none" };
     });
     this.#request();
   }
@@ -2574,12 +2635,15 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const half = 1 / screen.k;
     for (const mark of this.#shown) {
       const shown = shownOf(mark.placed, onScreen);
-      const frame = shown && {
-        minX: Math.max(shown.minX - MARK_PADDING, half),
-        minY: Math.max(shown.minY - MARK_PADDING, half),
-        maxX: Math.min(shown.maxX + MARK_PADDING, SHEET.width - half),
-        maxY: Math.min(shown.maxY + MARK_PADDING, SHEET.height - half),
-      };
+      const frame =
+        shown && mark.placed.correct !== undefined
+          ? verdictAt(shown, screen.k)
+          : shown && {
+              minX: Math.max(shown.minX - MARK_PADDING, half),
+              minY: Math.max(shown.minY - MARK_PADDING, half),
+              maxX: Math.min(shown.maxX + MARK_PADDING, SHEET.width - half),
+              maxY: Math.min(shown.maxY + MARK_PADDING, SHEET.height - half),
+            };
       if (this.#writing === undefined || frame === null) mark.under = false;
       else if (!mark.under) {
         // A frame that came or moved while the stroke was under way is checked against all of it.
@@ -2597,17 +2661,22 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
           : `${frame.minX} ${frame.minY} ${frame.maxX} ${frame.maxY} ${mark.under}`;
       if (drawn === mark.drawn) continue;
       mark.drawn = drawn;
-      const { rect } = mark;
+      const { node } = mark;
       if (frame === null) {
-        rect.setAttribute("display", "none");
+        node.setAttribute("display", "none");
         continue;
       }
-      rect.setAttribute("x", String(frame.minX));
-      rect.setAttribute("y", String(frame.minY));
-      rect.setAttribute("width", String(frame.maxX - frame.minX));
-      rect.setAttribute("height", String(frame.maxY - frame.minY));
-      rect.classList.toggle("under", mark.under);
-      rect.removeAttribute("display");
+      if (node instanceof SVGRectElement) {
+        node.setAttribute("x", String(frame.minX));
+        node.setAttribute("y", String(frame.minY));
+        node.setAttribute("width", String(frame.maxX - frame.minX));
+        node.setAttribute("height", String(frame.maxY - frame.minY));
+      } else {
+        const scale = (frame.maxX - frame.minX) / 24;
+        node.setAttribute("transform", `translate(${frame.minX} ${frame.minY}) scale(${scale})`);
+      }
+      node.classList.toggle("under", mark.under);
+      node.removeAttribute("display");
     }
   }
 

@@ -183,3 +183,39 @@ test("keeps the paper's strokes in a history given back, and no sheet takes them
   }).toThrow(TypeError);
   expect(again).toBeInstanceOf(NovatrailCanvas);
 });
+
+test("draws a verdict at each answer's box, a tick or a cross on its halo, by its name, with no violation", async () => {
+  const { element, root, canvas, view } = await paper();
+  write(canvas, view, [300, 100], [320, 140]);
+  const work = (await element.exportWork()) as ExportedPaper | null;
+  if (work === null || !("statement" in work)) throw new Error("no work of a task from paper");
+  element.marks = {
+    submission: work.submission,
+    marks: [
+      { kind: "verdict", at: { box: [0, 0, 400, 300] }, correct: true, name: "Task 1: right" },
+      { kind: "verdict", at: { box: [500, 0, 900, 300] }, correct: false, name: "Task 2: not yet" },
+    ],
+  };
+  await settle();
+  const signs = [...root.querySelectorAll<SVGGElement>(".marks g[role=img]")];
+  expect(
+    signs.map((sign) => [sign.getAttribute("aria-label"), sign.getAttribute("class")]),
+  ).toEqual([
+    ["Task 1: right", "right"],
+    ["Task 2: not yet", "not-yet"],
+  ]);
+  expect(signs.every((sign) => sign.getAttribute("display") === null)).toBe(true);
+  // A tick and a cross, the second below the first: each stands by its own answer.
+  const [first, second] = signs.map((sign) => sign.getBoundingClientRect());
+  if (!first || !second) throw new Error("no verdict drawn");
+  expect(second.top).toBeGreaterThan(first.top);
+  expect(first.width).toBeCloseTo(28, 0);
+  await axeOf(element);
+  // A verdict is a task from paper's: a sheet of the other kind takes none.
+  expect(() => {
+    element.marks = {
+      submission: work.submission,
+      marks: [{ kind: "verdict", at: { group: "A" }, correct: true, name: "Task 1" }],
+    } as never;
+  }).toThrow(/a box alone/);
+});
