@@ -61,24 +61,36 @@ function rgbaAt(canvas: HTMLCanvasElement, view: View, x: number, y: number): nu
 
 test("the sheet is a stack of layers in the order of concepts 8 spec, and of them the canvas alone takes pointer events, as the element does, and so do the buttons of the bar, while the rail it stands in covers nothing of the sheet", async () => {
   const { element, root, canvas, stage, viewport } = await sheet(400);
-  const layers = [...stage.children];
+  // Over the layers stand the tracing paper's grip and its tooltip: they and the paper's layer show
+  // on a task from paper alone (R87).
+  const layers = [...stage.children].filter((each) => !each.matches(".grip, .tip"));
   expect(layers.map((layer) => layer.getAttribute("class") ?? layer.localName)).toEqual([
     "template",
     "widget",
     "show",
+    "tracing",
     "sketch",
     "canvas",
     "marks",
   ]);
+  expect(
+    [...stage.children].slice(-2).map((each) => [each.className, (each as HTMLElement).hidden]),
+  ).toEqual([
+    ["grip", true],
+    ["tip grip-tip", true],
+  ]);
   const box = stage.getBoundingClientRect();
   for (const layer of layers) {
     const rect = layer.getBoundingClientRect();
-    expect([rect.left, rect.top, rect.width, rect.height]).toEqual([
-      box.left,
-      box.top,
-      box.width,
-      box.height,
-    ]);
+    if (layer.classList.contains("tracing")) expect(layer.getAttribute("display")).toBe("none");
+    else {
+      expect([rect.left, rect.top, rect.width, rect.height]).toEqual([
+        box.left,
+        box.top,
+        box.width,
+        box.height,
+      ]);
+    }
     if (layer !== canvas) expect(getComputedStyle(layer).pointerEvents).toBe("none");
     // The marks' layer is no picture of its own: a screen reader reads each mark by its name (R26).
     if (layer.classList.contains("marks")) {
@@ -99,7 +111,7 @@ test("the sheet is a stack of layers in the order of concepts 8 spec, and of the
   const rail = root.querySelector(".rail");
   const buttons = [...root.querySelectorAll(".tools button")];
   if (!bar || !row || !rail) throw new Error("the element has no bar and row in a rail");
-  expect(buttons).toHaveLength(9);
+  expect(buttons).toHaveLength(10);
   expect(rail.getBoundingClientRect().width).toBe(0);
   const boxes = [canvas, stage, sheetBox, viewport, rail, bar, row, ...buttons];
   for (const box of boxes) expect(getComputedStyle(box).pointerEvents).toBe("auto");
@@ -145,8 +157,9 @@ test("a worked example's canvas alone takes no pointer, the stage keeps the menu
 test("every layer shows the sheet by one view, whatever the width and the scroll, and the sheet is at most 1000 CSS pixels wide, in the middle", async () => {
   for (const width of [400, 1000, 1400]) {
     const { element, root, canvas, viewport, view } = await sheet(width, 300);
-    // The template, the author's demo (R42), the tutor's sketch and the marks.
-    const svgs = [...root.querySelectorAll<SVGSVGElement>(".stage > svg")];
+    // The template, the author's demo (R42), the tutor's sketch and the marks; the tracing paper's
+    // layer shows a task from paper's alone (R87).
+    const svgs = [...root.querySelectorAll<SVGSVGElement>('.stage > svg:not([display="none"])')];
     expect(svgs.map((svg) => svg.getAttribute("class"))).toEqual([
       "template",
       "show",

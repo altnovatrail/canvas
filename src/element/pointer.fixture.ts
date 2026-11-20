@@ -17,7 +17,9 @@ import { probe } from "./probe.js";
 /** The work of a sheet for checking, as its exportWork() gives it (R27): a sheet's, and not null. */
 export async function sheetWork(element: NovatrailCanvas): Promise<ExportedSheet> {
   const work = await element.exportWork();
-  if (work === null || !("png" in work)) throw new Error("the sheet gave no work for checking");
+  if (work === null || !("png" in work) || "statement" in work) {
+    throw new Error("the sheet gave no work for checking");
+  }
   return work;
 }
 
@@ -67,6 +69,22 @@ export async function quarters(colours: readonly Colour[] = QUARTERS): Promise<B
     context.fillRect((n % 2) * 20, Math.floor(n / 2) * 10, 20, 10);
   });
   return canvas.convertToBlob({ type: "image/png" });
+}
+
+/** A task's crop: a PNG of 200 × 50 px by default, grey, as app cuts one, made on a canvas. */
+export async function paperCrop(width = 200, height = 50): Promise<Blob> {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (context === null) throw new Error("no 2D context");
+  context.fillStyle = "#ddd";
+  context.fillRect(0, 0, width, height);
+  context.fillStyle = "#000";
+  context.fillRect(20, 20, 60, 10);
+  return new Promise((resolve, reject) =>
+    canvas.toBlob((blob) => (blob === null ? reject(new Error("no PNG")) : resolve(blob))),
+  );
 }
 
 /** A promise and the hands that settle it: a load of media the test settles when it will. */

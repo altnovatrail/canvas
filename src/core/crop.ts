@@ -82,12 +82,14 @@ export function medianOf(strokes: readonly Stroke[]): number {
 /**
  * The crop of the strokes on a sheet with its digits `digit` px high, and the frames of their
  * groups (R25): the strokes the sheet shows, and their groups by the sheet's rule (R24). A sheet
- * without strokes has no crop: it goes to no check (H3).
+ * without strokes has no crop: it goes to no check (H3). On a task from paper the crop takes in
+ * `also` too, the tracing paper's rectangle in whole tenths, at the same scale (R87).
  */
 export function cropOf(
   strokes: readonly Stroke[],
   groups: readonly Group[],
   digit: number = CROP.digit,
+  also?: Box,
 ): Crop | null {
   if (!Number.isInteger(digit) || digit < 1 || digit > CROP.tallest) {
     throw new RangeError(
@@ -97,7 +99,7 @@ export function cropOf(
   const extents = extentsOf(strokes);
   const members = membersOf(groups, extents);
   if (extents.length === 0) return null;
-  const box = around(extents);
+  const box = around(also === undefined ? extents : [...extents, also]);
   const median = medianTenths(extents);
   const unit = Math.min(median, CROP.ceiling * 10);
   let size = sizeOf(box, unit, digit);

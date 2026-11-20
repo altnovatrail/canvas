@@ -44,9 +44,9 @@ import type { Block, Inline, LegalSet } from "../page/sets.ts";
  * the file together.
  */
 export const LEGAL_FILE = Object.freeze({
-  tag: "v0.18.34",
+  tag: "v0.19.0",
   name: "legal-3.tar.gz",
-  sha256: "404cb49821afe5231f8fb8f1fd20cb4d579c6bf43f17f03e25b206679240a8a6",
+  sha256: "16785b1eecaf86ce06075b7dc8f62d860419847f6adc8a0b18f9dcfa6ccd77cf",
 });
 
 /** Where the file lies in the tree: a folder of its tag, for release-verify knows a file of spec by

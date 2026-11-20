@@ -331,7 +331,8 @@ test("every layer shows the zoomed sheet by the canvas's one view, scrolled acro
   expect([vx, vy]).toEqual([expect.closeTo(250 / k, 3), expect.any(Number)]);
   expect(vy).toBeGreaterThan(0);
   const rect = canvas.getBoundingClientRect();
-  for (const svg of root.querySelectorAll<SVGSVGElement>(".stage > svg")) {
+  // The tracing paper's layer shows a task from paper's alone (R87).
+  for (const svg of root.querySelectorAll<SVGSVGElement>('.stage > svg:not([display="none"])')) {
     // A point of the sheet stands on the screen where the canvas draws it.
     const matrix = svg.getScreenCTM();
     expect(matrix?.a).toBeCloseTo(k, 6);

@@ -249,7 +249,9 @@ async function read(work: ExportedSheet) {
 /** The work for checking, which a sheet with strokes has: the crop of a sheet, by the contract. */
 async function check(sheet: CanvasElement): Promise<ExportedSheet> {
   const work = await sheet.exportWork();
-  if (work === null || !("png" in work)) throw new Error("the sheet gave no work for checking");
+  if (work === null || !("png" in work) || "statement" in work) {
+    throw new Error("the sheet gave no work for checking");
+  }
   return work;
 }
 

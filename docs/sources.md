@@ -555,6 +555,13 @@ At the tag [v0.1.12](https://github.com/altnovatrail/.github/tree/v0.1.12), comm
 - `legal-3.tar.gz` of the release v0.18.34 — sha256 `404cb49821afe5231f8fb8f1fd20cb4d579c6bf43f17f03e25b206679240a8a6`; `release-verify spec v0.18.34` — "legal-3.tar.gz: spec v0.18.34, signed by spec's release.yml". Unpacked, it matches the archive of v0.18.27 file for file (`diff -r`);
 - `docs-check-repo` at v0.18.34 with `"entry": 12` and `"comments": true` — 24 entries of the log over 12 KB, R05–R57, now in `entries` of [docs-budgets.json](../docs-budgets.json), and "1216 numbers in comments", none naming a missing entry.
 
+### 6.21. The move to `spec` v0.19.0
+
+(R86; R159 spec, epic E11 of spec), read 2026-11-20:
+
+- `gh release view v0.19.0 -R altnovatrail/spec` — published 2026-11-20T13:54:58Z; the tag is the commit `1735e57d3d109ccb99e105f596c1154aa959a5ad`; `npm view @altnovatrail/spec@0.19.0` and `@altnovatrail/contracts@0.19.0` — both published;
+- `legal-3.tar.gz` of the release v0.19.0 — sha256 `16785b1eecaf86ce06075b7dc8f62d860419847f6adc8a0b18f9dcfa6ccd77cf`; `release-verify spec v0.19.0` — "legal-3.tar.gz: spec v0.19.0, signed by spec's release.yml". Unpacked, against the archive of v0.18.34 (`diff -rq`): `legal.yaml` adds the privacy policy 5, in force from 2026-11-28, and `texts/privacy-policy/5.md` and `5.ru.md` are new; no other text changed.
+
 ## 7. Tools, packages and CI
 
 ### 7.1. GitHub Packages

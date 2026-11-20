@@ -42,6 +42,12 @@
 // element's (R74). Zoom in and Zoom out step the page's zoom of the sheet from its fit to twice
 // it, and a zoomed sheet scrolls across as well as down, with two fingers, the wheel and the keys
 // (R73).
+//
+// A task from the learner's paper it shows on a dotted sheet, with the task's crop over it as
+// tracing paper, which the learner moves by its grip, hides and shows by the button atop the tools,
+// and writes on as on the sheet: a stroke begun on the paper is the paper's and moves with it, and
+// an erasing begun on it takes the paper's strokes alone. The work for checking is the crop of the
+// paper and of the sheet's strokes, with the task's crop beside it (R87).
 
 import type {
   CanvasElement,
@@ -49,7 +55,9 @@ import type {
   ExportedWork,
   HistoryChange,
   Media,
+  PaperTask,
   ToolChange,
+  TracingState,
 } from "@altnovatrail/spec/canvas";
 import type { Vec2 } from "perfect-freehand";
 import { type Cell, cellOf, cellsOf, type Filled, filledOf, sheetFilledOf } from "../core/boxes.js";
@@ -70,7 +78,7 @@ import {
 } from "../core/example.js";
 import { sameItems } from "../core/fields.js";
 import { type Box, boxOf } from "../core/geometry.js";
-import { gridPath } from "../core/grid.js";
+import { GRID_STEP, gridPath } from "../core/grid.js";
 import { type Contact, Hands } from "../core/hands.js";
 import { begins, type HistoryEvent, sameHistory } from "../core/history.js";
 import type { InkPoint, Stroke } from "../core/ink.js";
@@ -90,7 +98,7 @@ import { encodePNG } from "../core/png.js";
 import { type PointerSample, Recorder } from "../core/recorder.js";
 import { fitScale, K_MAX, scaleFor, toSheet, type View } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
-import { cellsForCheck, workForCheck } from "../core/submission.js";
+import { cellsForCheck, paperWorkForCheck, workForCheck } from "../core/submission.js";
 import {
   isTool,
   isWorkbook,
@@ -104,6 +112,20 @@ import {
   templateOf,
   wholeSheet,
 } from "../core/task.js";
+import {
+  boxOnSheet,
+  keptOn,
+  layOver,
+  onSheet,
+  onTracing,
+  sameTracing,
+  TRACING,
+  TRACING_START,
+  toTracing,
+  rectOf as tracingRect,
+  tracingStateOf,
+  whollyOff,
+} from "../core/tracing.js";
 import { nextIdOf, resumeOf, Work } from "../core/work.js";
 import { placeOver, SVG, write } from "./attributes.js";
 import { knows, labelsFor, say, sayAround } from "./labels.js";
@@ -113,6 +135,7 @@ import { attachProbe } from "./probe.js";
 import { PAGE_ZOOM, PEN_MODE } from "./session.js";
 import { Statement } from "./statement.js";
 import { type DemoControls, type RowKind, Tools } from "./tools.js";
+import { TracingPaper } from "./tracing.js";
 
 /**
  * The types of the contract of canvas and app are spec's (R74 spec; R07): the element as
@@ -128,14 +151,18 @@ export type {
   CanvasEventMap,
   DemoChangeEvent,
   ExportedCell,
+  ExportedPaper,
   ExportedSheet,
   ExportedWork,
   ExportedWorkbook,
   HistoryChange,
   HistoryChangeEvent,
   Media,
+  PaperTask,
   ToolChange,
   ToolChangeEvent,
+  TracingChangeEvent,
+  TracingState,
 } from "@altnovatrail/spec/canvas";
 export type { Filled, Filling } from "../core/boxes.js";
 export type { Crop, Frame } from "../core/crop.js";
@@ -151,6 +178,7 @@ export type {
   CropNumbers,
   Mark,
   Marks,
+  PaperSubmission,
   SheetSubmission,
   Submission,
   WorkbookSubmission,
@@ -176,6 +204,17 @@ const HISTORY_CHANGE = "historychange";
 const TOOL_CHANGE = "toolchange";
 /** The event the element sends when the learner opens a part of the demo, or hides or shows it. */
 const DEMO_CHANGE = "demochange";
+/** The event the element sends when the learner moves the tracing paper, or hides or shows it. */
+const TRACING_CHANGE = "tracingchange";
+/**
+ * A task from paper's template: a dotted sheet, no statement, the pen and the eraser (R87; R162
+ * spec).
+ */
+const PAPER_TEMPLATE: Template = Object.freeze({
+  grid: Object.freeze({ kind: "dots", step: TRACING.dots }),
+  statement: Object.freeze([]),
+  tools: NO_TASK.tools,
+});
 /** What Next and Demo control, by their IDs in the shadow root: the region, and the list (R42). */
 const DEMO_IDS: DemoControls = { status: "demo-status", parts: "demo-parts" };
 /**
@@ -183,6 +222,34 @@ const DEMO_IDS: DemoControls = { status: "demo-status", parts: "demo-parts" };
  * which would read as «wrong».
  */
 const MARK = "#2563eb";
+/**
+ * The colours of a verdict's tick and cross, over its white halo: a green, and an amber rather than
+ * a red, for «not yet» is no failure; each holds more than 3:1 on white, and the halo holds them
+ * over any sheet or photo of a page (R162 spec).
+ */
+const RIGHT = "#15803d";
+const NOT_YET = "#b45309";
+/** The size of a verdict's halo, in CSS pixels: the same on every screen, whatever the scale. */
+const VERDICT_PX = 28;
+/** How far a verdict stands off the right of its answer's box, in CSS pixels. */
+const VERDICT_GAP_PX = 4;
+/** A verdict's tick and cross, on the 24 × 24 of the halo's circle. */
+const TICK = "M7 12.5l3.5 3.5L17 8.5";
+const CROSS = "M8 8l8 8M16 8l-8 8";
+/**
+ * The colour of the tutor's wavy line of "Show where" unless the consumer's theme gives one: an
+ * orange, as the mockup's, 3.58:1 on white, over a white halo that holds it over any sheet or photo
+ * of a page (R87; R162 spec).
+ */
+const WAVY = "#e8590c";
+/**
+ * The wavy line, in sheet units: half a wave half a square of the sheet long, its crests this high
+ * off its middle, this far under its place, and reaching this far past each side of it.
+ */
+const WAVY_HALF = GRID_STEP / 4;
+const WAVY_CREST = 3.5;
+const WAVY_BELOW = 12;
+const WAVY_REACH = 10;
 /** How far a frame stands off the points of its strokes, in sheet units, as canvas-api's (R26). */
 const MARK_PADDING = 10;
 /** The rounding of a frame's corners, in sheet units. */
@@ -387,11 +454,40 @@ canvas {
   touch-action: none;
 }
 .sheet.example canvas { pointer-events: none; touch-action: auto; }
+.tracing { mix-blend-mode: multiply; }
+.tracing .edge {
+  fill: none; stroke: rgba(60, 60, 67, 0.3); stroke-width: 1px; vector-effect: non-scaling-stroke;
+}
+.stage > .grip {
+  pointer-events: auto; inset: auto; left: 0; top: 0; width: 68px; height: 44px; margin: 0;
+  padding: 0; border: none; border-radius: 22px; background: transparent; cursor: grab;
+  touch-action: none; display: flex; align-items: center; justify-content: center;
+}
+.stage > .grip[hidden] { display: none; }
+.grip .bar {
+  width: 40px; height: 5px; border-radius: 3px;
+  background: color-mix(in srgb, var(--novatrail-canvas-ink, ${INK}) 30%, transparent);
+}
+.grip.dragging { cursor: grabbing; }
+.grip.dragging .bar { background: var(--novatrail-canvas-accent, ${ACCENT}); }
+.grip:focus-visible { outline: 2px solid var(--novatrail-canvas-accent, ${ACCENT}); }
+.stage > .tip { inset: auto; width: auto; height: auto; pointer-events: none; }
 .marks rect {
   fill: none; stroke: var(--novatrail-canvas-mark, ${MARK}); stroke-width: 2px;
   vector-effect: non-scaling-stroke;
 }
-.marks rect.under { opacity: 0.25; }
+.marks rect.under, .marks g.under { opacity: 0.25; }
+.marks .halo { fill: #fff; stroke: rgba(0, 0, 0, 0.2); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.marks .sign {
+  fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;
+}
+.marks .right .sign { stroke: ${RIGHT}; }
+.marks .wavy path {
+  fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke;
+}
+.marks .wavy .glow { stroke: #fff; stroke-width: 6.4px; }
+.marks .wavy .line { stroke: var(--novatrail-canvas-wavy, ${WAVY}); stroke-width: 2.4px; }
+.marks .not-yet .sign { stroke: ${NOT_YET}; }
 @media (forced-colors: active) {
   .sheet { outline: 1px solid CanvasText; }
   .grid { stroke: GrayText; }
@@ -400,6 +496,14 @@ canvas {
   .print rect.filled { stroke: Highlight; }
   canvas { color: CanvasText; }
   .marks rect { stroke: Highlight; }
+  .marks .halo { fill: Canvas; stroke: CanvasText; }
+  .marks .right .sign, .marks .not-yet .sign { stroke: Highlight; }
+  .marks .wavy .glow { stroke: Canvas; }
+  .marks .wavy .line { stroke: Highlight; }
+  .tracing { mix-blend-mode: normal; }
+  .tracing .edge { stroke: CanvasText; }
+  .grip .bar, .grip.dragging .bar { background: ButtonText; }
+  .grip:focus-visible { outline-color: Highlight; }
   .tools { background: Canvas; color: CanvasText; border: 1px solid CanvasText; }
   .tools .line { background: CanvasText; }
   .tools button {
@@ -485,13 +589,14 @@ interface Ink {
 }
 
 /**
- * A mark the sheet shows (R26): its name and where it is, its frame on the layer of the marks, the
- * frame as last drawn, in sheet units, and whether the stroke under way is writing over it.
+ * A mark the sheet shows (R26): its name and where it is, its frame on the layer of the marks — a
+ * verdict's tick or cross on its halo, or a wavy line (R162 spec) —, the frame as last drawn, in
+ * sheet units, and whether the stroke under way is writing over it.
  */
 interface Shown {
   readonly name: string;
   readonly placed: Placed;
-  readonly rect: SVGRectElement;
+  readonly node: SVGRectElement | SVGGElement;
   frame: Box | null;
   under: boolean;
   /** What the frame's attributes say, so that a frame that has not changed writes nothing. */
@@ -516,6 +621,86 @@ function marksLayer(): SVGSVGElement {
   svg.removeAttribute("aria-hidden");
   svg.setAttribute("role", "none");
   return svg;
+}
+
+/** A frame of a mark, round its place. */
+function frameNode(): SVGRectElement {
+  const rect = document.createElementNS(SVG, "rect");
+  rect.setAttribute("rx", String(MARK_CORNER));
+  return rect;
+}
+
+/**
+ * A verdict of a task from paper (R162 spec): a tick or a cross on a white circle, on the 24 × 24
+ * that its place scales.
+ */
+function verdictNode(correct: boolean): SVGGElement {
+  const g = document.createElementNS(SVG, "g");
+  g.setAttribute("class", correct ? "right" : "not-yet");
+  const halo = document.createElementNS(SVG, "circle");
+  halo.setAttribute("class", "halo");
+  halo.setAttribute("cx", "12");
+  halo.setAttribute("cy", "12");
+  halo.setAttribute("r", "11.5");
+  const sign = document.createElementNS(SVG, "path");
+  sign.setAttribute("class", "sign");
+  sign.setAttribute("d", correct ? TICK : CROSS);
+  g.append(halo, sign);
+  return g;
+}
+
+/**
+ * The wavy line of "Show where" (R87): the line over a wider white one, its halo, both
+ * of the path the marks give them.
+ */
+function wavyNode(): SVGGElement {
+  const g = document.createElementNS(SVG, "g");
+  g.setAttribute("class", "wavy");
+  for (const name of ["glow", "line"]) {
+    const path = document.createElementNS(SVG, "path");
+    path.setAttribute("class", name);
+    g.append(path);
+  }
+  return g;
+}
+
+/**
+ * Where a wavy line stands, in sheet units, by its place: under it, past each side, from crest to
+ * trough, kept to the sheet by `half` its line.
+ */
+function wavyAt(box: Box, half: number): Box {
+  const y = Math.min(box.maxY + WAVY_BELOW, SHEET.height - WAVY_CREST - half);
+  return {
+    minX: Math.max(box.minX - WAVY_REACH, half),
+    minY: y - WAVY_CREST,
+    maxX: Math.min(box.maxX + WAVY_REACH, SHEET.width - half),
+    maxY: y + WAVY_CREST,
+  };
+}
+
+/** The path of a wavy line across its box, by half waves from its left. */
+function wavyPath({ minX, minY, maxX, maxY }: Box): string {
+  const y = (minY + maxY) / 2;
+  // A quadratic curve's crest is half way to its control point.
+  const control = maxY - minY;
+  const at = (n: number) => String(Math.round(n * 10) / 10);
+  let d = `M${at(minX)} ${at(y)}`;
+  for (let x = minX, up = true; x < maxX; x += WAVY_HALF, up = !up) {
+    const to = Math.min(x + WAVY_HALF, maxX);
+    d += ` Q${at((x + to) / 2)} ${at(up ? y - control : y + control)} ${at(to)} ${at(y)}`;
+  }
+  return d;
+}
+
+/**
+ * Where a verdict stands, in sheet units, by its answer's box: off its right edge, at the middle of
+ * its height, its size the same on every screen (`k` CSS pixels to the unit), kept to the sheet.
+ */
+function verdictAt(box: Box, k: number): Box {
+  const size = VERDICT_PX / k;
+  const minX = Math.min(Math.max(box.maxX + VERDICT_GAP_PX / k, 0), SHEET.width - size);
+  const minY = Math.min(Math.max((box.minY + box.maxY - size) / 2, 0), SHEET.height - size);
+  return { minX, minY, maxX: minX + size, maxY: minY + size };
 }
 
 /** An HTML layer of the sheet, for the module's widget from stage 4: empty till then. */
@@ -580,9 +765,28 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       },
       next: () => this.#openNext(),
       toggle: () => this.#toggleDemo(),
+      trace: () => this.#trace(),
     },
     DEMO_IDS,
   );
+  /** A task from paper's tracing paper: its layer, its grip and the crop's picture (R87). */
+  readonly #tracingPaper = new TracingPaper({
+    move: (at) => this.#moveTracing(at),
+    moved: () => this.#tracingMoved(),
+  });
+  /** The task from paper as the consumer gave it, and where its tracing paper lies (R87). */
+  #paper: PaperTask | undefined;
+  #tracing: TracingState | undefined;
+  /** The tracing paper's state the learner's move began at: the move tells only if it changed it. */
+  #moveFrom: TracingState | undefined;
+  /** The layer the stroke under way is written on, and the erasing under way erases (R87). */
+  #writeOn: "tracing" | undefined;
+  #eraseOn: "tracing" | "sheet" | undefined;
+  /** Each stroke of the tracing paper where it lies on the sheet, for the place it was moved to. */
+  #placed = new WeakMap<
+    Stroke,
+    { readonly at: readonly [number, number]; readonly stroke: Stroke }
+  >();
   /** The sheet's clock, for its strokes and its actions alike (R22). */
   readonly #clock = new Clock();
   /**
@@ -595,12 +799,12 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   #telling = false;
   /** The input: a finished stroke goes onto the work, and the work has changed. */
   readonly #recorder = new Recorder((stroke) => {
-    this.#work.write(stroke);
+    this.#work.write(stroke, this.#writeOn);
     this.#changed();
   }, this.#clock);
   /** The eraser: what a press came near leaves the work when it lifts, if still on the sheet. */
   readonly #eraser = new Eraser(
-    (from, to, reach) => this.#work.near(from, to, reach),
+    (from, to, reach) => this.#work.near(from, to, reach, this.#eraseOn),
     (ids, time) => {
       if (this.#work.erase(ids, time)) this.#changed();
     },
@@ -679,11 +883,14 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     | { readonly given: unknown; readonly length: number; readonly history: unknown }
     | undefined;
   #shown: readonly Shown[] = [];
-  /** The strokes on the sheet by ID, kept while the sheet's strokes are the same array. */
-  #onSheet: { readonly strokes: readonly Stroke[]; readonly byId: ReadonlyMap<number, Stroke> } = {
-    strokes: [],
-    byId: new Map(),
-  };
+  /**
+   * The strokes on the sheet by ID, the tracing paper's from its corner, kept while the sheet's
+   * strokes are the same array.
+   */
+  #strokesById: {
+    readonly strokes: readonly Stroke[];
+    readonly byId: ReadonlyMap<number, Stroke>;
+  } = { strokes: [], byId: new Map() };
   /** The box of each stroke's points, worked out once: a stroke never changes (R22). */
   readonly #pointBoxes = new WeakMap<Stroke, Box>();
   /** The stroke under way, and how many of its points the marks have been checked against. */
@@ -735,6 +942,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#print.setAttribute("class", "print");
     // The constructor reads no attribute: the labels of a demo's boxes are English till `lang` comes.
     this.#nameBoxes(null);
+    this.#nameGrip(null);
     this.#lines.setAttribute("role", "list");
     this.#print.append(this.#lines);
     this.#template.append(this.#grid, this.#print);
@@ -743,9 +951,12 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       this.#template,
       this.#widget,
       this.#show,
+      this.#tracingPaper.layer,
       this.#sketch,
       this.#canvas,
       this.#marksLayer,
+      this.#tracingPaper.grip,
+      this.#tracingPaper.tip,
     );
     this.#sheet.append(this.#stage, this.#parts.spot);
     this.#column.append(this.#statement.element, this.#parts.list, this.#parts.status, this.#sheet);
@@ -797,8 +1008,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#adopt("tool");
     this.#adopt("task");
     this.#adopt("workedExample");
-    // The demo's state after its example: it is a TypeError without one.
+    this.#adopt("paper");
+    // The demo's state after its example, and the tracing paper's after its task from paper: each
+    // is a TypeError without it.
     this.#adopt("demoState");
+    this.#adopt("tracing");
     this.#adopt("manifest");
     this.#adopt("media");
     // The history before the marks: they hold on to its strokes.
@@ -856,6 +1070,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     if (this.#example !== undefined) {
       throw new TypeError(
         `<${TAG}> shows a worked example: a task is shown by a new element, or once the example is undefined`,
+      );
+    }
+    if (this.#paper !== undefined) {
+      throw new TypeError(
+        `<${TAG}> shows a task from paper: a task is shown by a new element, or once the paper is undefined`,
       );
     }
     const checked = task === undefined ? undefined : taskOf(task);
@@ -917,6 +1136,99 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       this.#showFills(new Map());
       this.#present(exampleTemplate(checked));
     }
+  }
+
+  /**
+   * A task from the learner's paper (R87; R162 spec): `statement`, the task's crop as app cut it, a
+   * Blob of a JPEG or a PNG. The element shows it in place of a task and of a worked example: a
+   * dotted sheet with no statement, the pen and the eraser, and the crop over it as tracing paper,
+   * at the element's own place for it, shown, which `tracing` tells. While a task or an example is
+   * shown it is a TypeError, and so is what is not such a task. Another task from paper, of
+   * another crop, lays its crop at the start again, and the history stays: the next task is a new
+   * element (R20); one of the same crop changes nothing. `undefined` takes it off, but not while the
+   * history has strokes on the tracing paper, a TypeError. Either drops a stroke or an erasing under
+   * way on the tracing paper, as a new history drops the one under the pen. The crop's picture is
+   * read as it comes; till then the paper has its largest size.
+   */
+  get paper(): PaperTask | undefined {
+    return this.#paper;
+  }
+
+  set paper(paper: PaperTask | undefined) {
+    if (paper === this.#paper) return;
+    if (paper === undefined) {
+      if (this.#work.traced) {
+        throw new TypeError(
+          `<${TAG}> has strokes on the tracing paper: the task from paper goes with a new element, or a history without them`,
+        );
+      }
+      this.#leaveTracing(false);
+      this.#paper = undefined;
+      this.#tracing = undefined;
+      this.#tracingPaper.show(undefined, () => {});
+      this.#whole = false;
+      this.#present(NO_TASK);
+      return;
+    }
+    if (this.#example !== undefined) {
+      throw new TypeError(
+        `<${TAG}> shows a worked example: a task from paper is shown by a new element, or once the example is undefined`,
+      );
+    }
+    if (this.#task !== undefined) {
+      throw new TypeError(
+        `<${TAG}> shows a task: a task from paper is shown by a new element, or once the task is undefined`,
+      );
+    }
+    const statement: unknown =
+      typeof paper === "object" && paper !== null ? paper.statement : undefined;
+    if (!(statement instanceof Blob)) {
+      throw new TypeError(
+        `paper.statement: the task's crop, a Blob of a JPEG or a PNG, not ${typeof statement}`,
+      );
+    }
+    // A consumer that renders the same crop anew in a new object keeps the paper where it lies.
+    if (this.#paper?.statement === statement) {
+      this.#paper = paper;
+      return;
+    }
+    this.#leaveTracing(false);
+    this.#paper = paper;
+    this.#tracing = TRACING_START;
+    this.#tracingPaper.show(statement, () => this.#sized());
+    this.#whole = true;
+    this.#present(PAPER_TEMPLATE);
+    this.#request();
+  }
+
+  /**
+   * Where the tracing paper of the task from paper lies on the sheet, its top left corner in sheet
+   * units, and whether it is hidden (R87): frozen, and the same object until it changes;
+   * `undefined` without a task from paper. The learner moves it by its grip and hides or shows it by
+   * the button atop the tools, which a `tracingchange` tells; the consumer keeps it and gives it
+   * back, which tells nothing. Given before the task from paper it is a TypeError, and so is a state
+   * that is not one, or one that puts the paper wholly off the sheet; `undefined` changes nothing.
+   * Till the crop's picture is read the paper has its largest size: a state that puts the paper of
+   * its real size wholly off the sheet then moves to the nearest place wholly on it, with no event.
+   */
+  get tracing(): TracingState | undefined {
+    return this.#tracing;
+  }
+
+  set tracing(state: TracingState | undefined) {
+    if (state === undefined) return;
+    if (this.#paper === undefined) {
+      throw new TypeError(
+        `<${TAG}> shows no task from paper: the tracing paper's state is given after the paper`,
+      );
+    }
+    const checked = tracingStateOf(state, this.#tracingPaper.size);
+    const shown = this.#tracing;
+    if (shown !== undefined && sameTracing(shown, checked)) return;
+    this.#tracing = checked;
+    this.#replace();
+    this.#refresh();
+    this.#request();
   }
 
   /**
@@ -1049,7 +1361,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       throw new TypeError(`<${TAG}> shows a worked example, whose sheet has no history of writing`);
     }
     // undefined, and undefined alone, is the empty history: null is a value, and a wrong one.
-    const work = Work.restore(history === undefined ? [] : history, this.#clock);
+    const work = Work.restore(
+      history === undefined ? [] : history,
+      this.#clock,
+      this.#paper !== undefined,
+    );
     const after = work.history;
     // The empty history is a new sheet, which a consumer asks for on purpose.
     if (after.length > 0 && begins(after, before)) {
@@ -1128,6 +1444,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#watchDensity();
     this.#watchColours();
     this.#pictures.connect();
+    this.#tracingPaper.connect();
     // The page's pen mode, on every sheet of it (R29). The row shows a change once the event that
     // made it is over: by then a pen that came down writes, and every row of the page waits for its
     // stroke. The sheet tells the page whether it is written on, and hears when a stroke ends.
@@ -1162,6 +1479,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       return;
     }
     this.#tools.label(this.getAttribute("lang"));
+    this.#nameGrip();
     this.#nameRegion();
     this.#nameBoxes();
     this.#markBoxes();
@@ -1181,6 +1499,12 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       const [before, after] = sayAround(labels.valued, "value", { name });
       return { before, value, after, lang };
     };
+  }
+
+  /** The tracing paper's grip is named in the labels' language, and its tooltip says it (R87). */
+  #nameGrip(tag: string | null = this.getAttribute("lang")): void {
+    const { lang, labels } = labelsFor(tag);
+    this.#tracingPaper.label(labels.moveTask, lang);
   }
 
   /**
@@ -1223,6 +1547,31 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   async exportWork(): Promise<ExportedWork | null> {
     if (this.#example !== undefined) return null;
     const { digit } = this.#settings;
+    const paper = this.#paper;
+    const tracing = this.#tracing;
+    if (paper !== undefined && tracing !== undefined) {
+      // The sheet as it is now: the crop's picture, read by now or soon, does not change it.
+      const strokes = this.#work.strokes.map((stroke) => this.#onSheet(stroke, tracing.at));
+      if (strokes.length === 0) return null;
+      const written = this.#work;
+      const onTracing = (id: number) => written.onTracing(id);
+      const { size, gray } = await this.#tracingPaper.read;
+      const rect = tracingRect(tracing.at, size);
+      const work = paperWorkForCheck(
+        strokes,
+        { at: tracing.at, onTracing },
+        tracing,
+        rect,
+        gray,
+        digit,
+      );
+      if (work === null) return null;
+      return Object.freeze({
+        statement: paper.statement,
+        png: blobOf(work.png),
+        submission: work.submission,
+      });
+    }
     if (isWorkbook(this.#shownTemplate)) {
       const work = cellsForCheck(this.#work.strokes, this.#cells, digit);
       if (work === null) return null;
@@ -1243,7 +1592,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * unit, 1000 × 1400, whatever is filled and whether the work was sent to be checked or not; an
    * empty surface, and a worked example's, is white. The strokes are those `exportWork()` takes, as
    * the history has them: not the stroke under way, but those under an eraser not yet lifted. Each
-   * is the outline the screen fills, black on white with no theme and no template, and the pixels
+   * is the outline the screen fills, black on white with no theme and no template — on a task from
+   * paper the strokes of both layers, the tracing paper's where it lies, hidden or not, with the
+   * crop's picture laid in grey and multiplied (R87) —, and the pixels
    * go through the crop's encoder, grey a byte each: so the picture looks as the sheet does, and
    * holds at most 1,576,640 bytes, for the encoder spends at most 9 bits on a byte of a row, under
    * the 4 MiB of a stored work.
@@ -1259,7 +1610,18 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     context.fillStyle = "#fff";
     context.fillRect(0, 0, width, height);
     context.fillStyle = "#000";
-    for (const stroke of this.#work.strokes) context.fill(this.#finished(stroke).path);
+    const tracing = this.#tracing;
+    const strokes = this.#work.strokes;
+    const work = this.#work;
+    for (const stroke of strokes) {
+      if (tracing !== undefined && work.onTracing(stroke.id)) {
+        context.setTransform(1, 0, 0, 1, tracing.at[0], tracing.at[1]);
+        context.fill(this.#finished(stroke).path);
+        context.setTransform(1, 0, 0, 1, 0, 0);
+      } else {
+        context.fill(this.#finished(stroke).path);
+      }
+    }
     const { data } = context.getImageData(0, 0, width, height);
     // The canvas's memory goes at once, not at a collection: WebKit caps what all canvases hold.
     canvas.width = 0;
@@ -1268,6 +1630,20 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     // a pixel, so none reads past them.
     const gray = new Uint8Array(width * height);
     for (let at = 0; at < gray.length; at++) gray[at] = data[4 * at] as number;
+    // A task from paper's crop lies over it where the tracing paper lies, shown or hidden, a pixel a
+    // unit, as the crop of the work has it (R87).
+    if (tracing !== undefined) {
+      const { size, gray: picture } = await this.#tracingPaper.read;
+      if (picture !== null) {
+        const rect = tracingRect(tracing.at, size);
+        layOver(gray, width, picture, {
+          left: rect.minX,
+          top: rect.minY,
+          right: rect.maxX,
+          bottom: rect.maxY,
+        });
+      }
+    }
     return blobOf(encodePNG(gray, width, height));
   }
 
@@ -1292,6 +1668,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     // A stroke that ended here may be the one the other rows of the page waited for.
     PEN_MODE.settle();
     this.#pictures.disconnect();
+    this.#tracingPaper.disconnect();
     this.#resize.disconnect();
     this.#unwatchDensity?.();
     this.#unwatchDensity = undefined;
@@ -1312,7 +1689,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       | "tool"
       | "task"
       | "workedExample"
+      | "paper"
       | "demoState"
+      | "tracing"
       | "manifest"
       | "media"
       | "history"
@@ -1362,6 +1741,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * would land on a sheet that takes none. A TypeError says which.
    */
   #mayShowExample(): void {
+    if (this.#paper !== undefined) {
+      throw new TypeError(
+        `<${TAG}> shows a task from paper: a worked example is shown by a new element, or once the paper is undefined`,
+      );
+    }
     if (this.#task !== undefined) {
       throw new TypeError(
         `<${TAG}> shows a task: a worked example is shown by a new element, or once the task is undefined`,
@@ -1475,7 +1859,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /** Every stroke the sheet has known, erased or not, as its history wrote them. */
   #known(): Stroke[] {
-    return this.#work.history.flatMap((event) => (event.kind === "write" ? [event.stroke] : []));
+    const tracing = this.#tracing;
+    return this.#work.history.flatMap((event) => {
+      if (event.kind !== "write") return [];
+      return [tracing === undefined ? event.stroke : this.#onSheet(event.stroke, tracing.at)];
+    });
   }
 
   /**
@@ -1484,7 +1872,13 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    */
   #places(given: Marks): { readonly name: string; readonly placed: Placed }[] {
     const cells = isWorkbook(this.#shownTemplate) ? this.#cells : null;
-    const places = placesOf(given, this.#known(), cells);
+    const tracing = this.#tracing;
+    const work = this.#work;
+    const paper =
+      tracing === undefined
+        ? undefined
+        : { at: tracing.at, onTracing: (id: number) => work.onTracing(id) };
+    const places = placesOf(given, this.#known(), cells, undefined, paper);
     return given.marks.flatMap(({ name }, n) => {
       const placed = places[n];
       return placed ? [{ name, placed }] : [];
@@ -1504,19 +1898,27 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
           shown !== undefined &&
           shown.name === name &&
           sameItems(shown.placed.ids, placed.ids) &&
-          sameBox(shown.placed.cell ?? null, placed.cell ?? null)
+          sameBox(shown.placed.cell ?? null, placed.cell ?? null) &&
+          shown.placed.correct === placed.correct &&
+          shown.placed.wavy === placed.wavy &&
+          (placed.correct === undefined || sameBox(shown.placed.box, placed.box)) &&
+          (!placed.wavy || sameBox(shown.placed.box, placed.box))
         );
       });
     if (same) return;
-    for (const { rect } of this.#shown) rect.remove();
+    for (const { node } of this.#shown) node.remove();
     this.#shown = marks.map(({ name, placed }) => {
-      const rect = document.createElementNS(SVG, "rect");
-      rect.setAttribute("role", "img");
-      rect.setAttribute("aria-label", name);
-      rect.setAttribute("rx", String(MARK_CORNER));
-      rect.setAttribute("display", "none");
-      this.#marksLayer.append(rect);
-      return { name, placed, rect, frame: null, under: false, drawn: "none" };
+      const node =
+        placed.correct !== undefined
+          ? verdictNode(placed.correct)
+          : placed.wavy
+            ? wavyNode()
+            : frameNode();
+      node.setAttribute("role", "img");
+      node.setAttribute("aria-label", name);
+      node.setAttribute("display", "none");
+      this.#marksLayer.append(node);
+      return { name, placed, node, frame: null, under: false, drawn: "none" };
     });
     this.#request();
   }
@@ -1543,10 +1945,26 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     if (!writes) return;
     const screen = this.#view();
     if (screen === undefined) return;
-    const sample = this.#sample(event, screen);
+    const onSheetSample = this.#sample(event, screen);
     const erases =
       this.#shownTemplate.tools.includes("eraser") &&
-      (this.#tool === "eraser" || sample.button === ERASER_BUTTON);
+      (this.#tool === "eraser" || onSheetSample.button === ERASER_BUTTON);
+    // On a task from paper a press begun on the tracing paper in sight writes or erases on it, its
+    // points from its corner; one begun elsewhere, on the sheet (R87).
+    const tracing = this.#tracing;
+    const size = this.#tracingPaper.size;
+    const traced =
+      tracing !== undefined &&
+      !tracing.hidden &&
+      this.#tracingPaper.ready &&
+      onTracing(onSheetSample, tracing.at, size);
+    const layer = traced ? "tracing" : undefined;
+    if (erases) this.#eraseOn = tracing === undefined ? undefined : (layer ?? "sheet");
+    else this.#writeOn = layer;
+    const sample =
+      traced && tracing !== undefined
+        ? { ...onSheetSample, ...toTracing(onSheetSample, tracing.at, size) }
+        : onSheetSample;
     const began = erases
       ? this.#eraser.down(sample, ERASER_RADIUS_PX / screen.k + INK_REACH)
       : this.#recorder.down(sample);
@@ -1580,7 +1998,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
         looked = true;
       }
       if (screen === undefined) continue;
-      const sample = this.#sample(each, screen);
+      const sample = this.#sample(each, screen, this.#layerOf(input));
       const moved =
         input === this.#eraser ? input.move(sample, inSight(each, screen)) : input.move(sample);
       changed = moved || changed;
@@ -1593,10 +2011,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const input = this.#inputOf(event.pointerId);
     if (input !== undefined) {
       const screen = this.#view();
+      const layer = this.#layerOf(input);
       if (screen === undefined) input.end(event.pointerId);
       else if (input === this.#eraser)
-        input.up(this.#sample(event, screen), inSight(event, screen));
-      else input.up(this.#sample(event, screen));
+        input.up(this.#sample(event, screen, layer), inSight(event, screen));
+      else input.up(this.#sample(event, screen, layer));
     }
     this.#lifted(event.pointerId);
   }
@@ -1633,8 +2052,23 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     return undefined;
   }
 
-  #sample(event: PointerEvent, screen: Screen): PointerSample {
-    const { x, y } = toSheet(screen, event.clientX - screen.left, event.clientY - screen.top);
+  /** The layer a pointer's stroke or erasing is on: the tracing paper's, or the sheet's (R87). */
+  #layerOf(input: Recorder | Eraser): "tracing" | undefined {
+    const on = input === this.#eraser ? this.#eraseOn : this.#writeOn;
+    return on === "tracing" ? "tracing" : undefined;
+  }
+
+  /**
+   * A pointer's place on the sheet, or on the tracing paper, `layer`, from its corner and kept to
+   * it (R87).
+   */
+  #sample(event: PointerEvent, screen: Screen, layer?: "tracing"): PointerSample {
+    const point = toSheet(screen, event.clientX - screen.left, event.clientY - screen.top);
+    const tracing = this.#tracing;
+    const { x, y } =
+      layer === "tracing" && tracing !== undefined
+        ? toTracing(point, tracing.at, this.#tracingPaper.size)
+        : point;
     return {
       pointerId: event.pointerId,
       kind: event.pointerType,
@@ -1962,6 +2396,100 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
+   * The learner hid the tracing paper with the button atop the tools, or showed it again (R87): its
+   * strokes go out of sight with it and stay in the history and in the work, and whoever listens
+   * hears of the new state. A stroke or an erasing under way on the paper ends where it is, as on a
+   * lost capture: the pointer goes on over a paper that is not there.
+   */
+  #trace(): void {
+    if (this.#tracing?.hidden === false) this.#leaveTracing(true);
+    const state = this.#tracing;
+    if (this.#paper === undefined || state === undefined) return;
+    this.#tracing = Object.freeze({ at: state.at, hidden: !state.hidden });
+    this.#refresh();
+    this.#request();
+    this.#tracingChanged();
+  }
+
+  /**
+   * The learner's grip moves the tracing paper to a place, kept to the sheet whole (R87): its
+   * strokes move with it, and the marks on them too. The move tells of itself once it is over.
+   */
+  #moveTracing(to: readonly [number, number]): readonly [number, number] {
+    const state = this.#tracing;
+    if (state === undefined) return to;
+    this.#moveFrom ??= state;
+    const at = keptOn(to, this.#tracingPaper.size);
+    if (at[0] === state.at[0] && at[1] === state.at[1]) return state.at;
+    this.#tracing = Object.freeze({ at, hidden: state.hidden });
+    this.#request();
+    return at;
+  }
+
+  /** The learner's move of the tracing paper is over: whoever listens hears of it, if it moved. */
+  #tracingMoved(): void {
+    const from = this.#moveFrom;
+    this.#moveFrom = undefined;
+    const state = this.#tracing;
+    if (from === undefined || state === undefined || sameTracing(from, state)) return;
+    // The marks were placed by the strokes where they lay: a submission of the paper elsewhere is
+    // not this sheet's any more, and they go (R26).
+    this.#replace();
+    this.#tracingChanged();
+  }
+
+  /**
+   * A stroke or an erasing under way on the tracing paper ends where it is, `end`, or goes, as on
+   * `pointercancel`: the paper it was on goes out of sight or away (R87).
+   */
+  #leaveTracing(end: boolean): void {
+    const writer = this.#writeOn === "tracing" ? this.#recorder.pointer : undefined;
+    const eraser = this.#eraseOn === "tracing" ? this.#eraser.pointer : undefined;
+    // The recorder's handler writes the stroke on the layer it began on, so the layer goes after.
+    if (writer !== undefined && !end && this.#recorder.cancel(writer)) this.#request();
+    if (writer !== undefined && end) this.#recorder.end(writer);
+    if (eraser !== undefined && !end && this.#eraser.cancel(eraser)) this.#request();
+    if (eraser !== undefined && end) this.#eraser.end(eraser);
+    if (writer !== undefined) this.#writeOn = undefined;
+    if (eraser !== undefined) this.#eraseOn = undefined;
+  }
+
+  /**
+   * The crop's picture is read, and the tracing paper has its size (R87): a state the consumer gave,
+   * checked against the largest paper, that puts the paper of this size wholly off the sheet moves
+   * to the nearest place wholly on it, with its strokes and their marks. It tells nothing, as the
+   * state given did not.
+   */
+  #sized(): void {
+    const state = this.#tracing;
+    const size = this.#tracingPaper.size;
+    if (state !== undefined && whollyOff(state.at, size)) {
+      this.#tracing = Object.freeze({ at: keptOn(state.at, size), hidden: state.hidden });
+      this.#replace();
+    }
+    this.#request();
+  }
+
+  /** Whoever listens hears of the tracing paper's new state, which the learner chose (R87). */
+  #tracingChanged(): void {
+    const detail = this.#tracing;
+    this.dispatchEvent(new CustomEvent(TRACING_CHANGE, { bubbles: true, composed: true, detail }));
+  }
+
+  /**
+   * A stroke where it lies on the sheet: one of the tracing paper's moved to where the paper lies,
+   * once for each place (R87); the sheet's as it is.
+   */
+  #onSheet(stroke: Stroke, at: readonly [number, number]): Stroke {
+    if (!this.#work.onTracing(stroke.id)) return stroke;
+    const kept = this.#placed.get(stroke);
+    if (kept !== undefined && kept.at[0] === at[0] && kept.at[1] === at[1]) return kept.stroke;
+    const placed = onSheet(stroke, at);
+    this.#placed.set(stroke, { at, stroke: placed });
+    return placed;
+  }
+
+  /**
    * The learner opened the next part of the demo with the row's Next (R42). The list grows above
    * the sheet, and the layout keeps a sheet scrolled into sight where it was at once, before the
    * scroll of the container is heard; then the part comes into sight between the band and the row
@@ -2119,6 +2647,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       finger: this.#finger,
       opens: this.#nextPart() !== undefined,
       expanded: demo?.hidden !== true,
+      traced: this.#tracing?.hidden !== true,
     });
     this.#nameRegion();
   }
@@ -2167,6 +2696,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /** What the row of buttons is of, and is named by: a worked example, or the canvas kind (R42). */
   #rowKind(): RowKind {
     if (this.#example !== undefined) return "example";
+    if (this.#paper !== undefined) return "paper";
     return isWorkbook(this.#shownTemplate) ? "workbook" : "sheet";
   }
 
@@ -2188,9 +2718,17 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const height = screen.height / screen.k;
     if (!(height > 0)) return;
     const viewBox = `${screen.vx} ${screen.vy} ${width} ${height}`;
+    // The tracing paper and its grip follow the sheet, and the paper's place and state.
+    this.#tracingPaper.place(this.#tracing, screen);
     if (viewBox === this.#viewBox) return;
     this.#viewBox = viewBox;
-    for (const layer of [this.#template, this.#show, this.#sketch, this.#marksLayer]) {
+    for (const layer of [
+      this.#template,
+      this.#show,
+      this.#tracingPaper.layer,
+      this.#sketch,
+      this.#marksLayer,
+    ]) {
       layer.setAttribute("viewBox", viewBox);
     }
   }
@@ -2206,24 +2744,39 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     if (this.#shown.length === 0) return;
     const byId = this.#byId();
     const pending = this.#eraser.pending;
+    const tracing = this.#tracing;
+    const work = this.#work;
+    // A stroke of the tracing paper is where the paper lies, and out of sight while it is hidden
+    // (R87). Its box moves with the paper, and the stroke is not copied for each place of a drag.
     const onScreen = (id: number): Box | undefined => {
       const stroke = pending.has(id) ? undefined : byId.get(id);
-      return stroke && this.#pointBoxOf(stroke);
+      if (stroke === undefined) return undefined;
+      if (tracing === undefined || !work.onTracing(id)) return this.#pointBoxOf(stroke);
+      return tracing.hidden ? undefined : boxOnSheet(this.#pointBoxOf(stroke), tracing.at);
     };
     const half = 1 / screen.k;
     for (const mark of this.#shown) {
       const shown = shownOf(mark.placed, onScreen);
-      const frame = shown && {
-        minX: Math.max(shown.minX - MARK_PADDING, half),
-        minY: Math.max(shown.minY - MARK_PADDING, half),
-        maxX: Math.min(shown.maxX + MARK_PADDING, SHEET.width - half),
-        maxY: Math.min(shown.maxY + MARK_PADDING, SHEET.height - half),
-      };
+      const frame =
+        shown && mark.placed.correct !== undefined
+          ? verdictAt(shown, screen.k)
+          : shown && mark.placed.wavy
+            ? wavyAt(shown, half)
+            : shown && {
+                minX: Math.max(shown.minX - MARK_PADDING, half),
+                minY: Math.max(shown.minY - MARK_PADDING, half),
+                maxX: Math.min(shown.maxX + MARK_PADDING, SHEET.width - half),
+                maxY: Math.min(shown.maxY + MARK_PADDING, SHEET.height - half),
+              };
       if (this.#writing === undefined || frame === null) mark.under = false;
       else if (!mark.under) {
         // A frame that came or moved while the stroke was under way is checked against all of it.
         const points = sameBox(frame, mark.frame) ? fresh : this.#writing.stroke.points;
-        mark.under = points.some((point) => near(point, frame, INK_REACH + half));
+        // A stroke on the tracing paper holds its points from the paper's corner (R87).
+        const [dx, dy] = this.#writeOn === "tracing" ? (this.#tracing?.at ?? [0, 0]) : [0, 0];
+        mark.under = points.some((point) =>
+          near({ ...point, x: point.x + dx, y: point.y + dy }, frame, INK_REACH + half),
+        );
       }
       mark.frame = frame;
       const drawn =
@@ -2232,17 +2785,25 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
           : `${frame.minX} ${frame.minY} ${frame.maxX} ${frame.maxY} ${mark.under}`;
       if (drawn === mark.drawn) continue;
       mark.drawn = drawn;
-      const { rect } = mark;
+      const { node } = mark;
       if (frame === null) {
-        rect.setAttribute("display", "none");
+        node.setAttribute("display", "none");
         continue;
       }
-      rect.setAttribute("x", String(frame.minX));
-      rect.setAttribute("y", String(frame.minY));
-      rect.setAttribute("width", String(frame.maxX - frame.minX));
-      rect.setAttribute("height", String(frame.maxY - frame.minY));
-      rect.classList.toggle("under", mark.under);
-      rect.removeAttribute("display");
+      if (node instanceof SVGRectElement) {
+        node.setAttribute("x", String(frame.minX));
+        node.setAttribute("y", String(frame.minY));
+        node.setAttribute("width", String(frame.maxX - frame.minX));
+        node.setAttribute("height", String(frame.maxY - frame.minY));
+      } else if (mark.placed.wavy) {
+        const d = wavyPath(frame);
+        for (const path of node.children) path.setAttribute("d", d);
+      } else {
+        const scale = (frame.maxX - frame.minX) / 24;
+        node.setAttribute("transform", `translate(${frame.minX} ${frame.minY}) scale(${scale})`);
+      }
+      node.classList.toggle("under", mark.under);
+      node.removeAttribute("display");
     }
   }
 
@@ -2268,10 +2829,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /** The strokes on the sheet by ID: each action on the work gives a new array of them (R19). */
   #byId(): ReadonlyMap<number, Stroke> {
     const strokes = this.#work.strokes;
-    if (this.#onSheet.strokes !== strokes) {
-      this.#onSheet = { strokes, byId: new Map(strokes.map((stroke) => [stroke.id, stroke])) };
+    if (this.#strokesById.strokes !== strokes) {
+      this.#strokesById = { strokes, byId: new Map(strokes.map((stroke) => [stroke.id, stroke])) };
     }
-    return this.#onSheet.byId;
+    return this.#strokesById.byId;
   }
 
   #pointBoxOf(stroke: Stroke): Box {
@@ -2306,22 +2867,40 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const down = (height / screen.height) * screen.k;
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.clearRect(0, 0, width, height);
-    context.setTransform(across, 0, 0, down, -screen.vx * across, -screen.vy * down);
     context.fillStyle = colour;
     const right = screen.vx + screen.width / screen.k;
     const bottom = screen.vy + screen.height / screen.k;
     const erasing = this.#eraser.pending;
-    for (const stroke of this.#work.strokes) {
-      if (erasing.has(stroke.id)) continue;
+    // A task from paper's tracing paper: its strokes over the sheet's, moved to where it lies, and
+    // none while it is hidden (R87).
+    const tracing = this.#tracing;
+    const work = this.#work;
+    const shown = tracing !== undefined && !tracing.hidden;
+    const draw = (stroke: Stroke, dx: number, dy: number): void => {
       // The outline keeps within half the widest line of the points: twice that is out of sight.
       const box = this.#pointBoxOf(stroke);
-      if (box.maxY + 2 * INK_REACH < screen.vy || box.minY - 2 * INK_REACH > bottom) continue;
-      if (box.maxX + 2 * INK_REACH < screen.vx || box.minX - 2 * INK_REACH > right) continue;
+      if (box.maxY + dy + 2 * INK_REACH < screen.vy || box.minY + dy - 2 * INK_REACH > bottom)
+        return;
+      if (box.maxX + dx + 2 * INK_REACH < screen.vx || box.minX + dx - 2 * INK_REACH > right)
+        return;
       const ink = this.#finished(stroke);
-      if (ink.bottom >= screen.vy && ink.top <= bottom) context.fill(ink.path);
+      if (ink.bottom + dy >= screen.vy && ink.top + dy <= bottom) context.fill(ink.path);
+    };
+    context.setTransform(across, 0, 0, down, -screen.vx * across, -screen.vy * down);
+    const traced: Stroke[] = [];
+    for (const stroke of work.strokes) {
+      if (erasing.has(stroke.id)) continue;
+      if (tracing === undefined || !work.onTracing(stroke.id)) draw(stroke, 0, 0);
+      else if (shown) traced.push(stroke);
     }
     const live = this.#recorder.live;
-    if (live !== undefined) context.fill(pathOf(this.#outline(live, false)));
+    const liveTraced = this.#writeOn === "tracing";
+    if (live !== undefined && !liveTraced) context.fill(pathOf(this.#outline(live, false)));
+    if (!shown) return;
+    const [dx, dy] = tracing.at;
+    context.setTransform(across, 0, 0, down, (dx - screen.vx) * across, (dy - screen.vy) * down);
+    for (const stroke of traced) draw(stroke, dx, dy);
+    if (live !== undefined && liveTraced) context.fill(pathOf(this.#outline(live, false)));
   }
 
   #finished(stroke: Stroke): Ink {

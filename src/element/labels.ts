@@ -21,11 +21,14 @@
 export interface Labels {
   readonly sheet: string;
   readonly workbook: string;
+  /** A task from the learner's paper, its crop as tracing paper over a dotted sheet (R87). */
+  readonly paper: string;
   /** A lesson's worked example, whose row has no tools of writing (R42). */
   readonly example: string;
   /** The row of buttons of each: not the name of the container, which a screen reader shows too. */
   readonly sheetButtons: string;
   readonly workbookButtons: string;
+  readonly paperButtons: string;
   readonly exampleButtons: string;
   /** The buttons of a worked example's demo: the next part, and the whole demo, shown or hidden. */
   readonly next: string;
@@ -40,6 +43,10 @@ export interface Labels {
   readonly zoomOut: string;
   /** The button that lets a finger write again, in pen mode (R29). */
   readonly finger: string;
+  /** The tracing paper's grip, and the button atop the tools that hides it or shows it (R87). */
+  readonly moveTask: string;
+  readonly hideTask: string;
+  readonly showTask: string;
   /** A box of a workbook's line, alone in it (R36). */
   readonly box: string;
   /** A box among several of its line, by its slot: {slot} (R36). */
@@ -58,9 +65,11 @@ export interface Labels {
 const ENGLISH: Labels = Object.freeze({
   sheet: "Sheet",
   workbook: "Workbook",
+  paper: "Task from paper",
   example: "Worked example",
   sheetButtons: "Sheet buttons",
   workbookButtons: "Workbook buttons",
+  paperButtons: "Task from paper buttons",
   exampleButtons: "Worked example buttons",
   next: "Next",
   demo: "Demo",
@@ -72,6 +81,9 @@ const ENGLISH: Labels = Object.freeze({
   zoomIn: "Zoom in",
   zoomOut: "Zoom out",
   finger: "Draw with finger",
+  moveTask: "Move the task",
+  hideTask: "Hide the task",
+  showTask: "Show the task",
   box: "Box",
   boxAt: "Box {slot}",
   boxIn: "Box {line}.{slot}",
@@ -91,9 +103,11 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
     Object.freeze({
       sheet: "Лист",
       workbook: "Тетрадь",
+      paper: "Задача с бумаги",
       example: "Пример",
       sheetButtons: "Кнопки листа",
       workbookButtons: "Кнопки тетради",
+      paperButtons: "Кнопки задачи с бумаги",
       exampleButtons: "Кнопки примера",
       next: "Дальше",
       demo: "Показ",
@@ -105,6 +119,9 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
       zoomIn: "Крупнее",
       zoomOut: "Мельче",
       finger: "Рисовать пальцем",
+      moveTask: "Подвинуть задачу",
+      hideTask: "Спрятать задачу",
+      showTask: "Показать задачу",
       box: "Окошко",
       boxAt: "Окошко {slot}",
       boxIn: "Окошко {line}.{slot}",

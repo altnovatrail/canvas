@@ -3,10 +3,10 @@
 // too (R05, R07). Importing it registers no element: the element is the other entry point. It
 // gives the sheet's size, the types of the data the element takes and gives — the strokes and the
 // history of writing, the task, the worked example and the manifest, how far the learner has gone
-// through the example's demo (R42) and the context of a submission, of a sheet or of a workbook,
-// all of spec's types (R73 spec, R74 spec), and the tutor's marks, spec's types too (R83 spec) —
-// and the fold of a history into the strokes it leaves, so that a consumer
-// reads a history it keeps without the DOM (R27). The code runs without the DOM, but spec's
+// through the example's demo (R42) and the context of a submission, of a sheet, a workbook or a
+// task from paper with where its tracing paper lay (R87), all of spec's types (R73 spec, R74
+// spec), and the tutor's marks, spec's types too (R83 spec) — and the fold of a history into the
+// strokes it leaves, so that a consumer reads a history it keeps without the DOM (R27). The code runs without the DOM, but spec's
 // declarations of the element's contract, which its types come from, name the DOM's types too: a
 // consumer without the DOM's types skips them with skipLibCheck (R27). The rules of the groups, the
 // crop and the snapping stay inside: the eval protocol has taken them as they are, and spec's test
@@ -27,9 +27,11 @@ export type {
   CropNumbers,
   Mark,
   Marks,
+  PaperSubmission,
   SheetSubmission,
   Submission,
   WorkbookSubmission,
 } from "./marks.js";
 export { SHEET } from "./sheet.js";
 export type { Canvas, Task } from "./task.js";
+export type { TracingState } from "./tracing.js";

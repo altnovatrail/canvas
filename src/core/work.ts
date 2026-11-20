@@ -51,6 +51,8 @@ export class Work {
   #index = new RBush<Entry>();
   #indexed: readonly Stroke[] = this.#strokes;
   readonly #entries = new WeakMap<Stroke, Entry>();
+  /** The IDs of the strokes written on the tracing paper of a task from paper (R87). */
+  readonly #tracing = new Set<number>();
 
   constructor(clock = new Clock()) {
     this.#clock = clock;
@@ -64,12 +66,15 @@ export class Work {
    * the sheet's order; a clearing clears a sheet with strokes, all of them; an undo takes back the
    * last action still in force and says what the stack says. A history the sheet could not have
    * written is a TypeError that names the event. The clock is not asked: it goes on as the sheet
-   * that takes the work tells it (`Clock.resume`).
+   * that takes the work tells it (`Clock.resume`). On a task from paper, `paper`, a stroke may
+   * be the tracing paper's (R87).
    */
-  static restore(value: unknown, clock: Clock): Work {
+  static restore(value: unknown, clock: Clock, paper = false): Work {
     const work = new Work(clock);
     work.#replaying = true;
-    for (const [n, event] of historyOf(value).entries()) work.#replay(event, `history[${n}]`);
+    for (const [n, event] of historyOf(value, paper).entries()) {
+      work.#replay(event, `history[${n}]`);
+    }
     work.#replaying = false;
     // A new array for the sheet, which the index of the strokes is then built for.
     work.#strokes = [...work.#strokes];
@@ -93,6 +98,19 @@ export class Work {
   }
 
   /**
+   * Whether a stroke of this ID was written on the tracing paper of a task from paper, its points
+   * from the paper's corner (R87).
+   */
+  onTracing(id: number): boolean {
+    return this.#tracing.has(id);
+  }
+
+  /** Whether any stroke was written on the tracing paper, erased or not. */
+  get traced(): boolean {
+    return this.#tracing.size > 0;
+  }
+
+  /**
    * The history of writing: every action, in the order it landed, frozen through. An array once
    * handed out never changes: after an action the history is a new one, made when it is next asked
    * for.
@@ -107,10 +125,10 @@ export class Work {
    * than a longer one, for an array once handed out never changes: a clearing keeps the one it
    * cleared, and whoever read `strokes` keeps what they read. It lands at the sheet's latest time:
    * its last point's, unless an action landed while it was under way and it ended without its
-   * pointerup, its last point earlier.
+   * pointerup, its last point earlier. A stroke on the tracing paper says so, `on` (R87).
    */
-  write(stroke: Stroke): void {
-    this.#write(stroke, Math.max(this.#clock.latest, stroke.points.at(-1)?.t ?? 0));
+  write(stroke: Stroke, on?: "tracing"): void {
+    this.#write(stroke, Math.max(this.#clock.latest, stroke.points.at(-1)?.t ?? 0), on);
   }
 
   /**
@@ -137,11 +155,14 @@ export class Work {
   /**
    * The strokes on the sheet whose line comes within `reach` of the segment from `from` to `to`, in
    * sheet units: the index finds those whose box is near enough, and the distance to each segment
-   * of their points decides (R05). A segment whose ends are one point is that point.
+   * of their points decides (R05). A segment whose ends are one point is that point. On a task from
+   * paper an erasing takes the strokes of one layer alone, `layer`: the tracing paper's, its
+   * points from its corner, or the sheet's (R87).
    */
-  near(from: Point, to: Point, reach: number): Stroke[] {
+  near(from: Point, to: Point, reach: number, layer?: "tracing" | "sheet"): Stroke[] {
     const hits: Stroke[] = [];
     for (const { stroke } of this.#indexOf().search(segmentBox(from, to, reach))) {
+      if (layer !== undefined && this.#tracing.has(stroke.id) !== (layer === "tracing")) continue;
       if (lineDistance(stroke, from, to) <= reach) hits.push(stroke);
     }
     return hits;
@@ -149,14 +170,19 @@ export class Work {
 
   // The actions, each with the sheet's time it lands at, asked for only once it does.
 
-  #write(stroke: Stroke, t: number): void {
+  #write(stroke: Stroke, t: number, on?: "tracing"): void {
     // A history replayed writes its strokes one after another, without a copy of the sheet for
     // each: thousands of strokes would copy the sheet thousands of times. A clearing keeps the array
     // it cleared and leaves the sheet a new one, so no array an action keeps grows by it.
     if (this.#replaying) (this.#strokes as Stroke[]).push(stroke);
     else this.#strokes = [...this.#strokes, stroke];
     this.#done.push({ kind: "write", stroke });
-    this.#record({ kind: "write", t, stroke });
+    if (on === undefined) {
+      this.#record({ kind: "write", t, stroke });
+    } else {
+      this.#tracing.add(stroke.id);
+      this.#record({ kind: "write", t, stroke, on });
+    }
   }
 
   #erase(ids: Iterable<number>, at: () => number): boolean {
@@ -214,7 +240,7 @@ export class Work {
   #replay(event: HistoryEvent, path: string): void {
     const at = () => event.t;
     let done = true;
-    if (event.kind === "write") this.#write(event.stroke, event.t);
+    if (event.kind === "write") this.#write(event.stroke, event.t, event.on);
     else if (event.kind === "erase") done = this.#erase(event.ids, at);
     else if (event.kind === "clear") done = this.#clear(at);
     else done = this.#undo(at);

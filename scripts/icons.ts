@@ -39,9 +39,11 @@ export interface Value {
  * labels.ts, the two of the page's zoom among them (R78 spec; R73); no button scrolls the sheet
  * (R84). Demo has two, as the demo is shown or hidden. One thing is left out: the table fills the
  * finger's icon while its mode is on, but the mode hides the button (R29), so the fill would never
- * show and is not embedded (R46).
+ * show and is not embedded (R46). The task from paper's button atop the tools fills its icon while
+ * the tracing paper is shown (R87).
  */
 export const TABLE: Readonly<Record<string, Value>> = {
+  task: { base: "article", filled: true, mirrored: false },
   next: { base: "arrow-forward", filled: false, mirrored: true },
   demoShown: { base: "keyboard-arrow-down", filled: false, mirrored: false },
   demoHidden: { base: "keyboard-arrow-right", filled: false, mirrored: true },

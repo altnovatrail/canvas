@@ -19,8 +19,12 @@
 // that hides the whole demo and shows it again, are actions, not tools (R42; R90 spec): each shows
 // its label beside its icon, a stop of Tab of its own, in a row of glass at the bottom of the
 // element, and after a line the slot `actions`, where the consumer puts its own buttons — app's
-// Continue —, as the mockup has one row (R84; R36 spec). A button that goes gives its stop of Tab
-// and the focus to the first button shown. This module is no entry point of the package.
+// Continue —, as the mockup has one row (R84; R36 spec). A task from paper's bar has one button
+// more, atop the tools, after a line: "Hide the task" while its tracing paper is shown, its icon
+// filled, and "Show the task" while it is hidden — the name says the state, so the button is no
+// toggle button as well, which would say it twice (R87; R90 spec). A button that goes gives its
+// stop of Tab and the focus to the first button shown. This module is no entry point of the
+// package.
 
 import type { Tool } from "../core/task.js";
 import { SVG, write } from "./attributes.js";
@@ -43,6 +47,8 @@ export interface ToolActions {
   readonly fingers: () => void;
   readonly next: () => void;
   readonly toggle: () => void;
+  /** A task from paper's tracing paper hidden, or shown again (R87). */
+  readonly trace: () => void;
 }
 
 /** What Next and Demo control, by their IDs in the element's shadow root (R42). */
@@ -53,8 +59,11 @@ export interface DemoControls {
   readonly parts: string;
 }
 
-/** What the bar is of, and is named by: a sheet, a workbook or a worked example (R36, R42). */
-export type RowKind = "sheet" | "workbook" | "example";
+/**
+ * What the bar is of, and is named by: a sheet, a workbook, a task from paper or a worked example
+ * (R36, R42, R87).
+ */
+export type RowKind = "sheet" | "workbook" | "paper" | "example";
 
 /**
  * What the bar shows: what it is of, the tools the task allows, the one in use, whether undo and
@@ -73,6 +82,8 @@ export interface ToolState {
   readonly finger: boolean;
   readonly opens: boolean;
   readonly expanded: boolean;
+  /** On a task from paper, whether its tracing paper is shown (R87). */
+  readonly traced: boolean;
 }
 
 /**
@@ -99,6 +110,9 @@ export class Tools {
   readonly tip = document.createElement("div");
   readonly #next = plainButton("next");
   readonly #demo = plainButton("demoShown");
+  /** A task from paper's button atop the tools, and the line under it (R87). */
+  readonly #task = plainButton("task");
+  readonly #afterTask = separator();
   readonly #group = document.createElement("div");
   readonly #pen = radioButton("pen");
   readonly #eraser = radioButton("eraser");
@@ -118,6 +132,7 @@ export class Tools {
   readonly #labelled: readonly (readonly [HTMLButtonElement, keyof Labels])[] = [
     [this.#next, "next"],
     [this.#demo, "demo"],
+    [this.#task, "hideTask"],
     [this.#pen, "pen"],
     [this.#eraser, "eraser"],
     [this.#undo, "undo"],
@@ -137,6 +152,8 @@ export class Tools {
   #lang: string | undefined;
   /** What the bar is of, named so. */
   #kind: RowKind = "sheet";
+  /** Whether a task from paper's tracing paper is shown: the button atop the tools says which. */
+  #traced = true;
   /** Whether a button of the bar has had the focus: Tab comes to the first button until one has. */
   #chosen = false;
   /** The button the pointer is over, the one the keyboard's focus is on, and the tooltip's. */
@@ -194,6 +211,8 @@ export class Tools {
     this.#zoomPair.append(this.#zoomIn, this.#zoomOut);
     // The finger's button comes last: coming and going, it moves no other button of the bar.
     this.element.append(
+      this.#task,
+      this.#afterTask,
       this.#group,
       this.#undo,
       this.#clear,
@@ -205,7 +224,15 @@ export class Tools {
     this.rail.append(this.element, this.row, this.tip);
     for (const button of this.#buttons) button.classList.add("icon");
     // A worked example's row and the finger's button come with what they are for.
-    for (const hidden of [this.row, this.#next, this.#demo, this.#beforeFinger, this.#finger]) {
+    for (const hidden of [
+      this.row,
+      this.#next,
+      this.#demo,
+      this.#task,
+      this.#afterTask,
+      this.#beforeFinger,
+      this.#finger,
+    ]) {
       hidden.hidden = true;
     }
     // Tab comes to the first button shown, until another has had the focus.
@@ -226,6 +253,7 @@ export class Tools {
     doing(this.#zoomOut, () => actions.zoom(false));
     this.#demo.addEventListener("click", () => actions.toggle());
     this.#finger.addEventListener("click", () => actions.fingers());
+    this.#task.addEventListener("click", () => actions.trace());
     this.element.addEventListener("keydown", (event) => this.#key(event));
     // The button that had the focus last is the one Tab comes back to.
     this.element.addEventListener("focusin", (event) => {
@@ -265,11 +293,23 @@ export class Tools {
    * has Next, unavailable while the demo is hidden or open whole, and Demo, expanded while the demo
    * is shown (R42). Zoom in and Zoom out stand unavailable at their ends (R73). The tool in use
    * shows its icon filled, and Demo's icon points down while the demo is shown, and along the row
-   * while it is hidden (R46).
+   * while it is hidden (R46). A task from paper's button atop the tools says what it does to the
+   * tracing paper, and fills its icon while the paper is shown (R87).
    */
   show(state: ToolState): void {
-    const { kind, tools, tool, undoable, clearable, larger, smaller, finger, opens, expanded } =
-      state;
+    const {
+      kind,
+      tools,
+      tool,
+      undoable,
+      clearable,
+      larger,
+      smaller,
+      finger,
+      opens,
+      expanded,
+      traced,
+    } = state;
     if (kind !== this.#kind) {
       this.#kind = kind;
       this.#name();
@@ -280,6 +320,8 @@ export class Tools {
       [this.row, !writes],
       [this.#next, !writes],
       [this.#demo, !writes],
+      [this.#task, kind === "paper"],
+      [this.#afterTask, kind === "paper"],
       [this.#group, writes],
       [this.#pen, writes],
       [this.#eraser, writes && tools.includes("eraser")],
@@ -300,6 +342,11 @@ export class Tools {
     draw(this.#pen, "pen", tool === "pen");
     draw(this.#eraser, "eraser", tool === "eraser");
     draw(this.#demo, expanded ? "demoShown" : "demoHidden", false);
+    draw(this.#task, "task", traced);
+    if (traced !== this.#traced) {
+      this.#traced = traced;
+      this.#nameTask();
+    }
   }
 
   /**
@@ -319,6 +366,7 @@ export class Tools {
       const label = button.lastElementChild;
       if (label !== null) label.textContent = labels[key];
     }
+    this.#nameTask();
     this.#tipFor = undefined;
     this.#showTip();
   }
@@ -330,6 +378,19 @@ export class Tools {
     this.#focused = undefined;
     this.#onTip = false;
     this.#showTip();
+  }
+
+  /**
+   * The name of a task from paper's button atop the tools, by the tracing paper's state, and its
+   * tooltip's, should it show (R87).
+   */
+  #nameTask(): void {
+    const { labels } = labelsFor(this.#lang ?? null);
+    const label = this.#task.lastElementChild;
+    const name = this.#traced ? labels.hideTask : labels.showTask;
+    if (label === null || label.textContent === name) return;
+    label.textContent = name;
+    if (this.#tipFor === this.#task) this.tip.textContent = name;
   }
 
   /** The bar's name: the canvas kind's buttons, in the labels' language. */

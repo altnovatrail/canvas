@@ -145,9 +145,11 @@ test("the bar is a vertical toolbar of the pen and the eraser, undo and clear, n
   await expect.element(found.clear).toBeVisible();
   expect(row.getAttribute("aria-orientation")).toBe("vertical");
   // The order the arrow keys go through, and the language the names are in. Zoom in and Zoom out
-  // are on every device (R73). The last button is pen mode's, which out of it the bar hides (R29).
-  // A worked example's Next and Demo are not the bar's: they stand in its row, which a sheet hides.
+  // are on every device (R73). The first button is a task from paper's, which a sheet hides (R87),
+  // and the last pen mode's, which out of it the bar hides (R29). A worked example's Next and Demo
+  // are not the bar's: they stand in its row, which a sheet hides.
   expect([...row.querySelectorAll("button")].map((each) => each.textContent)).toEqual([
+    "Hide the task",
     "Pen",
     "Eraser",
     "Undo",
@@ -156,12 +158,13 @@ test("the bar is a vertical toolbar of the pen and the eraser, undo and clear, n
     "Zoom out",
     "Draw with finger",
   ]);
-  expect(row.querySelectorAll("button[hidden]")).toHaveLength(1);
+  expect(row.querySelectorAll("button[hidden]")).toHaveLength(2);
   expect(actions.hidden).toBe(true);
   expect(row.lang).toBe("en");
   // The lines between the groups say nothing to a screen reader, and the finger's goes with it.
   const lines = [...row.querySelectorAll<HTMLElement>(".line")];
   expect(lines.map((line) => [line.getAttribute("aria-hidden"), line.hidden])).toEqual([
+    ["true", true],
     ["true", false],
     ["true", true],
   ]);
@@ -173,9 +176,10 @@ test("the bar is a vertical toolbar of the pen and the eraser, undo and clear, n
 
 test("each button shows its icon, its label after it: an SVG that names nothing, in outline, but filled for the tool in use", async () => {
   const { element, root } = await sheet();
-  // The bar's buttons, then those of a worked example's row.
-  const each = [...root.querySelectorAll("button")];
+  // The bar's buttons, a task from paper's first, then those of a worked example's row.
+  const each = [...root.querySelectorAll(".tools button")];
   expect(each.map((one) => drawn(one).name)).toEqual([
+    ROW.task.filled,
     ROW.pen.filled,
     ROW.eraser.outline,
     ROW.undo.outline,
@@ -257,8 +261,9 @@ test("the labels follow the element's own lang: Russian for ru and its regions, 
     await expect.element(buttons(element, russian).row).toBeVisible();
     await expect.element(buttons(element, russian).undo).toBeVisible();
   }
-  // The bar's buttons, then those of a worked example's row.
-  expect([...root.querySelectorAll("button")].map((each) => each.textContent)).toEqual([
+  // The bar's buttons, a task from paper's first, then those of a worked example's row.
+  expect([...root.querySelectorAll(".tools button")].map((each) => each.textContent)).toEqual([
+    "Спрятать задачу",
     "Перо",
     "Ластик",
     "Отменить",

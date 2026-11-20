@@ -10,11 +10,12 @@ import axe from "axe-core";
 import { expect, vi } from "vitest";
 import { SHORT } from "../core/pages.fixture.js";
 import { DEMO, REMAINDERS, sheetTask, workbookTask, workedExample } from "../core/tasks.fixture.js";
-import type { NovatrailCanvas, WorkedExample } from "./index.js";
+import type { ExportedPaper, NovatrailCanvas, WorkedExample } from "./index.js";
 import {
   arrive,
   consumerButton,
   level,
+  paperCrop,
   placed,
   quarters,
   settle,
@@ -138,7 +139,10 @@ async function pictured(element: NovatrailCanvas, images: number): Promise<void>
   if (images > 0 && given.mock.calls.length === 0) throw new Error("the element asked for no file");
   await Promise.allSettled(given.mock.results.map(({ value }) => value));
   await arrive();
-  expect(element.shadowRoot?.querySelectorAll("img, image").length).toBe(images);
+  // The tracing paper's picture is a task from paper's, and a statement's or a demo's alone count.
+  expect(element.shadowRoot?.querySelectorAll("img, image:not(.tracing image)").length).toBe(
+    images,
+  );
 }
 
 /** A sheet put on the page, 400 CSS px wide, with a level stroke on it. */
@@ -163,9 +167,31 @@ function example(given: WorkedExample, images = 0, actions = false) {
   };
 }
 
+/** A task from paper on a new element, its tracing paper read, a stroke on it, and the tutor's
+ * verdict and wavy line over it (R87). */
+async function fromPaper(made: HTMLElement[]) {
+  const { element, root, canvas, view } = await placed(made, 400);
+  element.paper = { statement: await paperCrop() };
+  await expect.poll(() => root.querySelector<HTMLElement>(".grip")?.hidden).toBe(false);
+  level(canvas, view(), 100, 200, 300);
+  await settle();
+  const work = (await element.exportWork()) as ExportedPaper | null;
+  if (work === null || !("statement" in work)) throw new Error("no work of a task from paper");
+  element.marks = {
+    submission: work.submission,
+    marks: [
+      { kind: "verdict", at: { box: [0, 0, 400, 300] }, correct: true, name: "Task 1: right" },
+      { kind: "wavy_line", at: { box: [500, 0, 900, 300] }, name: "Where the mistake is" },
+    ],
+  };
+  await settle();
+  return element;
+}
+
 /** Every kind of canvas the element shows: a sheet with its task and a stroke, a statement with
  * pictures, a workbook, marks on a sheet, a worked example on a sheet with pictures beside it and
- * on its sheet, without the consumer's button in its row and with it, and one on a workbook. */
+ * on its sheet, without the consumer's button in its row and with it, one on a workbook, and a
+ * task from paper with the tutor's marks. */
 export const KINDS: readonly Kind[] = [
   { name: "a sheet with its task and a stroke", put: written, incomplete: [] },
   {
@@ -222,5 +248,10 @@ export const KINDS: readonly Kind[] = [
     name: "a worked example on a workbook",
     put: example(REMAINDERS as WorkedExample),
     incomplete: WORKBOOK_INCOMPLETE,
+  },
+  {
+    name: "a task from paper, with a stroke, a verdict and a wavy line",
+    put: fromPaper,
+    incomplete: [],
   },
 ];

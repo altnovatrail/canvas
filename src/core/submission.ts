@@ -1,20 +1,34 @@
 import { type Cell, tableOf } from "./boxes.js";
 import { type Crop, cropOf } from "./crop.js";
+import { type Box, tenths } from "./geometry.js";
 import { type Group, groupsOf } from "./groups.js";
 import type { Stroke } from "./ink.js";
 import {
   type CropNumbers,
   digestOf,
+  type Paper,
+  type PaperSubmission,
   type SheetSubmission,
   type WorkbookSubmission,
   workbookDigestOf,
 } from "./marks.js";
-import { pictureOf } from "./raster.js";
+import { encodePNG } from "./png.js";
+import { pictureOf, rasterOf } from "./raster.js";
+import { type Gray, layOver, type TracingState, tenthsOf } from "./tracing.js";
 
 /** The work of a sheet for checking (R27): the PNG of its crop, and the context of the submission. */
 export interface WorkForCheck {
   readonly png: Uint8Array<ArrayBuffer>;
   readonly submission: SheetSubmission;
+}
+
+/**
+ * The work of a task from paper for checking (R87): the PNG of the crop of its work, and the
+ * context of the submission.
+ */
+export interface PaperForCheck {
+  readonly png: Uint8Array<ArrayBuffer>;
+  readonly submission: PaperSubmission;
 }
 
 /** The crop of one filled box of a workbook (R38): its item and its slot, from 1, and its PNG. */
@@ -78,6 +92,66 @@ export function cellsForCheck(
   const sent = own(boxes.flatMap(({ ids }) => ids));
   const submission = { boxes, digest: workbookDigestOf(sent, boxes, cells) };
   return Object.freeze({ cells: Object.freeze(crops), submission: frozen(submission) });
+}
+
+/**
+ * The work of a task from paper for checking, as `exportWork()` gives it with the task's crop
+ * (R87): of the strokes the sheet and the tracing paper hold, where they lie on the sheet, their
+ * groups by the sheet's rule (R24), and their crop by R25 with its digits `digit` px high, taking
+ * in the tracing paper's rectangle `rect`, in units, at the same scale — the crop's picture,
+ * `picture`, laid over it there as the screen lays it — and the context: the crop's numbers, the
+ * groups, where the tracing paper lay, `tracing`, and the digest of it all, which holds the
+ * strokes written on the tracing paper, `paper`. Hidden or shown, the tracing paper is in the
+ * crop. No stroke on either is no work to check: null (H3). The picture not read yet, or not at
+ * all, `null`, leaves the paper white.
+ */
+export function paperWorkForCheck(
+  strokes: readonly Stroke[],
+  paper: Paper,
+  tracing: TracingState,
+  rect: Box,
+  picture: Gray | null,
+  digit: number,
+): PaperForCheck | null {
+  const groups = groupsOf(strokes);
+  const crop = cropOf(strokes, groups, digit, tenthsOf(rect));
+  if (crop === null) return null;
+  const ink = rasterOf(strokes, crop);
+  if (picture !== null) layOver(ink, crop.width, picture, pixelsOf(rect, crop));
+  const { drawn, width, height, margins, sheetBox, frames, exact } = crop;
+  const numbers: CropNumbers = { drawn, width, height, margins, sheetBox, frames, exact };
+  const submission = {
+    crop: numbers,
+    groups,
+    tracing: { at: [tracing.at[0], tracing.at[1]] as const, hidden: tracing.hidden },
+    digest: digestOf(strokes, numbers, groups, paper),
+  };
+  return Object.freeze({
+    png: encodePNG(ink, crop.width, crop.height),
+    submission: frozen(submission),
+  });
+}
+
+/** Where a rectangle of the sheet, in units, lies on a crop, in px, as its raster places points. */
+function pixelsOf(
+  rect: Box,
+  crop: Crop,
+): {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+} {
+  const [top, left] = crop.margins;
+  const { box, median: unit } = crop.exact;
+  const across = (x: number) => ((tenths(x) - box.minX) * crop.drawn + left * unit) / unit;
+  const down = (y: number) => ((tenths(y) - box.minY) * crop.drawn + top * unit) / unit;
+  return {
+    left: across(rect.minX),
+    top: down(rect.minY),
+    right: across(rect.maxX),
+    bottom: down(rect.maxY),
+  };
 }
 
 /** The crop of strokes in their groups, its digits `digit` px high, and its PNG (R25). */
