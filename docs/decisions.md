@@ -899,30 +899,31 @@ How it is built — [architecture.md](architecture.md), section 3.6.
 
 — *Amendment 2026-10-22:* Vite is now a direct development dependency and runs not only inside Vitest: the development server `just demo` runs on it (R20). `lightningcss` does nothing there either: the development server's CSS is processed by postcss, and Vite calls `lightningcss` only for minifying in a build, which the page does not have. The page is not in the package, so the decision does not change: the exception is still for `dev`, and the check answers "ok — 115 packages, 1 exceptions". — R20; RUN.md, T34.
 
-**R15. `samples/` is closed to agents: a rule in CLAUDE.md, `/samples/` in `.gitignore` and the `deny` rules of Claude Code — on reading and writing the folder and on shell commands that name it as a word of its own or as part of a path.**
-- These are the three bans of R05 tutor, which its T11 put in place before the first sample (`tutor`, merged f501412), with one difference. The Bash rule of `tutor` is `*samples*`, and those of `canvas` are patterns of the folder's name, not of the word. The name is closed:
+**R15. `samples/` is closed to agents: a rule in CLAUDE.md, `/samples/` in `.gitignore` and the `deny` rules of Claude Code — on reading and writing the folder, the repository's own and that of each clone in `.epics`, and on shell commands that name it as a word of its own or as part of a path.**
+- These are the three bans of R05 tutor, with one difference. The Bash rule of `tutor` is `*samples*`, and those of `canvas` are patterns of the folder's name, not of the word. The name is closed:
   - at the start of a command — `samples`, `samples *`, `samples/*`;
   - after a space or `/` — `* samples`, `* samples *`, `* samples/*` and the same with `/`;
   - in quotes — `*"samples"*`, `*"samples/*` and the same with `'`;
   - after `=` — `*=samples`, `*=samples *`, `*=samples/*`;
   - after `<` and `>` — `*<samples*`, `*>samples*`.
-- `samples/` holds the samples with handwriting, which do not get into the repository: the file the author saves while trying the samples page on a device (T22), and everything with handwriting in it. The synthetic samples of T18 are not there.
+- The rules on reading and writing are `/samples` and `/samples/**`, from the working folder, and `//workspaces/.epics/*/*/samples` and `//workspaces/.epics/*/*/samples/**`, from the root of the file system: the container mounts the host's `.epics`, the clones of the tasks across repositories, `.epics/<epic>/<repo>` (R166 spec), and the folder of a clone of `canvas` there is closed as this one is.
+- `samples/` holds the samples with handwriting, which do not get into the repository: the file the author saves while trying the samples page on a device, and everything with handwriting in it. The synthetic samples are not there.
+- `spec`'s documents check reads only the files that git tracks or that the repository's `.gitignore` files do not keep out of git, and does not go into `samples/` (R32 spec). Other walks of the tree — `grep -r`, `find .` — go there, and the rule of CLAUDE.md on them stands.
 
-— *Why:* T08 puts the bans in place before the first sample, as R05 tutor did (RUN.md, T08). П-12 recommends not letting development agents near eval samples outside the repositories (R05 tutor).
-- The Bash rule is narrower than that of `tutor`: in `canvas` the word stands in its own names — `samples-page_v<X.Y.Z>.html` and `synthetic-samples_v<X.Y.Z>.<…>` (R08). The patterns were checked on 16 commands with the folder — among them a path at the start of the command, in quotes, after `=` and in a redirection, which the review of T08 found — and on 8 commands with these names and with recipes.
-- `*` in a Bash rule matches any text, and `/samples` in the project's settings counts from the working folder (Claude Code's documentation; [architecture.md](architecture.md), section 4). The rule took effect at once: a command with the folder was refused in this session.
+— *Why:* the bans are in place before the first sample, as R05 tutor's are. П-12 recommends not letting development agents near eval samples outside the repositories (R05 tutor).
+- The Bash rule is narrower than that of `tutor`: in `canvas` the word stands in its own names — `samples-page_v<X.Y.Z>.html` and `synthetic-samples_v<X.Y.Z>.<…>` (R08). The patterns were checked on 16 commands with the folder — among them a path at the start of the command, in quotes, after `=` and in a redirection — and on 8 commands with these names and with recipes.
+- `*` in a Bash rule matches any text; in a rule on reading or writing, `/samples` counts from the working folder and `//` from the root of the file system, and `*` is one level of folders (Claude Code's documentation, sources 7.7). A rule takes effect in the running session: the rule of `.epics` was checked on a folder of the same depth under `/tmp`, whose file it refused.
+- The rule of `.epics` names the root of each clone, `*/*/samples`, not `**/samples`: a folder of that name deeper in another repository's clone is that repository's to close.
 
 — *Rejected:*
 - `Bash(*samples*)`, as in `tutor` — it would close `samples-page_v…` and `synthetic-samples_v…`;
 - only the rule in CLAUDE.md — Claude Code would hold it by memory, not by a setting.
 
 — *Consequence:*
-- nobody names a folder of the code `samples`, at any depth: `*/samples/*` would close it too. T18 names the folder of the synthetic samples otherwise;
+- nobody names a folder of the code `samples`, at any depth: `*/samples/*` would close it too. The synthetic samples' folder is named otherwise;
 - the rules are not an access boundary: a Bash rule, by Claude Code's documentation, "isn't a security boundary". So whatever needs the samples is run by the author.
 
-— CLAUDE.md, `samples/`; `.gitignore`; `.claude/settings.json`; RUN.md, T08, T18, T22.
-
-— *Amendment 2026-10-26:* `spec`'s documents check, from v0.2.35, reads only the files that git tracks or that the repository's `.gitignore` files do not keep out of git, and does not go into `samples/` (the 2026-10-26 amendment to R32 spec; R30). Before that it walked the whole tree but for `.git`, `node_modules` and `spec/`. Other walks of the tree — `grep -r`, `find .` — still go there, and the rule of CLAUDE.md on them stands. — R30.
+— CLAUDE.md, `samples/`; `.gitignore`; `.claude/settings.json`; R30; RUN.md, T08, T18, T22.
 
 ## `spec` tag v0.2.18
 
@@ -4897,7 +4898,7 @@ How it is built — [architecture.md](architecture.md), section 3.3.
 ## Moves to a tag of `spec`
 
 **R86. `canvas` stands on the tag of its submodule `spec/`, and a move to a new tag is its commit, which says why, and no entry of this log (R160 spec): the packages `@altnovatrail/spec` and `@altnovatrail/contracts` at its version (`package.json`; R12), the copy of the part `legal` in `tasks/spec-<tag>/` that `LEGAL_FILE` of `scripts/legal.ts` and `spec_tag` of the justfile name (R69), and the lines of CLAUDE.md and RUN.md that name the tag move with it. The shared workflows of `.github` are on one release, by the SHA of its tag, in `.github/workflows/` (R12). `exportPicture()` is a method of the agreement, which `interface.check.ts` holds through `CanvasElement` (R83). `.devcontainer/` takes a change of the template only when it is more than a comment.**
-- **What a move checks:** `git -C spec log <old>..<new>` for what the tags bring `canvas`; `git -C spec diff <old> <new> -- format types contracts legal repo-template` for the copies of the format's examples and vectors (Д5 in [run/DEBT.md](../run/DEBT.md)), the package's types and the template; `release-verify` on the new copy of `legal`, which a new release gives another sum even when its files are the same (`.claude/rules/tasks.md`); `just ci` and `docs-check-repo` on the new tag.
+- **What a move checks:** `git -C spec log <old>..<new>` for what the tags bring `canvas`; `git -C spec diff <old> <new> -- format types contracts legal repo-template .devcontainer` for the copies of the format's examples and vectors (Д5 in [run/DEBT.md](../run/DEBT.md)), the package's types and the template, whose `.devcontainer/` is a link to spec's own, which a diff of `repo-template` alone does not show; `release-verify` on the new copy of `legal`, which a new release gives another sum even when its files are the same (`.claude/rules/tasks.md`); `just ci` and `docs-check-repo` on the new tag.
 - **Why the template's comment alone is not taken:** the template's Dockerfile has a comment on the stage `orchestrator` that the copies do not have, and a change of the Dockerfile misses CI's cache of the image `toolchain`, held by the Dockerfile's sha256, for every job, which then builds it from the network again (Д257 spec); the next move that changes `.devcontainer/` otherwise takes it with the rest.
 
 — *Why:* R160 spec — the current state lives where it is set, and a session takes the tag from the submodule and the lines of CLAUDE.md and RUN.md; the moves' chronicle is git and the archives `docs/plan/`. The entries of earlier moves keep their text until a task touches them.
