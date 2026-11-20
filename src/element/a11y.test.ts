@@ -59,7 +59,9 @@ test.each(KINDS)(
       "en",
     ]);
     expect(viewport.firstElementChild?.getAttribute("lang")).toBe("de");
-    expect(["Sheet", "Workbook", "Worked example"]).toContain(viewport.getAttribute("aria-label"));
+    expect(["Sheet", "Workbook", "Worked example", "Task from paper"]).toContain(
+      viewport.getAttribute("aria-label"),
+    );
     await axeOf(element, clear);
   },
 );

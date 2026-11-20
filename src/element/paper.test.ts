@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "vitest";
 import type { View } from "../core/screen.js";
 import { axeOf } from "./axe.fixture.js";
 import { type ExportedPaper, NovatrailCanvas, type TracingState } from "./index.js";
-import { at, buttonOf, settle, upgraded } from "./pointer.fixture.js";
+import { at, buttonOf, paperCrop, settle, upgraded } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // A task from paper in a browser (R87): the crop as tracing paper over a dotted sheet, its grip and
@@ -14,28 +14,12 @@ afterEach(() => {
   for (const element of made.splice(0)) element.remove();
 });
 
-/** A task's crop: a PNG of 200 × 50 px, grey, as app cuts one, made on a canvas. */
-async function crop(): Promise<Blob> {
-  const canvas = document.createElement("canvas");
-  canvas.width = 200;
-  canvas.height = 50;
-  const context = canvas.getContext("2d");
-  if (context === null) throw new Error("no 2D context");
-  context.fillStyle = "#ddd";
-  context.fillRect(0, 0, 200, 50);
-  context.fillStyle = "#000";
-  context.fillRect(20, 20, 60, 10);
-  return new Promise((resolve, reject) =>
-    canvas.toBlob((blob) => (blob === null ? reject(new Error("no PNG")) : resolve(blob))),
-  );
-}
-
 async function paper(width = 500) {
   const element = document.createElement("novatrail-canvas");
   element.style.width = `${width}px`;
   document.body.append(element);
   made.push(element);
-  const statement = await crop();
+  const statement = await paperCrop();
   element.paper = { statement };
   await settle();
   const root = element.shadowRoot;
@@ -55,12 +39,21 @@ function viewOf(element: HTMLElement): View {
 
 const mouse = { pointerId: 1, pointerType: "mouse", isPrimary: true, bubbles: true };
 
+/** A mouse's pointer event on the canvas at a point of the sheet, by a script. */
+function sendOn(
+  canvas: HTMLCanvasElement,
+  view: () => View,
+  type: string,
+  [x, y]: [number, number],
+  init: PointerEventInit,
+) {
+  canvas.dispatchEvent(new PointerEvent(type, { ...mouse, ...at(canvas, view(), x, y), ...init }));
+}
+
 /** A mouse's stroke on the canvas through the points of the sheet given, by a script. */
 function write(canvas: HTMLCanvasElement, view: () => View, ...points: [number, number][]) {
-  const send = (type: string, [x, y]: [number, number], init: PointerEventInit) =>
-    canvas.dispatchEvent(
-      new PointerEvent(type, { ...mouse, ...at(canvas, view(), x, y), ...init }),
-    );
+  const send = (type: string, point: [number, number], init: PointerEventInit) =>
+    sendOn(canvas, view, type, point, init);
   const [first, ...rest] = points;
   if (first === undefined) return;
   send("pointerdown", first, { button: 0, buttons: 1, pressure: 0.5 });
@@ -75,7 +68,18 @@ test("shows a dotted sheet, the tracing paper at its start, and its grip and but
   expect(grip.getAttribute("aria-label")).toBe("Move the task");
   expect(grip.hidden).toBe(false);
   expect(buttonOf(element, "Hide the task").hidden).toBe(false);
-  expect(root.querySelector(".viewport")?.getAttribute("aria-label")).toBe("Task from paper");
+  expect(root.querySelector(".tools")?.getAttribute("aria-label")).toBe("Task from paper buttons");
+  // The tracing paper's layer shows the sheet by the view the others do.
+  const matrix = (layer: string) => {
+    const ctm = root.querySelector<SVGSVGElement>(`.stage > .${layer}`)?.getScreenCTM();
+    return ctm && [ctm.a, ctm.d, ctm.e, ctm.f];
+  };
+  expect(matrix("tracing")).toEqual(matrix("template"));
+  // The container is a region, by the kind's name, once it scrolls in a height of its own.
+  element.style.height = "300px";
+  await expect
+    .poll(() => root.querySelector(".viewport")?.getAttribute("aria-label"))
+    .toBe("Task from paper");
 });
 
 test("has no violation axe finds, the tracing paper shown and hidden", async () => {
@@ -137,6 +141,81 @@ test("hides and shows the tracing paper by its button, which tells", async () =>
   expect(() => {
     element.tracing = { at: [2000, 0], hidden: false };
   }).toThrow(TypeError);
+});
+
+test("ends a stroke under way on the tracing paper when the paper is hidden", async () => {
+  const { element, canvas, view } = await paper();
+  sendOn(canvas, view, "pointerdown", [300, 100], { button: 0, buttons: 1, pressure: 0.5 });
+  sendOn(canvas, view, "pointermove", [320, 110], { buttons: 1, pressure: 0.5 });
+  buttonOf(element, "Hide the task").click();
+  const writes = () => element.history.filter((event) => event.kind === "write");
+  expect(writes().map((event) => ("on" in event ? event.on : undefined))).toEqual(["tracing"]);
+  // The pointer goes on over a paper that is not there, and writes nothing more.
+  sendOn(canvas, view, "pointermove", [340, 120], { buttons: 1, pressure: 0.5 });
+  sendOn(canvas, view, "pointerup", [340, 120], { button: 0, buttons: 0 });
+  expect(writes()).toHaveLength(1);
+});
+
+test("drops a stroke under way on the tracing paper when the paper goes", async () => {
+  const { element, canvas, view } = await paper();
+  sendOn(canvas, view, "pointerdown", [300, 100], { button: 0, buttons: 1, pressure: 0.5 });
+  sendOn(canvas, view, "pointermove", [320, 110], { buttons: 1, pressure: 0.5 });
+  element.paper = undefined;
+  sendOn(canvas, view, "pointerup", [320, 110], { button: 0, buttons: 0 });
+  expect(element.history).toEqual([]);
+  expect(element.tracing).toBeUndefined();
+});
+
+test("keeps the tracing paper where it lies for a new object of the same crop", async () => {
+  const { element, statement } = await paper();
+  const told: TracingState[] = [];
+  element.addEventListener("tracingchange", (event) => told.push(event.detail));
+  element.tracing = { at: [100, 200], hidden: true };
+  const again = { statement };
+  element.paper = again;
+  expect(element.paper).toBe(again);
+  expect(element.tracing).toEqual({ at: [100, 200], hidden: true });
+  // Another crop is another task: its paper starts again.
+  element.paper = { statement: await paperCrop() };
+  expect(element.tracing).toEqual({ at: [180, 60], hidden: false });
+  expect(told).toHaveLength(0);
+});
+
+test("brings a paper given wholly off the sheet at its real size onto it once its picture is read", async () => {
+  const element = document.createElement("novatrail-canvas");
+  element.style.width = "500px";
+  document.body.append(element);
+  made.push(element);
+  const told: TracingState[] = [];
+  element.addEventListener("tracingchange", (event) => told.push(event.detail));
+  // A tall crop: 175 × 700 on the sheet, and the largest paper, 800 wide, till it is read.
+  element.paper = { statement: await paperCrop(50, 200) };
+  element.tracing = { at: [-750, 100], hidden: false };
+  expect(element.tracing).toEqual({ at: [-750, 100], hidden: false });
+  await expect.poll(() => element.tracing?.at).toEqual([0, 100]);
+  expect(told).toHaveLength(0);
+});
+
+test("hides a mark on the tracing paper's strokes with the paper", async () => {
+  const { element, root, canvas, view } = await paper();
+  write(canvas, view, [300, 100], [320, 140]);
+  const work = (await element.exportWork()) as ExportedPaper | null;
+  if (work === null || !("statement" in work)) throw new Error("no work of a task from paper");
+  const [group] = work.submission.groups;
+  if (group === undefined) throw new Error("no group");
+  element.marks = {
+    submission: work.submission,
+    marks: [{ kind: "frame", at: { group: group.label }, name: "Look here" }],
+  };
+  await settle();
+  const frame = root.querySelector(".marks rect[role=img]");
+  expect(frame?.getAttribute("display")).toBeNull();
+  buttonOf(element, "Hide the task").click();
+  await settle();
+  expect(frame?.getAttribute("display")).toBe("none");
+  buttonOf(element, "Show the task").click();
+  await settle();
+  expect(frame?.getAttribute("display")).toBeNull();
 });
 
 test("moves the tracing paper by its grip's keys, kept to the sheet", async () => {
@@ -209,7 +288,8 @@ test("draws a verdict at each answer's box, a tick or a cross on its halo, by it
   const [first, second] = signs.map((sign) => sign.getBoundingClientRect());
   if (!first || !second) throw new Error("no verdict drawn");
   expect(second.top).toBeGreaterThan(first.top);
-  expect(first.width).toBeCloseTo(28, 0);
+  // A verdict's place is 28 CSS px square, 24 units: the halo's circle leaves its hairline room.
+  expect((signs[0]?.getScreenCTM()?.a ?? 0) * 24).toBeCloseTo(28, 3);
   await axeOf(element);
   // A verdict is a task from paper's: a sheet of the other kind takes none.
   expect(() => {

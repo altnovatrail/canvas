@@ -113,6 +113,7 @@ import {
   wholeSheet,
 } from "../core/task.js";
 import {
+  boxOnSheet,
   keptOn,
   layOver,
   onSheet,
@@ -123,6 +124,7 @@ import {
   toTracing,
   rectOf as tracingRect,
   tracingStateOf,
+  whollyOff,
 } from "../core/tracing.js";
 import { nextIdOf, resumeOf, Work } from "../core/work.js";
 import { placeOver, SVG, write } from "./attributes.js";
@@ -237,7 +239,7 @@ const CROSS = "M8 8l8 8M16 8l-8 8";
 /**
  * The colour of the tutor's wavy line of "Show where" unless the consumer's theme gives one: an
  * orange, as the mockup's, 3.58:1 on white, over a white halo that holds it over any sheet or photo
- * of a page (concepts 10 spec; R162 spec).
+ * of a page (R87; R162 spec).
  */
 const WAVY = "#e8590c";
 /**
@@ -648,7 +650,7 @@ function verdictNode(correct: boolean): SVGGElement {
 }
 
 /**
- * The wavy line of "Show where" (concepts 10 spec): the line over a wider white one, its halo, both
+ * The wavy line of "Show where" (R87): the line over a wider white one, its halo, both
  * of the path the marks give them.
  */
 function wavyNode(): SVGGElement {
@@ -882,14 +884,13 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     | undefined;
   #shown: readonly Shown[] = [];
   /**
-   * The strokes on the sheet by ID, where they lie on it, kept while the sheet's strokes are the
-   * same array and the tracing paper lies where it lay.
+   * The strokes on the sheet by ID, the tracing paper's from its corner, kept while the sheet's
+   * strokes are the same array.
    */
   #strokesById: {
     readonly strokes: readonly Stroke[];
-    readonly at: readonly [number, number] | undefined;
     readonly byId: ReadonlyMap<number, Stroke>;
-  } = { strokes: [], at: undefined, byId: new Map() };
+  } = { strokes: [], byId: new Map() };
   /** The box of each stroke's points, worked out once: a stroke never changes (R22). */
   readonly #pointBoxes = new WeakMap<Stroke, Box>();
   /** The stroke under way, and how many of its points the marks have been checked against. */
@@ -1142,10 +1143,12 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * Blob of a JPEG or a PNG. The element shows it in place of a task and of a worked example: a
    * dotted sheet with no statement, the pen and the eraser, and the crop over it as tracing paper,
    * at the element's own place for it, shown, which `tracing` tells. While a task or an example is
-   * shown it is a TypeError, and so is what is not such a task. Another task from paper lays its
-   * crop at the start again, and the history stays: the next task is a new element (R20).
-   * `undefined` takes it off, but not while the history has strokes on the tracing paper, a
-   * TypeError. The crop's picture is read as it comes; till then the paper has its largest size.
+   * shown it is a TypeError, and so is what is not such a task. Another task from paper, of
+   * another crop, lays its crop at the start again, and the history stays: the next task is a new
+   * element (R20); one of the same crop changes nothing. `undefined` takes it off, but not while the
+   * history has strokes on the tracing paper, a TypeError. Either drops a stroke or an erasing under
+   * way on the tracing paper, as a new history drops the one under the pen. The crop's picture is
+   * read as it comes; till then the paper has its largest size.
    */
   get paper(): PaperTask | undefined {
     return this.#paper;
@@ -1159,6 +1162,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
           `<${TAG}> has strokes on the tracing paper: the task from paper goes with a new element, or a history without them`,
         );
       }
+      this.#leaveTracing(false);
       this.#paper = undefined;
       this.#tracing = undefined;
       this.#tracingPaper.show(undefined, () => {});
@@ -1183,9 +1187,15 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
         `paper.statement: the task's crop, a Blob of a JPEG or a PNG, not ${typeof statement}`,
       );
     }
+    // A consumer that renders the same crop anew in a new object keeps the paper where it lies.
+    if (this.#paper?.statement === statement) {
+      this.#paper = paper;
+      return;
+    }
+    this.#leaveTracing(false);
     this.#paper = paper;
     this.#tracing = TRACING_START;
-    this.#tracingPaper.show(statement, () => this.#request());
+    this.#tracingPaper.show(statement, () => this.#sized());
     this.#whole = true;
     this.#present(PAPER_TEMPLATE);
     this.#request();
@@ -1198,6 +1208,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * the button atop the tools, which a `tracingchange` tells; the consumer keeps it and gives it
    * back, which tells nothing. Given before the task from paper it is a TypeError, and so is a state
    * that is not one, or one that puts the paper wholly off the sheet; `undefined` changes nothing.
+   * Till the crop's picture is read the paper has its largest size: a state that puts the paper of
+   * its real size wholly off the sheet then moves to the nearest place wholly on it, with no event.
    */
   get tracing(): TracingState | undefined {
     return this.#tracing;
@@ -1541,7 +1553,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       // The sheet as it is now: the crop's picture, read by now or soon, does not change it.
       const strokes = this.#work.strokes.map((stroke) => this.#onSheet(stroke, tracing.at));
       if (strokes.length === 0) return null;
-      const onTracing = this.#tracedOf(this.#work);
+      const written = this.#work;
+      const onTracing = (id: number) => written.onTracing(id);
       const { size, gray } = await this.#tracingPaper.read;
       const rect = tracingRect(tracing.at, size);
       const work = paperWorkForCheck(
@@ -1860,8 +1873,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   #places(given: Marks): { readonly name: string; readonly placed: Placed }[] {
     const cells = isWorkbook(this.#shownTemplate) ? this.#cells : null;
     const tracing = this.#tracing;
+    const work = this.#work;
     const paper =
-      tracing === undefined ? undefined : { at: tracing.at, onTracing: this.#tracedOf(this.#work) };
+      tracing === undefined
+        ? undefined
+        : { at: tracing.at, onTracing: (id: number) => work.onTracing(id) };
     const places = placesOf(given, this.#known(), cells, undefined, paper);
     return given.marks.flatMap(({ name }, n) => {
       const placed = places[n];
@@ -2382,9 +2398,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /**
    * The learner hid the tracing paper with the button atop the tools, or showed it again (R87): its
    * strokes go out of sight with it and stay in the history and in the work, and whoever listens
-   * hears of the new state.
+   * hears of the new state. A stroke or an erasing under way on the paper ends where it is, as on a
+   * lost capture: the pointer goes on over a paper that is not there.
    */
   #trace(): void {
+    if (this.#tracing?.hidden === false) this.#leaveTracing(true);
     const state = this.#tracing;
     if (this.#paper === undefined || state === undefined) return;
     this.#tracing = Object.freeze({ at: state.at, hidden: !state.hidden });
@@ -2420,6 +2438,38 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#tracingChanged();
   }
 
+  /**
+   * A stroke or an erasing under way on the tracing paper ends where it is, `end`, or goes, as on
+   * `pointercancel`: the paper it was on goes out of sight or away (R87).
+   */
+  #leaveTracing(end: boolean): void {
+    const writer = this.#writeOn === "tracing" ? this.#recorder.pointer : undefined;
+    const eraser = this.#eraseOn === "tracing" ? this.#eraser.pointer : undefined;
+    // The recorder's handler writes the stroke on the layer it began on, so the layer goes after.
+    if (writer !== undefined && !end && this.#recorder.cancel(writer)) this.#request();
+    if (writer !== undefined && end) this.#recorder.end(writer);
+    if (eraser !== undefined && !end && this.#eraser.cancel(eraser)) this.#request();
+    if (eraser !== undefined && end) this.#eraser.end(eraser);
+    if (writer !== undefined) this.#writeOn = undefined;
+    if (eraser !== undefined) this.#eraseOn = undefined;
+  }
+
+  /**
+   * The crop's picture is read, and the tracing paper has its size (R87): a state the consumer gave,
+   * checked against the largest paper, that puts the paper of this size wholly off the sheet moves
+   * to the nearest place wholly on it, with its strokes and their marks. It tells nothing, as the
+   * state given did not.
+   */
+  #sized(): void {
+    const state = this.#tracing;
+    const size = this.#tracingPaper.size;
+    if (state !== undefined && whollyOff(state.at, size)) {
+      this.#tracing = Object.freeze({ at: keptOn(state.at, size), hidden: state.hidden });
+      this.#replace();
+    }
+    this.#request();
+  }
+
   /** Whoever listens hears of the tracing paper's new state, which the learner chose (R87). */
   #tracingChanged(): void {
     const detail = this.#tracing;
@@ -2437,11 +2487,6 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const placed = onSheet(stroke, at);
     this.#placed.set(stroke, { at, stroke: placed });
     return placed;
-  }
-
-  /** Which strokes of a work are the tracing paper's, by ID (R87). */
-  #tracedOf(work: Work): (id: number) => boolean {
-    return (id) => work.onTracing(id);
   }
 
   /**
@@ -2699,9 +2744,15 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     if (this.#shown.length === 0) return;
     const byId = this.#byId();
     const pending = this.#eraser.pending;
+    const tracing = this.#tracing;
+    const work = this.#work;
+    // A stroke of the tracing paper is where the paper lies, and out of sight while it is hidden
+    // (R87). Its box moves with the paper, and the stroke is not copied for each place of a drag.
     const onScreen = (id: number): Box | undefined => {
       const stroke = pending.has(id) ? undefined : byId.get(id);
-      return stroke && this.#pointBoxOf(stroke);
+      if (stroke === undefined) return undefined;
+      if (tracing === undefined || !work.onTracing(id)) return this.#pointBoxOf(stroke);
+      return tracing.hidden ? undefined : boxOnSheet(this.#pointBoxOf(stroke), tracing.at);
     };
     const half = 1 / screen.k;
     for (const mark of this.#shown) {
@@ -2778,14 +2829,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /** The strokes on the sheet by ID: each action on the work gives a new array of them (R19). */
   #byId(): ReadonlyMap<number, Stroke> {
     const strokes = this.#work.strokes;
-    const at = this.#tracing?.at;
-    if (this.#strokesById.strokes !== strokes || this.#strokesById.at !== at) {
-      const placed = (stroke: Stroke) => (at === undefined ? stroke : this.#onSheet(stroke, at));
-      this.#strokesById = {
-        strokes,
-        at,
-        byId: new Map(strokes.map((stroke) => [stroke.id, placed(stroke)])),
-      };
+    if (this.#strokesById.strokes !== strokes) {
+      this.#strokesById = { strokes, byId: new Map(strokes.map((stroke) => [stroke.id, stroke])) };
     }
     return this.#strokesById.byId;
   }
@@ -2830,27 +2875,32 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     // none while it is hidden (R87).
     const tracing = this.#tracing;
     const work = this.#work;
-    for (const layer of [undefined, "tracing"] as const) {
-      if (layer === "tracing" && (tracing === undefined || tracing.hidden)) break;
-      const [dx, dy] = layer === "tracing" && tracing !== undefined ? tracing.at : [0, 0];
-      context.setTransform(across, 0, 0, down, (dx - screen.vx) * across, (dy - screen.vy) * down);
-      for (const stroke of work.strokes) {
-        if (erasing.has(stroke.id)) continue;
-        if (tracing !== undefined && work.onTracing(stroke.id) !== (layer === "tracing")) continue;
-        // The outline keeps within half the widest line of the points: twice that is out of sight.
-        const box = this.#pointBoxOf(stroke);
-        if (box.maxY + dy + 2 * INK_REACH < screen.vy || box.minY + dy - 2 * INK_REACH > bottom)
-          continue;
-        if (box.maxX + dx + 2 * INK_REACH < screen.vx || box.minX + dx - 2 * INK_REACH > right)
-          continue;
-        const ink = this.#finished(stroke);
-        if (ink.bottom + dy >= screen.vy && ink.top + dy <= bottom) context.fill(ink.path);
-      }
-      const live = this.#recorder.live;
-      if (live !== undefined && (this.#writeOn === "tracing") === (layer === "tracing")) {
-        context.fill(pathOf(this.#outline(live, false)));
-      }
+    const shown = tracing !== undefined && !tracing.hidden;
+    const draw = (stroke: Stroke, dx: number, dy: number): void => {
+      // The outline keeps within half the widest line of the points: twice that is out of sight.
+      const box = this.#pointBoxOf(stroke);
+      if (box.maxY + dy + 2 * INK_REACH < screen.vy || box.minY + dy - 2 * INK_REACH > bottom)
+        return;
+      if (box.maxX + dx + 2 * INK_REACH < screen.vx || box.minX + dx - 2 * INK_REACH > right)
+        return;
+      const ink = this.#finished(stroke);
+      if (ink.bottom + dy >= screen.vy && ink.top + dy <= bottom) context.fill(ink.path);
+    };
+    context.setTransform(across, 0, 0, down, -screen.vx * across, -screen.vy * down);
+    const traced: Stroke[] = [];
+    for (const stroke of work.strokes) {
+      if (erasing.has(stroke.id)) continue;
+      if (tracing === undefined || !work.onTracing(stroke.id)) draw(stroke, 0, 0);
+      else if (shown) traced.push(stroke);
     }
+    const live = this.#recorder.live;
+    const liveTraced = this.#writeOn === "tracing";
+    if (live !== undefined && !liveTraced) context.fill(pathOf(this.#outline(live, false)));
+    if (!shown) return;
+    const [dx, dy] = tracing.at;
+    context.setTransform(across, 0, 0, down, (dx - screen.vx) * across, (dy - screen.vy) * down);
+    for (const stroke of traced) draw(stroke, dx, dy);
+    if (live !== undefined && liveTraced) context.fill(pathOf(this.#outline(live, false)));
   }
 
   #finished(stroke: Stroke): Ink {

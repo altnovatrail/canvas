@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { Clock } from "./clock.js";
 import { cropOf } from "./crop.js";
-import { tenths } from "./geometry.js";
+import { boxOf, tenths } from "./geometry.js";
 import { groupsOf } from "./groups.js";
 import { historyOf } from "./history.js";
 import { digestOf, marksOf, placesOf, shownOf } from "./marks.js";
@@ -9,6 +9,7 @@ import { rasterOf } from "./raster.js";
 import { stroke } from "./sheets.fixture.js";
 import { paperWorkForCheck } from "./submission.js";
 import {
+  boxOnSheet,
   grayOf,
   keptOn,
   LARGEST,
@@ -22,6 +23,7 @@ import {
   tenthsOf,
   toTracing,
   tracingStateOf,
+  whollyOff,
 } from "./tracing.js";
 import { Work } from "./work.js";
 
@@ -82,6 +84,18 @@ describe("the tracing paper's size and place", () => {
     }
   });
 
+  test("tells a place wholly off the sheet for a paper's size, which its real size may make so", () => {
+    // A state checked against the largest paper may leave a smaller one wholly off.
+    expect(whollyOff([-750, 100], LARGEST)).toBe(false);
+    const read = { width: 400, height: 100 };
+    expect(whollyOff([-750, 100], read)).toBe(true);
+    expect(keptOn([-750, 100], read)).toEqual([0, 100]);
+    expect(whollyOff([-400, 0], read)).toBe(true);
+    expect(whollyOff([-399.9, 0], read)).toBe(false);
+    expect(whollyOff([1000, 0], read)).toBe(true);
+    expect(whollyOff([0, 1400], read)).toBe(true);
+  });
+
   test("holds a point by its corner, kept to it, and puts its strokes back on the sheet", () => {
     const size = { width: 400, height: 100 };
     expect(onTracing({ x: 300, y: 150 }, [200, 100], size)).toBe(true);
@@ -93,6 +107,17 @@ describe("the tracing paper's size and place", () => {
       [1000, 80],
     ]);
     expect(moved.id).toBe(3);
+    // The box moved with the paper is the moved stroke's, kept to the sheet as its points are.
+    const traced = stroke(4, [10, 20, 5], [990, 30, 9], [-5, 1395, 12]);
+    for (const at of [
+      [100, 50],
+      [-30, 10],
+      [0, 0],
+    ] as const) {
+      expect(boxOnSheet(boxOf(traced.points), at), String(at)).toEqual(
+        boxOf(onSheet(traced, at).points),
+      );
+    }
     expect(Object.isFrozen(moved.points[0])).toBe(true);
     expect(tenthsOf(rectOf([-10, 1350], size))).toEqual({
       minX: 0,

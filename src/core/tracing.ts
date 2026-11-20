@@ -60,8 +60,7 @@ export const TRACING_START: TracingState = Object.freeze({
  */
 export function tracingStateOf(value: unknown, size: Size): TracingState {
   const state = tracingFieldsOf(value, "tracing");
-  const [x, y] = state.at;
-  if (x >= SHEET.width || y >= SHEET.height || x + size.width <= 0 || y + size.height <= 0) {
+  if (whollyOff(state.at, size)) {
     throw new TypeError(
       `tracing.at: ${shown(state.at)} puts the tracing paper wholly off the sheet`,
     );
@@ -89,6 +88,12 @@ export function tracingFieldsOf(value: unknown, path: string): TracingState {
   }
   const [x, y] = at as [number, number];
   return Object.freeze({ at: Object.freeze([x, y] as const), hidden: fields.hidden });
+}
+
+/** Whether the tracing paper of `size` at `at` lies wholly off the sheet, touching it at most. */
+export function whollyOff(at: readonly [number, number], size: Size): boolean {
+  const [x, y] = at;
+  return x >= SHEET.width || y >= SHEET.height || x + size.width <= 0 || y + size.height <= 0;
 }
 
 /** Whether two tracing states say the same. */
@@ -149,6 +154,20 @@ export function onSheet(stroke: Stroke, at: readonly [number, number]): Stroke {
       ),
     ),
   });
+}
+
+/**
+ * The box of a tracing paper's stroke where it lies on the sheet, from the box of its points on the
+ * paper: the box of `onSheet`'s points, for moving and keeping to the sheet keep the order of the
+ * numbers, without a copy of the stroke.
+ */
+export function boxOnSheet(box: Box, at: readonly [number, number]): Box {
+  return {
+    minX: clamp(box.minX + at[0], 0, SHEET.width),
+    minY: clamp(box.minY + at[1], 0, SHEET.height),
+    maxX: clamp(box.maxX + at[0], 0, SHEET.width),
+    maxY: clamp(box.maxY + at[1], 0, SHEET.height),
+  };
 }
 
 /**

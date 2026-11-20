@@ -102,7 +102,7 @@ export interface Paper {
  * `box` theirs, or, with none, by the answer's box laid on the sheet by the crop's `sheetBox`: the
  * answer may be ink on the photo of the page. `correct` says a tick or a cross (R162 spec). A wavy
  * line holds on to the strokes its box takes, as a frame does, and with none stands under the box
- * laid on the sheet, the place of the mistake; `wavy` says it is one (concepts 10 spec).
+ * laid on the sheet, the place of the mistake; `wavy` says it is one (R87).
  */
 export interface Placed {
   readonly ids: readonly number[];
@@ -428,12 +428,6 @@ function sumOf(lines: readonly string[]): string {
 }
 
 /**
- * Whether a point lies in a box of the crop widened by `margin` thousandths of D′, its edges too:
- * in whole numbers, a place on the crop times 1000 × H (R25). For a stroke of the submission every
- * number stays below 2^31; the place X of a point is ((x − B.minX) × D′ + mx × H) / H px, in
- * tenths.
- */
-/**
  * Where each verdict of the marks stands, by its index: by a group of the submission's strokes, one
  * group a verdict, or by its box alone. A model's box of where it read an answer may be off by half
  * a line, and the learner's strokes are where the answer is: the pairs of a verdict and a group
@@ -455,7 +449,7 @@ function verdictsOf(
     const own = [...ids].sort(byNumber);
     return { ids: own, box: boxOf(own.flatMap((id) => byId.get(id)?.points ?? [])) };
   });
-  const pairs: { n: number; g: number; gap: number; apart: number }[] = [];
+  const pairs: { n: number; g: number; box: Box; gap: number; apart: number }[] = [];
   for (const [n, box] of boxes) {
     for (const [g, group] of inked.entries()) {
       const gap = Math.hypot(
@@ -468,17 +462,16 @@ function verdictsOf(
         (box.minX + box.maxX - group.box.minX - group.box.maxX) / 2,
         (box.minY + box.maxY - group.box.minY - group.box.maxY) / 2,
       );
-      pairs.push({ n, g, gap, apart });
+      pairs.push({ n, g, box: group.box, gap, apart });
     }
   }
   pairs.sort((a, b) => a.gap - b.gap || a.apart - b.apart);
   const placed = new Map<number, Placed>();
   const taken = new Set<number>();
-  for (const { n, g } of pairs) {
-    const group = inked[g];
-    if (placed.has(n) || taken.has(g) || group === undefined) continue;
+  for (const { n, g, box } of pairs) {
+    if (placed.has(n) || taken.has(g)) continue;
     taken.add(g);
-    placed.set(n, { ids: [], box: group.box, correct: verdictOf(marks[n]) });
+    placed.set(n, { ids: [], box, correct: verdictOf(marks[n]) });
   }
   for (const [n, box] of boxes) {
     if (!placed.has(n)) placed.set(n, { ids: [], box, correct: verdictOf(marks[n]) });
@@ -503,6 +496,12 @@ function onSheetOf(box: readonly [number, number, number, number], crop: CropNum
   return { minX: x(xmin), minY: y(ymin), maxX: x(xmax), maxY: y(ymax) };
 }
 
+/**
+ * Whether a point lies in a box of the crop widened by `margin` thousandths of D′, its edges too:
+ * in whole numbers, a place on the crop times 1000 × H (R25). For a stroke of the submission every
+ * number stays below 2^31; the place X of a point is ((x − B.minX) × D′ + mx × H) / H px, in
+ * tenths.
+ */
 function withinOf(
   box: readonly [number, number, number, number],
   crop: CropNumbers,
