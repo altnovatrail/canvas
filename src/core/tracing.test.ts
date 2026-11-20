@@ -267,7 +267,13 @@ describe("the work of a task from paper for checking", () => {
     expect(of({ kind: "verdict", at: box, name: "T" })).toThrow(/correct: whether the answer/);
     expect(of({ kind: "verdict", at: box, correct: "yes", name: "T" })).toThrow(/correct/);
     expect(of({ kind: "verdict", at: box, correct: true, name: " " })).toThrow(/name/);
-    expect(of({ kind: "wavy_line", at: box, name: "T" })).toThrow(/"frame" and "verdict" marks/);
+    expect(of({ kind: "wavy_line", at: { group: "A" }, name: "T" })).toThrow(
+      /a wavy line stands at a box alone/,
+    );
+    expect(of({ kind: "wavy_line", at: box, name: "" })).toThrow(/name/);
+    expect(of({ kind: "underline", at: box, name: "T" })).toThrow(
+      /"frame", "verdict" and "wavy_line" marks/,
+    );
     const { tracing: _, ...sheet } = work.submission;
     expect(() =>
       marksOf(
@@ -277,6 +283,36 @@ describe("the work of a task from paper for checking", () => {
         }),
       ),
     ).toThrow(/the sheet draws "frame" marks, not "verdict"/);
+  });
+
+  test("stands a wavy line under the strokes its box takes, or under its box", () => {
+    const work = paperWorkForCheck(strokes, paper, tracing, rectOf(at, size), null, 24);
+    if (work === null) throw new Error("no work");
+    const [top, left, bottom, right] = work.submission.crop.sheetBox;
+    const far: [number, number, number, number] = [0, 900, 100, 1000];
+    const wavy = (box: [number, number, number, number]) => ({
+      kind: "wavy_line",
+      at: { box },
+      name: "Tutor's mark: where the mistake is",
+    });
+    const marks = marksOf(
+      stored({ submission: work.submission, marks: [wavy([0, 0, 1000, 1000]), wavy(far)] }),
+    );
+    expect(marks.marks[0]).toEqual(wavy([0, 0, 1000, 1000]));
+    const [taken, none] = placesOf(marks, strokes, null, undefined, paper);
+    if (!taken || !none) throw new Error("no place");
+    expect(taken.ids.length).toBeGreaterThan(0);
+    expect(taken.wavy).toBe(true);
+    // Its strokes erased, it goes with them.
+    expect(shownOf(taken, () => undefined)).toBeNull();
+    const there = {
+      minX: left + ((right - left) * far[1]) / 1000,
+      minY: top + ((bottom - top) * far[0]) / 1000,
+      maxX: left + ((right - left) * far[3]) / 1000,
+      maxY: top + ((bottom - top) * far[2]) / 1000,
+    };
+    expect(none).toEqual({ ids: [], box: there, wavy: true });
+    expect(shownOf(none, () => undefined)).toEqual(there);
   });
 
   test("is none with no stroke on the sheet or the paper", () => {

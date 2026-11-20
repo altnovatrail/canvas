@@ -219,3 +219,34 @@ test("draws a verdict at each answer's box, a tick or a cross on its halo, by it
     } as never;
   }).toThrow(/a box alone/);
 });
+
+test("draws the wavy line of «Show where» under its place, over its halo, by its name, with no violation", async () => {
+  const { element, root, canvas, view } = await paper();
+  write(canvas, view, [300, 100], [320, 140]);
+  const work = (await element.exportWork()) as ExportedPaper | null;
+  if (work === null || !("statement" in work)) throw new Error("no work of a task from paper");
+  const name = "Tutor's mark: where the mistake is";
+  element.marks = {
+    submission: work.submission,
+    marks: [{ kind: "wavy_line", at: { box: [0, 0, 1000, 1000] }, name }],
+  };
+  await settle();
+  const lines = [...root.querySelectorAll<SVGGElement>(".marks g.wavy[role=img]")];
+  expect(lines.map((line) => line.getAttribute("aria-label"))).toEqual([name]);
+  const [line] = lines;
+  if (!line) throw new Error("no wavy line");
+  expect(line.getAttribute("display")).toBeNull();
+  const [glow, stroke] = [...line.querySelectorAll("path")];
+  expect(glow?.getAttribute("class")).toBe("glow");
+  expect(stroke?.getAttribute("d")).toMatch(/^M[\d.]+ [\d.]+( Q[\d.]+ [\d.]+ [\d.]+ [\d.]+)+$/);
+  expect(stroke?.getAttribute("d")).toBe(glow?.getAttribute("d"));
+  expect(getComputedStyle(stroke as Element).stroke).toBe("rgb(232, 89, 12)");
+  await axeOf(element);
+  // A sheet that is no task from paper takes none.
+  expect(() => {
+    element.marks = {
+      submission: work.submission,
+      marks: [{ kind: "wavy_line", at: { group: "A" }, name }],
+    } as never;
+  }).toThrow(/a box alone/);
+});

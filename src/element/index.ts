@@ -78,7 +78,7 @@ import {
 } from "../core/example.js";
 import { sameItems } from "../core/fields.js";
 import { type Box, boxOf } from "../core/geometry.js";
-import { gridPath } from "../core/grid.js";
+import { GRID_STEP, gridPath } from "../core/grid.js";
 import { type Contact, Hands } from "../core/hands.js";
 import { begins, type HistoryEvent, sameHistory } from "../core/history.js";
 import type { InkPoint, Stroke } from "../core/ink.js";
@@ -234,6 +234,20 @@ const VERDICT_GAP_PX = 4;
 /** A verdict's tick and cross, on the 24 × 24 of the halo's circle. */
 const TICK = "M7 12.5l3.5 3.5L17 8.5";
 const CROSS = "M8 8l8 8M16 8l-8 8";
+/**
+ * The colour of the tutor's wavy line of "Show where" unless the consumer's theme gives one: an
+ * orange, as the mockup's, 3.58:1 on white, over a white halo that holds it over any sheet or photo
+ * of a page (concepts 10 spec; R162 spec).
+ */
+const WAVY = "#e8590c";
+/**
+ * The wavy line, in sheet units: half a wave half a square of the sheet long, its crests this high
+ * off its middle, this far under its place, and reaching this far past each side of it.
+ */
+const WAVY_HALF = GRID_STEP / 4;
+const WAVY_CREST = 3.5;
+const WAVY_BELOW = 12;
+const WAVY_REACH = 10;
 /** How far a frame stands off the points of its strokes, in sheet units, as canvas-api's (R26). */
 const MARK_PADDING = 10;
 /** The rounding of a frame's corners, in sheet units. */
@@ -466,6 +480,11 @@ canvas {
   fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;
 }
 .marks .right .sign { stroke: ${RIGHT}; }
+.marks .wavy path {
+  fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke;
+}
+.marks .wavy .glow { stroke: #fff; stroke-width: 6.4px; }
+.marks .wavy .line { stroke: var(--novatrail-canvas-wavy, ${WAVY}); stroke-width: 2.4px; }
 .marks .not-yet .sign { stroke: ${NOT_YET}; }
 @media (forced-colors: active) {
   .sheet { outline: 1px solid CanvasText; }
@@ -477,6 +496,8 @@ canvas {
   .marks rect { stroke: Highlight; }
   .marks .halo { fill: Canvas; stroke: CanvasText; }
   .marks .right .sign, .marks .not-yet .sign { stroke: Highlight; }
+  .marks .wavy .glow { stroke: Canvas; }
+  .marks .wavy .line { stroke: Highlight; }
   .tracing { mix-blend-mode: normal; }
   .tracing .edge { stroke: CanvasText; }
   .grip .bar, .grip.dragging .bar { background: ButtonText; }
@@ -567,8 +588,8 @@ interface Ink {
 
 /**
  * A mark the sheet shows (R26): its name and where it is, its frame on the layer of the marks — a
- * verdict's tick or cross on its halo (R162 spec) —, the frame as last drawn, in sheet units, and
- * whether the stroke under way is writing over it.
+ * verdict's tick or cross on its halo, or a wavy line (R162 spec) —, the frame as last drawn, in
+ * sheet units, and whether the stroke under way is writing over it.
  */
 interface Shown {
   readonly name: string;
@@ -624,6 +645,49 @@ function verdictNode(correct: boolean): SVGGElement {
   sign.setAttribute("d", correct ? TICK : CROSS);
   g.append(halo, sign);
   return g;
+}
+
+/**
+ * The wavy line of "Show where" (concepts 10 spec): the line over a wider white one, its halo, both
+ * of the path the marks give them.
+ */
+function wavyNode(): SVGGElement {
+  const g = document.createElementNS(SVG, "g");
+  g.setAttribute("class", "wavy");
+  for (const name of ["glow", "line"]) {
+    const path = document.createElementNS(SVG, "path");
+    path.setAttribute("class", name);
+    g.append(path);
+  }
+  return g;
+}
+
+/**
+ * Where a wavy line stands, in sheet units, by its place: under it, past each side, from crest to
+ * trough, kept to the sheet by `half` its line.
+ */
+function wavyAt(box: Box, half: number): Box {
+  const y = Math.min(box.maxY + WAVY_BELOW, SHEET.height - WAVY_CREST - half);
+  return {
+    minX: Math.max(box.minX - WAVY_REACH, half),
+    minY: y - WAVY_CREST,
+    maxX: Math.min(box.maxX + WAVY_REACH, SHEET.width - half),
+    maxY: y + WAVY_CREST,
+  };
+}
+
+/** The path of a wavy line across its box, by half waves from its left. */
+function wavyPath({ minX, minY, maxX, maxY }: Box): string {
+  const y = (minY + maxY) / 2;
+  // A quadratic curve's crest is half way to its control point.
+  const control = maxY - minY;
+  const at = (n: number) => String(Math.round(n * 10) / 10);
+  let d = `M${at(minX)} ${at(y)}`;
+  for (let x = minX, up = true; x < maxX; x += WAVY_HALF, up = !up) {
+    const to = Math.min(x + WAVY_HALF, maxX);
+    d += ` Q${at((x + to) / 2)} ${at(up ? y - control : y + control)} ${at(to)} ${at(y)}`;
+  }
+  return d;
 }
 
 /**
@@ -1820,13 +1884,20 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
           sameItems(shown.placed.ids, placed.ids) &&
           sameBox(shown.placed.cell ?? null, placed.cell ?? null) &&
           shown.placed.correct === placed.correct &&
-          (placed.correct === undefined || sameBox(shown.placed.box, placed.box))
+          shown.placed.wavy === placed.wavy &&
+          (placed.correct === undefined || sameBox(shown.placed.box, placed.box)) &&
+          (!placed.wavy || sameBox(shown.placed.box, placed.box))
         );
       });
     if (same) return;
     for (const { node } of this.#shown) node.remove();
     this.#shown = marks.map(({ name, placed }) => {
-      const node = placed.correct === undefined ? frameNode() : verdictNode(placed.correct);
+      const node =
+        placed.correct !== undefined
+          ? verdictNode(placed.correct)
+          : placed.wavy
+            ? wavyNode()
+            : frameNode();
       node.setAttribute("role", "img");
       node.setAttribute("aria-label", name);
       node.setAttribute("display", "none");
@@ -2638,12 +2709,14 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       const frame =
         shown && mark.placed.correct !== undefined
           ? verdictAt(shown, screen.k)
-          : shown && {
-              minX: Math.max(shown.minX - MARK_PADDING, half),
-              minY: Math.max(shown.minY - MARK_PADDING, half),
-              maxX: Math.min(shown.maxX + MARK_PADDING, SHEET.width - half),
-              maxY: Math.min(shown.maxY + MARK_PADDING, SHEET.height - half),
-            };
+          : shown && mark.placed.wavy
+            ? wavyAt(shown, half)
+            : shown && {
+                minX: Math.max(shown.minX - MARK_PADDING, half),
+                minY: Math.max(shown.minY - MARK_PADDING, half),
+                maxX: Math.min(shown.maxX + MARK_PADDING, SHEET.width - half),
+                maxY: Math.min(shown.maxY + MARK_PADDING, SHEET.height - half),
+              };
       if (this.#writing === undefined || frame === null) mark.under = false;
       else if (!mark.under) {
         // A frame that came or moved while the stroke was under way is checked against all of it.
@@ -2671,6 +2744,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
         node.setAttribute("y", String(frame.minY));
         node.setAttribute("width", String(frame.maxX - frame.minX));
         node.setAttribute("height", String(frame.maxY - frame.minY));
+      } else if (mark.placed.wavy) {
+        const d = wavyPath(frame);
+        for (const path of node.children) path.setAttribute("d", d);
       } else {
         const scale = (frame.maxX - frame.minX) / 24;
         node.setAttribute("transform", `translate(${frame.minX} ${frame.minY}) scale(${scale})`);

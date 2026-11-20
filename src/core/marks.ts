@@ -100,13 +100,16 @@ export interface Paper {
  * mark of a box the submission found empty holds no strokes, and its `box` is then the cell's own:
  * `shownOf` frames it alone. A verdict stands by the group of strokes `verdictsOf` gives it, its
  * `box` theirs, or, with none, by the answer's box laid on the sheet by the crop's `sheetBox`: the
- * answer may be ink on the photo of the page. `correct` says a tick or a cross (R162 spec).
+ * answer may be ink on the photo of the page. `correct` says a tick or a cross (R162 spec). A wavy
+ * line holds on to the strokes its box takes, as a frame does, and with none stands under the box
+ * laid on the sheet, the place of the mistake; `wavy` says it is one (concepts 10 spec).
  */
 export interface Placed {
   readonly ids: readonly number[];
   readonly box: Box;
   readonly cell?: Box;
   readonly correct?: boolean;
+  readonly wavy?: true;
 }
 
 /**
@@ -244,6 +247,14 @@ export function placesOf(
   return marks.marks.map((mark, n) => {
     const { at } = mark;
     if (mark.kind === "verdict") return verdicts.get(n) ?? null;
+    if (mark.kind === "wavy_line") {
+      const ids = snapOf(mark.at.box, crop, sent, rule);
+      const box =
+        ids.length === 0
+          ? onSheetOf(mark.at.box, crop)
+          : boxOf(ids.flatMap((id) => byId.get(id)?.points ?? []));
+      return { ids, box, wavy: true };
+    }
     let ids: number[] = [];
     if ("group" in at) ids = [...(tables.get(at.group) ?? [])].sort(byNumber);
     else if ("box" in at) ids = snapOf(at.box, crop, sent, rule);
@@ -255,12 +266,13 @@ export function placesOf(
 /**
  * The rectangle a mark shows now (R26): around the points of those of its strokes the sheet shows,
  * in units, or null while it shows none of them. A mark of a box that was empty shows the box
- * itself, always (R39), and a verdict its box (R162 spec). `shown` gives the box of a stroke's points by its ID while the stroke is
+ * itself, always (R39), a verdict its box, and a wavy line of no strokes its box (R162 spec).
+ * `shown` gives the box of a stroke's points by its ID while the stroke is
  * on the screen — not erased, nor under the eraser under way (R22). New strokes are none of a
  * mark's.
  */
 export function shownOf(placed: Placed, shown: (id: number) => Box | undefined): Box | null {
-  if (placed.correct !== undefined) return placed.box;
+  if (placed.correct !== undefined || (placed.wavy && placed.ids.length === 0)) return placed.box;
   // A mark of a box that was empty stands round the box alone, whatever is written in it since.
   if (placed.cell !== undefined && placed.ids.length === 0) return placed.cell;
   const boxes = placed.ids.flatMap((id) => shown(id) ?? []);
@@ -683,7 +695,7 @@ function numbersOf(value: unknown, path: string, groups: readonly Group[]): Crop
 
 /**
  * A mark checked: a frame, or on a task from paper, `paper`, a verdict too, at a box alone and with
- * whether the answer is right (R162 spec).
+ * whether the answer is right, and a wavy line, at a box alone (R162 spec).
  */
 function markOf(
   value: unknown,
@@ -692,8 +704,8 @@ function markOf(
   paper: boolean,
 ): Mark {
   const mark = record(value, path);
-  const kinds = paper ? '"frame" and "verdict" marks' : '"frame" marks';
-  if (mark.kind !== "frame" && !(paper && mark.kind === "verdict")) {
+  const kinds = paper ? '"frame", "verdict" and "wavy_line" marks' : '"frame" marks';
+  if (mark.kind !== "frame" && !(paper && (mark.kind === "verdict" || mark.kind === "wavy_line"))) {
     throw new TypeError(`${path}.kind: the sheet draws ${kinds}, not ${shown(mark.kind)}`);
   }
   if (typeof mark.name !== "string" || mark.name.trim() === "") {
@@ -704,8 +716,10 @@ function markOf(
   const at = anchorOf(mark.at, `${path}.at`, labels);
   if (mark.kind === "frame") return { kind: "frame", at, name: mark.name };
   if (!("box" in at)) {
-    throw new TypeError(`${path}.at: a verdict stands at a box alone, not ${shown(mark.at)}`);
+    const which = mark.kind === "verdict" ? "a verdict stands" : "a wavy line stands";
+    throw new TypeError(`${path}.at: ${which} at a box alone, not ${shown(mark.at)}`);
   }
+  if (mark.kind === "wavy_line") return { kind: "wavy_line", at, name: mark.name };
   if (typeof mark.correct !== "boolean") {
     throw new TypeError(
       `${path}.correct: whether the answer is right, true or false, not ${shown(mark.correct)}`,
