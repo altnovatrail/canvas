@@ -233,6 +233,12 @@ describe("the work of a task from paper for checking", () => {
     expect(() =>
       placesOf(marks, strokes, null, undefined, { at: [0, 0], onTracing: paper.onTracing }),
     ).toThrow(/lie elsewhere/);
+    // A sheet's context is no task from paper's, which a sheet's marks never go back to.
+    const { tracing: _, ...sheet } = work.submission;
+    const sheets = marksOf(stored({ submission: sheet, marks: [] }));
+    expect(() => placesOf(sheets, strokes, null, undefined, paper)).toThrow(
+      /a sheet's context, and this is a task from paper/,
+    );
   });
 
   test("stands a verdict by the strokes nearest its box, a group each, or at its box", () => {
@@ -375,6 +381,13 @@ describe("the crop's picture", () => {
       },
     );
     expect([...ink]).toEqual([0, 0, 200, 200]);
+  });
+
+  test("lays nothing where the paper has no size", () => {
+    const ink = new Uint8Array(4).fill(255);
+    layOver(ink, 2, plain(2, 2, 0), { left: 1, top: 0, right: 1, bottom: 2 });
+    layOver(ink, 2, plain(2, 2, 0), { left: 0, top: 1, right: 2, bottom: 1 });
+    expect([...ink]).toEqual([255, 255, 255, 255]);
   });
 
   test("leaves the pixels beyond the crop as they are", () => {
