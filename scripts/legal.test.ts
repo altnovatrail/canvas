@@ -90,7 +90,7 @@ describe("the release file", () => {
 
   // No line of CI's log gives this test's time: it is the test below's 4 804 ms on the runner,
   // scaled by their ratio on one machine, 1 956 ms for the part read on eight days to 724 (R75).
-  test("is read on a day: version 3 of the policy is the next until 2026-11-27, then the current, and version 4 from 2026-11-28", {
+  test("is read on a day: version 3 of the policy is the next until 2026-11-27, then the current, and version 5, of the same day as 4, from 2026-11-28", {
     timeout: budget(13_000),
   }, () => {
     withLegalFile((folder, schema) => {
@@ -103,10 +103,10 @@ describe("the release file", () => {
       });
       expect(on("2026-11-27")).toMatchObject({
         current: { texts: { "privacy-policy": 3 } },
-        next: { texts: { "privacy-policy": 4 } },
+        next: { texts: { "privacy-policy": 5 } },
       });
       const after = on("2026-11-28");
-      expect(after).toMatchObject({ current: { texts: { "privacy-policy": 4 } } });
+      expect(after).toMatchObject({ current: { texts: { "privacy-policy": 5 } } });
       expect("next" in after && after.next).toEqual({ texts: {}, sets: {} });
       // A set applies from the day it was approved: before it, its version before is the current.
       expect(on("2026-11-15")).toMatchObject({
