@@ -365,7 +365,8 @@ test("strokes out of sight are outlined only when they come into sight", async (
   element.history = history;
   await settle();
   expect(probe(element).outlines).toBe(outlines + 1);
-  viewport.scrollTop = viewport.scrollHeight;
+  // Down to the units from 1000 to 1750, the second stroke among them: the sheet goes on below.
+  viewport.scrollTop = 400;
   await settle();
   expect(probe(element).outlines).toBe(outlines + 2);
 });

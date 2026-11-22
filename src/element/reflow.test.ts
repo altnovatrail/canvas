@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { SHORT } from "../core/pages.fixture.js";
 import { sheetTask, workbookTask, workedExample } from "../core/tasks.fixture.js";
-import { consumerButton, placed, settle, spacer } from "./pointer.fixture.js";
+import { consumerButton, paperCrop, placed, settle, spacer } from "./pointer.fixture.js";
 
 // The bar of buttons in a narrow or a low window (R84; R90 spec): the rail it stands in the middle
 // of sticks over what scrolls the element, below the consumer's --novatrail-canvas-top, as tall as
@@ -40,7 +40,10 @@ function railOf(root: ShadowRoot): HTMLElement {
 /** The middle of a box, down the screen. */
 const middleOf = (box: DOMRect) => (box.top + box.bottom) / 2;
 
-/** The kinds of canvas whose bars are tried: a sheet, a workbook and a worked example. */
+/**
+ * The kinds of canvas whose bars are tried: a sheet, a workbook and a task from paper, whose bar is
+ * the longest. A worked example has no bar (R84): its row is tried below.
+ */
 const KINDS: readonly {
   readonly name: string;
   readonly put: (width: number) => ReturnType<typeof placed>;
@@ -54,10 +57,10 @@ const KINDS: readonly {
     put: (width) => placed(made, width, undefined, { task: workbookTask(SHORT) }),
   },
   {
-    name: "a worked example",
+    name: "a task from paper",
     put: async (width) => {
       const found = await placed(made, width);
-      found.element.workedExample = workedExample();
+      found.element.paper = { statement: await paperCrop() };
       await settle();
       return found;
     },
@@ -137,7 +140,7 @@ test.each(LOW)(
     expect(root.activeElement?.textContent).toBe("Pen");
     await userEvent.keyboard("{End}");
     const last = root.activeElement;
-    expect(last?.textContent).toBe("Zoom out");
+    expect(last?.textContent).toBe("Clear");
     expect(row.scrollTop).toBeGreaterThan(0);
     const button = last?.getBoundingClientRect();
     const now = row.getBoundingClientRect();
@@ -167,7 +170,8 @@ test.each(OFFSETS)(
   async ({ offset, top }) => {
     await windowOf(414, 400);
     const { element, root, row } = await placed(made, 400, undefined, { task: sheetTask() });
-    // A sheet 400 px wide is some 560 px tall: taller than the window, which it scrolls past.
+    // A sheet 400 px wide is some 560 px tall, and goes a window further: taller than the window,
+    // which it scrolls past.
     if (offset !== undefined) element.style.setProperty("--novatrail-canvas-top", offset);
     spacer(made);
     await settle();
@@ -183,6 +187,21 @@ test.each(OFFSETS)(
     }
   },
 );
+
+test("without a height, in a page that scrolls the element, the rail ends --novatrail-canvas-pad-bottom above the window's bottom, below the consumer's bar there, and the bar stands in the middle of the band between", async () => {
+  await windowOf(414, 400);
+  const { element, root, row } = await placed(made, 400, undefined, { task: sheetTask() });
+  element.style.setProperty("--novatrail-canvas-top", "40px");
+  element.style.setProperty("--novatrail-canvas-pad-bottom", "60px");
+  spacer(made);
+  await settle();
+  window.scrollTo({ top: 150, behavior: "instant" });
+  await settle();
+  const rail = railOf(root).getBoundingClientRect();
+  expect(rail.top).toBeCloseTo(40, 0);
+  expect(rail.bottom).toBeCloseTo(window.innerHeight - 60, 0);
+  expect(middleOf(row.getBoundingClientRect())).toBeCloseTo((40 + window.innerHeight - 60) / 2, 0);
+});
 
 test.each(["auto", "hidden"])(
   "in an ancestor of overflow %s lower than the window the rail sticks to the ancestor, below the offset, and the bar stands within what the ancestor shows",

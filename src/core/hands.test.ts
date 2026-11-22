@@ -131,7 +131,7 @@ describe("who writes", () => {
     // Within the slop: one that goes further drags the sheet ("one finger in pen mode").
     expect(bench.move(A, 30, { y: 100 + SLOP_PX })).toBe(false);
     expect(bench.role(A)).toBe("waits");
-    // Asked for the finger again, the next finger writes.
+    // Out of pen mode, as on a new page, the next finger writes.
     bench.mode.on = false;
     expect(bench.down(B, 40)).toBe(true);
   });

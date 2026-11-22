@@ -11,12 +11,19 @@ import { paperWorkForCheck } from "./submission.js";
 import {
   boxOnSheet,
   grayOf,
+  isPaperGrid,
   keptOn,
   LARGEST,
   layOver,
+  nextGrid,
   onSheet,
   onTracing,
+  PAPER_GRIDS,
   rectOf,
+  rulingsOf,
+  SCALE,
+  scaled,
+  scaleOf,
   sizeOf,
   TRACING,
   TRACING_START,
@@ -40,6 +47,29 @@ function plain(width: number, height: number, value: number) {
   return { gray: new Uint8Array(width * height).fill(value), width, height };
 }
 
+describe("the grid of a task from paper (R88)", () => {
+  test("it turns dots, lines, blank, squares, and round to dots again", () => {
+    expect(PAPER_GRIDS).toEqual(["dots", "lines", "blank", "squares"]);
+    expect(nextGrid("dots")).toBe("lines");
+    expect(nextGrid("lines")).toBe("blank");
+    expect(nextGrid("blank")).toBe("squares");
+    expect(nextGrid("squares")).toBe("dots");
+  });
+
+  test("each grid has its rulings, and a blank sheet none", () => {
+    expect(rulingsOf("dots")).toEqual({ kind: "dots", step: 25 });
+    expect(rulingsOf("lines")).toEqual({ kind: "lines", step: 40 });
+    expect(rulingsOf("squares")).toEqual({ kind: "squares", step: 25 });
+    expect(rulingsOf("blank")).toBeUndefined();
+  });
+
+  test("only its four grids are grids", () => {
+    expect(PAPER_GRIDS.every(isPaperGrid)).toBe(true);
+    for (const each of ["none", "Dots", "", 1, null, undefined])
+      expect(isPaperGrid(each)).toBe(false);
+  });
+});
+
 describe("the tracing paper's size and place", () => {
   test("fits the rule's box in the crop's proportions", () => {
     expect(sizeOf(1600, 400)).toEqual({ width: 800, height: 200 });
@@ -48,28 +78,31 @@ describe("the tracing paper's size and place", () => {
   });
 
   test("starts right of the bar, shown, frozen", () => {
-    expect(TRACING_START).toEqual({ at: [180, 60], hidden: false });
+    expect(TRACING_START).toEqual({ at: [180, 60], hidden: false, scale: 1 });
     expect(Object.isFrozen(TRACING_START) && Object.isFrozen(TRACING_START.at)).toBe(true);
     // The largest paper at the start lies wholly on the sheet.
     expect(keptOn(TRACING_START.at, LARGEST)).toEqual([180, 60]);
   });
 
-  test("is kept wholly on the sheet by the grip and the keys", () => {
+  test("is kept wholly within the sheet's reach by the grip and the keys, past the page too", () => {
     const size = { width: 400, height: 100 };
     expect(keptOn([-50, -10], size)).toEqual([0, 0]);
-    expect(keptOn([900, 1390], size)).toEqual([600, 1300]);
+    expect(keptOn([900, 1390], size)).toEqual([900, 1390]);
+    expect(keptOn([9900, 13990], size)).toEqual([9600, 13900]);
     expect(keptOn([300, 500], size)).toEqual([300, 500]);
   });
 
-  test("takes a state that leaves it in part on the sheet, and no other", () => {
+  test("takes a state that leaves it in part within the sheet's reach, and no other", () => {
     const size = { width: 400, height: 100 };
-    const state = tracingStateOf({ at: [-399, 1399], hidden: true, more: 1 }, size);
-    expect(state).toEqual({ at: [-399, 1399], hidden: true });
+    const state = tracingStateOf({ at: [-399, 13999], hidden: true, more: 1 }, size);
+    expect(state).toEqual({ at: [-399, 13999], hidden: true, scale: 1 });
     expect(Object.isFrozen(state) && Object.isFrozen(state.at)).toBe(true);
+    // Past the page it is on the sheet still (R73).
+    expect(tracingStateOf({ at: [1000, 1400], hidden: false }, size).at).toEqual([1000, 1400]);
     for (const at of [
       [-400, 0],
-      [1000, 0],
-      [0, 1400],
+      [10000, 0],
+      [0, 14000],
       [0, -100],
     ]) {
       expect(() => tracingStateOf({ at, hidden: false }, size), String(at)).toThrow(TypeError);
@@ -79,9 +112,38 @@ describe("the tracing paper's size and place", () => {
       { at: [1], hidden: false },
       { at: [0, Number.NaN], hidden: false },
       { at: [0, 0], hidden: "no" },
+      { at: [0, 0], hidden: false, scale: 0.3 },
+      { at: [0, 0], hidden: false, scale: 4.01 },
+      { at: [0, 0], hidden: false, scale: "2" },
     ]) {
       expect(() => tracingStateOf(bad, size), JSON.stringify(bad)).toThrow(TypeError);
     }
+  });
+
+  test("takes a scale from 0.4 to 4, and tells a place wholly off by the paper's size at it (R89)", () => {
+    const size = { width: 400, height: 100 };
+    expect(tracingStateOf({ at: [0, 0], hidden: false, scale: 2.5 }, size).scale).toBe(2.5);
+    // At twice its size, a paper 800 wide reaches the sheet from 800 to its left.
+    expect(tracingStateOf({ at: [-799, 0], hidden: false, scale: 2 }, size).at).toEqual([-799, 0]);
+    expect(() => tracingStateOf({ at: [-799, 0], hidden: false }, size)).toThrow(TypeError);
+    expect(scaleOf(5)).toBe(SCALE.max);
+    expect(scaleOf(0.1)).toBe(SCALE.min);
+    expect(scaleOf(1.2345)).toBe(1.23);
+    expect(scaled(size, 2)).toEqual({ width: 800, height: 200 });
+  });
+
+  test("holds a point by its corner at its scale, and puts its strokes back on the sheet at it (R89)", () => {
+    const size = { width: 400, height: 100 };
+    expect(toTracing({ x: 300, y: 70 }, [100, 50], size, 2)).toEqual({ x: 100, y: 10 });
+    expect(toTracing({ x: 1300, y: 70 }, [100, 50], size, 2)).toEqual({ x: 400, y: 10 });
+    const back = onSheet(stroke(1, [100, 10, 0]), [100, 50], 2);
+    expect(back.points.map(({ x, y }) => [x, y])).toEqual([[300, 70]]);
+    expect(boxOnSheet({ minX: 0, minY: 0, maxX: 10, maxY: 5 }, [100, 50], 2)).toEqual({
+      minX: 100,
+      minY: 50,
+      maxX: 120,
+      maxY: 60,
+    });
   });
 
   test("tells a place wholly off the sheet for a paper's size, which its real size may make so", () => {
@@ -92,8 +154,9 @@ describe("the tracing paper's size and place", () => {
     expect(keptOn([-750, 100], read)).toEqual([0, 100]);
     expect(whollyOff([-400, 0], read)).toBe(true);
     expect(whollyOff([-399.9, 0], read)).toBe(false);
-    expect(whollyOff([1000, 0], read)).toBe(true);
-    expect(whollyOff([0, 1400], read)).toBe(true);
+    expect(whollyOff([1000, 0], read)).toBe(false);
+    expect(whollyOff([10000, 0], read)).toBe(true);
+    expect(whollyOff([0, 14000], read)).toBe(true);
   });
 
   test("holds a point by its corner, kept to it, and puts its strokes back on the sheet", () => {
@@ -104,13 +167,20 @@ describe("the tracing paper's size and place", () => {
     const moved = onSheet(stroke(3, [10, 20, 5], [990, 30, 9]), [100, 50]);
     expect(moved.points.map(({ x, y }) => [x, y])).toEqual([
       [110, 70],
-      [1000, 80],
+      [1090, 80],
+    ]);
+    // A stroke carried past the sheet's reach is kept to it.
+    const far = onSheet(stroke(5, [10, 20, 5], [990, 30, 9]), [9500, 13980]);
+    expect(far.points.map(({ x, y }) => [x, y])).toEqual([
+      [9510, 14000],
+      [10000, 14000],
     ]);
     expect(moved.id).toBe(3);
     // The box moved with the paper is the moved stroke's, kept to the sheet as its points are.
-    const traced = stroke(4, [10, 20, 5], [990, 30, 9], [-5, 1395, 12]);
+    const traced = stroke(4, [10, 20, 5], [990, 30, 9], [-5, 13995, 12]);
     for (const at of [
       [100, 50],
+      [9500, 10],
       [-30, 10],
       [0, 0],
     ] as const) {
@@ -119,11 +189,11 @@ describe("the tracing paper's size and place", () => {
       );
     }
     expect(Object.isFrozen(moved.points[0])).toBe(true);
-    expect(tenthsOf(rectOf([-10, 1350], size))).toEqual({
+    expect(tenthsOf(rectOf([-10, 13950], size))).toEqual({
       minX: 0,
-      minY: 13500,
+      minY: 139500,
       maxX: 3900,
-      maxY: 14000,
+      maxY: 140000,
     });
   });
 });
@@ -177,13 +247,13 @@ describe("the work of a task from paper for checking", () => {
   const onPaper = stroke(1, [20, 20, 0], [20, 70, 100]);
   const below = stroke(2, [300, 400, 3000], [300, 460, 3100]);
   const strokes = [onSheet(onPaper, at), below];
-  const paper = { at, onTracing: (id: number) => id === 1 };
+  const paper = { at, scale: 1, onTracing: (id: number) => id === 1 };
 
   test("crops the paper with the strokes, and multiplies the crop's picture into it", () => {
     const work = paperWorkForCheck(strokes, paper, tracing, rectOf(at, size), plain(8, 2, 128), 24);
     if (work === null) throw new Error("no work");
     const { crop, groups, tracing: lay } = work.submission;
-    expect(lay).toEqual(tracing);
+    expect(lay).toEqual({ ...tracing, scale: 1 });
     expect(groups).toEqual(groupsOf(strokes));
     // The crop takes in the whole paper: its box reaches its corners, in tenths.
     expect(crop.exact.box).toEqual({ minX: 2000, minY: 1000, maxX: 6000, maxY: 4600 });
@@ -212,9 +282,13 @@ describe("the work of a task from paper for checking", () => {
     expect(digest).toBe(digestOf(strokes, crop, groups, paper));
     expect(digest).not.toBe(digestOf(strokes, crop, groups));
     expect(digest).not.toBe(
-      digestOf(strokes, crop, groups, { at: [200, 101], onTracing: paper.onTracing }),
+      digestOf(strokes, crop, groups, { at: [200, 101], scale: 1, onTracing: paper.onTracing }),
     );
-    expect(digest).not.toBe(digestOf(strokes, crop, groups, { at, onTracing: () => false }));
+    expect(digest).not.toBe(
+      digestOf(strokes, crop, groups, { at, scale: 1, onTracing: () => false }),
+    );
+    // A scale tells in the digest; a scale of 1 adds nothing to it (R89).
+    expect(digest).not.toBe(digestOf(strokes, crop, groups, { ...paper, scale: 2 }));
   });
 
   test("goes back to its sheet, the paper where it lay, and to no other", () => {
@@ -231,7 +305,11 @@ describe("the work of a task from paper for checking", () => {
     expect(places[0]?.ids.length).toBeGreaterThan(0);
     expect(() => placesOf(marks, strokes)).toThrow(/a task from paper's context/);
     expect(() =>
-      placesOf(marks, strokes, null, undefined, { at: [0, 0], onTracing: paper.onTracing }),
+      placesOf(marks, strokes, null, undefined, {
+        at: [0, 0],
+        scale: 1,
+        onTracing: paper.onTracing,
+      }),
     ).toThrow(/lie elsewhere/);
     // A sheet's context is no task from paper's, which a sheet's marks never go back to.
     const { tracing: _, ...sheet } = work.submission;

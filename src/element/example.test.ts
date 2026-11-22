@@ -63,6 +63,8 @@ test("a worked example shows its statement above the sheet in the manifest's lan
   const statement = root.querySelector(".statement");
   expect(statement?.textContent).toBe(question);
   expect(statement?.getAttribute("lang")).toBe("ru");
+  // Its sheet is its page alone, ruled as far as it goes, once it is laid out (R73).
+  await settle();
   expect(root.querySelector(".grid")?.getAttribute("d")).toBe(gridPath({ kind: "dots", step: 40 }));
   // Nothing of a work: the learner does not write on a worked example's sheet (R42).
   expect(element.history).toEqual([]);
@@ -241,11 +243,20 @@ test.runIf(devtools)(
 test("undefined takes the worked example off: the sheet is one with no task again, which takes the pointer and writes", async () => {
   const { element, root, canvas, view } = await sheet();
   element.workedExample = workedExample({ grid: "lines" });
+  await settle();
   element.workedExample = undefined;
   expect(element.workedExample).toBeUndefined();
   expect(root.querySelector(".statement")?.textContent).toBe("");
+  // The sheet goes past the page again, ruled as far as it goes (R73).
+  await settle();
+  const box = root.querySelector(".sheet")?.getBoundingClientRect();
+  const extent = {
+    width: Math.round((box?.width ?? 0) / view().k),
+    height: Math.round((box?.height ?? 0) / view().k),
+  };
+  expect(extent.width).toBeGreaterThan(1000);
   expect(root.querySelector(".grid")?.getAttribute("d")).toBe(
-    gridPath({ kind: "squares", step: 50 }),
+    gridPath({ kind: "squares", step: 50 }, extent),
   );
   expect(getComputedStyle(canvas).pointerEvents).toBe("auto");
   const point = at(canvas, view(), 500, 250);
@@ -271,9 +282,8 @@ test("a worked example given before the element is upgraded is taken, and with a
     const taken = upgrade({ tool: "eraser", workedExample: given });
     expect(taken.workedExample).toBe(given);
     expect(taken.tool).toBe("pen");
-    expect(taken.shadowRoot?.querySelector(".tools")?.getAttribute("aria-label")).toBe(
-      "Worked example buttons",
-    );
+    // It has no bar (R84).
+    expect(taken.shadowRoot?.querySelector<HTMLElement>(".tools")?.hidden).toBe(true);
     expect(warn).not.toHaveBeenCalled();
     // The task before the example: the task stays, and the example goes.
     const task = sheetTask();

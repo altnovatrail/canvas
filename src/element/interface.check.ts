@@ -18,6 +18,8 @@ import type {
   ExportedWork,
   ExportedWorkbook,
   Filled,
+  GridChange,
+  GridChangeEvent,
   HistoryChange,
   HistoryChangeEvent,
   HistoryEvent,
@@ -26,6 +28,7 @@ import type {
   Marks,
   Media,
   NovatrailCanvas,
+  PaperGrid,
   PaperSubmission,
   PaperTask,
   SheetSubmission,
@@ -53,11 +56,14 @@ export type Contract = All<
     Same<ExportedSheet, spec.ExportedSheet>,
     Same<ExportedWork, spec.ExportedWork>,
     Same<ExportedWorkbook, spec.ExportedWorkbook>,
+    Same<GridChange, spec.GridChange>,
+    Same<GridChangeEvent, spec.GridChangeEvent>,
     Same<HistoryChange, spec.HistoryChange>,
     Same<HistoryChangeEvent, spec.HistoryChangeEvent>,
     Same<Mark, spec.Mark>,
     Same<Marks, spec.Marks>,
     Same<Media, spec.Media>,
+    Same<PaperGrid, spec.PaperGrid>,
     Same<PaperSubmission, spec.PaperSubmission>,
     Same<PaperTask, spec.PaperTask>,
     Same<ToolChange, spec.ToolChange>,
@@ -70,6 +76,7 @@ export type Contract = All<
     Same<GlobalEventHandlersEventMap["toolchange"], CanvasEventMap["toolchange"]>,
     Same<GlobalEventHandlersEventMap["demochange"], CanvasEventMap["demochange"]>,
     Same<GlobalEventHandlersEventMap["tracingchange"], CanvasEventMap["tracingchange"]>,
+    Same<GlobalEventHandlersEventMap["gridchange"], CanvasEventMap["gridchange"]>,
   ]
 >;
 export const contract: Contract = true;
@@ -110,6 +117,8 @@ document.addEventListener("toolchange", (event) => {
   return tool;
 });
 sheet.tool = "eraser";
+/** The hand moves the sheet and writes nothing (R88). */
+sheet.tool = "hand";
 sheet.task = posts;
 sheet.task = { ...posts, canvas: { kind: "handwriting_sheet", grid: "dots", grid_step: 40 } };
 sheet.task = {
@@ -148,7 +157,7 @@ sheet.marks = {
 export const filled: Filled | null = sheet.filled;
 export const first: boolean | undefined = sheet.filled?.[0]?.[0];
 /**
- * A task from paper: its crop, a Blob, as tracing paper over a dotted sheet, where the learner
+ * A task from paper: its crop, a Blob, as tracing paper over a sheet of its grid, where the learner
  * moves and hides it, which a tracingchange tells; its work holds the crop beside the work's (R87).
  */
 declare const statement: Blob;
@@ -160,6 +169,18 @@ sheet.addEventListener("tracingchange", (event: TracingChangeEvent) => event.det
 document.addEventListener("tracingchange", (event) => {
   const state: TracingState = event.detail;
   return state;
+});
+/**
+ * Its sheet's grid, the learner's, which a gridchange tells and the consumer gives back; none
+ * without a task from paper (R88).
+ */
+sheet.grid = "lines";
+sheet.grid = undefined;
+export const ruled: PaperGrid | undefined = sheet.grid;
+sheet.addEventListener("gridchange", (event: GridChangeEvent) => event.detail.grid);
+document.addEventListener("gridchange", (event) => {
+  const chosen: GridChange = event.detail;
+  sheet.grid = chosen.grid;
 });
 export const beside: Blob | undefined = "statement" in done ? done.statement : undefined;
 export const laid: TracingState = fromPaper.submission.tracing;
@@ -260,5 +281,13 @@ sheet.task = { ...posts, canvas: { kind: "handwriting_sheet", digit: 48 } };
 sheet.task = { ...posts, givens: "A post every 4 m." };
 // @ts-expect-error A tool the sheet has not is no tool of it.
 sheet.tool = "ruler";
+// @ts-expect-error A grid of no name is no grid: a blank sheet is "blank".
+sheet.grid = "none";
+// @ts-expect-error null is no grid: undefined, and undefined alone, changes nothing.
+sheet.grid = null;
+document.addEventListener("gridchange", (event) => {
+  // @ts-expect-error The grid told is the learner's choice, to read.
+  event.detail.grid = "dots";
+});
 // @ts-expect-error Marks whose submission has no digest are no marks of a submission (R27).
 sheet.marks = { submission: { crop, groups: [] }, marks: [] };

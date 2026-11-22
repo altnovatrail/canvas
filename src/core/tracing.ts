@@ -1,10 +1,11 @@
-import type { TracingState } from "@altnovatrail/spec/canvas";
+import type { PaperGrid, TracingReading, TracingState } from "@altnovatrail/spec/canvas";
 import { record, shown } from "./fields.js";
 import type { Box } from "./geometry.js";
 import { tenths } from "./geometry.js";
+import type { Grid } from "./grid.js";
 import type { Stroke } from "./ink.js";
 import type { Point } from "./screen.js";
-import { SHEET } from "./sheet.js";
+import { REACH } from "./sheet.js";
 
 /**
  * Where the tracing paper of a task from paper lies on the sheet, and whether it is hidden (R87):
@@ -26,6 +27,62 @@ export const TRACING = Object.freeze({
   leap: 100,
   dots: 25,
 });
+
+/**
+ * The tracing paper's scale (R89): from `min` to `max` times its own size, as the mockup's
+ * `Zadacha-masshtab` has it; a button's press multiplies it by `button`, a notch of the wheel by
+ * `wheel`, and a scale is kept in hundredths, as the percentage shows it.
+ */
+export const SCALE = Object.freeze({ min: 0.4, max: 4, button: 1.2, wheel: 1.08 });
+
+/** A scale kept to the rule's bounds, in hundredths (R89). */
+export function scaleOf(scale: number): number {
+  return Math.round(clamp(scale, SCALE.min, SCALE.max) * 100) / 100;
+}
+
+/** The scale of a tracing state: 1 where it has none (R89). */
+export function scaleIn(state: TracingState): number {
+  return state.scale ?? 1;
+}
+
+/** A size as large as `scale` makes it. */
+export function scaled(size: Size, scale: number): Size {
+  return { width: size.width * scale, height: size.height * scale };
+}
+
+/**
+ * The grids of a task from paper's sheet in the order its button turns them, round, the first as
+ * the task comes (R88).
+ */
+export const PAPER_GRIDS: readonly PaperGrid[] = Object.freeze([
+  "dots",
+  "lines",
+  "blank",
+  "squares",
+]);
+
+/** Each grid's rulings, in sheet units, as the mockup draws them: a blank sheet has none (R88). */
+const RULINGS: Readonly<Record<PaperGrid, Grid | undefined>> = Object.freeze({
+  dots: Object.freeze({ kind: "dots", step: TRACING.dots }),
+  lines: Object.freeze({ kind: "lines", step: 40 }),
+  blank: undefined,
+  squares: Object.freeze({ kind: "squares", step: TRACING.dots }),
+});
+
+/** Whether a value is a grid of a task from paper's sheet. */
+export function isPaperGrid(value: unknown): value is PaperGrid {
+  return typeof value === "string" && (PAPER_GRIDS as readonly string[]).includes(value);
+}
+
+/** The rulings of a task from paper's grid, or none for a blank sheet (R88). */
+export function rulingsOf(grid: PaperGrid): Grid | undefined {
+  return RULINGS[grid];
+}
+
+/** The grid the button turns a task from paper's grid to: the next, round (R88). */
+export function nextGrid(grid: PaperGrid): PaperGrid {
+  return PAPER_GRIDS[(PAPER_GRIDS.indexOf(grid) + 1) % PAPER_GRIDS.length] as PaperGrid;
+}
 
 /** The tracing paper's size on the sheet, in units. */
 export interface Size {
@@ -50,17 +107,18 @@ export function sizeOf(width: number, height: number): Size {
 export const TRACING_START: TracingState = Object.freeze({
   at: Object.freeze([TRACING.at[0], TRACING.at[1]] as const),
   hidden: false,
+  scale: 1,
 });
 
 /**
  * A tracing state a consumer gives (R74 spec), checked and frozen: an object of `at`, [x, y] in
- * units, finite numbers, and `hidden`, true or false; other fields are passed over. A state that
- * puts the tracing paper of `size` wholly off the sheet is a TypeError, as is anything else that is
- * not such a state.
+ * units, finite numbers, `hidden`, true or false, and `scale`, if any, from 0.4 to 4; other fields
+ * are passed over. A state that puts the tracing paper of `size` at its scale wholly off the sheet
+ * is a TypeError, as is anything else that is not such a state.
  */
 export function tracingStateOf(value: unknown, size: Size): TracingState {
   const state = tracingFieldsOf(value, "tracing");
-  if (whollyOff(state.at, size)) {
+  if (whollyOff(state.at, scaled(size, scaleIn(state)))) {
     throw new TypeError(
       `tracing.at: ${shown(state.at)} puts the tracing paper wholly off the sheet`,
     );
@@ -70,8 +128,9 @@ export function tracingStateOf(value: unknown, size: Size): TracingState {
 
 /**
  * The fields of a tracing state at `path`, checked and frozen: `at`, [x, y] in units, finite
- * numbers, and `hidden`, true or false; other fields are passed over. Anything else is a
- * TypeError. Where it lies on the sheet is the caller's to check.
+ * numbers, `hidden`, true or false, and `scale`, from 0.4 to 4, 1 where it is absent; other
+ * fields are passed over. Anything else is a TypeError. Where it lies on the sheet is the caller's
+ * to check.
  */
 export function tracingFieldsOf(value: unknown, path: string): TracingState {
   const fields = record(value, path);
@@ -86,19 +145,60 @@ export function tracingFieldsOf(value: unknown, path: string): TracingState {
   if (typeof fields.hidden !== "boolean") {
     throw new TypeError(`${path}.hidden: true or false, not ${shown(fields.hidden)}`);
   }
+  const scale = fields.scale ?? 1;
+  if (
+    typeof scale !== "number" ||
+    !Number.isFinite(scale) ||
+    scale < SCALE.min ||
+    scale > SCALE.max
+  ) {
+    throw new TypeError(
+      `${path}.scale: a number from ${SCALE.min} to ${SCALE.max}, not ${shown(scale)}`,
+    );
+  }
   const [x, y] = at as [number, number];
-  return Object.freeze({ at: Object.freeze([x, y] as const), hidden: fields.hidden });
+  return Object.freeze({ at: Object.freeze([x, y] as const), hidden: fields.hidden, scale });
 }
 
 /** Whether the tracing paper of `size` at `at` lies wholly off the sheet, touching it at most. */
 export function whollyOff(at: readonly [number, number], size: Size): boolean {
   const [x, y] = at;
-  return x >= SHEET.width || y >= SHEET.height || x + size.width <= 0 || y + size.height <= 0;
+  return x >= REACH.width || y >= REACH.height || x + size.width <= 0 || y + size.height <= 0;
+}
+
+/** The most statements a reading holds, as the attempt's tasks are (R162 spec). */
+const STATEMENTS = 20;
+
+/**
+ * A reading of the statement a consumer gives (R89), checked and frozen: `state` "ready" or
+ * "busy", or "done" with `statements`, from none to 20 strings; other fields are passed over.
+ * Anything else is a TypeError.
+ */
+export function readingOf(value: unknown): TracingReading {
+  const fields = record(value, "reading");
+  const state = fields.state;
+  if (state === "ready" || state === "busy") return Object.freeze({ state });
+  if (state !== "done") {
+    throw new TypeError(`reading.state: "ready", "busy" or "done", not ${shown(state)}`);
+  }
+  const statements = fields.statements;
+  if (
+    !Array.isArray(statements) ||
+    statements.length > STATEMENTS ||
+    !statements.every((each) => typeof each === "string")
+  ) {
+    throw new TypeError(
+      `reading.statements: up to ${STATEMENTS} strings, the statements read, not ${shown(statements)}`,
+    );
+  }
+  return Object.freeze({ state, statements: Object.freeze([...(statements as string[])]) });
 }
 
 /** Whether two tracing states say the same. */
 export function sameTracing(a: TracingState, b: TracingState): boolean {
-  return a.at[0] === b.at[0] && a.at[1] === b.at[1] && a.hidden === b.hidden;
+  return (
+    a.at[0] === b.at[0] && a.at[1] === b.at[1] && a.hidden === b.hidden && scaleIn(a) === scaleIn(b)
+  );
 }
 
 /** The tracing paper's rectangle on the sheet, in units. */
@@ -112,8 +212,8 @@ export function rectOf(at: readonly [number, number], size: Size): Box {
  */
 export function keptOn(at: readonly [number, number], size: Size): readonly [number, number] {
   return Object.freeze([
-    clamp(at[0], 0, Math.max(0, SHEET.width - size.width)),
-    clamp(at[1], 0, Math.max(0, SHEET.height - size.height)),
+    clamp(at[0], 0, Math.max(0, REACH.width - size.width)),
+    clamp(at[1], 0, Math.max(0, REACH.height - size.height)),
   ] as const);
 }
 
@@ -124,30 +224,35 @@ export function onTracing(point: Point, at: readonly [number, number], size: Siz
 }
 
 /**
- * A point of the sheet as a stroke on the tracing paper holds it: from the paper's top left corner,
- * kept to the paper (R74 spec).
+ * A point of the sheet as a stroke on the tracing paper of `size` at `scale` holds it: from the
+ * paper's top left corner, in its own units, kept to the paper (R74 spec; R89).
  */
-export function toTracing(point: Point, at: readonly [number, number], size: Size): Point {
+export function toTracing(
+  point: Point,
+  at: readonly [number, number],
+  size: Size,
+  scale = 1,
+): Point {
   return {
-    x: clamp(point.x - at[0], 0, size.width),
-    y: clamp(point.y - at[1], 0, size.height),
+    x: clamp((point.x - at[0]) / scale, 0, size.width),
+    y: clamp((point.y - at[1]) / scale, 0, size.height),
   };
 }
 
 /**
- * A stroke of the tracing paper where it lies on the sheet: its points moved by `at`, and kept to
- * the sheet, should the paper lie in part beyond it — the rules of the groups and the crop hold on
+ * A stroke of the tracing paper where it lies on the sheet: its points scaled by `scale` and moved
+ * by `at`, and kept to the sheet, should the paper lie in part beyond it — the rules of the groups and the crop hold on
  * the sheet alone (R24, R25). The same ID, kind and times.
  */
-export function onSheet(stroke: Stroke, at: readonly [number, number]): Stroke {
+export function onSheet(stroke: Stroke, at: readonly [number, number], scale = 1): Stroke {
   return Object.freeze({
     id: stroke.id,
     kind: stroke.kind,
     points: Object.freeze(
       stroke.points.map(({ x, y, t, p }) =>
         Object.freeze({
-          x: clamp(x + at[0], 0, SHEET.width),
-          y: clamp(y + at[1], 0, SHEET.height),
+          x: clamp(x * scale + at[0], 0, REACH.width),
+          y: clamp(y * scale + at[1], 0, REACH.height),
           t,
           p,
         }),
@@ -161,12 +266,12 @@ export function onSheet(stroke: Stroke, at: readonly [number, number]): Stroke {
  * paper: the box of `onSheet`'s points, for moving and keeping to the sheet keep the order of the
  * numbers, without a copy of the stroke.
  */
-export function boxOnSheet(box: Box, at: readonly [number, number]): Box {
+export function boxOnSheet(box: Box, at: readonly [number, number], scale = 1): Box {
   return {
-    minX: clamp(box.minX + at[0], 0, SHEET.width),
-    minY: clamp(box.minY + at[1], 0, SHEET.height),
-    maxX: clamp(box.maxX + at[0], 0, SHEET.width),
-    maxY: clamp(box.maxY + at[1], 0, SHEET.height),
+    minX: clamp(box.minX * scale + at[0], 0, REACH.width),
+    minY: clamp(box.minY * scale + at[1], 0, REACH.height),
+    maxX: clamp(box.maxX * scale + at[0], 0, REACH.width),
+    maxY: clamp(box.maxY * scale + at[1], 0, REACH.height),
   };
 }
 
@@ -176,10 +281,10 @@ export function boxOnSheet(box: Box, at: readonly [number, number]): Box {
  */
 export function tenthsOf(rect: Box): Box {
   return {
-    minX: tenths(clamp(rect.minX, 0, SHEET.width)),
-    minY: tenths(clamp(rect.minY, 0, SHEET.height)),
-    maxX: tenths(clamp(rect.maxX, 0, SHEET.width)),
-    maxY: tenths(clamp(rect.maxY, 0, SHEET.height)),
+    minX: tenths(clamp(rect.minX, 0, REACH.width)),
+    minY: tenths(clamp(rect.minY, 0, REACH.height)),
+    maxX: tenths(clamp(rect.maxX, 0, REACH.width)),
+    maxY: tenths(clamp(rect.maxY, 0, REACH.height)),
   };
 }
 

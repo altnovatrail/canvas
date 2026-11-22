@@ -123,7 +123,11 @@ export function paperWorkForCheck(
   const submission = {
     crop: numbers,
     groups,
-    tracing: { at: [tracing.at[0], tracing.at[1]] as const, hidden: tracing.hidden },
+    tracing: {
+      at: [tracing.at[0], tracing.at[1]] as const,
+      hidden: tracing.hidden,
+      scale: tracing.scale ?? 1,
+    },
     digest: digestOf(strokes, numbers, groups, paper),
   };
   return Object.freeze({

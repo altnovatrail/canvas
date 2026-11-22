@@ -442,7 +442,7 @@ test("a history without the marked strokes takes the marks off, and the next tas
   await expect.element(buttons(next).pen).toBeChecked();
 });
 
-test("app's path through a lesson: after a task, its worked example on a new element, named so, the zoom's pair alone on its bar, Next and Demo in its row and app's Continue after them, on which the learner writes nothing", async () => {
+test("app's path through a lesson: after a task, its worked example on a new element, with no bar, Next and Demo in its row and app's Continue after them, on which the learner writes nothing", async () => {
   const { sheet, store } = await app();
   write(sheet, 100, 100, 300);
   expect(store).toHaveLength(1);
@@ -468,18 +468,12 @@ test("app's path through a lesson: after a task, its worked example on a new ele
   sheet.replaceWith(example);
   await settle();
   const within = page.elementLocator(example);
-  const bar = within.getByRole("toolbar", { name: "Кнопки примера", exact: true });
-  await expect.element(bar).toBeVisible();
+  // A worked example has no tools of writing, and so no bar (R84).
+  expect(within.getByRole("toolbar").elements()).toHaveLength(0);
   const words = (found: Element[]) => found.map((each) => each.textContent);
-  expect(words(bar.getByRole("button").elements())).toEqual(["Крупнее", "Мельче"]);
   // The element's own buttons, and app's, which the locator finds first as a child of the element.
   const all = within.getByRole("button").elements();
-  expect(words(all.filter((each) => each !== proceed))).toEqual([
-    "Крупнее",
-    "Мельче",
-    "Дальше",
-    "Показ",
-  ]);
+  expect(words(all.filter((each) => each !== proceed))).toEqual(["Дальше", "Показ"]);
   expect(all).toContain(proceed);
   await userEvent.click(within.getByRole("button", { name: "Продолжить" }));
   expect(proceeded).toBe(1);

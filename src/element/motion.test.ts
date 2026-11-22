@@ -54,23 +54,39 @@ test.runIf(devtools)(
   },
 );
 
-/** Every style rule of a sheet, those inside its media queries too. */
+/** The media query of the one motion: the wait for a reading, to whom motion is no harm (R89). */
+const NO_PREFERENCE = "(prefers-reduced-motion: no-preference)";
+
+/** Every style rule of a sheet, those inside its media queries too, but for the motion's own. */
 function rulesOf(rules: CSSRuleList): CSSStyleRule[] {
   return [...rules].flatMap((rule) => {
     if (rule instanceof CSSStyleRule) return [rule];
+    if (rule instanceof CSSMediaRule && rule.conditionText === NO_PREFERENCE) return [];
     if (rule instanceof CSSGroupingRule) return rulesOf(rule.cssRules);
     return [];
   });
 }
 
 test.runIf(devtools)(
-  "the element's style animates nothing and asks for no smooth scrolling, and its one transition is the canvas's colour, which moves nothing",
+  "the element's style animates nothing but the wait for a reading, and that only with no preference for less motion, asks for no smooth scrolling, and its one transition is the canvas's colour, which moves nothing",
   async () => {
     const { root } = await placed(made, 400, undefined, { task: sheetTask() });
     const sheets = root.adoptedStyleSheets;
     expect(sheets.length).toBeGreaterThan(0);
     const all = sheets.flatMap((sheet) => [...sheet.cssRules]);
-    expect(all.some((rule) => rule instanceof CSSKeyframesRule)).toBe(false);
+    // Its keyframes are the wait's alone, and only a query of no preference names them (R89).
+    expect(all.filter((rule) => rule instanceof CSSKeyframesRule).map((rule) => rule.name)).toEqual(
+      ["novatrail-scan", "novatrail-spin"],
+    );
+    const waits = all.filter(
+      (rule): rule is CSSMediaRule =>
+        rule instanceof CSSMediaRule && rule.conditionText === NO_PREFERENCE,
+    );
+    expect(
+      waits.flatMap((rule) =>
+        [...rule.cssRules].map((each) => (each as CSSStyleRule).selectorText),
+      ),
+    ).toEqual([".scan i", ".spinner, .tracing-scale .mode.busy::before"]);
     const rules = sheets.flatMap((sheet) => rulesOf(sheet.cssRules));
     expect(rules.length).toBeGreaterThan(0);
     const moving: string[] = [];

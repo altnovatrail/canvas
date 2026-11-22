@@ -272,11 +272,11 @@ describe("the crop", () => {
     expect(cropOf(strokes, groups, 256)?.drawn).toBeLessThanOrEqual(256);
   });
 
-  test("takes no point off the sheet, no stroke without points and no ID twice", () => {
+  test("takes no point beyond the sheet's reach, no stroke without points and no ID twice", () => {
     const off = [
       [-0.1, 100],
-      [1000.1, 100],
-      [100, 1400.1],
+      [10000.1, 100],
+      [100, 14000.1],
       [Number.NaN, 100],
       [100, Number.POSITIVE_INFINITY],
     ] as const;
@@ -286,6 +286,10 @@ describe("the crop", () => {
     }
     expect(
       cropOf([stroke(1, [0, 0, 0], [1000, 1400, 10])], [{ label: "A", ids: [1] }]),
+    ).not.toBeNull();
+    // Past the page the sheet goes on, as far as its reach (R73).
+    expect(
+      cropOf([stroke(1, [1000.1, 1400.1, 0], [10000, 14000, 10])], [{ label: "A", ids: [1] }]),
     ).not.toBeNull();
     expect(() => cropOf([{ id: 1, kind: "pen", points: [] }], [{ label: "A", ids: [1] }])).toThrow(
       TypeError,

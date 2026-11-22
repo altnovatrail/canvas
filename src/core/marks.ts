@@ -18,7 +18,7 @@ import type { Group } from "./groups.js";
 import type { Stroke } from "./ink.js";
 import { adler32, crc32 } from "./png.js";
 import type { Point } from "./screen.js";
-import { SHEET } from "./sheet.js";
+import { REACH } from "./sheet.js";
 import { tracingFieldsOf } from "./tracing.js";
 
 /**
@@ -90,6 +90,8 @@ export type {
  */
 export interface Paper {
   readonly at: readonly [number, number];
+  /** The tracing paper's scale (R89). */
+  readonly scale: number;
   readonly onTracing: (id: number) => boolean;
 }
 
@@ -224,6 +226,11 @@ export function placesOf(
     if (traced.at[0] !== paper.at[0] || traced.at[1] !== paper.at[1]) {
       throw new TypeError(
         `marks.submission.tracing.at: ${shown(traced.at)}, and the tracing paper lies at ${shown(paper.at)}: the submission's strokes lie elsewhere`,
+      );
+    }
+    if ((traced.scale ?? 1) !== paper.scale) {
+      throw new TypeError(
+        `marks.submission.tracing.scale: ${shown(traced.scale ?? 1)}, and the tracing paper's scale is ${shown(paper.scale)}: the submission's strokes lie elsewhere`,
       );
     }
   }
@@ -386,7 +393,9 @@ export function digestOf(
       .map(({ id }) => id)
       .filter((id) => paper.onTracing(id))
       .sort(byNumber);
-    lines.push(`tracing ${tenths(paper.at[0])} ${tenths(paper.at[1])} ${traced.join(",")}`);
+    // A scale of 1 adds nothing, so a digest made before scales came stays the same (R89).
+    const scale = paper.scale === 1 ? "" : ` ${paper.scale}`;
+    lines.push(`tracing ${tenths(paper.at[0])} ${tenths(paper.at[1])} ${traced.join(",")}${scale}`);
   }
   return sumOf(lines);
 }
@@ -648,10 +657,10 @@ function numbersOf(value: unknown, path: string, groups: readonly Group[]): Crop
   const exact = record(crop.exact, `${path}.exact`);
   const median = whole(exact.median, `${path}.exact.median`, CROP.flat * 10, CROP.ceiling * 10);
   const points = record(exact.box, `${path}.exact.box`);
-  const minX = whole(points.minX, `${path}.exact.box.minX`, 0, SHEET.width * 10);
-  const minY = whole(points.minY, `${path}.exact.box.minY`, 0, SHEET.height * 10);
-  const maxX = whole(points.maxX, `${path}.exact.box.maxX`, minX, SHEET.width * 10);
-  const maxY = whole(points.maxY, `${path}.exact.box.maxY`, minY, SHEET.height * 10);
+  const minX = whole(points.minX, `${path}.exact.box.minX`, 0, REACH.width * 10);
+  const minY = whole(points.minY, `${path}.exact.box.minY`, 0, REACH.height * 10);
+  const maxX = whole(points.maxX, `${path}.exact.box.maxX`, minX, REACH.width * 10);
+  const maxY = whole(points.maxY, `${path}.exact.box.maxY`, minY, REACH.height * 10);
   const numbers = {
     drawn,
     width,

@@ -1,5 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
+import { gridPath } from "../core/grid.js";
 import type { View } from "../core/screen.js";
 import { sheetTask, workedExample } from "../core/tasks.fixture.js";
 import { axeOf } from "./axe.fixture.js";
@@ -7,9 +8,10 @@ import { type ExportedPaper, NovatrailCanvas, type TracingState } from "./index.
 import { at, buttonOf, paperCrop, settle, upgraded } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
-// A task from paper in a browser (R87): the crop as tracing paper over a dotted sheet, its grip and
-// its button atop the tools, a stroke on it from its corner, and the work for checking with the
-// task's crop beside it.
+// A task from paper in a browser (R87): the crop as tracing paper over a sheet of the learner's
+// grid, dots as it comes (R88), its grip and its button atop the tools, a stroke on it from its
+// corner, and the work for checking with the task's crop beside it. The grid's button is
+// tools.test.ts's.
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -65,7 +67,7 @@ function write(canvas: HTMLCanvasElement, view: () => View, ...points: [number, 
 
 test("shows a dotted sheet, the tracing paper at its start, and its grip and button", async () => {
   const { element, root, grip } = await paper();
-  expect(element.tracing).toEqual({ at: [180, 60], hidden: false });
+  expect(element.tracing).toEqual({ at: [180, 60], hidden: false, scale: 1 });
   expect(root.querySelector(".grid")?.classList.contains("dots")).toBe(true);
   expect(grip.getAttribute("aria-label")).toBe("Move the task");
   expect(grip.hidden).toBe(false);
@@ -140,9 +142,106 @@ test("hides and shows the tracing paper by its button, which tells", async () =>
   // The consumer's state tells nothing.
   element.tracing = { at: [100, 200], hidden: false };
   expect(told).toHaveLength(2);
+  // Past the page it lies on the sheet still, which goes on as far as its reach (R73).
+  element.tracing = { at: [2000, 0], hidden: false };
+  expect(element.tracing).toEqual({ at: [2000, 0], hidden: false, scale: 1 });
   expect(() => {
-    element.tracing = { at: [2000, 0], hidden: false };
+    element.tracing = { at: [10000, 0], hidden: false };
   }).toThrow(TypeError);
+  expect(told).toHaveLength(2);
+});
+
+test("rules its sheet by the grid the consumer gives, dots as it comes, lines, squares or none, as far as the sheet goes, and tells nothing of it (R88)", async () => {
+  const { element, root } = await paper();
+  const grid = root.querySelector(".grid");
+  const told: unknown[] = [];
+  element.addEventListener("gridchange", (event) => told.push(event.detail));
+  const extent = () => {
+    const box = root.querySelector(".sheet")?.getBoundingClientRect();
+    const { k } = viewOf(element);
+    return { width: Math.round((box?.width ?? 0) / k), height: Math.round((box?.height ?? 0) / k) };
+  };
+  expect(element.grid).toBe("dots");
+  expect(grid?.getAttribute("d")).toBe(gridPath({ kind: "dots", step: 25 }, extent()));
+  expect(grid?.classList.contains("dots")).toBe(true);
+  for (const [given, path] of [
+    ["lines", gridPath({ kind: "lines", step: 40 }, extent())],
+    ["squares", gridPath({ kind: "squares", step: 25 }, extent())],
+    ["blank", ""],
+    ["dots", gridPath({ kind: "dots", step: 25 }, extent())],
+  ] as const) {
+    element.grid = given;
+    expect(element.grid).toBe(given);
+    expect(grid?.getAttribute("d"), given).toBe(path);
+    expect(grid?.classList.contains("dots"), given).toBe(given === "dots");
+  }
+  // The bar's button says the grid the consumer gave.
+  element.grid = "blank";
+  expect(buttonOf(element, "Grid: blank").hidden).toBe(false);
+  // Undefined changes nothing, and a grid of no name is a TypeError that changes nothing either.
+  element.grid = undefined;
+  expect(element.grid).toBe("blank");
+  for (const bad of ["none", "Dots", 25, null]) {
+    expect(() => {
+      Reflect.set(element, "grid", bad);
+    }).toThrow(
+      /^the grid of <novatrail-canvas> is one of "dots", "lines", "blank", "squares", not /,
+    );
+  }
+  expect(element.grid).toBe("blank");
+  expect(told).toEqual([]);
+  // The ruling follows the sheet as it grows past the page, by the ink on it.
+  element.grid = "lines";
+  const before = extent();
+  element.history = [
+    {
+      kind: "write",
+      t: 10,
+      stroke: { id: 1, kind: "pen", points: [{ x: before.width + 500, y: 100, t: 0, p: 0.5 }] },
+    },
+  ];
+  await settle();
+  expect(extent().width).toBeGreaterThan(before.width);
+  expect(grid?.getAttribute("d")).toBe(gridPath({ kind: "lines", step: 40 }, extent()));
+});
+
+test("lays the sheet out past a tracing paper the consumer gives beyond it, by one view more, and back as it is given back (R73)", async () => {
+  const { element, root } = await paper();
+  const width = () => {
+    const box = root.querySelector(".sheet")?.getBoundingClientRect();
+    return Math.round((box?.width ?? 0) / viewOf(element).k);
+  };
+  const before = width();
+  element.tracing = { at: [before - 100, 100], hidden: false };
+  await settle();
+  expect(width()).toBeGreaterThan(before);
+  element.tracing = { at: [180, 60], hidden: false };
+  await settle();
+  expect(width()).toBe(before);
+});
+
+test("has a grid only while it shows a task from paper: none before it, a TypeError given then, the learner's kept for another crop, and dots again for a new task from paper", async () => {
+  const bare = document.createElement("novatrail-canvas");
+  document.body.append(bare);
+  made.push(bare);
+  expect(bare.grid).toBeUndefined();
+  expect(() => {
+    bare.grid = "lines";
+  }).toThrow(/^<novatrail-canvas> shows no task from paper: its grid is given after the paper$/);
+  bare.grid = undefined;
+  expect(bare.grid).toBeUndefined();
+  const { element } = await paper();
+  element.grid = "squares";
+  // Another crop in its place keeps the learner's grid.
+  element.paper = { statement: await paperCrop(300, 60) };
+  expect(element.grid).toBe("squares");
+  element.paper = undefined;
+  expect(element.grid).toBeUndefined();
+  element.paper = { statement: await paperCrop() };
+  expect(element.grid).toBe("dots");
+  // A grid given before the element is upgraded comes after its paper.
+  const early = upgraded(made, { paper: { statement: await paperCrop() }, grid: "lines" });
+  expect(early.grid).toBe("lines");
 });
 
 test("ends a stroke under way on the tracing paper when the paper is hidden", async () => {
@@ -176,10 +275,10 @@ test("keeps the tracing paper where it lies for a new object of the same crop", 
   const again = { statement };
   element.paper = again;
   expect(element.paper).toBe(again);
-  expect(element.tracing).toEqual({ at: [100, 200], hidden: true });
+  expect(element.tracing).toEqual({ at: [100, 200], hidden: true, scale: 1 });
   // Another crop is another task: its paper starts again.
   element.paper = { statement: await paperCrop() };
-  expect(element.tracing).toEqual({ at: [180, 60], hidden: false });
+  expect(element.tracing).toEqual({ at: [180, 60], hidden: false, scale: 1 });
   expect(told).toHaveLength(0);
 });
 
@@ -193,7 +292,7 @@ test("brings a paper given wholly off the sheet at its real size onto it once it
   // A tall crop: 175 × 700 on the sheet, and the largest paper, 800 wide, till it is read.
   element.paper = { statement: await paperCrop(50, 200) };
   element.tracing = { at: [-750, 100], hidden: false };
-  expect(element.tracing).toEqual({ at: [-750, 100], hidden: false });
+  expect(element.tracing).toEqual({ at: [-750, 100], hidden: false, scale: 1 });
   await expect.poll(() => element.tracing?.at).toEqual([0, 100]);
   expect(told).toHaveLength(0);
 });
@@ -233,6 +332,22 @@ test("moves the tracing paper by its grip's keys, kept to the sheet", async () =
   expect(told).toHaveLength(2);
 });
 
+test("moves the tracing paper past the page by its grip's keys, and the sheet goes on past it by one view more (R73)", async () => {
+  const { element, root, grip } = await paper();
+  const width = () => {
+    const box = root.querySelector(".sheet")?.getBoundingClientRect();
+    return Math.round((box?.width ?? 0) / viewOf(element).k);
+  };
+  const before = width();
+  // The crop's paper is 800 units wide: from 180, its right edge goes past the page's at 1000.
+  grip.dispatchEvent(
+    new KeyboardEvent("keydown", { key: "ArrowRight", shiftKey: true, bubbles: true }),
+  );
+  expect(element.tracing?.at).toEqual([280, 60]);
+  await settle();
+  expect(width()).toBe(before + 80);
+});
+
 test("gives the work for checking: the task's crop, and the crop of the paper and the strokes", async () => {
   const { element, canvas, view, statement } = await paper();
   expect(await element.exportWork()).toBeNull();
@@ -241,7 +356,7 @@ test("gives the work for checking: the task's crop, and the crop of the paper an
   if (work === null || !("statement" in work)) throw new Error("no work of a task from paper");
   expect(work.statement).toBe(statement);
   expect(work.png.type).toBe("image/png");
-  expect(work.submission.tracing).toEqual({ at: [180, 60], hidden: false });
+  expect(work.submission.tracing).toEqual({ at: [180, 60], hidden: false, scale: 1 });
   // The marks of its submission go back to it, and not once the paper has moved.
   element.marks = { submission: work.submission, marks: [] };
   element.tracing = { at: [100, 60], hidden: false };
@@ -435,6 +550,11 @@ test("shows the grip's name in a tooltip on a mouse's hover, not a finger's touc
   expect(tip.hidden).toBe(false);
   expect(tip.textContent).toBe("Move the task");
   expect(tip.getAttribute("aria-hidden")).toBe("true");
+  // Beside the grip, to its right and at its middle, wherever the paper lies.
+  const near = grip.getBoundingClientRect();
+  const box = tip.getBoundingClientRect();
+  expect(box.left).toBeCloseTo(near.right + 8, 0);
+  expect((box.top + box.bottom) / 2).toBeCloseTo((near.top + near.bottom) / 2, 0);
   // Another key passes it by; Escape dismisses it, the pointer still on the grip.
   document.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
   expect(tip.hidden).toBe(false);

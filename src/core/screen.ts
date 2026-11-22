@@ -1,9 +1,9 @@
-import { SHEET } from "./sheet.js";
+import { REACH, SHEET } from "./sheet.js";
 
 /**
  * Where the sheet is on the screen, one view for every layer (R06): `k` CSS pixels to a logical
- * unit, for the sheet fits the width of its area times the page's zoom, and `vx` and `vy`, the left
- * and the top of the sheet's visible part, in units (R73).
+ * unit, for the page fits the width of its area, and `vx` and `vy`, the left and the top of the
+ * sheet's visible part, in units.
  */
 export interface View {
   readonly k: number;
@@ -18,24 +18,23 @@ export interface Point {
 }
 
 /**
- * The most CSS pixels to a unit of the sheet's fit: on a wide screen the sheet fits at most 1000
- * CSS pixels wide, a pixel to a unit as on the picture of the work, and stands in the middle (R23).
- * The page's zoom takes it beyond that, to twice the fit (R73).
+ * The most CSS pixels to a unit: on a wide screen the page is 1000 CSS pixels wide, a pixel to a
+ * unit as on the picture of the work, at the sheet's left, and the sheet goes on past it (R23).
  */
 export const K_MAX = 1;
 
-/** `k` of a sheet `width` CSS pixels wide as it is on the screen: k = A / W. */
-export function scaleFor(width: number): number {
-  return width / SHEET.width;
+/** `k` of a sheet `width` CSS pixels wide as it is on the screen, `across` units wide: k = A / W. */
+export function scaleFor(width: number, across: number = SHEET.width): number {
+  return width / across;
 }
 
 /**
- * `k` for a sheet laid out in an area `width` CSS pixels wide: it fits the width, up to `K_MAX`,
- * times the page's `zoom` (R73). This is the layout's `k`, before any transform the page puts on
- * the element; input takes `k` from the sheet's rectangle on the screen, by `scaleFor`.
+ * `k` for a sheet laid out in an area `width` CSS pixels wide: the page fits the width, up to
+ * `K_MAX`. This is the layout's `k`, before any transform the page puts on the element; input takes
+ * `k` from the sheet's rectangle on the screen, by `scaleFor`.
  */
-export function fitScale(width: number, zoom = 1): number {
-  return Math.min(width / SHEET.width, K_MAX) * zoom;
+export function fitScale(width: number): number {
+  return Math.min(width / SHEET.width, K_MAX);
 }
 
 /**
@@ -45,8 +44,8 @@ export function fitScale(width: number, zoom = 1): number {
  */
 export function toSheet(view: View, x: number, y: number): Point {
   return {
-    x: clamp(x / view.k + view.vx, 0, SHEET.width),
-    y: clamp(y / view.k + view.vy, 0, SHEET.height),
+    x: clamp(x / view.k + view.vx, 0, REACH.width),
+    y: clamp(y / view.k + view.vy, 0, REACH.height),
   };
 }
 

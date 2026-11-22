@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { DEFAULT_GRID, type GridKind, gridPath } from "./grid.js";
+import { DEFAULT_GRID, type GridKind, gridBand, gridPath } from "./grid.js";
 
 /** The subpaths of a path, each from its moveto. */
 function subpaths(path: string): string[] {
@@ -52,4 +52,25 @@ test("a sheet without a task is ruled in squares of 50 units, and each kind draw
   for (const kind of ["squares", "lines", "dots"] satisfies GridKind[]) {
     expect(gridPath({ kind, step: 50 })).not.toBe("");
   }
+});
+
+test("a sheet past the page is ruled as far as it goes", () => {
+  const path = gridPath({ kind: "lines", step: 50 }, { width: 2400, height: 2000 });
+  const across = path.split("M").filter(Boolean);
+  expect(across[0]).toBe("0 50H2400");
+  expect(across.at(-1)).toBe("0 1950H2400");
+});
+
+test("a band of the grid above or below the sheet takes the rulings of the step within it, both ends too, as the sheet's own go on", () => {
+  const squares = { kind: "squares", step: 50 } as const;
+  expect(gridBand(squares, 120, -100, 0)).toBe(
+    "M50 -100V0M100 -100V0M0 -100H120M0 -50H120M0 0H120",
+  );
+  expect(gridBand({ kind: "lines", step: 40 }, 120, 1410, 1500)).toBe("M0 1440H120M0 1480H120");
+  expect(gridBand({ kind: "dots", step: 50 }, 120, -60, 0)).toBe(
+    "M50 -50h0M100 -50h0M50 0h0M100 0h0",
+  );
+  // The band's rulings and the sheet's are one grid: the sheet's last is the step before the band's first.
+  const sheet = gridPath({ kind: "lines", step: 40 }, { width: 120, height: 1430 });
+  expect(sheet.endsWith("M0 1400H120")).toBe(true);
 });

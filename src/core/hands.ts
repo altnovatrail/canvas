@@ -45,18 +45,18 @@ export const SLOP_PX = 8;
 /**
  * Two fingers that have gone this many times further along one axis than along the other, when
  * they pass the slop, scroll along that axis alone for the rest of the gesture (R73): a scroll
- * down a zoomed sheet does not wander sideways, nor one across it up and down. Between, they go
+ * down a sheet does not wander sideways, nor one across it up and down. Between, they go
  * both ways.
  */
 export const RAIL = 2;
 
 /**
- * The pen mode (R29): on from a pen's touch on a sheet, off when the learner asks for the finger.
- * While it is on, a finger neither writes nor erases. One is shared by every sheet of a page, and
+ * The pen mode (R29): on from a pen's touch on a sheet, till the page goes, with no button that
+ * turns it off: while it is on, a finger neither writes nor erases, and moves the sheet (R84). One is shared by every sheet of a page, and
  * it lives in memory alone: nothing is stored or sent, and a new page starts without it.
  *
- * It knows, too, whether any sheet of the page is written on: a row of buttons changes between the
- * strokes of the whole page alone, for a bar that grows moves its buttons under the hand that writes.
+ * It knows, too, whether any sheet of the page is written on, and tells its sheets when the last
+ * stroke ends: each bar shows the mode as it is then.
  */
 export class PenMode {
   #on = false;
@@ -121,8 +121,8 @@ export interface HandsSheet {
    */
   scroll(dx: number, dy: number, fresh: boolean): void;
   /**
-   * Whether the sheet scrolls across at all now: a zoomed sheet does (R73). A gesture on a sheet
-   * that does not goes by its travel down alone.
+   * Whether the sheet scrolls across at all now: one wider than its container does (R73). A
+   * gesture on a sheet that does not goes by its travel down alone.
    */
   across(): boolean;
 }
