@@ -117,9 +117,9 @@ export class TracingPaper {
   readonly #signWords = document.createElement("span");
   /** Over the ink: the bar of scale under the paper chosen. */
   readonly bar = document.createElement("div");
-  readonly #smaller = plainButton("zoomOut");
+  readonly #smaller = plainButton("smaller");
   readonly #percent = document.createElement("button");
-  readonly #larger = plainButton("zoomIn");
+  readonly #larger = plainButton("larger");
   readonly #fit = plainButton("fit");
   readonly #mode = plainButton("recognise");
   readonly #moves: TracingMoves;
@@ -373,8 +373,8 @@ export class TracingPaper {
     for (const part of [this.bar, this.sign]) write(part, "lang", lang);
     write(this.bar, "aria-label", labels.scaleButtons);
     for (const [button, words] of [
-      [this.#smaller, labels.zoomOut],
-      [this.#larger, labels.zoomIn],
+      [this.#smaller, labels.smaller],
+      [this.#larger, labels.larger],
       [this.#fit, labels.fit],
     ] as const) {
       const label = button.querySelector(".label");

@@ -181,7 +181,8 @@ test.each([
     const { root, bar, pen, clear, glass } = barOf(element);
     await userEvent.tab();
     for (const focused of [pen, clear]) {
-      if (focused === clear) await userEvent.keyboard("{End}");
+      // Clear stands before the zoom's two buttons, the last of the bar (R73).
+      if (focused === clear) await userEvent.keyboard("{End}{ArrowUp}{ArrowUp}");
       expect(root.activeElement).toBe(focused);
       expect(focused.matches(":focus-visible")).toBe(true);
       const style = getComputedStyle(focused);
@@ -249,7 +250,7 @@ test("a bar taller than the band it stands in scrolls inside its glass and is st
   await userEvent.tab({ shift: true });
   await userEvent.keyboard("{End}");
   const last = root.activeElement;
-  expect(last?.textContent).toBe("Clear");
+  expect(last?.textContent).toBe("Zoom out");
   const box = last?.getBoundingClientRect();
   const glass = row.getBoundingClientRect();
   expect(box?.top).toBeGreaterThanOrEqual(glass.top - 0.5);

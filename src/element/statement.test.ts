@@ -79,12 +79,13 @@ test("the statement stands above the sheet as text, in the module's language, an
   // nothing stands above the statement.
   const box = element.getBoundingClientRect();
   expect(above.top).toBeCloseTo(box.top, 0);
-  // The page and, past it, a view of the window more of the sheet, at the window's own fit (R73).
+  // The page and, past it, two views of the window more of the sheet down, at the window's own fit
+  // (R73).
   expect(box.height).toBeCloseTo(above.height + (sheetBox?.height ?? 0), 0);
   const fit = Math.min(window.innerWidth / 1000, 1);
-  expect(Math.abs((sheetBox?.height ?? 0) - (1400 + window.innerHeight / fit) * 0.4)).toBeLessThan(
-    1,
-  );
+  expect(
+    Math.abs((sheetBox?.height ?? 0) - (1400 + (2 * window.innerHeight) / fit) * 0.4),
+  ).toBeLessThan(1);
   const bar = root.querySelector(".tools")?.getBoundingClientRect();
   expect(bar?.top).toBeGreaterThanOrEqual(box.top);
   expect(bar?.bottom).toBeLessThanOrEqual(box.bottom);

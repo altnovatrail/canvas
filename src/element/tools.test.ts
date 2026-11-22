@@ -26,7 +26,8 @@ import { TIP_GRACE_MS } from "./tools.js";
 
 // The element's own buttons in a browser (R28, R84): a vertical bar of glass over the sheet's left
 // edge, as the interface mockup draws it (R148 spec), a toolbar of the tools the task allows and
-// the hand, of undo and clearing, and on a task from paper of its grid, found by its roles and names
+// the hand, of undo and clearing, of the page's zoom after a line, and on a task from paper of its
+// grid, found by its roles and names
 // in the element's language, worked with the pointer and with the keyboard, telling of the
 // learner's choice of tool and of grid, standing in the middle of what is in sight of the element
 // and taking no room of its own. Each button shows an icon alone, its label its name and its
@@ -61,6 +62,8 @@ function buttons(element: HTMLElement, names = labelsFor(null).labels) {
     hand: within.getByRole("radio", { name: names.hand }),
     undo: within.getByRole("button", { name: names.undo }),
     clear: within.getByRole("button", { name: names.clear }),
+    zoomIn: within.getByRole("button", { name: names.zoomIn }),
+    zoomOut: within.getByRole("button", { name: names.zoomOut }),
   };
 }
 
@@ -136,7 +139,7 @@ async function off(): Promise<HTMLButtonElement> {
   return away;
 }
 
-test("the bar is a vertical toolbar of the pen, the eraser and the hand, undo and clear, named in English for an element of no language, before the sheet in the order of Tab", async () => {
+test("the bar is a vertical toolbar of the pen, the eraser and the hand, undo and clear, zoom in and out, named in English for an element of no language, before the sheet in the order of Tab", async () => {
   const { element, root, row, actions } = await sheet();
   const found = buttons(element);
   await expect.element(found.row).toBeVisible();
@@ -146,6 +149,9 @@ test("the bar is a vertical toolbar of the pen, the eraser and the hand, undo an
   await expect.element(found.hand).not.toBeChecked();
   await expect.element(found.undo).toBeVisible();
   await expect.element(found.clear).toBeVisible();
+  // At the fit the zoom goes either way (R73).
+  await expect.element(found.zoomIn).not.toHaveAttribute("aria-disabled");
+  await expect.element(found.zoomOut).not.toHaveAttribute("aria-disabled");
   expect(row.getAttribute("aria-orientation")).toBe("vertical");
   // The order the arrow keys go through, and the language the names are in. The hand is on every
   // sheet the learner writes on (R88). The first button and the last are a task from paper's, which
@@ -158,16 +164,19 @@ test("the bar is a vertical toolbar of the pen, the eraser and the hand, undo an
     "Hand",
     "Undo",
     "Clear",
+    "Zoom in",
+    "Zoom out",
     "Grid: dots",
   ]);
   expect(row.querySelectorAll("button[hidden]")).toHaveLength(2);
   expect(actions.hidden).toBe(true);
   expect(row.lang).toBe("en");
   // The lines between the groups say nothing to a screen reader, and a task from paper's go with
-  // its buttons.
+  // its buttons: the zoom's alone shows on a sheet.
   const lines = [...row.querySelectorAll<HTMLElement>(".line")];
   expect(lines.map((line) => [line.getAttribute("aria-hidden"), line.hidden])).toEqual([
     ["true", true],
+    ["true", false],
     ["true", true],
   ]);
   // The rail of the bar comes first in the frame: Tab reaches the bar before the sheet.
@@ -187,6 +196,8 @@ test("each button shows its icon, its label after it: an SVG that names nothing,
     ROW.hand.outline,
     ROW.undo.outline,
     ROW.clear.outline,
+    ROW.zoomIn.outline,
+    ROW.zoomOut.outline,
     ROW.gridDots.outline,
     ROW.next.outline,
     ROW.demoShown.outline,
@@ -208,6 +219,9 @@ test("each button shows its icon, its label after it: an SVG that names nothing,
   // Each grid has an icon of its own.
   const grids = [ROW.gridDots, ROW.gridLines, ROW.gridBlank, ROW.gridSquares];
   expect(new Set(grids.map((each) => each.outline)).size).toBe(4);
+  // The sheet's zoom is not the tracing paper's scale: its buttons have icons of their own.
+  expect(ROW.zoomIn.outline).not.toBe(ROW.larger.outline);
+  expect(ROW.zoomOut.outline).not.toBe(ROW.smaller.outline);
   buttonOf(element, "Eraser").click();
   await settle();
   expect(drawn(buttonOf(element, "Pen")).name).toBe(ROW.pen.outline);
@@ -236,7 +250,15 @@ test("in an element whose text runs right to left, the icons of Next, Undo and a
         drawn(one).mirrored,
       ]),
     );
-  expect(mirrored()).toEqual({ Pen: false, Eraser: false, Hand: false, Undo: true, Clear: false });
+  expect(mirrored()).toEqual({
+    Pen: false,
+    Eraser: false,
+    Hand: false,
+    Undo: true,
+    Clear: false,
+    "Zoom in": false,
+    "Zoom out": false,
+  });
   // The bar runs down whichever way the text runs: the arrows across are not its (APG).
   buttonOf(element, "Pen").focus();
   await moves(root, [
@@ -278,6 +300,8 @@ test("the labels follow the element's own lang: Russian for ru and its regions, 
     "Рука",
     "Отменить",
     "Очистить",
+    "Крупнее",
+    "Мельче",
     "Сетка: точки",
     "Дальше",
     "Показ",
@@ -521,13 +545,14 @@ test("the bar is one stop of Tab, the arrows down and up move between its button
     ["{ArrowDown}", "Eraser"],
     ["{ArrowDown}", "Hand"],
     ["{ArrowDown}{ArrowDown}", "Clear"],
+    ["{ArrowDown}{ArrowDown}", "Zoom out"],
     ["{ArrowDown}", "Pen"],
-    ["{ArrowUp}", "Clear"],
+    ["{ArrowUp}", "Zoom out"],
     ["{Home}", "Pen"],
-    ["{End}", "Clear"],
-    ["{Control>}{ArrowUp}{/Control}", "Clear"],
-    ["{ArrowLeft}{ArrowRight}", "Clear"],
-    ["{ArrowUp}{ArrowUp}{ArrowUp}", "Eraser"],
+    ["{End}", "Zoom out"],
+    ["{Control>}{ArrowUp}{/Control}", "Zoom out"],
+    ["{ArrowLeft}{ArrowRight}", "Zoom out"],
+    ["{ArrowUp}{ArrowUp}{ArrowUp}{ArrowUp}{ArrowUp}", "Eraser"],
   ]);
   expect(element.tool).toBe("pen");
   expect(stops()).toEqual(["Eraser"]);
@@ -631,8 +656,8 @@ test("a task without the eraser has none: no button, no eraser of the pen, no to
   expect(() => {
     element.task = sheetTask({ tools: ["eraser"] });
   }).toThrow(TypeError);
-  // Pen, Hand, Undo and Clear.
-  expect(root.querySelectorAll(".tools button:not([hidden])")).toHaveLength(4);
+  // Pen, Hand, Undo, Clear, Zoom in and Zoom out.
+  expect(root.querySelectorAll(".tools button:not([hidden])")).toHaveLength(6);
 });
 
 test("a new task without the eraser puts the pen back, with no event, and the focus with it; an erasing under way ends as it began", async () => {
@@ -676,7 +701,7 @@ test("a worked example has no bar: its toolbar goes out of sight and of the acce
     const stops = () =>
       [...root.querySelectorAll('.tools [tabindex="0"]')].map((each) => each.textContent);
     const toolbars = () => page.elementLocator(element).getByRole("toolbar").elements();
-    expect(shown(row)).toHaveLength(5);
+    expect(shown(row)).toHaveLength(7);
     buttonOf(element, "Pen").focus();
     element.workedExample = workedExample();
     await settle();
@@ -716,7 +741,7 @@ test("a worked example has no bar: its toolbar goes out of sight and of the acce
       )
       .toBeVisible();
     expect(row.getAttribute("aria-orientation")).toBe("vertical");
-    expect(shown(row)).toHaveLength(5);
+    expect(shown(row)).toHaveLength(7);
     expect(actions.hidden).toBe(true);
     expect(root.activeElement?.textContent).toBe(russian.pen);
     expect(stops()).toEqual([russian.pen]);
@@ -882,11 +907,12 @@ test("every button is at least 44 CSS pixels square, in English and in Russian, 
   try {
     const { element, root } = await sheet(400);
     PEN_MODE.on = true;
-    // A sheet's five buttons, then a worked example's two of its row (R42), then a task from
-    // paper's seven, with its button atop the tools and its grid's (R87; R88).
-    for (const count of [5, 2, 7]) {
+    // A sheet's seven buttons, the zoom's two among them (R73), then a worked example's two of its
+    // row (R42), then a task from paper's nine, with its button atop the tools and its grid's (R87;
+    // R88).
+    for (const count of [7, 2, 9]) {
       if (count === 2) element.workedExample = workedExample();
-      if (count === 7) {
+      if (count === 9) {
         element.workedExample = undefined;
         element.paper = { statement: await paperCrop() };
       }
@@ -1102,13 +1128,13 @@ test("in a bar that scrolls inside its glass, the tooltip of the button the keys
   before.focus();
   await userEvent.tab();
   await userEvent.keyboard("{End}");
-  const clear = buttonOf(element, "Clear");
-  expect(said(tip)).toBe("Clear");
+  const last = buttonOf(element, "Zoom out");
+  expect(said(tip)).toBe("Zoom out");
   expect(row.scrollTop).toBeGreaterThan(0);
-  expect(level()).toBeCloseTo(middle(clear).clientY, 0);
+  expect(level()).toBeCloseTo(middle(last).clientY, 0);
   row.scrollTop = 0;
   await settle();
-  expect(level()).toBeCloseTo(middle(clear).clientY, 0);
+  expect(level()).toBeCloseTo(middle(last).clientY, 0);
 });
 
 test("a button the mouse was over that goes takes its tooltip along, and the keyboard's focus shows its own", async () => {

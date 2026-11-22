@@ -198,7 +198,8 @@ test("with forced colours the ring of a button in focus is the system's highligh
   const { root, pen, clear, tip } = barOf(element);
   await userEvent.tab();
   for (const focused of [pen, clear]) {
-    if (focused === clear) await userEvent.keyboard("{End}");
+    // Clear stands before the zoom's two buttons, the last of the bar (R73).
+    if (focused === clear) await userEvent.keyboard("{End}{ArrowUp}{ArrowUp}");
     expect(root.activeElement).toBe(focused);
     expect(focused.matches(":focus-visible")).toBe(true);
     const style = getComputedStyle(focused);

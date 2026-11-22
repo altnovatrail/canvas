@@ -140,7 +140,7 @@ test.each(LOW)(
     expect(root.activeElement?.textContent).toBe("Pen");
     await userEvent.keyboard("{End}");
     const last = root.activeElement;
-    expect(last?.textContent).toBe("Clear");
+    expect(last?.textContent).toBe("Zoom out");
     expect(row.scrollTop).toBeGreaterThan(0);
     const button = last?.getBoundingClientRect();
     const now = row.getBoundingClientRect();

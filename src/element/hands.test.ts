@@ -172,6 +172,8 @@ test.runIf(devtools)(
       russian.hand,
       russian.undo,
       russian.clear,
+      russian.zoomIn,
+      russian.zoomOut,
     ]);
     await swipe(canvas, view, 300, 500);
     await pen(canvas, view, [300, 700], [500, 700]);
