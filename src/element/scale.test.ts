@@ -231,7 +231,7 @@ test("a state with a scale draws the paper and its strokes at it, and the work t
   expect(points[0]?.x).toBeCloseTo(100, 0);
   expect(points[0]?.y).toBeCloseTo(50, 0);
   const work = await element.exportWork();
-  expect(work !== null && "tracing" in work.submission && work.submission.tracing.scale).toBe(2);
+  expect(work !== null && "tracing" in work.submission && work.submission.tracing?.scale).toBe(2);
   expect(() => {
     element.tracing = { at: [0, 0], hidden: false, scale: 5 };
   }).toThrow(TypeError);
