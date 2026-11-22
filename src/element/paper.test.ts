@@ -550,6 +550,11 @@ test("shows the grip's name in a tooltip on a mouse's hover, not a finger's touc
   expect(tip.hidden).toBe(false);
   expect(tip.textContent).toBe("Move the task");
   expect(tip.getAttribute("aria-hidden")).toBe("true");
+  // Beside the grip, to its right and at its middle, wherever the paper lies.
+  const near = grip.getBoundingClientRect();
+  const box = tip.getBoundingClientRect();
+  expect(box.left).toBeCloseTo(near.right + 8, 0);
+  expect((box.top + box.bottom) / 2).toBeCloseTo((near.top + near.bottom) / 2, 0);
   // Another key passes it by; Escape dismisses it, the pointer still on the grip.
   document.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
   expect(tip.hidden).toBe(false);

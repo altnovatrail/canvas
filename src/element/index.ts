@@ -504,7 +504,10 @@ canvas {
 .grip.dragging { cursor: grabbing; }
 .grip.dragging .bar { background: var(--novatrail-canvas-accent, ${ACCENT}); }
 .grip:focus-visible { outline: 2px solid var(--novatrail-canvas-accent, ${ACCENT}); }
-.stage > .tip { inset: auto; width: auto; height: auto; pointer-events: none; }
+.stage > .tip {
+  inset: var(--tip-y, 0px) auto auto var(--tip-x, 0px); width: auto; height: auto;
+  pointer-events: none;
+}
 .marks rect {
   fill: none; stroke: var(--novatrail-canvas-mark, ${MARK}); stroke-width: 2px;
   vector-effect: non-scaling-stroke;
