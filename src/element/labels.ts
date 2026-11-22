@@ -52,6 +52,24 @@ export interface Labels {
   readonly moveTask: string;
   readonly hideTask: string;
   readonly showTask: string;
+  /**
+   * The tracing paper's bar of scale (R89): its name, smaller, larger, the scale as a percentage,
+   * {percent}, which a press sets back to its own size, and fit to the window.
+   */
+  readonly scaleButtons: string;
+  readonly zoomOut: string;
+  readonly zoomIn: string;
+  readonly scaleReset: string;
+  readonly fit: string;
+  /**
+   * The reading of the statement in clean print (R89): its button, as it offers it, waits and
+   * offers the photo back, and the sign above the paper of what it shows.
+   */
+  readonly recognise: string;
+  readonly recognising: string;
+  readonly original: string;
+  readonly photoShown: string;
+  readonly readingShown: string;
   /** A box of a workbook's line, alone in it (R36). */
   readonly box: string;
   /** A box among several of its line, by its slot: {slot} (R36). */
@@ -90,6 +108,16 @@ const ENGLISH: Labels = Object.freeze({
   moveTask: "Move the task",
   hideTask: "Hide the task",
   showTask: "Show the task",
+  scaleButtons: "Task scale",
+  zoomOut: "Smaller",
+  zoomIn: "Larger",
+  scaleReset: "{percent}: back to 100%",
+  fit: "Fit",
+  recognise: "Recognise",
+  recognising: "Recognising…",
+  original: "Original",
+  photoShown: "Photo of the task",
+  readingShown: "Recognised by AI",
   box: "Box",
   boxAt: "Box {slot}",
   boxIn: "Box {line}.{slot}",
@@ -129,6 +157,16 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
       moveTask: "Подвинуть задачу",
       hideTask: "Спрятать задачу",
       showTask: "Показать задачу",
+      scaleButtons: "Масштаб задачи",
+      zoomOut: "Уменьшить",
+      zoomIn: "Увеличить",
+      scaleReset: "{percent}: вернуть 100 %",
+      fit: "Вписать",
+      recognise: "Распознать",
+      recognising: "Распознаём…",
+      original: "Оригинал",
+      photoShown: "Фото задачи",
+      readingShown: "Распознано ИИ",
       box: "Окошко",
       boxAt: "Окошко {slot}",
       boxIn: "Окошко {line}.{slot}",

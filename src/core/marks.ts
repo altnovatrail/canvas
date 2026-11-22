@@ -90,6 +90,8 @@ export type {
  */
 export interface Paper {
   readonly at: readonly [number, number];
+  /** The tracing paper's scale (R89). */
+  readonly scale: number;
   readonly onTracing: (id: number) => boolean;
 }
 
@@ -224,6 +226,11 @@ export function placesOf(
     if (traced.at[0] !== paper.at[0] || traced.at[1] !== paper.at[1]) {
       throw new TypeError(
         `marks.submission.tracing.at: ${shown(traced.at)}, and the tracing paper lies at ${shown(paper.at)}: the submission's strokes lie elsewhere`,
+      );
+    }
+    if ((traced.scale ?? 1) !== paper.scale) {
+      throw new TypeError(
+        `marks.submission.tracing.scale: ${shown(traced.scale ?? 1)}, and the tracing paper's scale is ${shown(paper.scale)}: the submission's strokes lie elsewhere`,
       );
     }
   }
@@ -386,7 +393,9 @@ export function digestOf(
       .map(({ id }) => id)
       .filter((id) => paper.onTracing(id))
       .sort(byNumber);
-    lines.push(`tracing ${tenths(paper.at[0])} ${tenths(paper.at[1])} ${traced.join(",")}`);
+    // A scale of 1 adds nothing, so a digest made before scales came stays the same (R89).
+    const scale = paper.scale === 1 ? "" : ` ${paper.scale}`;
+    lines.push(`tracing ${tenths(paper.at[0])} ${tenths(paper.at[1])} ${traced.join(",")}${scale}`);
   }
   return sumOf(lines);
 }

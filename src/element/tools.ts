@@ -32,7 +32,7 @@ import { ICONS, ROW } from "./icons.js";
 import { type Labels, labelsFor } from "./labels.js";
 
 /** A value of the bar, by its button's key: what its icon shows (icons.ts). */
-type Value = keyof typeof ROW;
+export type Value = keyof typeof ROW;
 
 /**
  * What the bar asks of the element: a tool the learner chose — perhaps the one in use — an undo, a
@@ -567,7 +567,7 @@ function radioButton(value: Value): HTMLButtonElement {
  * A button: its icon, an SVG that says nothing — no title, hidden from a screen reader — and its
  * label, which names it (R46; R78 spec): on the bar, only a screen reader reads it (R84).
  */
-function plainButton(value: Value): HTMLButtonElement {
+export function plainButton(value: Value): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
   const icon = document.createElementNS(SVG, "svg");
@@ -587,7 +587,7 @@ function plainButton(value: Value): HTMLButtonElement {
  * there: the icon's name stays on the SVG, as data. One mirrored in a row that runs right to left
  * says so by its class, which the style turns (R46).
  */
-function draw(button: HTMLButtonElement, value: Value, filled: boolean): void {
+export function draw(button: HTMLButtonElement, value: Value, filled: boolean): void {
   const icon = button.firstElementChild;
   if (!(icon instanceof SVGSVGElement)) return;
   const { outline, filled: full, mirrored } = ROW[value];

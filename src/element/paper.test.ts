@@ -67,7 +67,7 @@ function write(canvas: HTMLCanvasElement, view: () => View, ...points: [number, 
 
 test("shows a dotted sheet, the tracing paper at its start, and its grip and button", async () => {
   const { element, root, grip } = await paper();
-  expect(element.tracing).toEqual({ at: [180, 60], hidden: false });
+  expect(element.tracing).toEqual({ at: [180, 60], hidden: false, scale: 1 });
   expect(root.querySelector(".grid")?.classList.contains("dots")).toBe(true);
   expect(grip.getAttribute("aria-label")).toBe("Move the task");
   expect(grip.hidden).toBe(false);
@@ -144,7 +144,7 @@ test("hides and shows the tracing paper by its button, which tells", async () =>
   expect(told).toHaveLength(2);
   // Past the page it lies on the sheet still, which goes on as far as its reach (R73).
   element.tracing = { at: [2000, 0], hidden: false };
-  expect(element.tracing).toEqual({ at: [2000, 0], hidden: false });
+  expect(element.tracing).toEqual({ at: [2000, 0], hidden: false, scale: 1 });
   expect(() => {
     element.tracing = { at: [10000, 0], hidden: false };
   }).toThrow(TypeError);
@@ -275,10 +275,10 @@ test("keeps the tracing paper where it lies for a new object of the same crop", 
   const again = { statement };
   element.paper = again;
   expect(element.paper).toBe(again);
-  expect(element.tracing).toEqual({ at: [100, 200], hidden: true });
+  expect(element.tracing).toEqual({ at: [100, 200], hidden: true, scale: 1 });
   // Another crop is another task: its paper starts again.
   element.paper = { statement: await paperCrop() };
-  expect(element.tracing).toEqual({ at: [180, 60], hidden: false });
+  expect(element.tracing).toEqual({ at: [180, 60], hidden: false, scale: 1 });
   expect(told).toHaveLength(0);
 });
 
@@ -292,7 +292,7 @@ test("brings a paper given wholly off the sheet at its real size onto it once it
   // A tall crop: 175 × 700 on the sheet, and the largest paper, 800 wide, till it is read.
   element.paper = { statement: await paperCrop(50, 200) };
   element.tracing = { at: [-750, 100], hidden: false };
-  expect(element.tracing).toEqual({ at: [-750, 100], hidden: false });
+  expect(element.tracing).toEqual({ at: [-750, 100], hidden: false, scale: 1 });
   await expect.poll(() => element.tracing?.at).toEqual([0, 100]);
   expect(told).toHaveLength(0);
 });
@@ -356,7 +356,7 @@ test("gives the work for checking: the task's crop, and the crop of the paper an
   if (work === null || !("statement" in work)) throw new Error("no work of a task from paper");
   expect(work.statement).toBe(statement);
   expect(work.png.type).toBe("image/png");
-  expect(work.submission.tracing).toEqual({ at: [180, 60], hidden: false });
+  expect(work.submission.tracing).toEqual({ at: [180, 60], hidden: false, scale: 1 });
   // The marks of its submission go back to it, and not once the paper has moved.
   element.marks = { submission: work.submission, marks: [] };
   element.tracing = { at: [100, 60], hidden: false };

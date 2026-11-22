@@ -68,9 +68,11 @@ function rgbaAt(canvas: HTMLCanvasElement, view: View, x: number, y: number): nu
 
 test("the sheet is a stack of layers in the order of concepts 8 spec, and of them the canvas alone takes pointer events, as the element does, and so do the buttons of the bar, while the rail it stands in covers nothing of the sheet", async () => {
   const { element, root, canvas, stage, viewport } = await sheet(400);
-  // Over the layers stand the tracing paper's grip and its tooltip: they and the paper's layer show
-  // on a task from paper alone (R87).
-  const layers = [...stage.children].filter((each) => !each.matches(".grip, .tip"));
+  // Over the tracing paper, under the ink, its cover of the statements read; over the layers its
+  // frame, its sign, its grip and tooltip and its bar of scale: they and the paper's layer show on
+  // a task from paper alone (R87; R89).
+  const parts = ".tracing-cover, .tracing-frame, .tracing-sign, .grip, .tip, .tracing-scale";
+  const layers = [...stage.children].filter((each) => !each.matches(parts));
   expect(layers.map((layer) => layer.getAttribute("class") ?? layer.localName)).toEqual([
     "template",
     "widget",
@@ -81,11 +83,20 @@ test("the sheet is a stack of layers in the order of concepts 8 spec, and of the
     "marks",
   ]);
   expect(
-    [...stage.children].slice(-2).map((each) => [each.className, (each as HTMLElement).hidden]),
+    [...stage.children]
+      .filter((each) => each.matches(parts))
+      .map((each) => [each.className, (each as HTMLElement).hidden]),
   ).toEqual([
+    ["tracing-cover", true],
+    ["tracing-frame", true],
+    ["tracing-sign", true],
     ["grip", true],
     ["tip grip-tip", true],
+    ["tracing-scale", true],
   ]);
+  expect(stage.querySelector(".tracing-cover")?.previousElementSibling?.getAttribute("class")).toBe(
+    "tracing",
+  );
   const box = stage.getBoundingClientRect();
   for (const layer of layers) {
     const rect = layer.getBoundingClientRect();

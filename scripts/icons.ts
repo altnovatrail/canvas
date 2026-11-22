@@ -39,7 +39,8 @@ export interface Value {
  * labels.ts (R78 spec); no button scrolls the sheet, which the hand moves (R84). Demo has two, as
  * the demo is shown or hidden, and the grid of a task from paper's sheet four, one for each grid,
  * which its button shows (R46). The task from paper's button atop the tools fills its icon while
- * the tracing paper is shown (R87).
+ * the tracing paper is shown (R87). The tracing paper's bar and sign have theirs: Smaller, Larger,
+ * Fit, Recognise and Original, which the photo's sign shows too (R89).
  */
 export const TABLE: Readonly<Record<string, Value>> = {
   task: { base: "article", filled: true, mirrored: false },
@@ -55,6 +56,11 @@ export const TABLE: Readonly<Record<string, Value>> = {
   gridLines: { base: "view-headline", filled: false, mirrored: false },
   gridBlank: { base: "crop-square", filled: false, mirrored: false },
   gridSquares: { base: "grid-on", filled: false, mirrored: false },
+  zoomOut: { base: "remove", filled: false, mirrored: false },
+  zoomIn: { base: "add", filled: false, mirrored: false },
+  fit: { base: "fit-screen", filled: false, mirrored: false },
+  recognise: { base: "auto-awesome", filled: false, mirrored: false },
+  original: { base: "image", filled: false, mirrored: false },
 };
 
 /** An icon as the element draws it: its view box, and the paths it fills in the button's colour. */

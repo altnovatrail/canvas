@@ -231,7 +231,7 @@ test("in an element whose text runs right to left, the icons of Next, Undo and a
   /** Whether each button shown mirrors its icon. */
   const mirrored = () =>
     Object.fromEntries(
-      [...root.querySelectorAll("button:not([hidden])")].map((one) => [
+      [...root.querySelectorAll(".tools button:not([hidden])")].map((one) => [
         one.textContent,
         drawn(one).mirrored,
       ]),
@@ -632,7 +632,7 @@ test("a task without the eraser has none: no button, no eraser of the pen, no to
     element.task = sheetTask({ tools: ["eraser"] });
   }).toThrow(TypeError);
   // Pen, Hand, Undo and Clear.
-  expect(root.querySelectorAll("button:not([hidden])")).toHaveLength(4);
+  expect(root.querySelectorAll(".tools button:not([hidden])")).toHaveLength(4);
 });
 
 test("a new task without the eraser puts the pen back, with no event, and the focus with it; an erasing under way ends as it began", async () => {
