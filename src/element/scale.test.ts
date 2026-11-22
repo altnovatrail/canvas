@@ -258,6 +258,16 @@ test("Recognise asks for the reading, waits, shows the statements in place of th
   expect(mode.getAttribute("aria-disabled")).toBe("true");
   expect(sign.textContent).toBe("Recognising…");
   expect(root.querySelector<HTMLElement>(".scan")?.hidden).toBe(false);
+  // The sweeping line runs through the middle of its glow, which has no edge to one side.
+  const glow = root.querySelector<HTMLElement>(".scan i");
+  if (glow === null) throw new Error("no glow");
+  expect(getComputedStyle(glow).borderRightStyle).toBe("none");
+  expect(glow.getBoundingClientRect().width).toBeGreaterThan(0);
+  const line = getComputedStyle(glow, "::after");
+  expect(Number.parseFloat(line.left) + Number.parseFloat(line.width) / 2).toBeCloseTo(
+    glow.getBoundingClientRect().width / 2,
+    1,
+  );
   mode.click();
   expect(asked).toBe(1);
   element.reading = { state: "done", statements: ["□ − 3 = 7"] };

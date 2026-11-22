@@ -538,8 +538,12 @@ canvas {
   position: absolute; top: 0; bottom: 0; left: -30%; width: 30%;
   background: linear-gradient(90deg, transparent,
     color-mix(in srgb, var(--novatrail-canvas-accent, ${ACCENT}) 18%, transparent), transparent);
-  border-right: 2px solid color-mix(in srgb, var(--novatrail-canvas-accent, ${ACCENT}) 60%, transparent);
   left: 35%;
+}
+/* The line runs through the middle of its glow, so the glow is the same on both sides of it. */
+.scan i::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: calc(50% - 1px); width: 2px;
+  background: color-mix(in srgb, var(--novatrail-canvas-accent, ${ACCENT}) 60%, transparent);
 }
 @keyframes novatrail-scan { from { left: -30%; } to { left: 100%; } }
 @keyframes novatrail-spin { to { transform: rotate(360deg); } }
@@ -631,7 +635,8 @@ canvas {
   .statements { color: CanvasText; }
   .statements .slot { border-color: CanvasText; }
   .scan { background: transparent; }
-  .scan i { background: transparent; border-right-color: Highlight; }
+  .scan i { background: transparent; }
+  .scan i::after { background: Highlight; }
   .stage > .tracing-sign, .stage > .tracing-sign[data-shows] {
     background: Canvas; color: CanvasText; border: 1px solid CanvasText;
   }
