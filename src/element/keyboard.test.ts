@@ -23,9 +23,10 @@ import { probe } from "./probe.js";
 // keyboard scrolls it in Safari too, where a container that nothing in it can take the focus in
 // scrolls by no key (R90 spec; WebKit's bug 277290). Tab goes into it from the bar and out of it to
 // what follows the element (WCAG 2.1.2), and the keys scroll it as the browser scrolls a
-// container. An element without a height of its own scrolls with the page and has no such stop,
-// and neither has one whose task fits. A ring shows the focus the keyboard brought, over the sheet
-// (WCAG 2.4.7).
+// container. A sheet goes past its page, wider than its container (R73), which so is a region
+// with or without a height of its own; a worked example's sheet is its page alone, and an element
+// without a height of its own, or one its example fits in, scrolls with the page and has no such
+// stop. A ring shows the focus the keyboard brought, over the sheet (WCAG 2.4.7).
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -43,8 +44,9 @@ function after(): HTMLButtonElement {
 }
 
 /**
- * The kinds of canvas, put on the page, what the region and the bar are named in English, and the
- * buttons Tab comes to between the bar and the region: a worked example's row (R84).
+ * The kinds of canvas, put on the page, what the region and the bar are named in English — a
+ * worked example has no bar —, and the buttons Tab comes to between the bar and the region: a
+ * worked example's row (R84).
  */
 const KINDS = [
   {
@@ -71,7 +73,7 @@ const KINDS = [
       element.workedExample = workedExample();
     },
     region: "Worked example",
-    row: "Worked example buttons",
+    row: null,
     between: ["Next", "Demo"],
   },
 ];
@@ -96,7 +98,7 @@ const regionOf = (viewport: HTMLElement) =>
   ["tabindex", "role", "aria-label"].map((name) => viewport.getAttribute(name));
 
 test.each(KINDS)(
-  "on $kind of a height its content overflows, Tab goes from the bar, through a worked example's row, into the container, a region named by the kind in Chromium's own tree, and out of it to what follows; Shift+Tab comes back",
+  "on $kind of a height its content overflows, Tab goes from the bar, or through a worked example's row, into the container, a region named by the kind in Chromium's own tree, and out of it to what follows; Shift+Tab comes back",
   async ({ give, region, row: rowName, between }) => {
     const { root, viewport, row, next } = await put(give, 300);
     expect(viewport.scrollHeight).toBeGreaterThan(viewport.clientHeight);
@@ -109,10 +111,12 @@ test.each(KINDS)(
           .filter((node) => node.role?.value === role && !node.ignored)
           .map((node) => node.name?.value);
       expect(named("region")).toEqual([region]);
-      expect(named("toolbar")).toEqual([rowName]);
+      expect(named("toolbar")).toEqual(rowName === null ? [] : [rowName]);
     }
-    await userEvent.tab();
-    expect(row.contains(root.activeElement)).toBe(true);
+    if (rowName !== null) {
+      await userEvent.tab();
+      expect(row.contains(root.activeElement)).toBe(true);
+    }
     for (const label of between) {
       await userEvent.tab();
       expect(root.activeElement?.textContent).toBe(label);
@@ -128,8 +132,10 @@ test.each(KINDS)(
       await userEvent.tab({ shift: true });
       expect(root.activeElement?.textContent).toBe(label);
     }
-    await userEvent.tab({ shift: true });
-    expect(row.contains(root.activeElement)).toBe(true);
+    if (rowName !== null) {
+      await userEvent.tab({ shift: true });
+      expect(row.contains(root.activeElement)).toBe(true);
+    }
   },
 );
 
@@ -175,30 +181,40 @@ test("the keys scroll the container in focus as the browser scrolls one, and the
 
 test.each([
   { which: "an element without a height of its own", height: undefined },
-  { which: "an element of a height its task fits in", height: 1200 },
+  { which: "an element of a height its worked example fits in", height: 1200 },
 ])(
-  "$which has no container of its own: no stop of Tab, role or name, and Tab goes from the row to what follows",
+  "$which has no container of its own on a worked example, whose sheet is its page alone: no stop of Tab, role or name, and Tab goes from its row to what follows; a sheet's, which goes past its page, is a region (R73)",
   async ({ height }) => {
-    const { root, viewport, row, next } = await put((each) => {
-      each.task = sheetTask();
+    const { element, root, viewport, next } = await put((each) => {
+      each.workedExample = workedExample();
     }, height);
     expect(viewport.scrollHeight - viewport.clientHeight).toBeLessThan(1);
-    expect(regionOf(viewport)).toEqual([null, null, null]);
+    expect(viewport.scrollWidth - viewport.clientWidth).toBeLessThan(1);
+    await expect.poll(() => regionOf(viewport), { timeout: 1000 }).toEqual([null, null, null]);
     await userEvent.tab();
-    expect(row.contains(root.activeElement)).toBe(true);
+    expect(root.activeElement?.textContent).toBe("Next");
+    await userEvent.tab();
+    expect(root.activeElement?.textContent).toBe("Demo");
     await userEvent.tab();
     expect(document.activeElement).toBe(next);
+    element.workedExample = undefined;
+    await settle();
+    expect(viewport.scrollWidth).toBeGreaterThan(viewport.clientWidth);
+    await expect
+      .poll(() => regionOf(viewport), { timeout: 1000 })
+      .toEqual(["0", "region", "Sheet"]);
   },
 );
 
 test("the region comes with an overflow and goes with it, but one that holds the focus stays till the focus leaves it, not when the window loses it", async () => {
+  // A worked example, whose sheet is its page alone: a sheet's goes past it, and always overflows.
   const { element, root, viewport, next } = await put((each) => {
-    each.task = sheetTask();
+    each.workedExample = workedExample();
   });
   expect(regionOf(viewport)).toEqual([null, null, null]);
   element.style.height = "300px";
   await settle();
-  expect(regionOf(viewport)).toEqual(["0", "region", "Sheet"]);
+  expect(regionOf(viewport)).toEqual(["0", "region", "Worked example"]);
   element.style.height = "";
   await settle();
   expect(regionOf(viewport)).toEqual([null, null, null]);
@@ -208,10 +224,10 @@ test("the region comes with an overflow and goes with it, but one that holds the
   element.style.height = "1200px";
   await settle();
   expect(root.activeElement).toBe(viewport);
-  expect(regionOf(viewport)).toEqual(["0", "region", "Sheet"]);
+  expect(regionOf(viewport)).toEqual(["0", "region", "Worked example"]);
   // The window losing the focus blurs the container, which still holds it.
   viewport.dispatchEvent(new FocusEvent("blur"));
-  expect(regionOf(viewport)).toEqual(["0", "region", "Sheet"]);
+  expect(regionOf(viewport)).toEqual(["0", "region", "Worked example"]);
   await userEvent.tab();
   expect(document.activeElement).toBe(next);
   expect(regionOf(viewport)).toEqual([null, null, null]);
@@ -222,6 +238,7 @@ test("the region and the row are named in the element's language, by the kind it
     each.task = sheetTask();
   }, 300);
   const russian = labelsFor("ru").labels;
+  // A worked example has no bar, which so has no name (R84).
   const names = () => [viewport.getAttribute("aria-label"), row.getAttribute("aria-label")];
   element.setAttribute("lang", "ru");
   expect(names()).toEqual([russian.sheet, russian.sheetButtons]);
@@ -232,9 +249,9 @@ test("the region and the row are named in the element's language, by the kind it
   element.task = undefined;
   element.workedExample = workedExample();
   await settle();
-  expect(names()).toEqual(["Пример", "Кнопки примера"]);
+  expect(names()).toEqual(["Пример", null]);
   element.setAttribute("lang", "de");
-  expect(names()).toEqual(["Worked example", "Worked example buttons"]);
+  expect(names()).toEqual(["Worked example", null]);
   // The name is English, and the container is said in English: what it holds, in German.
   expect(viewport.matches(":lang(en)")).toBe(true);
 });

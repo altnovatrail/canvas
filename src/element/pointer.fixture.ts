@@ -305,6 +305,19 @@ export async function input(
   });
 }
 
+/**
+ * A turn of a mouse's wheel through the DevTools protocol, at a client point: `deltaX` CSS pixels
+ * right and `deltaY` down, as the protocol takes them.
+ */
+export async function wheel(
+  client: { clientX: number; clientY: number },
+  deltaX: number,
+  deltaY: number,
+): Promise<void> {
+  const { x, y } = pageOf(client);
+  await cdp().send("Input.dispatchMouseEvent", { type: "mouseWheel", x, y, deltaX, deltaY });
+}
+
 /** A finger on the screen, at a client point, as the DevTools protocol takes it. */
 export interface Finger {
   readonly id: number;

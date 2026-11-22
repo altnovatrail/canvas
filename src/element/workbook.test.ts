@@ -178,7 +178,14 @@ test("each box lies where the ink is, at any width and scroll: a stroke through 
     );
     const end = viewport.scrollHeight - viewport.clientHeight;
     expect(end).toBeGreaterThan(0);
-    for (const scrollTop of [0, end]) {
+    // The page's bottom in sight: the sheet goes on below it, where there are no boxes (R73).
+    const sheetTop =
+      (element.shadowRoot?.querySelector(".sheet")?.getBoundingClientRect().top ?? 0) -
+      viewport.getBoundingClientRect().top;
+    const pageEnd = Math.round(sheetTop + 1400 * view().k - viewport.clientHeight);
+    expect(pageEnd).toBeGreaterThan(0);
+    expect(pageEnd).toBeLessThan(end);
+    for (const scrollTop of [0, pageEnd]) {
       viewport.scrollTop = scrollTop;
       await settle();
       const shown = view();

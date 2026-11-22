@@ -1,6 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
 import type { View } from "../core/screen.js";
-import { SHEET } from "../core/sheet.js";
+import { REACH, SHEET } from "../core/sheet.js";
 import { NovatrailCanvas, type Tool } from "./index.js";
 import { at, devtools, input, level } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
@@ -86,7 +86,7 @@ test("pointer events on the canvas, with their coalesced points, make a stroke i
 });
 
 test.runIf(devtools)(
-  "a real mouse drag, captured beyond the canvas, writes on to the sheet's edge",
+  "a real mouse drag, captured beyond the canvas, writes on past the sheet as laid out, and stops at the sheet's reach (R73)",
   async () => {
     const { element, canvas, view } = await sheet(400);
     // A mouse of the protocol presses with the force it is given, 0 unless told; a real one with
@@ -94,21 +94,25 @@ test.runIf(devtools)(
     const pressed = { force: 0.5 };
     await input("mousePressed", at(canvas, view(), 100, 100), pressed);
     await input("mouseMoved", at(canvas, view(), 300, 100), pressed);
-    // Below the canvas, and so below the sheet: the canvas holds the pointer, and the point is
-    // clamped to the sheet's bottom edge.
-    const below = {
-      ...at(canvas, view(), 300, 0),
-      clientY: canvas.getBoundingClientRect().bottom + 100,
-    };
+    // Below the canvas, and so below the sheet as laid out: the canvas holds the pointer, and the
+    // point lands under it, for the sheet goes on as far as its reach.
+    const rect = canvas.getBoundingClientRect();
+    const { k } = view();
+    const below = { ...at(canvas, view(), 300, 0), clientY: rect.bottom + 100 };
     await input("mouseMoved", below, pressed);
-    await input("mouseReleased", below, { force: 0 });
+    // And far below its reach: there the point is kept to its bottom edge.
+    const beyond = { ...below, clientY: rect.top + (REACH.height + 1000) * k };
+    await input("mouseMoved", beyond, pressed);
+    await input("mouseReleased", beyond, { force: 0 });
 
     const [stroke] = probe(element).strokes;
     expect(stroke?.kind).toBe("mouse");
     const points = stroke?.points ?? [];
     expect(points[0]?.x).toBeCloseTo(100, 0);
     expect(points[0]?.y).toBeCloseTo(100, 0);
-    expect(points.at(-1)?.y).toBe(SHEET.height);
+    const under = points.find((point) => point.y > SHEET.height && point.y < REACH.height);
+    expect(under?.y).toBeCloseTo((rect.height + 100) / k, 0);
+    expect(points.at(-1)?.y).toBe(REACH.height);
     // The last point keeps the pressure of the drag, not pointerup's 0.
     expect(points.map((point) => point.p)).toEqual(points.map(() => 0.5));
   },

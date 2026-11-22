@@ -18,7 +18,7 @@ import type { Group } from "./groups.js";
 import type { Stroke } from "./ink.js";
 import { adler32, crc32 } from "./png.js";
 import type { Point } from "./screen.js";
-import { SHEET } from "./sheet.js";
+import { REACH } from "./sheet.js";
 import { tracingFieldsOf } from "./tracing.js";
 
 /**
@@ -648,10 +648,10 @@ function numbersOf(value: unknown, path: string, groups: readonly Group[]): Crop
   const exact = record(crop.exact, `${path}.exact`);
   const median = whole(exact.median, `${path}.exact.median`, CROP.flat * 10, CROP.ceiling * 10);
   const points = record(exact.box, `${path}.exact.box`);
-  const minX = whole(points.minX, `${path}.exact.box.minX`, 0, SHEET.width * 10);
-  const minY = whole(points.minY, `${path}.exact.box.minY`, 0, SHEET.height * 10);
-  const maxX = whole(points.maxX, `${path}.exact.box.maxX`, minX, SHEET.width * 10);
-  const maxY = whole(points.maxY, `${path}.exact.box.maxY`, minY, SHEET.height * 10);
+  const minX = whole(points.minX, `${path}.exact.box.minX`, 0, REACH.width * 10);
+  const minY = whole(points.minY, `${path}.exact.box.minY`, 0, REACH.height * 10);
+  const maxX = whole(points.maxX, `${path}.exact.box.maxX`, minX, REACH.width * 10);
+  const maxY = whole(points.maxY, `${path}.exact.box.maxY`, minY, REACH.height * 10);
   const numbers = {
     drawn,
     width,

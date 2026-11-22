@@ -565,12 +565,12 @@ describe("a history given to the sheet", () => {
       [[write(stroke([]))], /^history\[0\]\.stroke\.points: .*one at least/],
       [[write(stroke("dots"))], /^history\[0\]\.stroke\.points: a list of points/],
       [
-        [write(stroke([{ ...point, x: 1000.5 }]))],
-        /^history\[0\]\.stroke\.points\[0\]\.x: a number from 0 to 1000/,
+        [write(stroke([{ ...point, x: 10000.5 }]))],
+        /^history\[0\]\.stroke\.points\[0\]\.x: a number from 0 to 10000/,
       ],
       [
         [write(stroke([{ ...point, y: -0.1 }]))],
-        /^history\[0\]\.stroke\.points\[0\]\.y: a number from 0 to 1400/,
+        /^history\[0\]\.stroke\.points\[0\]\.y: a number from 0 to 14000/,
       ],
       [
         [write(stroke([{ ...point, p: 1.5 }]))],

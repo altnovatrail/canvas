@@ -1,10 +1,11 @@
-import type { TracingState } from "@altnovatrail/spec/canvas";
+import type { PaperGrid, TracingState } from "@altnovatrail/spec/canvas";
 import { record, shown } from "./fields.js";
 import type { Box } from "./geometry.js";
 import { tenths } from "./geometry.js";
+import type { Grid } from "./grid.js";
 import type { Stroke } from "./ink.js";
 import type { Point } from "./screen.js";
-import { SHEET } from "./sheet.js";
+import { REACH } from "./sheet.js";
 
 /**
  * Where the tracing paper of a task from paper lies on the sheet, and whether it is hidden (R87):
@@ -26,6 +27,40 @@ export const TRACING = Object.freeze({
   leap: 100,
   dots: 25,
 });
+
+/**
+ * The grids of a task from paper's sheet in the order its button turns them, round, the first as
+ * the task comes (R88).
+ */
+export const PAPER_GRIDS: readonly PaperGrid[] = Object.freeze([
+  "dots",
+  "lines",
+  "blank",
+  "squares",
+]);
+
+/** Each grid's rulings, in sheet units, as the mockup draws them: a blank sheet has none (R88). */
+const RULINGS: Readonly<Record<PaperGrid, Grid | undefined>> = Object.freeze({
+  dots: Object.freeze({ kind: "dots", step: TRACING.dots }),
+  lines: Object.freeze({ kind: "lines", step: 40 }),
+  blank: undefined,
+  squares: Object.freeze({ kind: "squares", step: TRACING.dots }),
+});
+
+/** Whether a value is a grid of a task from paper's sheet. */
+export function isPaperGrid(value: unknown): value is PaperGrid {
+  return typeof value === "string" && (PAPER_GRIDS as readonly string[]).includes(value);
+}
+
+/** The rulings of a task from paper's grid, or none for a blank sheet (R88). */
+export function rulingsOf(grid: PaperGrid): Grid | undefined {
+  return RULINGS[grid];
+}
+
+/** The grid the button turns a task from paper's grid to: the next, round (R88). */
+export function nextGrid(grid: PaperGrid): PaperGrid {
+  return PAPER_GRIDS[(PAPER_GRIDS.indexOf(grid) + 1) % PAPER_GRIDS.length] as PaperGrid;
+}
 
 /** The tracing paper's size on the sheet, in units. */
 export interface Size {
@@ -93,7 +128,7 @@ export function tracingFieldsOf(value: unknown, path: string): TracingState {
 /** Whether the tracing paper of `size` at `at` lies wholly off the sheet, touching it at most. */
 export function whollyOff(at: readonly [number, number], size: Size): boolean {
   const [x, y] = at;
-  return x >= SHEET.width || y >= SHEET.height || x + size.width <= 0 || y + size.height <= 0;
+  return x >= REACH.width || y >= REACH.height || x + size.width <= 0 || y + size.height <= 0;
 }
 
 /** Whether two tracing states say the same. */
@@ -112,8 +147,8 @@ export function rectOf(at: readonly [number, number], size: Size): Box {
  */
 export function keptOn(at: readonly [number, number], size: Size): readonly [number, number] {
   return Object.freeze([
-    clamp(at[0], 0, Math.max(0, SHEET.width - size.width)),
-    clamp(at[1], 0, Math.max(0, SHEET.height - size.height)),
+    clamp(at[0], 0, Math.max(0, REACH.width - size.width)),
+    clamp(at[1], 0, Math.max(0, REACH.height - size.height)),
   ] as const);
 }
 
@@ -146,8 +181,8 @@ export function onSheet(stroke: Stroke, at: readonly [number, number]): Stroke {
     points: Object.freeze(
       stroke.points.map(({ x, y, t, p }) =>
         Object.freeze({
-          x: clamp(x + at[0], 0, SHEET.width),
-          y: clamp(y + at[1], 0, SHEET.height),
+          x: clamp(x + at[0], 0, REACH.width),
+          y: clamp(y + at[1], 0, REACH.height),
           t,
           p,
         }),
@@ -163,10 +198,10 @@ export function onSheet(stroke: Stroke, at: readonly [number, number]): Stroke {
  */
 export function boxOnSheet(box: Box, at: readonly [number, number]): Box {
   return {
-    minX: clamp(box.minX + at[0], 0, SHEET.width),
-    minY: clamp(box.minY + at[1], 0, SHEET.height),
-    maxX: clamp(box.maxX + at[0], 0, SHEET.width),
-    maxY: clamp(box.maxY + at[1], 0, SHEET.height),
+    minX: clamp(box.minX + at[0], 0, REACH.width),
+    minY: clamp(box.minY + at[1], 0, REACH.height),
+    maxX: clamp(box.maxX + at[0], 0, REACH.width),
+    maxY: clamp(box.maxY + at[1], 0, REACH.height),
   };
 }
 
@@ -176,10 +211,10 @@ export function boxOnSheet(box: Box, at: readonly [number, number]): Box {
  */
 export function tenthsOf(rect: Box): Box {
   return {
-    minX: tenths(clamp(rect.minX, 0, SHEET.width)),
-    minY: tenths(clamp(rect.minY, 0, SHEET.height)),
-    maxX: tenths(clamp(rect.maxX, 0, SHEET.width)),
-    maxY: tenths(clamp(rect.maxY, 0, SHEET.height)),
+    minX: tenths(clamp(rect.minX, 0, REACH.width)),
+    minY: tenths(clamp(rect.minY, 0, REACH.height)),
+    maxX: tenths(clamp(rect.maxX, 0, REACH.width)),
+    maxY: tenths(clamp(rect.maxY, 0, REACH.height)),
   };
 }
 

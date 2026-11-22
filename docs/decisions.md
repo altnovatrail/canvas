@@ -4,7 +4,7 @@
 >
 > **Rule:** do not re-propose what was rejected without new facts. If a decision has to change, ask the author and rewrite its entry in its place, and every entry the change touches: an entry is its text in force — what was decided, why, what was rejected and where it is described —, git keeps the old text, and the commit says why. An entry that still has dated amendments is rewritten whole, its amendments folded in, when a task touches it (R160 spec).
 >
-> The repository was set up 2026-10-19 from the template of `spec` v0.1.0 (R21 spec). How it comes to differ from the template — tools in the devcontainer, rules in RUN.md — is recorded here as a decision, as R46 canvas-api recorded how it differed from its model. Next number — R88.
+> The repository was set up 2026-10-19 from the template of `spec` v0.1.0 (R21 spec). How it comes to differ from the template — tools in the devcontainer, rules in RUN.md — is recorded here as a decision, as R46 canvas-api recorded how it differed from its model. Next number — R89.
 >
 > Here entries are cited as `R03`, in other repositories as `R03 canvas`. The decisions of `spec` are cited as "R18 spec", MathTrail's as "R37 canvas-api", and in a list as "canvas-api: R37, R38". Each log has its own numbers.
 >
@@ -113,149 +113,88 @@
 
 ## The detailing
 
-**R05. The drawing engine is code of our own on the browser's API. The canvas is a stack of layers of page elements. On the handwriting sheet the learner's work is Canvas 2D with the outline of perfect-freehand 1.2.3 and the index of strokes rbush 4.0.1, and the template and the tutor's layer are HTML and SVG. The text canvas is the page's markup in the same stack, and the stroke groups and the crop are computed by DOM-free code of our own.**
-- **Layers.** Each layer is a page element of its own: all of one size, in the same units of the sheet (T02) and in the order of concepts 8 spec. The tutor's layer is in two elements: the sketch under the learner's work, the boxes and marks above it. What draws what — [architecture.md](architecture.md), section 3.1.
-- **The text canvas** — words and sentences in HTML: the edits are their state, the input is the keyboard. Ink on it goes by the same layer of the learner's work, if a task needs it.
-- **The widget layer** — a place of its own in the stack, empty until stage 4. The chosen tool distributes the input through `pointer-events` (R16 spec; architecture 3.4 spec).
-- **Input** — code of our own on Pointer Events. Palm rejection is as in canvas-api: pen mode after the first pen in the session, and a threshold of the touch's area (spec 3.1 canvas-api). Beyond that — a button that brings back drawing with a finger, and `pointercancel` cancels a stroke. The thresholds are parameters of T09, and T22 checks them on devices.
-- **DOM-free** — the strokes, the writing history, the index, the groups and boxes, the snapping of marks, the raster of the crop and the PNG: plain TypeScript, the same in the browser and in Node. The raster's algorithm — T13.
-- **The first code** — the sheet and the samples page. To the samples page the drawing engine gives only the sheet: input, ink with pressure, the eraser, undo, the writing history, the grid and the statement, groups and the crop. There is no tutor on it: one box tied to strokes enters the sheet's first code only to check the tying (T14). The first code needs no scene graph.
+**R05. The drawing engine is code of our own on the browser's API. The canvas is a stack of layers of page elements. The learner's ink on the screen is Canvas 2D with the outline of perfect-freehand and the index of strokes rbush, and the template and the tutor's layer are HTML and SVG. The strokes, the history, the stroke groups, the crop and its PNG are DOM-free code of our own.**
+- **Layers.** Each layer is a page element of its own: all of one size, in the units of the sheet (R06) and in the order of concepts 8 spec. They stand in the scene — the visible part of the sheet — and shift in the frame in which the ink is drawn (R23). The template holds the grid, and the statement stands above the sheet, in the same scrolling (R23). The tutor's layer is in two elements: the sketch under the learner's work, the boxes and marks above it. What draws what — [architecture.md](architecture.md), section 3.1.
+- **The widget layer** — a place of its own in the stack, empty until stage 4 (R16 spec; architecture 3.4 spec). The chosen tool distributes the input through `pointer-events`: an inactive layer gets `none`, and the active one drops its `none` but does not get `auto`, so the consumer's `none` on the element still reaches the drawing surface (R20).
+- **Input** — code of our own on Pointer Events, one pointer at a time, and `pointercancel` cancels a stroke (R18). Palm rejection is canvas-api's: pen mode in the session and a threshold of the touch's size (spec 3.1 canvas-api), as R29 decides them.
+- **DOM-free** — the strokes, the writing history, the index, the groups and boxes, the snapping of marks, the raster of the crop and its PNG: plain TypeScript, the same in the browser and in Node. The raster and the PNG encoder are our own, and the bytes are the same in any JavaScript engine (R25).
+- **The browser's drawing surface** draws the ink on the screen and the picture of a work: a `<canvas>` out of the document fills each stroke's outline the screen fills, and the crop's encoder writes its pixels (R83). The crop for checking is never drawn by it (R25, R27).
+- **Versions** — perfect-freehand and rbush at the exact versions of `package.json` (R12).
+- `canvas` builds no text canvas (R21): the engine and the stack serve the sheet and the kinds built on it.
 
-— *Why:* the author's answers while T01 was planned, 2026-10-21. The drawing engine, the groups and the crop, the pen and the palm — by the recommendations, and the text canvas, the widget layer and the minimum of the samples page — «да» to the plan with the recommendations. The comparison — [architecture.md](architecture.md), section 2.1, the sources — section 4.
+— *Why:* the author's answers while T01 was planned, 2026-10-21, by the recommendations. The comparison — [architecture.md](architecture.md), section 2.1; the sources — sources 1.1, 1.2, 2 and 3.1.
 - **A place of its own for the iframe.** The widget's iframe sandbox needs a place of its own between the layers (R16 spec; concepts 8 spec). A stack of page elements has one, and Konva puts no HTML between its layers: "It can't render DOM elements directly".
 - **Accessibility.** The argument of R269 standalone — a screen reader does not read the drawing surface — weighs for the statement, the tools and the marks, not for the ink. Handwriting stays a picture in any technology, and the learner sees what was read as text — «Я прочитал 6» (R05 spec). So the statement and the tools are HTML, the marks are SVG, and the drawing surface is only for the ink (concepts 15 spec).
-- **The eraser and the marks.** An eraser of whole strokes and marks tied to strokes (concepts 8 spec; C2 of the study) are code of our own in any option. Of the libraries whose eraser was checked, only Excalidraw and drauu delete a stroke whole, and in the others the eraser erases pixels or there is none at all.
+- **The eraser and the marks.** An eraser of whole strokes and marks tied to strokes (concepts 8 spec; C2 of the study) are code of our own in any option. Of the libraries whose eraser was checked, only Excalidraw and drauu delete a stroke whole; in the others the eraser erases pixels or there is none.
 - **The crop.** The browser's drawing surface cannot give the crop for checking and for samples:
   - the HTML Standard does not define the bytes of a PNG;
-  - in Node — for the tests and the synthetic samples of T18 — the drawing surface needs a native package with pixels of its own;
+  - in Node — for the tests and the synthetic samples — the drawing surface needs a native package with pixels of its own;
   - browsers add noise to what is read from a drawing surface: Brave by default, Firefox on the desktop in standard protection too, Safari in Private Browsing and possibly in all browsing. The noise is small, but the same strokes would give different bytes.
+  The picture of a work needs none of this — no repeated bytes, no Node —, so the browser draws it (R83).
 - **Size:** perfect-freehand and rbush together — ≈4 KB gzip, Konva — ≈58 KB.
-- **Framework.** The part on the page holds on to no framework, so any answer to Т-21 will do ([architecture.md](architecture.md), section 2.3).
-- **Prototype.** The prototype `spec/draft/` is already built this way: the SVG sketch lies under the drawing surface, the SVG box above it.
+- **No framework.** The part on the page holds on to none, so it fits whatever `app` is built with ([architecture.md](architecture.md), section 2.3).
 
 — *Rejected:*
-- **Konva 10.9.0**, which canvas-api planned:
+- **Konva**, which canvas-api planned:
   - it has two drawing surfaces of its own for each layer, and HTML and an iframe go only on top of its scene;
   - it gives no accessibility; the eraser in its example erases pixels; export goes by the browser's drawing surface, and in Node it needs `canvas` or `skia-canvas`;
   - its strength — the scene graph, the events of shapes, dragging — the sheet does not need: the learner writes and erases, and the marks are not moved;
-  - MathTrail has no experience with Konva: canvas-api's client never had it ([architecture.md](architecture.md), section 2.1);
+  - MathTrail has no experience with Konva: canvas-api's client never had it;
 - **Fabric.js, Paper.js, PixiJS and Two.js.** Fabric and Paper have no pressure, and Two.js has no input at all. In Fabric and PixiJS the eraser erases pixels, and Paper has no eraser — only the blend `destination-out`. In Node, Fabric, Paper and Two.js need node-canvas, and PixiJS has no ready adapter for Node; besides, PixiJS draws with WebGL and weighs ≈237 KB;
-- **Excalidraw** is an application for React, not a drawing engine. A web component would carry React inside, beside the framework of `app` — the same duplicate frameworks that R16 spec speaks of;
+- **Excalidraw** is an application for React, not a drawing engine. A web component would carry React inside, beside the framework of `app` — the duplicate frameworks that R16 spec speaks of;
 - **tldraw:**
   - its license forbids work in production without a key, and the code checks the key and may send usage data; the package needs React;
   - its Agent starter kit goes to AI providers itself and changes the board — against R03, R05 and R15 spec;
-  - the terms of tldraw's other licenses were not read: React and the data collection reject it anyway, and the bindings by ID, for which the study cites it (C2), carry over without it;
+  - the terms of its other licenses were not read: React and the data collection reject it anyway, and the bindings by ID, for which the study cites it (C2), carry over without it;
 - **signature_pad and Atrament** — they draw on one drawing surface, and their eraser erases pixels; Atrament besides keeps no strokes: "draws directly onto the canvas bitmap";
 - **drauu** deletes a stroke whole, but everything else — the writing history, the IDs of strokes for marks, the crop — would be code of our own, and in Node it needs a DOM;
-- **ink in SVG.** Theme and zoom are simpler, but each stroke is a DOM element, and SVG has no low-latency mode `desynchronized`;
+- **ink in SVG.** Theme and scaling are simpler, but each stroke is a DOM element, and SVG has no low-latency mode `desynchronized`;
 - **one drawing surface for all layers** — an iframe will not fit between the layers, and a screen reader will not read the statement on a drawing surface;
-- **the text canvas by the same drawing engine, on a drawing surface.** The layout of text, editing, input from the keyboard and with stress marks, selection and accessibility would have to be written ourselves, and the page's markup gives them by itself. In concepts 16.2 spec the text canvas has `cross-out`, `insert` and `keyboard`, and the edit is checked by a program, without AI (architecture 4.2 spec): it needs no picture of the work;
-- **the crop by the browser's drawing surface** — OffscreenCanvas and `convertToBlob`: the bytes depend on the browser and its noise, and Node needs a native package;
-- **palm rejection word for word as in canvas-api.** Without a way out of pen mode the finger would not draw until the page was reloaded — for example, when the pen's battery ran down;
-- **a switch «рисовать пальцем» instead of pen mode** — an extra action for the learner on every device with a pen.
+- **the crop by the browser's drawing surface** — OffscreenCanvas and `convertToBlob`: the bytes depend on the browser and its noise, and Node needs a native package.
 
 — *Revisit* — when tools come that move and rotate — the ruler and the protractor —, or the creative canvas: they may need a scene graph. The DOM-free part does not change from this.
 
-— *Consequence:*
-- **T02** — the units of the sheet, one transform of coordinates for all layers, and what marks are tied to on the text canvas. How groups are computed — with a note: `tutor` builds them «по пространству и времени» (R08 tutor), and T12 without time (C1);
-- **T03** — the interface wraps the part on the page, which has no framework;
-- **T08** — perfect-freehand and rbush at exact versions; the tests of the DOM-free part run in Node, those of the part on the page in the browser. The native `canvas` is not needed;
-- **T09–T14** — by [architecture.md](architecture.md), section 3.1, and T13 — a raster and a PNG of our own;
-- **T19** — the build as one file without others' resources;
-- **T22** — palm rejection, WebKit bug 269535 and `getCoalescedEvents` on a page opened from a file: the method is declared only for a secure context.
+— RUN.md, T01; [architecture.md](architecture.md), sections 2.1, 3.1 and 3.7; R18, R20, R21, R23, R25, R29, R83; `package.json`, `src/core/`, `src/element/`.
 
-— [architecture.md](architecture.md), sections 2.1, 3.1 and 4; RUN.md, T01.
+**R06. The handwriting sheet counts in logical units: the task's page is 1000 × 1400 of them, as canvas-api's sheet, at the sheet's top left, its origin, and the sheet goes on past it to the right and down, within a reach of 10000 × 14000. The crop by A3 goes for checking. The place in the observation is in fractions 0–1000 of the crop, and `canvas` on the device turns it into units of the sheet. Stroke groups are by space and time, as in `tutor`, and a mark holds on to its strokes.**
+- **The units.** The origin is the page's top left corner, the y axis points down, and the scale is the same on both axes. In units of the sheet are the strokes, the grid, the zone of an answer slot, the areas of a worked example, the tracing paper of a task from paper (R87) and all the layers, and all the layers have one transform to the screen (R23).
+- **The page** — `SHEET` in `src/core/sheet.ts` — is a constant of the canvas kind, not a setting of the module, and there is one. The task's zones, the workbook's lines and boxes (R34, R35) and a worked example's areas lie on it; a worked example's sheet is the page alone. The page fits the width of its area, up to 1000 CSS px, and what does not fit scrolls (R23). The picture of the work for `PutWork` is the page and the ink past it, a pixel a unit while it holds no more bytes than the page's (R83).
+- **The reach** — `REACH`, ten pages across and ten down. The sheet goes past the page as far as R73 lays it out (`extentOf`), never beyond the reach. A point of a writing history (`src/core/history.ts`), a stroke's extent (`src/core/geometry.ts`), the box of a crop and of a mark (`src/core/marks.ts`) and the place of the tracing paper (`src/core/tracing.ts`) are valid within the reach, not within the page: a history with a point beyond it is a `TypeError`, and input beyond it presses to its edge (`toSheet` in `src/core/screen.ts`). spec's contract `InkPoint` names these bounds.
+- **The crop** — by A3: the visible strokes, wherever they lie on the sheet, a margin, and a scale such that the lower median of the heights of the strokes' bundles becomes the digit height D, 32 px by default (R25). `sheet_box` — where the crop with its margin lies on the sheet. The rules are R25, the formulas [architecture.md](architecture.md), section 3.2. On the workbook a crop of each filled box goes, and the place is the answer slot (R34, R38).
+- **The place from the model.** The adapter of `tutor` turns the provider's convention into fractions 0–1000 of the crop, and `canvas` turns the fractions into units of the sheet by `sheet_box`, in whole numbers (R26). `sheet_box` and the table "group → strokes" do not leave the device.
+- **Stroke groups** — by space and time, as R08 tutor; the rule and its thresholds are R24.
+- **Marks** — `{stroke_ids, snapped_box}` (C2 of the study): the model's box takes the strokes of its submission by the rule of R26, and stands around those of them that are visible now. There is no text canvas (R21), and so no mark by words.
 
-— *Amendment 2026-10-22:* palm rejection from the item "Input" — pen mode, the threshold of the touch's area and the button that brings back drawing with a finger — is now T35, not T09. T09 was split while it was planned: it holds input by one pointer, and the palm, pen mode, scrolling with two fingers and several touches at once went to T35, postponed until tablets (R18). The thresholds are parameters of T35, and T22 checks them on devices, after it; this is how both "T09–T14" and "T22" in "Consequence" read. `pointercancel` cancels a stroke already from T09. — R18; RUN.md, T09, T22, T35.
-
-— *Amendment 2026-10-22:* the picture of the work for `tutor`'s board — a PNG of the whole sheet — is drawn by the browser's drawing surface: a `<canvas>` outside the document and its `toBlob` (R20). This is not the "crop by the browser's drawing surface" of "Rejected": the byte-for-byte repetition, Node and the noise concern the crop of the product and of the samples, and the board's picture does not need them, since the board itself sends `canvas.toDataURL`. The crop of T13 is still a raster of our own and a PNG encoder of our own, and the item "DOM-free" about the raster of the crop stands. — R20; RUN.md, T34.
-
-— *Amendment 2026-10-25:* `canvas` builds no text canvas (R21). What this entry says of it is history: part of the heading, the item "The text canvas", the line of "Rejected" about the text canvas on a drawing surface, and the marks of the text canvas in "Consequence" about T02. The drawing engine and the stack of layers stay as decided — for the sheet. — R21; [architecture.md](architecture.md), section 3.1.
-
-— *Amendment 2026-10-25:* the layers stand in the scene — the visible part of the sheet — and shift in the same frame in which the ink is drawn (R23). The element shows the task's statement not on the template layer but above the sheet, in the same scrolling, and the template holds the grid. There are no formulas: the tasks do not need them. Input through `pointer-events` is distributed so: an inactive layer gets `none`, and the active one drops its `none` but does not get `auto`, and the consumer's `none` on the element still reaches the drawing surface (R20). — R23; RUN.md, T11.
-
-— *Amendment 2026-10-25:* T13 decided the raster's algorithm (R25). The raster is gray: a pixel takes the share that the line covers, by the distance to the stroke's segments and by a ramp of one pixel at the edge. The PNG encoder is our own: one block of fixed Huffman. Only +, −, ×, ÷ and `Math.sqrt` go into a pixel, so the bytes are the same in any JavaScript engine, not only in one environment. — R25; [architecture.md](architecture.md), section 3.1; RUN.md, T13.
-
-— *Amendment 2026-10-26:* there is no longer a picture of the whole sheet (R27): `exportPNG()` is removed together with `workchange`, and the browser's drawing surface in the element draws only the ink on the screen. Only the crop of T13 goes for checking — a raster and an encoder of our own —, and `exportWork()` gives it. — R27; [architecture.md](architecture.md), section 3.1; RUN.md, T15.
-
-— *Amendment 2026-10-26:* palm rejection is done (R29). Pen mode is one for the whole page: a touch of the pen turns it on, and the button «Рисовать пальцем» turns it off. A palm is a touch wider or taller than 100 CSS px, not 30 as in spec 3.1 canvas-api: on iPadOS the width of a touch is twice its radius, and a threshold of 30 px would take drawing away from the finger. The thresholds are parameters of T22. — R29; RUN.md, T35.
-
-— *Amendment 2026-11-17 (T120):* the browser's drawing surface draws the picture of a work too (R83): a `<canvas>` of its own, out of the document, at a pixel a unit, fills each stroke's path the screen fills, and the crop's encoder writes its pixels. The crop stays its own raster and encoder. — R83; RUN.md, T120.
-
-**R06. The handwriting sheet is 1000 × 1400 logical units, as in canvas-api. The crop by A3 goes for checking. The place in the observation is in fractions 0–1000 of the crop, and `canvas` on the device turns it into units of the sheet. Stroke groups are by space and time, as in `tutor`, and the marks of the text canvas are tied to words by ID.**
-- **The sheet.** The origin is the top left corner, the y axis points down, and the scale is the same on both axes. The sheet is fitted to the width of its area, and what does not fit in height scrolls. The size is a constant of the canvas kind, not a setting of the module; there are no pages. In units of the sheet are the strokes, the grid, the zone of an answer slot and all the layers, and all the layers have the same transform to the screen.
-- **The crop** — by A3: only the visible strokes, a margin of 12 px, and a scale such that the median height of a group becomes the digit height — 32 px by default. `sheet_box` — where the crop with its margin lies on the sheet. The formulas — [architecture.md](architecture.md), section 3.2.
-- **The place from the model.** The adapter of `tutor` turns the provider's convention into fractions 0–1000 of the crop, and `canvas` turns the fractions into units of the sheet, by `sheet_box`. `sheet_box` and the table "group → strokes" do not leave the device.
-- **Stroke groups** — by space and time, as R08 tutor. The algorithm and the thresholds — T12.
-- **Marks.** On the sheet — `{stroke_ids, snapped_box}` (C2 of the study), on the text canvas — `{word_ids}`.
-
-— *Why:* the author's answers while T02 was planned, 2026-10-21. The sheet and the place from the model — by the recommendations, the groups — not by the recommendation of В12 of table 3 of RUN.md, and the crop, the marks of the text canvas and the rows «в реестр spec» — «да» to the plan with the recommendations. The comparison — [architecture.md](architecture.md), section 2.2, the sources — section 4.
-- **The units of the sheet** do not depend on the screen (R15 canvas-api). One constant of size gives the same zones of slots and the same samples on any device, and the format v0 needs no parameter for it.
+— *Why:* the author's answers while T02 was planned, 2026-10-21: the units, the place from the model, the crop and the marks by the recommendations, the groups not by the recommendation of В12. The sheet past the page is the author's choice of 2026-11-22 (R73). The comparison — [architecture.md](architecture.md), section 2.2, the sources — section 4.
+- **The units of the sheet** do not depend on the screen (R15 canvas-api). One constant page gives the same zones of slots and the same samples on any device, and the format v0 needs no parameter for it.
+- **The page at the origin.** The sheet grows right and down, so whatever lies on the page keeps its units however far the learner writes.
+- **The reach.** The rules count in whole tenths of a unit (architecture 3.2), and a bound keeps their numbers small and a history's numbers sane, whatever a history from outside holds.
 - **The crop by A3** evens out handwriting: the model sees digits ≈32 px high, however large or small the learner wrote and whatever the screen. Empty margins and large digits would give extra pixels, and at Anthropic and OpenAI the tokens of an image grow with its size ([architecture.md](architecture.md), section 4).
 - **The fractions of the crop:**
   - the providers name the place differently: Claude in pixels of the image after its own downscaling, Gemini in fractions 0–1000, and OpenAI has no box format. Only the adapter of `tutor` can recompute the place after the downscaling: only it sees that downscaling;
-  - fractions mean the same for any image — for the crop, and later for a photo of paper. So the observation — the shared type of `tutor`, `module-kit` and eval (repositories 5 spec) — does not depend on the canvas kind;
+  - fractions mean the same for any image — for the crop of the sheet, and for that of a task from paper. So the observation — the shared type of `tutor`, `module-kit` and eval (repositories 5 spec) — does not depend on the canvas kind;
   - only `canvas` knows where the crop lies on the sheet. The server does not need `sheet_box`, and less data goes out (R09 spec);
   - the study's example is built the same way: the fractions are «внутреннее соглашение», and by `sheet_box` «устройство возвращает рамки на лист».
-- **Groups by space and time** — as in `tutor`: a stroke added later beside an old entry becomes a group of its own and does not merge with it. The labels in the samples of `canvas` and in the measurement of `tutor` are built by one rule (R08 tutor). The price the author accepted: the same strokes written in another order give other groups. The partition also carries a rough sign of the process — by the scale A4 of the study, the group boxes are then nearer to (b) than to (a). The crop's scale depends on the groups too, since it comes from their median. But that is one number per crop, and its pixels are only the final strokes.
-- **Words by ID** — the same design as strokes by ID on the sheet (C2): a mark holds on to its content, not to a place on the screen. Editing needs words with IDs too: in concepts 9.2 spec this is "the required edits by place".
+- **Groups by space and time** — as in `tutor`: a stroke added later beside an old entry becomes a group of its own and does not merge with it. The labels in the samples of `canvas` and in the measurement of `tutor` are built by one rule (R08 tutor). The price the author accepted: the same strokes written in another order give other groups, and the partition carries a rough sign of the process — by the scale A4 of the study, the group boxes are then nearer to (b) than to (a). The crop's scale does not depend on the groups (R25).
+- **Marks by strokes** — a mark holds on to its content, not to a place on the screen.
 
 — *Rejected:*
-- **the whole sheet on the screen** — on a screen wider than it is tall, the sheet would be fitted by height, and the grid's cell would shrink;
-- **the sheet's height as a setting of the module** — an extra parameter of the format v0, on which the zones of slots would depend. Come back to it if a task needs more than the sheet;
+- **the whole page on the screen** — on a screen wider than it is tall, the page would be fitted by height, and the grid's cell would shrink;
+- **the page's size as a setting of the module** — an extra parameter of the format v0, on which the zones of slots would depend;
 - **several pages** — the crop and the groups would know about pages, and canvas-api managed with one sheet (spec 4.1 canvas-api);
+- **a sheet with no bound** — the rules' whole numbers and a history's would have none;
 - **the whole sheet as the picture for checking**, as in spec 4.3 canvas-api, — the scale of the digits would depend on the handwriting, and empty margins would cost tokens;
 - **a crop without scaling** — the same dependence on handwriting;
 - **units of the sheet in the observation**, with the transform in the adapter of `tutor`, — `tutor` would get `sheet_box` with the work, and the observation would depend on the canvas kind;
 - **fractions, but `api` turns them into units of the sheet** — `api` would get `sheet_box` and would know the sheet's geometry;
 - **groups without time** (C1; the recommendation of В12) — the bounding boxes can be derived from the picture itself, but the groups of `canvas` would diverge from the groups of the measurement of `tutor` (R08 tutor), and what was added later would merge with the earlier writing;
-- **rules of groups of their own for the device and for the runner** — the labels in the samples and in the measurement would diverge;
-- **marks of the text canvas by offsets in characters** — every insertion shifts them; **by the coordinates of the layout** — the layout depends on the screen and the font.
+- **rules of groups of their own for the device and for the runner** — the labels in the samples and in the measurement would diverge.
 
-— *Revisit:* the groups — by the findings of the measurement of `tutor`, which compares labels and a bounding box (R08 tutor); the sheet — if a task does not fit into one sheet 1000 × 1400.
+— *Revisit:*
+- the groups — by the findings of the measurement of `tutor`, which compares labels and a bounding box (R08 tutor), so far only on Claude's models (R21 tutor);
+- the page — if a task's zones need more than one page: a workbook task that does not fit is a `TypeError` (R34).
 
-— *Consequence:*
-- **T03** — the interface gives the crop together with `sheet_box`, the group boxes and the table "group → strokes", and takes marks with a group label, an answer slot or a crop box in fractions of the crop;
-- **T04** — the group boxes in a sample are in fractions of the crop. Partition by time is a rough sign of the process (A4), and the crop's scale depends on it: this has to be taken into account in the composition of a child sample. A PNG of the runner of `tutor` with another digit height is drawn by the same rules of the crop (section 3.2);
-- **T09** — the points in units of the sheet, input by the inverse transform; scrolling with two fingers is needed;
-- **T11** — one transform for all layers and the limits of `k`;
-- **T12** — groups by space and time; its body is corrected by this entry;
-- **T13** — the scale, the margin and `sheet_box` by section 3.2. The size limit — with an eye on the providers' limits, and `s` is bounded from above for the case when `h_med` is near zero;
-- **T14** — the fractions are turned into units of the sheet by `sheet_box`, then the bounding box snaps to the strokes of its submission, as in R43 canvas-api;
-- **table 3 of RUN.md** — В13 and В14 «в реестр spec», the answer in В12 and an addition to В8;
-- **the sketch "how to begin"** on an empty place is not addressed by the crop — its place is decided with the first slice of `app` and `api`.
-
-— [architecture.md](architecture.md), sections 2.2, 3.1, 3.2 and 4; RUN.md, T02, T12, table 3.
-
-— *Amendment 2026-10-22:* for the MVP — `tutor`'s check board — the picture of the work is a PNG of the sheet, as on the board, not the crop by A3 (R17). The crop stays the picture for checking in the product and will come back with T12 and T13. Which sheet the element has for the board — the 1000 × 1400 of this entry or 1000 × 600, as on the board — the planning of T34 decides, and the board's sheet only by an amendment of its own. — RUN.md, T34.
-
-— *Amendment 2026-10-22:* scrolling with two fingers from "Consequence" about T09 is now T35, and T09 decided the path of scrolling (R18). The sheet scrolls by the native scrolling of a container inside the element — by the wheel, the scroll bar and the keyboard —, and the drawing surface stands in its visible part and is shifted by a matrix. The item of "Consequence" about T11 reads so: T11, when it comes back, puts the other layers into this scrolling — whether they scroll with the content or, like the drawing surface, shift themselves — and decides the limits of `k`. The shift `vy` is still the same for all layers. — R18; RUN.md, T09, T11, T35.
-
-— *Amendment 2026-10-22:* the element's sheet for the board is the 1000 × 1400 of this entry, without an amendment, and the picture is the whole sheet, a pixel per unit (R20). The board gives the element a height, and the sheet scrolls in it. The sheet 1000 × 600 is rejected: the canvas would have two sheets of different heights. — R20; RUN.md, T34.
-
-— *Amendment 2026-10-25:* there is no text canvas (R21), and with it no marks by words. What this entry says of them is history: part of the heading, `{word_ids}` in "Marks", "Words by ID" in "Why" and the line of "Rejected" about the marks of the text canvas. A mark is only on the sheet, `{stroke_ids, snapped_box}`. — R21; [architecture.md](architecture.md), section 3.2.
-
-— *Amendment 2026-10-25:* the sheet is fitted to the width of its area, but not wider than 1000 CSS px: `k` is at most 1, and on a wide screen the sheet stands in the middle (R23). What the 2026-10-22 amendment left open is decided: the other layers do not scroll with the content but shift themselves, in the ink's frame — the SVG by its `viewBox`. "The HTML of the template takes the same `k`" applies to HTML on the sheet, when it appears: the statement stands above the sheet, in CSS px. — R23; [architecture.md](architecture.md), section 3.2; RUN.md, T11.
-
-— *Amendment 2026-10-25:* T12 decided the groups' algorithm and thresholds (R24). Two strokes are neighbors if there are no more than 2 s between them and the boxes of their points come closer than 50 units horizontally and vertically. A group is the strokes that a chain of neighbors joins. T12 gives the group's rectangle on the sheet, and T13 computes the group box in fractions of the crop and `h_med`. "Revisit" about the groups stands: the measurement of `tutor` came back 2026-10-23, only on Claude's models (R21 tutor). — R24; [architecture.md](architecture.md), section 3.2; RUN.md, T12, T13.
-
-— *Amendment 2026-10-25:* T13 decided the crop (R25).
-- `h_med` is not the median of the groups but the lower median of the heights of the bundles. A bundle is strokes whose boxes touch, without time. Strokes under 15 units high do not count and bind nothing, and the scale takes a median no higher than 100 units.
-- The crop fits within Claude's standard level: no longer than 1568 px and no more than 1568 tokens. If it does not fit, the digits are drawn smaller than D. A side shorter than 200 px gets a wider margin.
-- The line is D / 12, and the group boxes are by the ink, rounded outward. The formulas of section 3.2 are corrected by this entry.
-- The price from "Why" — "the crop's scale depends on the groups too" — is gone: the scale depends neither on the groups nor on the order of writing.
-
-— R25; [architecture.md](architecture.md), section 3.2; RUN.md, T13.
-
-— *Amendment 2026-10-26:* "Consequence" about T14 is decided (R26). The fractions are turned into units of the sheet by `sheet_box` — in whole numbers, on the crop itself —, and the model's box, widened by a quarter of the digit height, takes the strokes of its submission that have no fewer than two thirds of their points in it. A sweep over synthetic sheets did not confirm the rule of R43 canvas-api — half the points and 10 units. The mark on the sheet is `{stroke_ids, snapped_box}`, as decided here, and the box stands around those of its strokes that are visible now. — R26; [architecture.md](architecture.md), section 3.2; RUN.md, T14.
-
-— *Amendment 2026-10-26:* there is no longer a picture of the sheet for the MVP (R27): `exportPNG()` is removed. The picture for checking is the crop by A3 of this entry, and `exportWork()` gives it together with the context of the submission. — R27; RUN.md, T15.
-
-— *Amendment 2026-10-26:* scrolling with two fingers is done (R29). Code of our own shifts the same native scrolling — of the sheet's container, and if that cannot scroll in this direction, of an ancestor or of the page — and chooses it at the first step of the gesture. — R29; RUN.md, T35.
-
-— *Amendment 2026-10-27:* the workbook has the same page of 1000 × 1400 units, a constant of the kind, and it has no pages either (R34). What goes for checking from the workbook is not a crop of the whole work but a crop of each filled box — by the same rules of the crop —, and the place in the observation on the workbook is the answer slot. The workbook does not open "Come back to it if a task needs more than the sheet": a task that did not fit is a `TypeError`, and T47 will pass the limit for authors «в реестр spec». — R34.
-
-— *Amendment 2026-11-17 (T120):* a picture of the whole sheet comes back, not for the check (R83): `exportPicture()` gives the PNG of the strokes of the whole sheet, or of the workbook's whole page, 1000 × 1400 px, a pixel a unit, for the stored work of `PutWork`. Only the crop goes to the check, as before. — R83; RUN.md, T120.
+— [architecture.md](architecture.md), sections 2.2, 3.1, 3.2 and 4; RUN.md, T02 (body — [docs/plan/E1.md](plan/E1.md)); `src/core/sheet.ts`, `screen.ts`, `history.ts`, `geometry.ts`, `crop.ts`, `groups.ts`, `marks.ts`, `tracing.ts`.
 
 **R07. The canvas enters its consumer as a web component — one element `<novatrail-canvas>` for all canvas kinds, without a framework and with an open Shadow DOM. It gets data by properties, gives the work for checking by a method, and the writing history and a request to voice by events. The types of data are from the releases of `spec`, the element's types from the package, and "listen" is voiced by `app`.**
 - **The element.** It takes the canvas kind from the task's open view. It registers when its entry point is imported, and the DOM-free part is a separate entry point, which is imported in Node too.
@@ -1300,121 +1239,90 @@ The item "The board does not take the element" of [architecture.md](architecture
 
 — *Amendment 2026-10-26:* В33 is recorded in `spec` (R31). The eval protocol takes the events of the writing history as they are: erasing and clearing name the IDs of the erased strokes, and undo the IDs it removed and brought back. The runner folds the history without the stack rules, only adding and removing IDs, and reads clearing as erasing (epic E3 in RUN.md of `spec`; concepts 15 spec, "writing history"). — R31.
 
-**R23. The sheet is a stack of layers in its visible part, in the order of concepts 8 spec, and all the layers move in the frame in which the ink is drawn. On the template is the task's grid, and the element shows the task statement above the sheet, in the same scrolling. The sheet is no wider than 1000 CSS px. The element gets the task and the media files by the properties `task` and `media`, and the theme by CSS variables; it has no tool buttons of its own until T15.**
-- **The layers** stand in the scene — the sticky visible part of the sheet —, from bottom to top:
-  - the author's template — an SVG with the grid;
-  - the place of the module's widget and the place of the demo — empty;
+**R23. The sheet is a stack of layers in its visible part, in the order of concepts 8 spec, and all the layers move in the frame in which the ink is drawn. The task's page fits the width of its area, up to 1000 CSS px, and stands at the sheet's left, the sheet going on past it (R73). On the template is the task's grid, and the element shows the task statement above the sheet, as wide as the page, in the same scrolling. The element gets the task and the media files by the properties `task` and `media`, and the theme by CSS variables.**
+- **The layers** stand in the stage, from bottom to top:
+  - the author's template — an SVG with the grid, `aria-hidden`; on the workbook, its lines and boxes, which a screen reader reads: its root is `role="none"`, the lines a list (R34, R36);
+  - the place of the module's widget — empty;
+  - the place of the demo of a worked example (R42);
+  - the tracing paper of a task from paper (R87);
   - the tutor's sketch — an empty SVG;
   - the ink — the drawing surface;
-  - the tutor's marks — an empty SVG until T14.
+  - the tutor's marks — `role="none"`, each visible mark `role="img"` with an `aria-label` (R26);
+  - over them, the tracing paper's grip and its tooltip (R87).
 
-  All the layers are of one size and `position: absolute`. The `viewBox` of each SVG is the visible part of the sheet in its units, `0 vy 1000 H/k`. One layout sets it, in the same frame in which the ink is drawn: on scrolling and on a new size.
-- **Input** is taken by the drawing surface alone. The other layers have `pointer-events: none` and `aria-hidden`, and no `pointer-events` is set on the drawing surface and its ancestors, so the consumer's `none` on the element reaches the drawing surface (R20). A layer that later becomes active will remove its `none`, but will not get `auto`.
+  All the layers are of one size and `position: absolute`. The `viewBox` of each SVG is the visible part of the sheet in its units, `vx vy W/k H/k`, for a stage W × H CSS px. One layout sets it, in the same frame in which the ink is drawn: on scrolling and on a new size.
+- **The view** is `k`, `vx` and `vy` (`View` in `src/core/screen.ts`): k = min(A / 1000, 1) for a container A CSS px wide as laid out — `fitScale`, the cap `K_MAX` —, and `vx`, `vy` the left and the top of the visible part, in units. The cap is the layout's alone: the `k` of input, of the eraser's reach and of drawing comes from the sheet's rectangle on the screen, `scaleFor`, with no cap.
+- **The page and the sheet.** The page stands at the sheet's left, with no margins, and the sheet goes on to the right and down as far as R73 lays it out, `#reach`. The column is as wide as the sheet × k, and the container is `overflow: auto` and runs left to right whatever the page's direction: it scrolls across too. The element is as tall as the statement and the sheet unless it is given a height; then they scroll in it. The consumer's `--novatrail-canvas-pad-top` and `--novatrail-canvas-pad-bottom` pad the column: the statement starts below the first, and the sheet scrolls up past the second (R73).
+- **The stage** is the visible part on both axes: it sticks to the container's top and left, as wide and as tall as the container, or as the sheet × k where that is less. The drawing surface takes a pixel of its buffer for each device pixel (R18), and a new density — the window on another screen, the browser's zoom — lays it out anew. In an element with a height the buffer is no larger than the container however far the sheet goes; in one without, it is as tall as the sheet.
+- **The visible part** follows the scrolling, `#scrolled`, from where the sheet's top and left stand in the container's content, `#sheetEdge`. While the statement is in view, the drawing surface goes on below the visible part of the container, and the eraser takes nothing there, nor anything out of sight (R22). A new width, or a statement of a new height, keeps the top left corner of the visible part at the same place of the sheet, unless the sheet's top, or its left, is in sight. A new height of the container alone touches no scrolling: a scroll in progress is not cut off.
+- **Input** is taken by the drawing surface, the bar's buttons (R84) and the tracing paper's grip (R87). The other layers have `pointer-events: none`, and no `pointer-events` is set on the drawing surface and its ancestors, so the consumer's `none` on the element reaches the drawing surface (R20). The one exception is a worked example's sheet: its drawing surface has `pointer-events: none` by a rule on the sheet's class, and a finger on it scrolls as the browser does (R42). The stage bans the context menu and selection.
 - **The grid** is squares, lines or dots: `squares`, `lines` and `dots`, as in concepts 16.1 spec.
   - The step is from 20 to 500 units, 50 by default.
-  - The lines lie strictly inside the sheet, at `i × step`, and their thickness is in CSS px at any `k`. The dots stand where the lines would cross.
-  - A sheet without a task is in squares of 50: concepts 8 spec knows no sheet without a grid.
-  - The grid's path is built by the DOM-free part, `grid.ts`.
-- **The statement** is above the sheet, in the element itself and in the same scrolling.
-  - Paragraphs are text, through `textContent`, and pictures are an `<img>` from a `Blob` that the function `media` gives. The statement inherits its font and color from the consumer, and takes its language from the task.
+  - The lines lie strictly inside the sheet, at `i × step`, over the whole sheet as far as it goes, and their thickness is in CSS px at any `k`. The dots stand where the lines would cross.
+  - A sheet without a task is in squares of 50: concepts 8 spec knows no sheet without a grid. A task from paper has the learner's grid (R88), and the workbook has its lines and no grid (R36).
+  - The grid's path is built by the DOM-free part, `gridPath` in `grid.ts`.
+- **The statement** is above the sheet, in the element itself and in the same scrolling; so is the workbook's (R34), and a worked example's parts stand between it and the sheet (R42).
+  - It is as wide as the page, `--page`, and sticks to the container's left: it scrolls down alone. It keeps the element's own direction, `--direction`, while the container runs left to right.
+  - Paragraphs are text, through `textContent`, and pictures are an `<img>` from a `Blob` that the function `media` gives. The statement inherits its font and color from the consumer, and its language is the module manifest's, the property `manifest`, and without one the element's own (R32).
   - A picture stands in a frame of its own size, and the size is given by the task. While the picture has not come, or if it never comes, the frame shows its description, and a screen reader reads it as a picture. A picture with an empty description is decoration, and it has no frame.
-  - The file's URL is revoked when the picture has left the statement, when the file did not decode and when the element has left the page. The files of the pictures that stand in the statement stay with the element: on a return to the page the pictures are seen again, and a new task with the same picture takes its file. The element does not hold the files of the pictures that have left the statement.
-  - A reference names one file while the picture is in the statement. A new function `media` gives files only to the pictures that have none, and does not cancel the loads already begun: React gives a new function on every re-render.
+- **The pictures' files** are held by the element's one loader (R42). A reference is one file and one call of `media`, however many pictures show it — the task statement, the example's statement, the demo's parts and the sheet's areas. A file is held while what the element shows names its reference, and the element asks for all of an example's pictures when the example comes. The `blob:` URL is one per reference while the element is on the page, and the loader decodes it, once, before a picture shows it. It is revoked when nothing names the reference any more, when the file did not decode and when the element has left the page. A reference without a file is asked for again with every new task and example, when the element returns to the page and at a new function `media`, which does not cancel the loads already begun.
 - **No formulas**: the tasks do not need them.
-- **Zoom.** `k` is no more than 1: the sheet is no wider than 1000 CSS px, and on a wide screen it stands in the center; there is no lower limit. The limit is the layout's, `fitScale`. The `k` for input, for the eraser's reach and for drawing is computed from the sheet's rectangle on the screen, `scaleFor`, with no limit.
-- **The visible part** follows the scrolling. While the statement is in view, the drawing surface goes below the visible part of the container, and the eraser takes nothing there (R22). `vy` is counted from the top of the sheet, and at a new width or a new height of the statement the visible part stays at the same place of the sheet. A new height of the container itself does not touch the scrolling: a scroll in progress is not cut off.
 - **Properties:**
-  - `task` — a temporary type of the open view of the same make-up that format v0 will give: the canvas kind `handwriting-sheet`, the grid and the step, the statement and its language (T28 and T35 in RUN.md of `spec`; R36 spec). The fields the sheet does not read are skipped, and what the sheet cannot show is a `TypeError` with the field's name. Only `undefined` omits a field, and `null` is a value, and a wrong one. The same task, or one equal to it by its template, changes nothing, and another changes only the template, and in it only what has changed: the grid or the statement. The work stays, since a new task is a new element (R20);
+  - `task` — the open view of format v0, checked as strictly as the schema: a field the open view does not have is a `TypeError` with its name (R32). Only `undefined` omits a field, and `null` is a value, and a wrong one. The same task, or one equal to it by its template, changes nothing, and another changes only the template, and in it only what has changed: the grid or the statement. The work stays, since a new task is a new element (R20);
   - `media` — a function that returns a `Promise<Blob>`;
   - `tool`, `task` and `media`, assigned before the element is registered, go through one shared helper: an invalid value leaves the property as the element starts it, and gives a warning.
-- **The theme** is the variables `--novatrail-canvas-paper`, `--novatrail-canvas-ink` and `--novatrail-canvas-grid`, with light defaults.
+- **The theme** is the variables `--novatrail-canvas-paper`, `--novatrail-canvas-ink` and `--novatrail-canvas-grid`, with light defaults at every `var()`; the bar's are R84's, the marks' R26's.
   - In forced colors mode the system ones stand in their place: Canvas, CanvasText and GrayText.
-  - The ink is drawn in the drawing surface's color as its style computed it, and is redrawn on a change of the theme.
-  - The picture of the work (R20) is still `#111` on white.
-- **Tool buttons** are still the consumer's, and the element's own come with T15.
+  - The ink is drawn in the drawing surface's color as its style computed it, and is redrawn on a change of the theme. The workbook's print is in the ink's color (R36).
+  - The picture of the work is black on white (R83).
+  - The element is horizontal at any writing mode of the page, `:host { writing-mode: horizontal-tb }` (R36).
 - **Code:**
-  - in the DOM-free part — `grid.ts`, `task.ts` and `fitScale` in `screen.ts`;
-  - in the element — the scene of layers in `index.ts` and the statement in `statement.ts`;
-  - tests in Chromium — `layers.test.ts` and `statement.test.ts`, and forced colors mode is a Vitest project of its own, `forced-colors.test.ts`;
-  - on the page for probes — the grid's kind and step, a statement with a picture and the dark theme.
+  - in the DOM-free part — `grid.ts`, `task.ts`, `fitScale` and `scaleFor` in `screen.ts`, `SHEET`, `REACH` and `extentOf` in `sheet.ts`;
+  - in the element — the scene of layers, `#layout`, `#reach`, `#sheetEdge`, `#place` and `STYLE` in `index.ts`, and the statement in `statement.ts`;
+  - tests in the browsers — `layers.test.ts`, `statement.test.ts` and `wide.test.ts`, the sheet past the page; forced colors mode is two Vitest instances, `forced colors chromium` and `forced colors firefox`, each with `forcedColors: "active"` in Playwright's context, `forced-colors.test.ts` — WebKit has no forced colours to emulate (measurements 1.5);
+  - on the page for probes, `demo/` — the grid's kind and step, a statement with a picture and the dark theme.
 
-— *Why:* the author's answers in the planning of T11, 2026-10-25. Not to split the task — not by the recommendation; the statement above the sheet, tool buttons from T15 and only an upper limit of `k` — by the recommendations. The rest is a «да» to the plan. Before the work a separate agent checked the design. Its corrections are the limit at the layout alone, an explicit size of the layers, the visible part by the scrolling, redrawing on a change of the theme and the lifetime of the pictures' URLs. The sources are [architecture.md](architecture.md), section 4.
+— *Why:* the author's answers in the planning of T11, 2026-10-25: the statement above the sheet and only an upper cap of `k` by the recommendations, the rest a «да» to the plan. The page at the left with the sheet past it is the author's choice of 2026-11-22 (R73). The sources are [architecture.md](architecture.md), section 4.
 - **The layers move in the ink's frame.** The browser takes the scrolling step before the frame callbacks (HTML Standard), and Chrome's compositor thread assembles frames even without the main thread. A layer that scrolls by itself would get a frame or two ahead of the ink on scrolling: the ink is redrawn by the scroll event. Moved in one frame, the layers lag all together and do not drift from one another.
 - **`viewBox`, not a shift of an SVG the size of the whole sheet.** The browser rasterizes only the visible part, and a fractional shift does not blur the lines in CSS px. The thickness at `non-scaling-stroke` the browser computes from the viewport of the outermost SVG (SVG 2), so a transform of the page does not change it either.
 - **The statement above the sheet:**
   - so it is at canvas-api — «текст над листом, а не часть листа», — on `tutor`'s board and in `spec`'s prototype;
-  - HTML text grows with the page's zoom and wraps by the width, while on the sheet it would grow only together with the sheet;
-  - the statement's place on the sheet would depend on the device's fonts, while the strokes lie in the sheet's units. On another device the text would end up under the ink, and the answer slots — T28 in RUN.md of `spec` — could run onto it.
+  - HTML text grows with the browser's zoom and wraps by the width, while the page, and the workbook's print on it, grow only until the page fills the element's width (R73; [architecture.md](architecture.md), section 3.10);
+  - the statement's place on the sheet would depend on the device's fonts, while the strokes lie in the sheet's units. On another device the text would end up under the ink, and the answer slots could run onto it.
 
-  concepts 6 spec, on the contrary, puts the statement «на нестираемом слое шаблона». This is В34 in table 3 of RUN.md.
+  R51 spec has it so: the statement is part of the author's template, and the canvas kind decides whether it stands above the canvas or on it.
+- **The statement as wide as the page**, at its left: it stays in sight and wraps as it would on the page alone while the sheet goes by under it.
 - **Formulas.** Neither `tutor`'s tasks nor the 603 tasks of MathTrail standalone have any: there it is text with the signs ×, :, − and fractions of the form a/b. Nor are there libraries of formulas: neither KaTeX, nor MathJax, nor MathML is at `tutor`, at canvas-api or at standalone.
 - **The picture's frame.** The task gives the picture a size, and the place for the picture is held until it comes: neither the text nor the sheet moves under the pen. A screen reader will read the description, and while the picture is not there, the learner will see it too.
 - **The files' URLs:**
   - MDN advises revoking the URL when the picture has left the document, not on load;
   - moving the element on the page is a disconnection and a connection in one task, so the URL is revoked after a microtask if the element has not come back;
   - otherwise the pictures of every task would be held in memory while `app` is open, since the consumer moves to a new task with a new element (R20).
-- **The limit of `k`:**
-  - a drawing surface as high as the sheet grows with the square of `k`. At a width of 2560 px and a density of 2, without the limit the buffer would be 5120 × 7168 pixels, ≈147 MB, and with the limit it is 2000 × 2800, ≈22 MB;
-  - a square of 50 px and a line of 3 px stay on a wide screen as they are on paper;
-  - so it is at canvas-api too: «на широком экране по бокам остаются поля»;
-  - there are no phones in the first slice (product 10 spec), and a lower limit is not needed.
-- **The limit at the layout, not at the input.** An element 800 px wide in an ancestor with `transform: scale(1.5)` is wider than 1000 px on the screen. With the limit at the input the points would land 20 % off.
-- **Buttons — from T15.** The buttons' labels are translated by `lang`, by the shared scheme of the UI packages, and it does not exist yet: T07 of `app` is not done. The task's allowed tools are T15 too.
+- **The cap of `k`:**
+  - a drawing surface as tall as the sheet, in an element without a height, grows with the square of `k`. At a width of 2560 px and a density of 2, the page alone would take a buffer of 5120 × 7168 pixels, ≈147 MB, without the cap, and of 2000 × 2800, ≈22 MB, with it;
+  - a square of 50 px and a line of 3 px stay on a wide screen as they are on paper, a pixel a unit as on the picture of the work.
+- **The cap at the layout, not at the input.** An element 800 px wide in an ancestor with `transform: scale(1.5)` is wider than 1000 px on the screen. With the cap at the input the points would land 20 % off.
 - **A variable's default at every `var()`.** A declaration in `:host` would set the variable on the host itself, and the value the element inherits from the page would not reach the shadow tree.
 
 — *Rejected:*
 - layers that scroll together with the content, and a shift of an SVG the size of the whole sheet instead of `viewBox` — for the reasons above;
 - the statement on the sheet — for the reasons above; the statement at the consumer — the card architecture 3.2 spec gives the canvas «показ содержания модуля: условие, формулы, медиа»;
-- tool buttons of its own now — for the reason above; the buttons forever at the consumer — the author's answer;
-- `k` with no limits — the drawing surface's buffer and the square would grow with the screen, and each consumer would guard against it by itself;
-- `k` with a lower limit too — on a narrow screen the sheet would scroll sideways, and with a finger only from T35;
-- the limit at `scaleFor` — for the reason above;
+- the page in the middle of a wide screen, with margins at its sides — the sheet goes on past it instead (R73);
+- `k` with no cap — the drawing surface's buffer and the square would grow with the screen, and each consumer would guard against it by itself;
+- `k` with a lower limit too — the page would not fit the width of a narrow screen;
+- the cap at `scaleFor` — for the reason above;
 - formulas now — KaTeX 0.19.1 with its own CSS and 60 font files, Temml 0.14.0 or MathML from the open view: the tasks do not need them;
 - a picture that has not come silently disappearing, as in standalone — the learner would lose what is on it;
 - an event to the consumer about a picture that has not come — `app` knows anyway that its function gave no file;
-- a theme without variables — `app` could not set a dark theme;
-- splitting the task into T11 and T39 — the author's answer: as one task.
+- a theme without variables — `app` could not set a dark theme.
 
 — *Revisit:*
-- the limit of `k` — by the probe on devices (T22);
-- a drawing surface the size of the whole sheet with the native scrolling, without lag, — to measure there too: its buffer at `k` 1 and a density of 2 is ≈22 MB;
+- the cap of `k` — by the probe on devices;
+- a drawing surface the size of the whole sheet with the native scrolling, without lag, — to measure there too;
 - formulas — when a task needs them: with no dependencies — MathML Core, and from LaTeX — Temml;
 - the statement on the sheet — if format v0 puts on the sheet pictures that one writes over.
 
-— *Consequence:*
-- **T13** — there is no statement on the sheet, and the crop does not draw the grid anyway;
-- **T14** — the marks go into the marks' SVG, and the accessible name removes `aria-hidden` from it;
-- **T15** — tool buttons of its own with labels by `lang`, the task's allowed tools and how `tool` gets along with them, and also how `task` gets along with `history`;
-- **T19** — the samples page gives `media` from its build, and its content security policy needs `img-src blob:`;
-- **T22** — the limit of `k`, the statement above the sheet and a drawing surface the size of the whole sheet, on devices;
-- amendments to R05, R06, R07, R18, R19, R20 and R22;
-- **table 3 of RUN.md** — В34 «в реестр spec»: the statement above the sheet against concepts 6 and 8 spec, and the description and the size of the statement's picture — to format v0.
-
-— `src/core/`, `src/element/`, `demo/`, `vitest.config.ts`; [architecture.md](architecture.md), sections 1, 3.1, 3.2, 3.3, 3.7 and 4; RUN.md, T11, T15, E4, table 3; README.md.
-
-— *Amendment 2026-10-26:* the marks layer has no `aria-hidden` at all, and removing it, as the "Consequence" about T14 told, was not needed (R26). The layer has a constant `role="none"`, and each visible mark has `role="img"` and an `aria-label`. A root `<svg>` without `aria-hidden` and without a role would be read as a picture with no name: so the locators engine of Vitest counts it too. The layer's `pointer-events: none` is as before. — R26; [architecture.md](architecture.md), section 3.1; RUN.md, T14.
-
-— *Amendment 2026-10-26:* the "Consequence" about T15 is split (R27): tool buttons of its own, labels by `lang` and the task's allowed tools are T41, and `task` and `history` do not depend on each other: neither resets the other, and the order does not matter. Tool buttons are the consumer's until T41. The task got a temporary field `canvas.digit` — the digit height on the crop. — R27; RUN.md, T15, T41.
-
-— *Amendment 2026-10-26:* the element's own buttons exist from T41 (R28) — as a row above the statement and the sheet, outside their scrolling. Input is taken by the drawing surface and by the row's buttons, and both take it only as the element does: the row sets no `pointer-events` of its own. The visible part of the sheet for the eraser starts below the row when the row has stuck above the sheet. The height of an element without a height of its own is the row, the statement and the sheet. The theme colors the row too: paper, ink, and in forced colors mode the system colors of buttons. The top offset of the sticky row is the variable `--novatrail-canvas-top`. — R28; [architecture.md](architecture.md), sections 3.1 and 3.3; RUN.md, T41.
-
-— *Amendment 2026-10-26:* the drawing surface takes touches for scrolling with two fingers too (R29), and on the statement, the margins and the row of buttons a finger scrolls with the native scrolling, as before. The row has a fifth button, «Рисовать пальцем»: in pen mode on a narrow element the row with it wraps, but only between strokes. — R29; RUN.md, T35.
-
-— *Amendment 2026-10-26:* В34 is closed by R51 spec, by `canvas`'s recommendation (R30). The task statement is part of the author's template, and whether it is above the canvas or on it is decided by the canvas kind: the sheet shows it above the sheet. The picture has a description and a size, and concepts 6 and 8 spec are amended. There is no sound and there are no formulas in the statement of v0. The parts of the statement in the schema `task.schema.json` are the same as the temporary type's: `text` or `picture` with `alt`, `width` and `height`, — and the picture is named by a path from `media/`. — R30.
-
-— *Amendment 2026-10-27:* the task no longer skips the fields the sheet does not read (R32): the element checks it strictly, as the schema does, and a field the open view does not have is a `TypeError`, except the temporary `canvas.tools`. The canvas kind is `handwriting_sheet`, the step is `grid_step`, and the statement's language is given not by the task but by the module manifest, the property `manifest`. Without a manifest it is the element's own language, as before without `task.lang`. Only `undefined` still omits a field, and the extra fields of the writing history are skipped, as before (R27). — R32.
-
-— *Amendment 2026-10-27:* in the workbook too the statement is above the page (R34). Its template layer carries the item lines and the boxes, and a screen reader reads it: it has no `aria-hidden`, its root is `role="none"`, and the lines are a list. The sheet's template is still `aria-hidden`. — R34.
-
-— *Amendment 2026-10-27:* the template layer is by the canvas kind (R36): the sheet's has the grid and `aria-hidden`, the workbook's has the item lines without a grid, and its root is `role="none"`. The theme colors the workbook's print too — in the ink's color, and in forced colors this is CanvasText. The element is horizontal at any writing mode of the page: `:host { writing-mode: horizontal-tb }`. — R36.
-
-— *Amendment 2026-11-01:* on the sheet of a worked example the drawing surface takes no input: `pointer-events: none` by a rule on the sheet's class, and the press is taken by the scene (R42). This is the one exception to "no `pointer-events` is set on the drawing surface and its ancestors": without the class the drawing surface again inherits the consumer's `none`. The ban on the context menu and on selection is now on the scene, not on the drawing surface, and above the sheet there are still none. — R42; RUN.md, T59.
-
-— *Amendment 2026-11-01:* the pictures' files are held not by the statement but by the element's one loader (R42; T64). A reference is one file and one call of `media`, however many pictures show it: the task statement, the example's statement, the demo's parts beside the sheet and in the sheet's areas. A file is held while what the element shows names its reference — the task statement or the example as a whole —, and not while the picture is in the statement: the element asks for all the example's pictures when the example has come. The `blob:` URL is one per reference while the element is on the page, and the loader decodes it, once, before a picture shows it. It is revoked when nothing names the reference any more, when the file did not decode and when the element has left the page. A reference without a file — it did not come or did not decode — is asked for again with every new task and every new example, when the element returns to the page and at a new function `media`. The warnings in the console are about the picture, not about the statement. — R42; [architecture.md](architecture.md), section 3.3; RUN.md, T64.
-
-— *Amendment 2026-11-11 (T94):* **`k` is the fit to the width, no wider than 1000 CSS px, multiplied by the page's zoom, from 100 to 200 % (R73): the limit holds the fit, and the zoom goes beyond it.** "The sheet is no wider than 1000 CSS px" now means "the fitted sheet". The visible part is by the width too: `vx`, its left edge in the sheet's units, and the layers' `viewBox` is `vx vy W/k H/k`. The scene sticks to the left edge of the container too, and the drawing surface is the visible part on both axes: its buffer does not grow with the zoom, in an element with a height. The `k` of input, of the eraser's reach and of drawing is by the width of the sheet on the screen, not of the drawing surface. A new width, a new zoom and the browser's zoom keep the top left corner of the visible part at the same place of the sheet. The "Rejected" about `k` with a lower limit stays: scrolling sideways came not by a lower limit but by a zoom the learner chooses on their own, with «Левее» and «Правее» and two fingers. — R73; [architecture.md](architecture.md), sections 3.1 and 3.2.
-
-— *Amendment 2026-11-14 (T111):* **forced colors mode is two Vitest instances, `forced colors chromium` and `forced colors firefox`, each with `forcedColors: "active"` in Playwright's context; WebKit has no forced colours to emulate (measurements 1.5).** — R70, R78; RUN.md, T111.
+— `src/core/`, `src/element/`, `demo/`, `vitest.config.ts`; [architecture.md](architecture.md), sections 1, 3.1, 3.2, 3.3, 3.7, 3.10 and 4; RUN.md, T11 (body — [docs/plan/E4.md](plan/E4.md)).
 
 **R24. The stroke groups are by nearness in space and in time. Two strokes are neighbors if there are no more than 2 s between them, and the boxes of their points come closer than a square — 50 units horizontally and vertically. A group is the strokes that a chain of neighbors joins. The rule takes the visible strokes and counts in integers: in tenths of a unit and in milliseconds. The labels are A, B, C… by place, top to bottom. The group's rectangle is in the sheet's units, and the group box in fractions of the crop is computed by T13.**
 - **The input** is the visible strokes of the final sheet with the time of their points: the fold of the writing history, which is also the strokes on the sheet (R22). What is erased and what is removed by undo does not enter the groups, and what is brought back by undo enters with the time when it was written. Erasing and undo do not split groups. A stroke without points or one ID on two strokes is a `TypeError`, and a rule whose limit is not a finite number from 0 is a `RangeError`.
@@ -1886,282 +1794,136 @@ Revisit when a consumer of `core` without the DOM and without `skipLibCheck` app
 
 — *Amendment 2026-11-17 (T120):* the picture of the whole sheet comes back for another consumer than the board (R83): `exportPicture()` gives the PNG of the strokes the sheet or the workbook's page shows, with no condition, for `StoredWork.picture` of `PutWork`, and `app` sends it to be stored, not to be checked. `exportWork()` stays the one picture for the check, and «Revisit» about the picture of the whole sheet is decided by it. — R83; RUN.md, T120.
 
-**R28. The sheet's own buttons: a row above the statement and the sheet, outside their scrolling — «Перо» and «Ластик», «Отменить» and «Очистить». The labels come from a table of its own in English and Russian, by the element's own `lang`, the tools from the task's field `canvas.tools`, and the element announces a change of tool by the learner with the event `toolchange`.**
-- **The row** is a toolbar of buttons, `role="toolbar"`, first in the shadow tree, before the scrolling:
-  - as wide as the sheet's column — no wider than 1000 CSS px, and centered — and outside the element's scrolling. In an element with a height, the statement and the sheet scroll under it. Without a height, the row holds to the top of an ancestor's scrolling while the element is on screen (`position: sticky`), below the top by `--novatrail-canvas-top`, 0 by default;
-  - above the sheet: `isolation: isolate` on the host, `z-index: 1` on the row. The stage is sticky too and stands later in the tree, so without this a stuck row would be painted under the ink;
-  - its size is set by CSS, not by the element's layout. A row that wraps on a narrow screen takes height from the container, and the resize observer lays the sheet out anew;
-  - a press on the row does not reach the drawing surface. A captured pointer under the stuck row writes as beyond the edge of the drawing surface, and the eraser takes nothing there: the visible part of the sheet begins below the row;
-  - the row has no `pointer-events` of its own: the consumer's `none` on the element (R20) stops the buttons too — for the pointer, but not for the keyboard.
-- **The buttons:**
-  - «Перо» and «Ластик» are a group `radiogroup` «Инструмент» of `<button role="radio" aria-checked>`, and «Отменить» and «Очистить» are `<button>` elements that call `undo()` and `clear()` (R19);
-  - the keyboard, by APG Toolbar:
-    - one Tab stop, a roving `tabindex`;
-    - ← and → go to the neighboring button, in a circle, and Home and End to the first and the last. The arrows move the focus but do not choose a tool;
-    - Space and Enter press the button;
-    - the row does not take keys with Alt, Ctrl and Meta;
-    - the first entry is on «Перо», later ones on the button that had the focus last;
-  - «Отменить», while there is nothing to undo, and «Очистить» on an empty sheet are `aria-disabled="true"`: they grow pale, stay focusable, and a press does nothing;
-  - a button is no smaller than 44 × 44 CSS px, and the browser's ring shows the focus.
-- **The labels** are a table of its own in English and Russian, as О-2 advises: Sheet, Tool, Pen, Eraser, Undo and Clear; «Лист», «Инструмент», «Перо», «Ластик», «Отменить» and «Очистить»:
-  - the language is the element's own attribute `lang` (R07), which the element watches (`observedAttributes`). It does not read an ancestor's language;
-  - the language is looked up as in RFC 4647, 3.4: the tag in lower case, the tail cut off subtag by subtag, and a singleton subtag together with the next one. If none is found, English;
-  - the row has its own `lang`, the language of the labels it shows. A screen reader reads English labels under `lang="de"` in English;
-  - the constructor labels in English and does not read the host's attributes: an attribute that was there before registration comes right after the constructor.
-- **The task's tools** are the temporary field `task.canvas.tools`, as in the illustration of concepts 16.1 spec:
-  - a list of strings, and without the field the pen and the eraser. The sheet takes `"pen"` and `"eraser"` and skips unknown ones — a ruler, a calculator, a microphone: `app` shows some, others will come with new versions of the sheet;
-  - without `"pen"`, a `TypeError`: the sheet writes with the pen. Not a list, a hole, or not a string: a `TypeError` with the field's path;
-  - without `"eraser"` there is no eraser at all:
-    - there is no button «Ластик», and «Перо» stays;
-    - the back end of the pen neither erases nor writes;
-    - `tool = "eraser"` is a `TypeError`;
-    - a new task without an eraser brings back the pen, with no event. An eraser's press already under way goes on as it began (R22);
+**R28. The sheet's own buttons are a vertical toolbar by the APG on the bar of glass (R84): one Tab stop, the radio group «Инструмент» of the tools the task allows and the hand (R88), «Отменить» and «Очистить». The labels come from a table of the element's own in `en` and `ru`, by the element's own `lang`; the tools from the task's field `canvas.tools`, the element's own; and the element announces a change of tool by the learner, and only by the learner, with the event `toolchange`.**
+- **The bar** is `role="toolbar"`, `aria-orientation="vertical"`, first in the shadow tree, before the sheet's region (R33); its look, place and the band it stands in are R84's, and `tools-hidden` hides it (R84). Its buttons, top to bottom:
+  - on a task from paper only, the button atop the tools — "Hide the task" or "Show the task" — and a line (R87);
+  - the group `radiogroup` «Инструмент» of `<button role="radio" aria-checked>`: «Перо», «Ластик» if the task allows it, «Рука» (R88). The tool in use shows its icon filled;
+  - «Отменить» and «Очистить», `<button>` elements that call `undo()` and `clear()` (R19);
+  - on a task from paper only, a line and the grid's button (R88).
+  A worked example has no bar: the learner does not write on its sheet, and its Next and Demo stand in a row of their own (R42, R84).
+- **The keyboard**, by APG Toolbar:
+  - one Tab stop, a roving `tabindex`: the first entry is on the first button shown — «Перо», or a task from paper's button atop the tools —, later ones on the button that had the focus last;
+  - ArrowDown and ArrowUp go to the next and the previous button shown, round the bar, and Home and End to the first and the last; the arrows move the focus and choose nothing; ArrowLeft and ArrowRight do nothing;
+  - Space and Enter press the button; the bar takes no key with Alt, Ctrl or Meta;
+  - a button that goes — «Ластик» with a task without the eraser, a task from paper's two — gives its stop of Tab, and the focus if it had it, to the first button shown;
+  - the glass is no Tab stop, and a press on it between buttons takes the focus nowhere.
+- **Unavailable buttons:** «Отменить» while there is nothing to undo and «Очистить» on an empty sheet are `aria-disabled="true"`: paler, still focusable, and a press does nothing.
+- **The labels** are a table of the element's own, `src/element/labels.ts`, in the interface languages `en` and `ru` (R92 spec), by the shared rules of the UI packages' translations (R91 spec). The table holds the buttons, the group «Инструмент» (Tool), the bar's names, the kinds' names, a workbook's boxes (R36, R37), a demo's parts (R42) and the tracing paper's grip (R87):
+  - the language is the element's own attribute `lang` (R07), which it watches (`observedAttributes`); it does not read an ancestor's language;
+  - the tag is looked up as RFC 4647, 3.4 does: in lower case, the tail cut off subtag by subtag, a singleton subtag together with the next one; none found, English;
+  - the bar, its tooltip and each other labelled node have their own `lang`, the language of the labels they show: a screen reader reads English labels under `lang="de"` in English; for a `lang` outside the table the region too (R74);
+  - the constructor labels in English and reads no attribute: one that was there before registration comes right after it;
+  - a label with a number or a word inside is one string with placeholders by name — «Часть {n} из {total}.», «Окошко {slot}», «{name}, заполнено», «{name}: {value}» —, never pieces glued together; a place with no value is a `TypeError`, not braces on the screen;
+  - no label counts things, so none has plural forms; the first that does takes the CLDR categories, `other` among them, by `Intl.PluralRules` of the label's language;
+  - the buttons' labels are the words of the table of architecture 6 spec; no label tells the learner's gender (R70 spec) or speaks as the AI in the first person (П-15). The phrases only `canvas` shows are [architecture.md](architecture.md), section 3.3.
+- **The names:** the bar is named by the kind's buttons — «Кнопки листа», «Кнопки тетради», «Кнопки задачи с бумаги»; "Sheet buttons", "Workbook buttons", "Task from paper buttons" —, and the kind's own name — «Лист», «Тетрадь», «Задача с бумаги», «Пример» — is the scroll container's region (R33), so that a screen reader does not show the toolbar and the region under one name.
+- **The task's tools** are the field `task.canvas.tools` of both canvas kinds, the element's own: format 0.4 has no field of tools — every task has the pen and the eraser, and a field for other tools is a minor version (the format's README, §14; R51 spec) —, and the element's strict check lets this one field through (R32). Its type is the element's `Task`, not `CanvasElement`'s (Д5 in [run/DEBT.md](../run/DEBT.md)):
+  - a list of strings, as in the illustration of concepts 16.3 spec; without the field the pen and the eraser. The sheet takes `"pen"` and `"eraser"` and skips unknown ones — a ruler, a calculator —: `app` shows some, others come with new versions of the element;
+  - without `"pen"`, a `TypeError`: the sheet writes with the pen. Not a list, a hole or not a string: a `TypeError` with the field's path;
+  - without `"eraser"` there is no eraser at all: no «Ластик»; the back end of the pen neither erases nor writes; `tool = "eraser"` is a `TypeError`;
+  - the hand is no tool of the format: every sheet the learner writes on has it, a worked example none (R88). A task from paper has the pen and the eraser;
   - undo and clearing are not tools: concepts 8 spec does not name them, and they always have buttons.
-- **`tool` and the buttons are one:**
-  - a button chooses `tool`, and an assignment of `tool` marks the button;
-  - the element announces a change of tool by the learner with the event `toolchange`: a `CustomEvent` from the host, `bubbles` and `composed`, with a frozen `detail` `{ tool }`;
-  - an assignment of `tool`, a second press of the chosen one and the pen brought back by a new task give no event;
-  - a consumer that gives `tool` itself listens to `toolchange`, or its re-render will bring back the previous tool. After a new task it takes `tool` from the element: a task without an eraser brings back the pen with no event, and its `tool = "eraser"` would be a `TypeError`.
-- **The theme:**
-  - the row is the color of the paper, and the buttons' text and borders the color of the ink;
-  - the chosen tool is filled with ink, and an unavailable button is paler;
-  - in forced colors:
-    - the row: Canvas;
-    - the buttons: ButtonFace, ButtonText and ButtonBorder;
-    - the chosen one: Highlight and HighlightText;
-    - an unavailable one: GrayText.
-- **Code:**
-  - in the DOM-free part: the type `Tool` and the task's field of tools (`task.ts`), and `Work.undoable`;
-  - in the element: the row (`tools.ts`), the labels (`labels.ts`), `toolchange` and the types `ToolChange` and `ToolChangeEvent`.
+- **`tool` and the buttons are one** (`Tool` = `"pen" | "eraser" | "hand"`, spec's contract):
+  - a button chooses `tool`, and an assignment of `tool` checks its button; a tool the sheet shown has not — the eraser without the task's, the hand on a worked example — is a `TypeError`;
+  - a sheet shown anew without the tool in use puts the pen back, with no event; a press under way goes on as it began (R22);
+  - `toolchange` is a `CustomEvent` from the host, `bubbles` and `composed`, with a frozen `detail` `{ tool }`, on the learner's choice of another tool by a button. An assignment of `tool`, a second press of the chosen one and the pen put back give none;
+  - a consumer that gives `tool` itself listens to `toolchange`, or its re-render brings back the previous tool; after a new task it takes `tool` from the element.
+- **The theme:** the bar's text the ink; the chosen tool and the focus ring (`:focus-visible`, 2 px) the accent (R84); an unavailable button paler by colour, `color-mix` of 40 % ink on paper, not by opacity, which would pale the ring too (WCAG 2.4.7, 1.4.11) — by opacity only where `color-mix` is not supported. In forced colours: the bar Canvas and CanvasText; the buttons ButtonFace, ButtonText and ButtonBorder; the chosen one Highlight and HighlightText; an unavailable one GrayText; the ring Highlight.
+- **The pointer:** the rail is as wide as nothing and has no `pointer-events` of its own, so a consumer's `none` on the element (R20) stops the buttons' pointer too, but not their keys.
 
-— *Why:* the author's answers in planning T41, 2026-10-26, all by the recommendations:
-- the row at the top, outside the scrolling;
-- unavailable buttons grow pale and keep the focus;
-- labels of its own in English and Russian;
-- «нет в списке — нет на листе» ("not in the list, not on the sheet");
-- `toolchange` from the learner;
-- the row's offset by a variable.
-
-Before the work a separate agent checked the design. Its corrections:
-- `isolation` and `z-index`;
-- the visible part below the row;
-- the row's size by CSS only;
-- the row is paper and ink;
-- the focus when a button disappears;
-- radio buttons;
-- a `Map` of the labels;
-- `Tool` in the DOM-free part.
-
-Sources: [architecture.md](architecture.md), section 4.
-- **The row at the top, outside the scrolling.** The buttons are always at hand, and nothing covers the learner's work. A toolbar over the sheet, as in the mockups of canvas-api, would cover the ink, and a pen at the sheet's corner would hit a button.
-- **`aria-disabled`, not `disabled`.** `disabled` takes a button out of the focus: the last undo from the keyboard would drop the focus off the row. APG allows unavailable elements of a toolbar to stay focusable, so that they are found.
-- **Radio buttons, not toggles.** The pen and the eraser are a choice of one of two, and that is how APG's toolbar example describes it. A toggle `aria-pressed` would switch the tool off with a second press, and there is nothing to switch it off into. Buttons, not `<input type="radio">`: with native radios the arrows choose, and in a toolbar they only move the focus.
-- **The element's own `lang`.** So R07 decided: `app` sets the language. `HTMLElement.lang` does not reflect an ancestor's language, and the element cannot keep watch over all its ancestors.
-- **A table of its own.** There is no shared scheme of translations for UI packages yet — T07 of `app` will give it — and without labels of its own the goal of T41 cannot be met. Two rows of a table are easier to replace with the scheme than to remove translations from every consumer.
-- **The task allows.** "The tools are allowed by the task" (concepts 8 spec): an eraser that the task did not give erases neither by the button nor by the pen. The sheet skips unknown tools: the task names `app`'s tools too, and the sheet's new tools will come with a new version of the package.
-- **`toolchange` only from the learner.** web.dev advises: "Do not dispatch events in response to the host setting a property (downward data flow)". The consumer made the assignment itself and knows of it.
-- **A variable for the offset.** `app`'s sticky header would otherwise cover the row, and with it the button in focus (WCAG 2.4.11).
+— *Why:* the author's answers in planning T41, 2026-10-26 — unavailable buttons pale and keep the focus, labels of the element's own, «нет в списке — нет на листе» ("not in the list, not on the sheet"), `toolchange` from the learner —; in planning T91, 2026-11-11, no plural forms until a label counts; in planning T93, 2026-11-11, the bar named by its buttons and the region by the kind.
+- **`aria-disabled`, not `disabled`.** `disabled` takes a button out of the focus: the last undo from the keyboard would drop the focus off the bar. APG allows unavailable items of a toolbar to stay focusable, so that they are found.
+- **Radio buttons, not toggles.** The tools are a choice of one, as APG's toolbar example describes it. A toggle `aria-pressed` would switch the tool off with a second press, into nothing. Buttons, not `<input type="radio">`: with native radios the arrows choose, and in a toolbar they only move the focus.
+- **The element's own `lang`.** R07: `app` sets the language. `HTMLElement.lang` does not reflect an ancestor's, and the element cannot watch all its ancestors.
+- **A table of its own.** R91 spec gives the UI packages shared rules and each its own tables; two rows of a table are easier to change than translations in every consumer.
+- **The task allows.** "The tools are allowed by the task" (concepts 8 spec): an eraser the task did not give erases neither by the button nor by the pen. Unknown tools are skipped: the task names `app`'s tools too, and the element's new tools come with new versions of the package.
+- **`toolchange` only from the learner.** web.dev: "Do not dispatch events in response to the host setting a property (downward data flow)". The consumer made the assignment and knows of it.
+- **Placeholders by name.** Languages put their words in other orders; a glued label could not be translated.
+- **The bar named by its buttons.** In the screen reader's list of landmarks stands the sheet itself, under its kind's name.
 
 — *Rejected:*
-- **a row at the bottom**, as on `tutor`'s board, and **a toolbar over the sheet in a corner**: the author's answer, and the toolbar would cover the ink; **buttons in the sheet's scrolling**: they would leave the screen together with the statement;
-- **`disabled`** and **always available buttons**: for the reasons above, and because then nobody sees that there is nothing to undo;
-- **`aria-pressed` on the pen and the eraser** and **native radios**: for the reasons above;
-- **an ancestor's language** and **`Intl.Collator.supportedLocalesOf`**, which looks up by the engine's languages, not by a table of its own;
-- **labels from the consumer**: every consumer, the samples page too, would translate four words; **English only**: the goal of T41 would be left unmet;
+- **`disabled`** and **always available buttons**: for the reason above, and then nobody sees that there is nothing to undo;
+- **`aria-pressed` on the tools** and **native radios**: for the reasons above;
+- **an ancestor's language** and **`Intl.Collator.supportedLocalesOf`**, which looks up by the engine's languages, not by the table;
+- **labels from the consumer**: every consumer, the samples page too, would translate them; **English only**: a Russian interface would read English;
 - **a list that hides only the buttons**: the eraser would erase by the pen where the task did not give it; **an unknown tool is a `TypeError`**: the sheet would not show a task of `app` with a ruler or a calculator;
 - **an event on an assignment of `tool`** and **an element with no event**: for the reasons above;
 - **`delegatesFocus`**: a press on the drawing surface would give the focus to the pen's button;
-- **icons on the buttons**: the first slice of `app` will decide the look of the interface;
-- **`top: 0` without a variable**: for the reason above.
+- **plural forms in code now**: code the package does not call;
+- **the bar named by the kind, the region «Лист с задачей»**: the pair «Лист» and «Лист с задачей» confuses; «Лист с условием» neither — «условие» in concepts 15 spec is a check's predicate, not the statement.
 
-— *Revisit:*
-- the labels, when T07 of `app` gives the shared scheme of translations for UI packages;
-- the icons, with the look of `app`'s interface;
-- the keyboard for the time of a check, by a property that stops it too, if `app` asks for one (R20);
-- the field of tools, with format v0 (T28 in RUN.md of `spec`; В39 in table 3 of RUN.md);
-- the row's width, if someone notices it on a computer with a classic scrollbar: the row is measured by the element, and the sheet by the container without the scrollbar, so the row is wider than the sheet by the scrollbar's width. CSS does not know the scrollbar's width, and laying the row out by code would make a loop of the resize observer. On tablets scrollbars lie over the content, and the width is one.
+— *Revisit:* the field of tools, with the minor version of the format that has one (Д5 in [run/DEBT.md](../run/DEBT.md)); the keyboard during a check, by a property that stops it too, if `app` asks for one (R20).
 
-— *Consequence:*
-- **T35** — the button that brings back drawing with a finger goes into this row;
-- **T19** — the samples page takes the element's buttons and gives it the language of its texts;
-- amendments to R07, R19, R20, R22, R23 and R27;
-- **table 3 of RUN.md** — В39 and В40 «в реестр spec».
+— T41 in [plan/E4.md](plan/E4.md); T91 and T93 in [plan/E10.md](plan/E10.md); T121 in [plan/E13.md](plan/E13.md); T251 of spec's RUN.md; [architecture.md](architecture.md), sections 3.3, 3.7 and 3.10; R07, R19, R20, R22, R32, R33, R36, R42, R74, R84, R87, R88; R51 spec, R91 spec, R92 spec; `src/element/tools.ts`, `src/element/labels.ts`, `src/element/index.ts`, `src/core/task.ts`, `src/element/tools.test.ts`, `src/element/labels.test.ts`.
 
-— `src/core/`, `src/element/`, `demo/`; [architecture.md](architecture.md), sections 3.1, 3.3, 3.7 and 4; RUN.md, T41, T35, table 3; README.md.
-
-— *Amendment 2026-10-26:* the *Consequence* about T35 is done (R29). The row has a fifth button, «Рисовать пальцем» ("Draw with finger"): it is visible in pen mode on a device with touch, and in the table of labels its key is `finger`. It appears and goes between strokes, and when it disappears it gives the focus to the pen's button, as «Ластик» does. — R29; RUN.md, T35.
-
-— *Amendment 2026-10-26:* В39 is closed by R51 spec, not by `canvas`'s recommendation (R30). Format v0 has no field of tools: each task has a pen and an eraser, and R51 spec rejected "a field of tools of the pen and the eraser". The field will come with a minor version, with the first module that needs a ruler or a calculator, and the *Revisit* about the field of tools above waits for it. The temporary field `canvas.tools` stays until the task type moves to the schema of R51 spec (Д5): a sheet without the field gives the pen and the eraser, as R51 spec does too. — R30.
-
-— *Amendment 2026-10-26:* В40 is recorded in `spec` by the first 2026-10-26 amendment to R36 spec (R31). `toolchange` and `lang` are the agreement of `canvas` and `app`, the labels are the package's own table, and T07 of `app` takes the table of labels and the row's accessibility as an input of the shared scheme of translations and of the standard of accessibility. The 2026-10-26 amendment to R51 spec speaks of В39 too: its composition is an input of the minor version with the field of tools, and `canvas.tools` lives until the move to the types of `spec` (Д5). — R31.
-
-— *Amendment 2026-10-27:* `canvas.tools` is a temporary field of both canvas kinds, the sheet and the workbook, by the same rules. The strict check of the task lets it through: it is the only field of the task that is not in the schema of R51 spec (R32). — R32.
-
-— *Amendment 2026-10-27:* the row also has «Выше» and «Ниже», as a pair between «Очистить» and «Рисовать пальцем», on any device. Their labels in the table are `up` and `down`: Up and Down, «Выше» and «Ниже». At the edge a button is `aria-disabled`, as «Отменить» and «Очистить» are, and its theme and forced colors are those of the whole row. — R33.
-
-— *Amendment 2026-10-27:* the toolbar's name follows the canvas kind: «Лист» or «Тетрадь» (R34). The buttons and their keyboard on a workbook are the same. — R34.
-
-— *Amendment 2026-10-27:* the table of labels also has `workbook` and `box`: Workbook and Box, «Тетрадь» and «Окошко». The toolbar's name changes with the canvas kind, and the boxes' names with the element's `lang`, as the buttons' labels do (R36). — R36.
-
-— *Amendment 2026-10-27:* the table of labels also has `filled`: filled and «заполнено». A filled box's name is «Окошко, заполнено» (R37). — R37.
-
-— *Amendment 2026-11-01:* in the worked-example mode the row of buttons has no buttons of the pen and the eraser, no «Отменить», «Очистить» and «Рисовать пальцем», but «Дальше», the disclosure button «Показ», «Выше» and «Ниже», in that order, and it is called «Пример». The Tab stop is then on the first visible button, «Дальше», not on the pen's button. T59 and T60 build it. — R42.
-
-— *Amendment 2026-11-02:* the icons on the buttons, from the *Rejected* and the *Revisit* above, came not with the look of `app`'s interface but with R78 spec: before the label of each button of the row there is an icon of the set Material Symbols by the table of architecture 6 spec, and the button's name is still its label. From right to left, ArrowLeft leads to the next button, by the direction of the row and of its arrows (R46). — R46.
-
-— *Amendment 2026-11-11 (T91):* **the labels follow the shared rules of translations of UI packages (R91 spec), in the interface languages `en` and `ru` (R92 spec). A label with a number or a word inside is one string with placeholders by name — «Часть {n} из {total}.», «Окошко {slot}», «{name}, заполнено», «{name}: {value}» — not a gluing of «Часть», a number, «из» and a number; a place without a value is a `TypeError`, not braces on the screen. The labels have no plural forms — none of them counts things — and the first such label will take the CLDR categories with `other` by the `Intl.PluralRules` of the label's language: so the author decided, instead of code that the package does not call. The fallback label is English, with its own `lang`; the buttons' labels are the words of the table of architecture 6 spec; the learner's gender and the AI's first person are not in the labels (R70 spec; П-15). The phrases that only `canvas` shows are [architecture.md](architecture.md), section 3.3. The wait for T07 of `app` above is fulfilled by `spec`'s answer, R91 spec.** — RUN.md, T91; `src/element/labels.ts`, `src/element/labels.test.ts`.
-
-— *Amendment 2026-11-11 (T92):* **in a low window the row does not stick, and the focus shows a ring of its own, of the ink's color (R90 spec; WCAG 1.4.10, 2.4.11, 2.4.7, 1.4.11).**
-- **The threshold:** the row sticks while it is no taller than a quarter of the scrolling it sticks in, below `--novatrail-canvas-top`. The scrolling is the nearest ancestor across shadow boundaries with overflow `auto`, `scroll`, `overlay` or `hidden`, or the window without the scrollbar, `document.scrollingElement.clientHeight`: this height does not change when a phone's browser hides its toolbar. Everything — the row, the ancestor and the offset — is measured on the screen, with the ancestors' scale. Otherwise the row is `loose`, `position: static`: it stands in its place, above the statement, and leaves with the scrolling. Its place and size are the same, so the threshold does not depend on its own answer and needs no margin against jitter.
-- **When it is recomputed:** on a new size of the row — it wraps by the width, by `lang`, by the canvas kind and with the finger's button —, of the window and of the ancestor it sticks in, and on scrolling of the page and of the ancestors. A new `--novatrail-canvas-top` changes no sizes, and the threshold hears it from the next scroll, as R33 hears another shadow tree: a scroll reads only the row's `top` and recomputes the threshold when the offset has changed. An ancestor whose overflow changed by a style alone, with no new size and no scroll, the threshold also learns of from the next of them.
-- **The focus ring:** `:focus-visible` is a 2 px solid line of the ink's color, 2 px outside the button, and Highlight in forced colors. The row's margins at the sides are 4 px: the ring of an outermost button stands on the row's paper, at the window's edge too. The "the browser's ring shows the focus" above is replaced by this.
-- **An unavailable button** is paler by color — `color-mix` of 40 % ink on paper — not by `opacity: 0.4`: transparency would make the ring pale too. «Выше», which keeps the focus at the edge (R33), would show it at about 2.6:1 to the paper, less than 3:1 by 1.4.11. In forced colors it is GrayText, as it was. A browser without `color-mix` still makes it pale by transparency (`@supports`).
-
-*Why:* the author's answers in planning T92, 2026-11-11, all by the recommendations. Understanding 1.4.10 advises "static positioning" for a sticky toolbar in a small window, and technique C34 removes the stickiness when there is little room. A quarter is by its example: a header of 130 px sticks from a window of 480 px, about 27 %. A share, unlike the window's height, sees the row wrapping, the language of its labels, the canvas kind, `app`'s header and its scrolling in a container of its own. The ring has no variable of its own: `app`'s theme already holds the contrast of ink to paper for the buttons' labels, and a new variable is a clause of the agreement, which `spec` has recorded. Before the work a separate agent checked the design; its corrections were the paleness by color, the overflow `hidden`, one parsing of the offset for two rules and the row's margins at the sides. Sources: [architecture.md](architecture.md), section 4.
-
-*Rejected:* the window's height, `@media (min-height: 480px)`, as in C34 literally: it does not see the row wrapping, `app`'s header and scrolling; both conditions at once: two rules instead of one; a button that collapses the row: a new word of the table of architecture 6 spec; the row in one line with sideways scrolling: it departs from R90 spec and covers the sheet anyway; a ring variable of its own: for the reason above. The "buttons in the sheet's scrolling: they would leave the screen together with the statement" from the *Rejected* above is now the price of a low window, and of it alone: in a window where the row would cover more than a quarter, it leaves with the scrolling, as C34 advises.
-
-— RUN.md, T92; [architecture.md](architecture.md), sections 3.1, 3.3 and 4; `src/element/index.ts`, `src/element/tools.ts`, `src/element/reflow.test.ts`, `src/element/a11y.test.ts`, `src/element/forced-colors.test.ts`.
-
-— *Amendment 2026-11-11 (T93):* **the toolbar's name is not the canvas kind but its buttons: «Кнопки листа», «Кнопки тетради» and «Кнопки примера», "Sheet buttons", "Workbook buttons" and "Worked example buttons". The kind's name — «Лист», «Тетрадь» or «Пример» — is now on the scrolling container, the region `region` (the T93 amendment to R33): so a screen reader will not show the toolbar and the region under one name.** The table of labels also has `sheetButtons`, `workbookButtons` and `exampleButtons`, and `sheet`, `workbook` and `example` stay the kind's names. This does not concern the words of the table of architecture 6 spec: it has only buttons. `app` does not read the toolbar's name (`main` 61fa6e9, read 2026-11-11).
-
-*Why:* the author's answer in planning T93, 2026-11-11, by the recommendation: in the screen reader's list of landmarks stands the sheet itself, and the toolbar names itself by its buttons.
-
-*Rejected:* the toolbar as it is, with a new name for the region, «Лист с задачей»: the pair «Лист» and «Лист с задачей» confuses. «Лист с условием» does not fit either: «условие» in the vocabulary of concepts 15 spec is a check, the predicate, and «условие задачи», the statement, is another thing.
-
-— RUN.md, T93; [architecture.md](architecture.md), sections 2.8, 3.3 and 3.7; `src/element/labels.ts`, `src/element/tools.ts`. — R33, R34, R36, R42.
-
-— *Amendment 2026-11-11 (T94):* **after «Выше» and «Ниже» the row has the zoom pair «Крупнее» and «Мельче», and while the sheet is zoomed in, «Левее» and «Правее» after it, before «Рисовать пальцем» (R73).** Each pair is a unit of wrapping of its own, as «Выше» and «Ниже» are. At the limit of zoom a button is unavailable and keeps the focus, and so are «Левее» and «Правее» at the edge toward which they scroll. At 400 CSS px the sheet's row is in three lines, not two: the zoom pair does not fit into the second. The labels are `zoomIn`, `zoomOut`, `left` and `right` of the table of labels, en and ru, until the words of architecture 6 spec by В76. — R73.
-
-— *Amendment 2026-11-12 (T110):* **the labels `zoomIn`, `zoomOut`, `left` and `right` — «Крупнее», «Мельче», «Левее» and «Правее», "Zoom in", "Zoom out", "Left" and "Right" — are now words of the table of architecture 6 spec: `spec` recorded В76 by recommendation (a) (Д219 spec), and there is nothing left to wait for.** — R73, R77; RUN.md, T110.
-
-— *Amendment 2026-11-17 (T121):* **the row of buttons is the interface mockup's vertical bar of glass over the sheet's left edge, its buttons icons alone with a tooltip, its focus ring the accent, and a sticky row above the statement is no more (R84).** The bar is still a `toolbar` by the APG, one Tab stop, before the sheet's region; its arrows are ArrowDown and ArrowUp (`aria-orientation="vertical"`), on every kind. A worked example's bar holds the zoom's pair alone; its Next and Demo leave the toolbar for a row of glass at the bottom, with no arrows, each a stop of Tab of its own (the T121 amendment to R42). The labels stay the buttons' names, out of sight on the bar; the 44 × 44 targets, `aria-disabled`, the theme's ink and forced colours stay. "The row does not stick in a low window" of the T92 amendment no longer holds: the bar takes no room and scrolls inside its glass. — R84; RUN.md, T121 (body — `run/TASKS.md`).
-
-**R29. Input on tablets: pen mode is one for the whole page, a palm is a touch wider than 100 CSS px, two-finger scrolling is code of its own, and the button «Рисовать пальцем» is in the element's row. One pointer still writes, but the pen removes a touch's stroke that is under way.**
-- **Pen mode** is one for the whole page, in its memory:
-  - a pen's `pointerdown` on the drawing surface of any sheet of the page turns it on, by any button: both the tip and the pen's eraser. A hovering pen does not turn it on;
-  - the button «Рисовать пальцем» turns it off, and the pen's next touch turns it on again;
-  - the next task is a new element (R20), and the mode stays. Nothing is stored or sent, and after the page reloads there is no mode;
-  - in pen mode a finger's touch neither writes nor erases. The mouse does not touch the mode.
+**R29. Input on tablets: pen mode is one for the whole page, from a pen's touch on any sheet till the page reloads, and nothing turns it off; in it a finger neither writes nor erases, one finger past the slop drags the sheet, and two fingers scroll it always. A palm is a touch wider or taller than 100 CSS px. One pointer writes at a time, and the pen removes a touch's stroke under way. Scrolling by fingers is code of its own, across as well as down.**
+- **Pen mode** is one for the whole page, in its memory (`PEN_MODE`):
+  - a pen's `pointerdown` on the drawing surface of any sheet the learner writes on turns it on, by either button — the tip or the pen's eraser. A hovering pen does not, nor a press under the hand (R88);
+  - nothing turns it off: the next task is a new element (R20), and the mode stays till the page reloads. Nothing is stored or sent;
+  - in pen mode a finger neither writes nor erases. The mouse does not touch the mode;
+  - a worked example's sheet neither turns it on nor off: its drawing surface takes no input and has the browser's `touch-action`, so a finger and a pen scroll it natively, as they scroll the statement (R42);
+  - the mode knows whether any sheet of the page is written on: each sheet enlists whether a pointer writes or erases on it (`enlist`, `writing`), and no single finger drags while one does.
 - **A palm** is a touch whose `width` or `height` is greater than 100 CSS px, on `pointerdown` or on any coalesced `pointermove`:
   - it neither writes nor scrolls until it lifts;
   - the stroke it was already writing is removed, as on `pointercancel`: there is no history event, and its ID stays taken (R18);
   - the palm ends the scrolling it was in.
 - **Who writes:**
-  - still one pointer at a time (R18). Several touches at once never write;
-  - the pen removes a touch's stroke that is under way — that was a palm — and writes itself;
-  - while a pen or a mouse writes, a touch does nothing. A touch that was on the screen during a pen stroke does nothing until it lifts;
+  - one pointer at a time (R18). Several touches at once never write;
+  - the pen removes a touch's stroke that is under way — that was a palm —, ends a gesture under way, and writes itself. While a pen or a mouse writes, a touch does nothing, and a touch that was on the screen when the pen came does nothing until it lifts;
   - without pen mode the first touch writes or erases by `tool`. A second touch that came no later than 150 ms after the first, while that one has moved no more than 8 px, removes its stroke or eraser's press, and both fingers scroll. A later second touch does nothing, and the stroke goes on;
-  - in pen mode one touch does nothing, and two that touched no more than 150 ms apart scroll;
+  - in pen mode a touch waits. A second that comes within 150 ms of it makes the two a scroll; one that goes past 8 px with no second drags the sheet alone, by its own travel, and every other finger down then, and every one that comes while it drags, does nothing until it lifts (R84). No single finger drags while a sheet of the page is written on, and a pen never drags;
   - a third touch does nothing. When one finger of a pair lifts, the gesture ends, and the other does nothing until it lifts;
   - a mouse and a pointer without a type write when nobody else writes;
   - a finger's press that was under way on another sheet when the pen turned the mode on goes to its end as it began (R22);
   - the drawing surface holds by capture every pointer that came down on it, until it lifts, whether it writes or not. A pointer that comes down again under the same ID has lost its `pointerup`, and the stroke it was writing lands where it was — as on a loss of capture (R18).
-- **Two-finger scrolling** is code of its own, because `touch-action` acts on the pen too:
-  - the sheet moves vertically together with the midpoint of the two fingers — after the first 8 px, with no jump. A step is a whole pixel, the remainder goes into the next step, and the scrolling is with `behavior: "instant"`;
-  - what to scroll, the gesture's first step chooses, and the choice does not change until the gesture's end. It is the sheet's container if it can move that way, otherwise the host's nearest scrollable ancestor — across shadow boundaries, up to an `overscroll-behavior` of `contain` or `none` —, otherwise the page. A page with hidden overflow, as under a window over it, the fingers do not scroll: a finger would not scroll it either. The page's overflow is the root's, and if the root's is `visible`, then `body`'s (CSS Overflow 3). A container at its edge passes the scrolling on with the next gesture;
-  - the shift is divided by the container's own scale: an ancestor with `transform` changes the fingers' path on the screen;
-  - there is no inertia, and the sheet stops together with the fingers;
+- **Scrolling by fingers** is code of its own, because `touch-action` acts on the pen too:
+  - two fingers move the sheet with their midpoint, a dragging finger with itself. The threshold is that point's travel, 8 px; the first step has no jump: it is the share of the travel along each axis that lies beyond the threshold;
+  - across counts only while the sheet is wider than its container (`HandsSheet.across()`, the container's overflow across; R73); otherwise only the travel down counts. The rail: if, crossing the threshold, the point has gone twice as far along one axis as along the other, the gesture goes only along it until its end (`RAIL`): a scroll down does not wander sideways;
+  - a step is a whole pixel, the remainder goes into the next step, and it is `behavior: "instant"`;
+  - what to scroll along each axis, the gesture's first step along it chooses, and the choice holds until the gesture's end (the latch). It is the sheet's container if it can move that way, otherwise the host's nearest scrollable ancestor — across shadow boundaries, up to an `overscroll-behavior` of `contain` or `none` —, otherwise the page. A page with hidden overflow, as under a modal window, is not scrolled: a finger would not scroll it either. The page's overflow is the root's, and if the root's is `visible`, then `body`'s (CSS Overflow 3). A container at its edge passes the scrolling on with the next gesture;
+  - the shift is divided by the target's own scale: an ancestor with `transform` changes the fingers' path on the screen;
+  - there is no inertia, and the sheet stops with the fingers;
   - for the time of a check, with `pointer-events: none` (R20), a new gesture does not start, and one already started goes on until the lift;
-  - on the statement, the margins and the row of buttons a finger scrolls by native scrolling, as before (R23).
-- **The button «Рисовать пальцем»** is a `<button>`, fifth in the row, after «Очистить»; its labels are "Draw with finger" and «Рисовать пальцем»:
-  - it is visible in pen mode if the device has touch (`navigator.maxTouchPoints > 0`);
-  - it appears and goes only between strokes: while a pointer writes or erases, the row does not change its width;
-  - a press turns pen mode off on the whole page, with no event. The button goes, and the focus and the Tab stop move to «Перо», as from a vanished «Ластик» (R28);
-  - it is no smaller than 44 × 44 CSS px, as all the row's buttons are.
-- **The thresholds** are `PALM_PX` 100 CSS px, `PAIR_MS` 150 ms and `SLOP_PX` 8 CSS px, in pixels of the screen, not of the sheet. All three are parameters of T22.
+  - outside the drawing surface — the statement and the bar — a finger scrolls by native scrolling (R23);
+  - the hand (R88) moves the sheet through the same steps and latches, by its pointer's travel.
+- **The thresholds** are `PALM_PX` 100 CSS px, `PAIR_MS` 150 ms, `SLOP_PX` 8 CSS px and `RAIL` 2, in pixels of the screen, not of the sheet.
 - **What the canvas will not fix:**
   - WebKit 269535: on an iPad the Apple Pencil gives no pointer events while a finger or the edge of a palm touches the screen;
   - Chrome on Android, when a pen touches, releases the touches under way by a `pointerup` event. A palm that was writing before the page's first pen leaves a stroke, and «Отменить» removes it;
-  - a palm on the row of buttons is not cut off.
-- **Code:**
-  - in the DOM-free part: `hands.ts`, with the rule `Hands`, the mode `PenMode`, the type `Contact` and the thresholds;
-  - in the element:
-    - `session.ts`: the page's mode;
-    - the field `#hands`, the scrolling `#scroll` and the choice of the container;
-    - the fifth button in `tools.ts` and its label in `labels.ts`.
+  - a palm on the bar is not cut off.
+- **Code:** `src/core/hands.ts` — the rule `Hands`, the mode `PenMode`, the types `Contact` and `HandsSheet`, the thresholds; `src/element/session.ts` — the page's `PEN_MODE`; `src/element/index.ts` — the field `#hands`, `#scroll`, `#flush`, `#scrollerFor`, the latches `#latch` and `#latchAcross`, and `#lifted`, where a lift, a cancel and a lost capture release the latches. Tests: `src/core/hands.test.ts`, `src/element/hands.test.ts`.
 
-— *Why:* the author's answers in planning T35, 2026-10-26, all by the recommendations:
-- do it without a tablet, and T22 will check it on devices;
-- pen mode for the whole page;
-- a palm is wider than 100 px;
-- the button in pen mode, on a device with touch;
-- the second finger soon after the first;
-- one finger in pen mode does nothing;
-- there is no inertia;
-- a replacement for two fingers by one pointer, as an open question.
-
-Before the work a separate agent checked the design. Its corrections:
-- who writes, only the input recorder and the eraser know;
-- a palm is recognized on `pointerdown` and `pointermove`;
-- the scrolling container holds for the whole gesture;
-- the pair's window works in pen mode too;
-- the button changes only between strokes;
-- the touch's sizes are in a separate type;
-- the mode is turned on by the pen's touch, not by hovering.
-
-Sources: [architecture.md](architecture.md), section 4.
+— *Why:* the author's answers in planning T35, 2026-10-26, all by the recommendations: build it without a tablet, devices check it later; pen mode for the whole page; a palm wider than 100 px; the second finger soon after the first; no inertia. Sources: sources 1.1 and 9.10.
 - **A mode for the whole page.** A new task is a new element (R20). A mode on the element would be reset at every task, and each task's first palm would write. canvas-api turns the mode on «в сессии» ("in the session").
-- **100 px, not 30.** WebKit on iPadOS gives a touch a width of double the radius, and, by another project's report, at a fingertip that is 40–60 px. The threshold of 30 px in canvas-api had no code behind it, and on the main device with a pen it would have taken drawing away from the finger. A high threshold will let a small touch of a palm through, but in pen mode a touch does not write anyway.
+- **No way out but a reload.** The author's word for T251, 2026-11-22: «Непонял зачем инструмент draw with finger. Удали его». In pen mode the finger has a job — it moves the sheet —, and a learner whose pen is gone reloads the page.
+- **One finger drags in pen mode** (R84): it is the single pointer's way to scroll that 2.5.1 asks for (the second 2026-11-14 amendment to R90 spec), on the two fingers' code and slop. A palm does not move the sheet by it: a touch wider than 100 px does nothing, a smaller one drags only past the slop with no second finger, and the pen, when it touches, ends the gesture.
+- **No drag by one finger while a sheet is written on.** A drag may scroll an ancestor or the page, which moves every sheet of it: nothing moves under the pen.
+- **100 px, not 30.** WebKit on iPadOS gives a touch a width of double the radius, and, by another project's report, at a fingertip that is 40–60 px. canvas-api's 30 px had no code behind it, and on the main device with a pen it would take drawing away from the finger. A high threshold lets a small touch of a palm through, but in pen mode a touch does not write anyway.
 - **A palm by `pointerdown` and `pointermove`.** On `pointerup` Chromium gives `width` and `height` 1, and a palm grows as it lands.
 - **The pen removes a touch's stroke.** A touch that writes when the pen touches is a palm that landed earlier. Pointer Events Level 3 allows the device itself, too, to ignore touches while the pen writes.
 - **A window of 150 ms and a tolerance of 8 px.** Android waits 100 ms to tell a tap from a scroll (`TAP_TIMEOUT`) and counts as a scroll a path longer than 8 dp (`TOUCH_SLOP`). The 50 ms on top are a margin for children's fingers. The window works in pen mode too: a thumb that holds the tablet will not make a pair.
-- **Two fingers in pen mode too.** A palm that landed before the pen would move the sheet under it with one touch.
 - **Scrolling by code of its own.** `touch-action` "does in fact apply to all forms of pointer inputs that allow direct manipulation", that is, to the pen too. The open W3C issue pointerevents #203 is about the same: a pen that writes beside a finger that scrolls cannot be expressed by `touch-action`.
 - **A container for the whole gesture.** Within a gesture the sheet's container and the page do not compete, and at the edge the scrolling goes further with the next gesture. How the browsers themselves hold a gesture has not been checked against a source: this is a decision of our own.
-- **The button between strokes.** A row that wraps takes height from the container (R28), and the sheet would move under the pen.
-- **The button only with touch.** A graphics tablet on a computer gives a pen, but there are no fingers there, and the button would be superfluous.
 
 — *Rejected:*
 - **a mode on each element**: it would be reset at every task; **a property and an event** for `app`: more interface for what the page remembers anyway;
+- **keeping the button «Рисовать пальцем»**, which turned pen mode off: the author's word above — an unexplained control on the bar; **a toggle with `aria-pressed`** would besides hold the choice when the pen is in the hand again, and a palm would write;
+- **a switch to draw with the finger instead of pen mode**: an extra action for the learner on every device with a pen;
+- **the mode by the pen's hovering**: a pen brought near the screen would take drawing from the finger before it writes;
 - **the threshold of 30 px**: for the reason above;
 - **several writing touches at once**: a palm would write beside a finger, and the order of the strokes by ID would diverge from the order of writing (R22);
-- **one finger scrolls in pen mode**: the author's answer; a palm would move the sheet;
-- **a toggle with `aria-pressed`**: it would hold the choice even when the pen is in the hand again, and after an accidental press a palm would write;
-- **the mode by the pen's hovering**: a pen brought to the screen would turn the mode on right after the button was pressed;
 - **`touch-action: pan-y` on the drawing surface in pen mode**: `touch-action` acts on the pen too, and by WebKit 238543 Safari scrolls with two fingers even where `touch-action` forbids zooming;
 - **handing the scrolling to the page in the middle of a gesture**: the container and the page would compete within one gesture;
 - **delaying a finger's stroke**, so that the pen has time to remove it: a finger would draw with a lag;
 - **touch events against WebKit 269535**: by Apple's forum, they behave the same;
-- **inertia**: the author's answer: on iPad and Android it is tuned on the devices;
-- **WebKit in the tests now**: for the reason from the amendment to R13;
-- **the buttons «Выше» and «Ниже» now**: the author's answer: the level of accessibility will be set by the shared standard of T07 of `app` ([architecture.md](architecture.md), subsection 2.6).
+- **inertia**: the author's answer: on iPad and Android it is tuned on the devices.
 
 — *Revisit:*
-- the thresholds, the window and the tolerance, by T22;
-- inertia, by T22;
+- the thresholds, the window, the slop, the rail, inertia, WebKit 269535 and 238543, and a palm before the first pen on Android — on devices, Д7 in [run/DEBT.md](../run/DEBT.md);
 - the mode across a reload, by a property for `app`, if it asks;
-- the button on a computer with a graphics tablet and a touch screen, by T22;
-- a replacement for two fingers by one pointer, with the standard of accessibility of T07 of `app` (subsection 2.6; В41 in table 3 of RUN.md).
+- a way out of pen mode without a reload, if learners on devices need one.
 
-— *Consequence:*
-- **T22** checks on devices:
-  - the thresholds, the window and the tolerance;
-  - WebKit 269535 and 238543;
-  - Android and a palm before the first pen;
-  - the button on a graphics tablet;
-  - inertia;
-- amendments to R05, R06, R13, R18, R20, R22, R23, R24, R27 and R28;
-- [architecture.md](architecture.md), subsection 2.6, and table 3 of RUN.md — В41 «в реестр spec».
-
-— `src/core/`, `src/element/`; [architecture.md](architecture.md), sections 2.6, 3.1, 3.2, 3.3, 3.7 and 4; RUN.md, T35, T22, table 3; README.md.
-
-— *Amendment 2026-10-26:* the button «Рисовать пальцем» appears and goes between the strokes of the whole page, not of one sheet. The review of T42, which went in one branch with T35, found this.
-- **What was.** A pen that touched sheet A turned the mode on on the whole page, and the row of sheet B above it showed the button at once, in the middle of a stroke on A. B's narrow row wrapped, B became taller, and sheet A slid down under the pen.
-- **Now.** Pen mode knows whether anyone is writing on any sheet of the page. Each sheet tells it whether a pointer is writing on it, and hears from it the end of a stroke when no sheet is being written on any more. The row changes the button only when the page is not writing. A test with two sheets holds this, and it fails without the fix.
-- **Code:** `PenMode` has `writing`, `enlist` and `settle`, and `Hands` has `scrolling`. A pointer's lift, its cancel and a loss of capture go through `#lifted`: a gesture that has ended releases what it was scrolling.
-
-— `src/core/hands.ts`, `src/element/index.ts`; [architecture.md](architecture.md), section 3.3.
-
-— *Amendment 2026-10-26:* В41 is recorded in `spec` as the open question О-24 (R31). The level of accessibility of the interface and the sheet's scrolling by one pointer are decided together with the standard of accessibility of T07 of `app`, with the same options and recommendation. `spec`'s addition to О-24: the scrolling of its own by two fingers falls under 2.5.1 of level A too, and in an element with a height, on a narrow tablet, without a replacement the sheet already does not meet it. Subsection 2.6 of [architecture.md](architecture.md) is open, now with `spec`'s number. — R31.
-
-— *Amendment 2026-10-27:* the button «Рисовать пальцем» is the last in the row, after «Ниже», not the fifth after «Очистить»: when it comes and goes, the row's other buttons do not move. The *Revisit* about a replacement for two fingers by one pointer is done: it is the buttons «Выше» and «Ниже», which scroll the same as two fingers. And the *Rejected* about the buttons now was withdrawn by the author in planning E6, 2026-10-26: T45 builds them, without waiting for the standard of T07 of `app`. — R33.
-
-— *Amendment 2026-11-01:* the sheet of a worked example neither turns pen mode on nor turns it off: the drawing surface there takes no input, and a finger and a pen scroll the sheet by native scrolling, as they scroll the statement — `touch-action` there is the browser's (R42). The row of an example has no button «Рисовать пальцем», in pen mode too. — R42; RUN.md, T59.
-
-— *Amendment 2026-11-11 (T94):* **two fingers scroll sideways too, while the sheet is zoomed in (R73).** The threshold is the distance the fingers' midpoint has gone, 8 px; the first step has no jump: it is the share of the path along each axis that lies beyond the threshold. A rail: if, crossing the threshold, the midpoint has gone twice as far along one axis as along the other, the gesture goes only along it until its end, `RAIL` = 2. What to scroll along each axis, the gesture's first step along it chooses. At 100 % nothing scrolls sideways, and the threshold counts only the path down, as before: `HandsSheet.across()` says whether the sheet scrolls sideways, and `HandsSheet.scroll` is `(dx, dy, fresh)`. T22 checks the rail's threshold on devices (Д7). — R73; `src/core/hands.ts`.
-
-— *Amendment 2026-11-17 (T121):* **in pen mode one finger drags the sheet: a finger that goes past the slop, 8 px, before a second comes, scrolls what two fingers would, by its own travel, and a second finger then does nothing, nor one that came down before it and waited; a pen never drags, and no finger drags while a sheet of the page is written on.** Without pen mode the finger writes, as before. — R84; the second 2026-11-14 amendment to R90 spec; RUN.md, T121.
+— RUN.md, T35, T121; T251 of spec's RUN.md; [architecture.md](architecture.md), sections 2.6, 3.1, 3.2, 3.3 and 3.10; sources 9.10; R18, R20, R22, R42, R84, R88; `src/core/hands.ts`, `src/element/session.ts`, `src/element/index.ts`.
 
 ## `spec` tag v0.2.35
 
@@ -2400,275 +2162,118 @@ Also decided in the execution:
 
 — RUN.md, T77, table 4 (Д5); [architecture.md](architecture.md), the status and sections 3.3, 3.9 and 4; README.md; `src/core/`, `src/element/`, `src/eval/tasks.ts`, `demo/`, `vectors/pages.json`.
 
-**R33. The buttons «Выше» and «Ниже» in the element's row, on any device: a press scrolls what two fingers would scroll (R29), by ⅘ of what it shows. At the edge the button fades and keeps the focus, and «Рисовать пальцем» becomes the last in the row.**
-- **The buttons** are `<button>` elements of the row (R28), a pair between «Очистить» and «Рисовать пальцем»:
-  - always visible — on any device, for an element with a height and without one —, so they do not change the row's width within a session;
-  - the pair wraps whole: on a narrow screen it is not split between the row's lines;
-  - the finger button is the last: when it comes and goes between strokes (R29), the row's other buttons do not move;
-  - the labels are Up and Down, «Выше» and «Ниже», the keys `up` and `down` in the table of labels;
-  - the toolbar's arrows go through them in the row's order, and Space and Enter press them (R28);
-  - a button is at least 44 × 44 CSS px, and the theme and forced colors are as for the row's other buttons.
-- **A press:**
-  - scrolls what the first step of a two-finger gesture in the same direction would choose: the sheet's container, if it can move, otherwise the element's nearest scrollable ancestor — across shadow boundaries, up to `overscroll-behavior` `contain` or `none` —, otherwise the page, if its overflow is not hidden (R29);
-  - chooses anew at every press: a container at its edge passes the scrolling on with the next press, as two fingers do with the next gesture;
-  - the shift is ⅘ of what the scrollable shows on the screen: within the ancestors that clip it and within the window's visual viewport (`visualViewport`), and while the row of buttons is stuck above it, below the row. For a scrollable off the screen its whole client area is taken. The shift is in whole pixels of its layout, at least one, with `behavior: "instant"`, as for two fingers;
-  - while someone writes or erases on any sheet of the page, a press does nothing: the sheet does not move under the pen (R29).
-- **The edge:**
-  - the button is `aria-disabled="true"` while what it would scroll goes no further its way. It fades and keeps the focus, as «Отменить» and «Очистить» do (R28);
-  - the element recomputes the edges on a scroll of the container, on a scroll of the page and of its ancestors — by one `scroll` listener on `document`, in the capture phase —, on a new size of the page and of the window, and on a new layout;
-  - the element does not hear a scroll of an ancestor in someone else's shadow tree. So a press asks anew rather than trusting the button's look, and a stale look does not take the scrolling away.
-- **The check.** With `pointer-events: none` for the time of the check (R20) the buttons take no pointer, but scroll from the keyboard: scrolling changes neither the work, nor the history, nor the crop.
-- **The code** is in the element: the pair of buttons and the method `edges` in `tools.ts`, the labels in `labels.ts`; the press, the visible part, the edges, the share `UP_DOWN` and the client area `clientBoxOf` in `index.ts`.
+**R33. The keyboard goes into the sheet and out of it: the element's scroll container, while its content overflows it, down or across, is a region — `role="region"`, `tabindex="0"` and the name of the canvas kind (R90 spec; WCAG 2.1.1, 2.1.2, 2.4.7). Tab enters it after the bar and leaves it for what follows the element, the browser's own keys scroll it, a ring inside its edge shows the keyboard's focus, and every scroll of the element is instant.**
+- **When.** The three attributes come together, and only while the container's content overflows it by more than 0.5 px: down, `scrollHeight` over `clientHeight`, or across, `scrollWidth` over `clientWidth`. A sheet the learner writes on reaches one view of the container past the task's page (R73), so it overflows across whatever the element's height, and the element without a height of its own has a region too, which the arrows left and right scroll; down, such an element does not overflow — the page scrolls it. A worked example's sheet is the page alone (R73): a region only while it overflows. The check, `#region()`, runs on a new layout — a new size of the container, of the statement, of the list of parts, of the screen's density —, of the page, of the bar and of the window, not on scrolling, which changes no overflow. A container that holds the focus keeps the attributes until the focus leaves it (`blur`), not when the window loses it.
+- **The keys.** The arrows, Page Up and Page Down, Home, End and Space scroll the focused container as the browser scrolls one: the element has no `keydown` of its own for them. No button scrolls the sheet; a pointer drags it (R84, R88).
+- **The name** is by the kind — «Лист», «Тетрадь» or «Пример», "Sheet", "Workbook", "Worked example" — in the labels' language, as the bar's name is (R28), from `labels.ts`. The languages of the container and of the column, its only node, are R74's.
+- **The focus ring** is 2 px of the ink's colour inside the edge of the visible part, Highlight in forced colours, as for the bar's buttons (R84). It is the container's empty sibling `.ring` in the wrapper `.frame`, which does not scroll: the `outline` of the container itself is drawn under its positioned descendants, the paper `.sheet` and the scene, and a probe in Chromium showed it only above the statement. The bar of glass stands over it, `z-index: 1`. A pointer's press focuses the container without the ring and scrolls neither it nor the page, and `-webkit-tap-highlight-color: transparent` keeps a touch from flashing the whole sheet.
+- **Motion (WCAG 2.3.3; R90 spec).** Nothing moves but the scrolling itself, and it jumps, `behavior: "instant"`, even when the page asks for `scroll-behavior: smooth`: two fingers, the hand, a finger in pen mode, a part of a worked example and a picture on a sheet's area brought into sight. The style has no animation.
+- **The check.** `pointer-events: none` for the time of the check (R20) stops the pointer, not the keys: the region scrolls from the keyboard, and scrolling changes neither the work, nor the history, nor the crop.
 
-— *Why:* the author's answers in the planning of T45, 2026-10-27, all by the recommendations:
-- the buttons are always visible:
-  - on a tablet they replace two fingers. The element's own scrolling with two fingers is a multipoint gesture in the author's content. A replacement for it with one pointer is needed by 2.5.1 of level A, and one without dragging by 2.5.7 of level AA ([architecture.md](architecture.md), subsection 2.6);
-  - on a computer they let the keyboard scroll an element with a height in Safari. A scroll container without focusable content cannot be scrolled from the keyboard there — WebKit bug 277290 has been open since 2024-07-29 —, and the sheet's container holds only the statement and the drawing surface;
-- ⅘ is as Page Down in Safari on the iPad, the main device with a pen: WebKit pages there by 0.8 of the visible part. An overlap of a fifth keeps the last lines on the screen, and the learner does not lose the place;
-- the edge is as for «Отменить» and «Очистить»: the button is visible and in focus, and it shows that there is nowhere to go;
-- the finger button is last: coming and going, it leaves the other buttons in their places.
-
-Before the work, a separate agent checked the design. Its corrections:
-- the visible part is the scrollable's, below the row and within the window;
-- a press during a stroke does nothing;
-- the element hears a scroll of the page and of its ancestors on `document`;
-- a press asks anew;
-- the pair wraps whole.
-
-The sources are in [architecture.md](architecture.md), section 4.
+— *Why:* the author's answers in planning T93, 2026-11-11, by the recommendations:
+- R90 spec bids every package "an own scroll container — only with `tabindex="0"`, the role `region` and a name": in Safari a scroll container without focusable content scrolls by no key — WebKit bug 277290, open since 2024-07-29 —, and the sheet's container holds only the statement, the demo's parts and the drawing surface (sources 9.11). 2.1.2 bids the keyboard be let out;
+- the overflow, not the element's height: the consumer's height cannot be read from the style — `getComputedStyle` gives px already computed —, and without overflow there is nothing to scroll. Chrome's "Keyboard focusable scrollers" and axe's rule `scrollable-region-focusable` decide it so too (sources 9.11);
+- instant scrolling: a smooth one would need `prefers-reduced-motion` and a rule for a scroll begun in the middle of a run, and two fingers scroll instantly anyway; scrolling is the one motion Understanding 2.3.3 counts essential (sources 9.19).
 
 — *Rejected:*
-- **buttons only on a device with touch**, like «Рисовать пальцем» — in Safari an element with a height would be left without scrolling from the keyboard;
-- **buttons while the container scrolls** — the visibility would change with the layout and wait for the end of a stroke, and an element without a height would get no buttons, though two fingers scroll the page there;
-- **⅞**, as Chrome on Android and Windows, and **the whole visible part** — less overlap, and without it a line at the edge is cut in half;
-- **the scrollable's `clientHeight`** — the step would go both through what the row and `app`'s sticky header cover and through what is beyond the window's edge;
-- **the part of the drawing surface** — without the statement and without the window, and for an element without a height the container is as tall as its content;
-- **smooth scrolling** — two fingers scroll instantly, and smooth scrolling would need `prefers-reduced-motion` and a rule for a press in the middle of a run;
-- **a press that trusts `aria-disabled`** — a stale look would take away scrolling that two fingers would do;
-- **the edges in the drawing frame** — the frame runs on every move of a stroke, and a scroll of the page does not call it;
-- **`disabled`** — takes the button out of the focus order (R28);
-- **buttons that vanish at the edge** — the row would change its width;
-- **a place after the finger button** — «Выше» and «Ниже» would move when it comes and goes;
-- **icons** — the first slice of `app` will decide the interface's look (R28);
-- **scrolling during a stroke** — the sheet would move under the pen.
+- **a Tab stop always on an element with a height** — with nothing to scroll it is a stop that does nothing;
+- **an own `keydown` for the keys** — the browser scrolls a focused container itself;
+- **`outline` or `box-shadow: inset` of the container itself** — both stand under the sheet, and forced colours remove the shadow;
+- **`:has()` or a class set on `focus`** — the sibling selector `+` does the same without them;
+- **smooth scrolling** — for the reason above.
 
-— *Revisit:*
-- the share ⅘ and quick presses — by T22. A double tap may zoom the page, and then the buttons need `touch-action: manipulation`;
-- the level of accessibility — by the standard of T07 of `app` (О-24; В44 in table 3 of RUN.md);
-- the scrollable's `scroll-padding` — if `app` gets a bottom bar over the sheet.
+— *Revisit:* the keyboard in Safari, on a device: the image has no Safari, and that the region scrolls from the keyboard there rests on bug 277290 and R90 spec, not on a probe ([architecture.md](architecture.md), section 3.10, "Not checked").
 
-— *Consequence:*
-- **T22** tries the share and quick presses on devices;
-- **T47**: the workbook has the same row;
-- subsection 2.6 of [architecture.md](architecture.md) is decided, and **В44** is a row «в реестр spec» in table 3 of RUN.md, `canvas`'s answer to О-24;
-- amendments to R28, R29 and R31.
+— [architecture.md](architecture.md), sections 2.6, 3.1, 3.3 and 3.10; `src/element/index.ts` (`#region`, `#nameRegion`, `.ring`), `src/element/labels.ts`; `src/element/keyboard.test.ts`, `src/element/wide.test.ts`, `src/element/motion.test.ts`, `src/element/a11y.test.ts`, `src/element/forced-colors.test.ts`.
 
-— RUN.md, T45, table 3; [architecture.md](architecture.md), sections 2, 2.6, 3.1, 3.2, 3.3, 3.7 and 4; README.md; `src/element/`.
-
-— *Amendment 2026-11-02:* the icons of "Rejected" came with R78 spec: «Выше» and «Ниже» have arrows of the set Material Symbols before the label, and in forced colors mode they are of the label's color (R46). — R46.
-
-— *Amendment 2026-11-11 (T92):* **in a low window the row does not stick (the T92 amendment to R28), and for an element without a height «Выше» and «Ниже» are at hand while the row is visible: a step of the page takes it off the screen. This is the price of 1.4.10, not a nonconformance with 2.5.1: `app`, which needs the buttons always, gives the element a height by the window, and then the row does not go away.** The visible part, while the row stands in place, is counted without its height, but below the band `--novatrail-canvas-top`, which `app`'s header covers then too, and the opened part of an example comes out from under this band, not from under the row. The band stands above what the row sticks in: above the page's scrolling, when the row sticks in its own panel, there is none, and a step of «Ниже» passed on to the page is ⅘ of the whole window. There is no motion but the scrolling itself (WCAG 2.3.3; R90 spec): «Выше», «Ниже», two fingers, a part of an example and a picture in a sheet area scroll at once, `behavior: "instant"`, even when the page asks for `scroll-behavior: smooth` — "Rejected" above rejected smooth scrolling —, and there are no animations in the style. The test `src/element/motion.test.ts` holds this under `prefers-reduced-motion: reduce`. — RUN.md, T92; [architecture.md](architecture.md), sections 3.1 and 3.3.
-
-— *Amendment 2026-11-11 (T93):* **the element's scroll container, while its content overflows it, is a region: `role="region"`, `tabindex="0"` and the name of the canvas kind, «Лист», «Тетрадь» or «Пример» (R90 spec; WCAG 2.1.1, 2.1.2, 2.4.7). The keyboard enters it with Tab after the row, scrolls it by the browser's native keys — the arrows, Page Up and Page Down, Home, End and Space — and leaves with Tab for what comes after the element.**
-- **When:** the three attributes — together, and only while the container's `scrollHeight` exceeds its `clientHeight` by more than 0.5 px. An element without a height has no overflow — the page scrolls —, and it has no Tab stop; nor does an element with a height where the task fit. Chrome, "Keyboard focusable scrollers", and axe's rule `scrollable-region-focusable` decide it so too. The check is called by the layout, `#layout()` — a new size of the container, of the statement, of the list of parts and of the screen's density —, and by a new size of the page, of the row and of the window, not by scrolling: scrolling does not change the overflow. A container that holds the focus keeps the attributes until the focus leaves it, and the window's `blur` does not remove them. The overflow is only vertical: horizontally the container hides the excess, `overflow-x: hidden`.
-- **The name** is by the kind and by the labels' language, as the row's name is (the T93 amendment to R28). The container has no `lang` of its own: it would fall on the statement too, which has the task's language. So, with an element's `lang` that the table does not have, the region's English name is read in the element's language.
-- **The focus ring** is 2 px of the ink's color inside the edge of the visible part, and Highlight in forced colors, as for the buttons (the T92 amendment to R28). It is on the container's empty sibling `.ring` in the still wrapper `.frame`, over the sheet: the `outline` of the container itself is drawn under its positioned descendants — the paper `.sheet` and the scene —, and a probe in Chromium showed it only above the statement. The sticky row, `z-index: 1`, covers the top of the ring. A pointer press focuses the container without the ring and scrolls neither it nor the page, and `-webkit-tap-highlight-color: transparent` keeps a touch from flashing the whole sheet.
-- **«Выше» and «Ниже»** stay: without them one pointer will not scroll the sheet (2.5.1, 2.5.7). For the keyboard in Safari they are no longer the only way — the region itself gives one too.
-
-*Why:* the author's answers in the planning of T93, 2026-11-11, by the recommendations. R90 spec tells every package "an own scroll container — only with `tabindex="0"`, the role `region` and a name" because of WebKit bug 277290, and 2.1.2 tells it to let the keyboard out. The overflow, not the element's height: the consumer's height cannot be read from the style — `getComputedStyle` gives px already computed —, and without overflow there is nothing to scroll.
-
-*Rejected:* a Tab stop always on an element with a height — for the reason above; an own `keydown` for the keys — the browser scrolls a focused container itself; `outline` or `box-shadow: inset` of the container itself — both are under the sheet, and forced colors remove the shadow; `:has()` or a class on `focus` — the sibling selector `+` does the same without them.
-
-*Revisit:* the keyboard in Safari — on a device: there is no WebKit in the image, and that the region scrolls from the keyboard there is known from bug 277290 and R90 spec, not from a probe; the horizontal — with the sheet's zoom, T94.
-
-— RUN.md, T93; [architecture.md](architecture.md), sections 2.6, 3.1 and 3.3; `src/element/index.ts`, `src/element/keyboard.test.ts`, `src/element/a11y.test.ts`, `src/element/forced-colors.test.ts`.
-
-— *Amendment 2026-11-11 (T94):* **«Левее» and «Правее» scroll an enlarged sheet sideways by the same rules by which «Выше» and «Ниже» scroll it down (R73):** what two fingers would scroll, by ⅘ of the visible width, at once, and they are unavailable at the edge. The chain is the container, an ancestor with `overflow-x` scrolling, the page; `overscroll-behavior-x: contain` or `none` stops it, and for a right-to-left ancestor `scrollLeft` counts from the right edge. They are visible while the zoom is above 100 %. The region of T93 holds for overflow sideways too, while the sheet is enlarged: an element without a height whose sheet is wider than it has a Tab stop too, and the arrows left and right scroll it. — R73.
-
-— *Amendment 2026-11-17 (T121):* **«Выше» and «Ниже» are no more, nor «Левее» and «Правее» of the T94 amendment: the author took them off the row of `canvas` (the second 2026-11-14 amendment to R90 spec; Д242 spec).** The sheet is dragged with one finger in pen mode (the T121 amendment to R29), with two always, never with a pen, and scrolled by the wheel, the trackpad and the keys of its region (the T93 amendment above, which stays). Dragging alone meets 2.5.1, which "does not apply to gestures that involve dragging in any direction", and not 2.5.7: [architecture.md](architecture.md), section 3.10, declares it. What this entry and its amendments say of the buttons — the ⅘ step, the edges, the scroll listener on `document`, the press during a stroke, `UP_DOWN` — no longer holds. — R84; RUN.md, T121.
-
-**R34. The workbook is a page of 1000 × 1400 units, as the sheet is, and the statement is above it. The layout in the DOM-free part puts the items' lines on the template layer, by the task and by its own table of widths, not by the device's font; a task that did not fit is a `TypeError`. The box is one and the same for the whole task, each stroke is in one box or in none, and the rest is scratch work. A crop of each filled box goes to the check, on the workbook the boxes replace the groups, and the property `filled` tells which boxes are filled.**
-- **The page** is 1000 × 1400 units, a constant of the kind, as for the sheet (R06), without a grid:
-  - the statement is above it, HTML, in the same scrolling, as on the sheet (R23);
-  - the items go as lines in order, each with its number on the left. Short lines stand in two columns, a long one wraps by words, and a word longer than the line wraps by characters;
-  - the free space is for scratch work.
-- **The layout** is a function of one task, in the DOM-free part and in integers:
-  - the characters' widths are canvas's own table by classes: digits, Latin, Cyrillic, operation and comparison signs, punctuation. A character the table does not know has a width of its own;
-  - the SVG of the template layer draws the text. A piece is one `<text>` at one point, without `tspan`, and `textLength` with `lengthAdjust="spacingAndGlyphs"` fits it to the computed width in any font. The code does not read the SVG's text sizes;
+**R34. The workbook is the task's page of 1000 × 1400 units at the sheet's left, as on the sheet, with the statement above it; the sheet goes on past the page, and the learner writes there too. The layout in the DOM-free part puts the items' lines on the template layer by `spec`'s page rule and its table of widths, not by the device's font; a task that does not fit is a `TypeError`. The box is one and the same for the whole task, each stroke is in one box or in none, and the rest is scratch work. A crop of each filled box goes to the check, on the workbook the boxes replace the groups, and the property `filled` tells which boxes are filled.**
+- **The page** is the sheet's page, `SHEET`, 1000 × 1400 units, a constant of the kind (R06), at the sheet's top left corner, without a grid:
+  - the statement is above it, HTML, as wide as the page and in the same scrolling, as on the sheet (R23, R73);
+  - the items go as lines in order, each with its number on the left. Short lines stand in two columns, a long one wraps by words, and a word longer than the line by characters;
+  - what the lines do not take is scratch work, and so is the sheet past the page, to its right and below it, which goes on as on a sheet (R73) and has no grid either. A stroke there is in no box;
+  - the tools are the pen, the eraser if the task allows it, and the hand (R88); pen mode is R29.
+- **The layout** is `pageOf`, a function of one task, in the DOM-free part and in integers. Its numbers, its rule of lines and its table of widths are the format's, `format/page.yaml` and its test vectors `format/vectors/pages/` of `spec`, and the tests hold the layout to them (R35):
+  - the characters' widths are a table in hundredths of the font size: a class for the digits and one for the operation and comparison signs, a width of its own for each letter and punctuation mark;
+  - a piece of text is the part of a piece on one line of the page: one `<text>` at one point, without `tspan`, fitted to its computed width by `textLength` with `lengthAdjust="spacingAndGlyphs"` in any font, by less than ⅛ in the image's fonts. The code does not read the SVG's text sizes;
   - the boxes and the numbers stand where the layout put them, on any device;
-  - the numbers — the font size, the line step, the box, the margins and the rule of columns — are chosen by the sweep of T47. The entry point `core` does not export the layout, and a file of test vectors holds its numbers.
-- **A task that did not fit** is a `TypeError` on `task.items` with the number of the first item that did not fit, as for a zone (R32). The boxes and the text do not shrink. T47 will pass the limit for authors, with the layout's numbers, «в реестр spec», to T38 in `spec`'s RUN.md.
+  - the entry point `core` does not export the layout.
+- **A task that does not fit** is a `TypeError` on `task.items[i]`, the item from 0 in the path and from 1 in the text, at the first item that did not fit, as for a zone (R32). The font size and the boxes do not shrink. The format refuses such a task by the rule `task.workbook-page`, so a valid module never meets the error.
 - **The box** is one and the same for the whole task:
   - it holds a two-level fraction, a three-digit number and a comparison sign;
-  - the border is thin and solid, of one thickness at any zoom, with a contrast of at least 3:1;
+  - its frame is thin and solid, of one thickness at any scale, with a contrast of at least 3:1 (R36);
   - the line's characters stand at the middle of its height;
-  - the border does not clip the ink.
-- **The boxes' strokes** — each visible stroke is in one box or in none:
+  - the frame does not clip the ink.
+- **The boxes' strokes** — each visible stroke is in one box or in none, by the box rule of R37:
   - the rule is in integers, without the DOM and without time, for each stroke separately: other strokes do not change it;
-  - the rule decides a contested case itself: more points, then the earlier place;
-  - the parameters are in fractions of the box, and the sweep of T48 chooses them;
-  - the rule takes the same strokes as `exportWork()`: the stroke under the pen is not there, and the strokes under an eraser not yet lifted are (R27);
-  - what is in no box is scratch work. It is the learner's work: it is on the page and in the writing history, but does not go to the check.
+  - it decides a contested case itself: more points, then the earlier by (item, box) in the task's order, from 1, which on any page of R35 is also top to bottom, left to right;
+  - its parameters are in thousandths of the box: of its width across and of its height down;
+  - it takes the same strokes as `exportWork()`: the stroke under the pen is not there, and the strokes under an eraser not yet lifted are (R27);
+  - what is in no box is scratch work. It is the learner's work: it is on the sheet and in the writing history, but does not go to the check.
 - **There are no groups on the workbook** — the boxes take their place:
-  - the submission's context is `{ boxes, digest }`: the table "box → stroke IDs", where a box is the numbers of the item and of the box, from 1, and the digest of its strokes, places and the boxes' rectangles. A context given under another layout is a `TypeError`. There are no crop numbers in it: there is no snapping on the workbook;
-  - a tutor's mark comes with an answer slot — by place, since answer slots have no IDs (R51 spec) —, and holds to the strokes of its row of the table by the rules of R26: when all of them are erased it is not seen, and an undo brings it back. A mark's place on the workbook is only an answer slot: a group label and the model's box in fractions of the crop are a `TypeError`. The mark itself is a box, as on the sheet.
-- **`filled`** is a read-only property:
-  - per item, per box, whether it is filled, in the order of the items and the boxes. The value is frozen and stays the same until it changes, and on the sheet it is `null`;
+  - the submission's context is `{ boxes, digest }`: the table "box → stroke IDs", a box named by the numbers of its item and its slot, from 1, and the digest of its strokes, of the rectangles of all the page's boxes and of the table's rows (R38). A context given under another layout is a `TypeError`. It has no crop numbers: there is no snapping on the workbook;
+  - a tutor's mark comes with an answer slot by place, `{ item, slot }`, since answer slots have no IDs (R51 spec), and holds to the strokes of its row of the table by the rules of R26: when all of them are erased it is not seen, and an undo brings it back. A group label and the model's box in fractions of the crop are a `TypeError` on the workbook (R39).
+- **`filled`** is a read-only property (R37; R36 spec):
+  - per item, per box, whether it is filled, in the task's order. The value is frozen and stays the same object until it changes;
   - a box is filled if it holds at least one of the strokes that would go into `exportWork()`: exactly such boxes have a crop;
   - the value changes with an action on the sheet, before `historychange`, and on an assignment of `task` or `history` without an event: an assignment is the consumer's own action (R28);
-  - being filled shows on the box itself too, not only by color, and sounds in its name.
-- **To the check** the whole page goes at once:
-  - `exportWork()` gives `{ cells, submission }`. `cells` are the crops of the filled boxes, `{ item, slot, png }` in the task's order: the rule of R25 over the box's strokes, at the manifest's digit height, only the ink, without the border and the text. `submission` is one submission context. Its key names the kind of the work: `png` for the sheet, `cells` for the workbook;
-  - an empty box gives no crop and is not read. If none is filled, `null`, even if there is scratch work;
+  - being filled shows on the box itself too, not only by color, and sounds in its name (R37).
+- **To the check** the whole page goes at once (R38):
+  - `exportWork()` gives `{ cells, submission }`. `cells` are the crops of the filled boxes, `{ item, slot, png }` in the task's order: the crop rule of R25 over the box's strokes, at the manifest's digit height, only the ink, without the frame and the text. `submission` is one submission context. Its key names the kind of the work: `png` for the sheet, `cells` for the workbook;
+  - an empty box gives no crop and is not read: its verdict is "unreadable" with the reason `blank` (R56 spec), and `filled` names it. If no box is filled, `null`, even with scratch work;
   - the place in an observation on the workbook is the answer slot by place.
-- **Accessibility**: a screen reader reads the lines, in the task's order:
-  - the SVG of the workbook's template has no `aria-hidden`, the root is `role="none"`, the lines are a list `<g role="list">` of `<g role="listitem">`, the text is `<text>`. A box is `<rect role="img" aria-label>` with a name from the table of labels and with whether it is filled;
-  - the lines' language is the manifest's `languages.explanation`, as for the statement (R32), and a box's name has its own `lang`, as the row of buttons has (R28);
-  - the text and the borders are in the ink's color on the paper, and CanvasText in forced colors. A filled box there is Highlight;
-  - the panel's name is by the canvas kind: «Лист» or «Тетрадь».
-- **The workbook's sample** (epic E5):
-  - the boxes' crops at eval's heights;
-  - the table "box → stroke IDs" that the device built from the raw strokes: the runner does not recompute it, as it does not recompute the groups ([architecture.md](architecture.md), section 3.5). In eval-set samples and child samples it moves to the new numbers of the strokes, as the table of groups does;
-  - the boxes' rectangles in page units, and the runner does not need `canvas`'s layout;
-  - eval-set samples and child samples hold only the boxes' strokes, and a measurement sample from an adult carries the whole writing history (R09);
+- **Accessibility** (R36): a screen reader reads the lines, in the task's order:
+  - the SVG of the template has no `aria-hidden`, its root is `role="none"`, the lines are a list `<g role="list">` of items `<svg role="listitem">`, the text is `<text>`. A box is `<rect role="img">` with a name from the table of labels and with whether it is filled;
+  - the lines' language is the manifest's `languages.explanation`, as for the statement (R32), and a box's name has its own `lang`, as the bar of buttons has (R28);
+  - the text and the frames are in the ink's color on the paper, and CanvasText in forced colors; a filled box there is Highlight;
+  - the scroll container is named «Тетрадь», and the bar «Кнопки тетради» (R28).
+- **1.4.4 of the lines' print.** The print is SVG on the page and scales with it, by k = min(A / 1000, 1) (R73): the browser's zoom grows it only until the page fills the element's width — on an area narrower than 1000 CSS px at 100 % not at all. The workbook's lines do not meet 1.4.4, a nonconformance declared with no term, for nothing zooms the sheet (R73, R74; [architecture.md](architecture.md), section 3.10). The statement, the demo's parts and the bar's labels are HTML and grow and reflow with the browser's zoom. The page is not laid out anew at any zoom: a new layout would move the boxes under the ink, and 1.4.10 allows the page a layout in two dimensions, which the sheet scrolls in both.
+- **The workbook's sample** ([architecture.md](architecture.md), section 3.5):
+  - the crops of the filled boxes at eval's heights, by the same `cellsForCheck`, with the item and the box;
+  - the table "box → stroke IDs" that the device built from the raw strokes: the runner does not recompute it, as it does not recompute the groups. In eval-set samples and child samples it moves to the new numbers of the strokes, as the table of groups does;
+  - the rectangles of all the page's boxes in page units, so that the runner does not need the layout;
+  - no groups and no group boxes; eval-set samples and child samples hold only the boxes' strokes, and a measurement sample from an adult the whole writing history (R09);
   - the eval protocol takes the box rule and its test vectors as they are.
 
-— *Why:* the author's answers in the planning of T46, 2026-10-27, all by the recommendations:
-- the page 1000 × 1400 and a `TypeError` for a task that did not fit;
-- canvas's own table of widths;
-- a crop of each box;
-- boxes instead of groups;
-- the property `filled`;
-- a sample with the device's table;
-- in one task, though it is about an hour of reading (rule 11).
-
-The rest is «да» ("yes") to the plan. Before the questions, two separate agents checked the design: one from the side of the check and the agreements, the other from the side of the page and the code. Their corrections:
-- `TypeError` instead of shrinking;
-- the contested case is in the box rule itself, and its parameters are in fractions of the box;
-- the rule is per stroke, and on the same strokes as `exportWork()`;
-- the sample carries the device's table;
-- the context without crop numbers, and the mark's answer slot by place;
-- two columns for short lines;
-- the SVG root is `role="none"`, and the box's border is not in the grid's color;
-- a WebKit-safe form of text;
-- the layout outside `core`, with vectors;
-- the panel's name by the canvas kind.
-
-The sources are in [architecture.md](architecture.md), section 4.
-- **A page like the sheet:**
-  - `SHEET` holds the check of an assigned history, the crop, the marks and the screen. With one page every valid history is whole under any task, and `task` and `history` are still assigned in any order (R27);
-  - the canvas already rejected two sheets of different heights — in the amendment to R06 on the board (R20);
-  - ten short items — the example of concepts 8 spec — stand in two columns, and room is left for scratch work.
-- **The statement above the page** — by the arguments of R23:
-  - HTML grows with the zoom and wraps;
-  - its place does not depend on fonts;
-  - the sizes of the statement's pictures are in CSS px (R51 spec).
-
-  So it is in the prototype too.
-- **`TypeError`, not shrinking:**
-  - a child does not write smaller because the box is smaller. The answer would go past the border, and the box would count as empty and not be read;
-  - T48 chooses the box rule at one scale;
-  - a refusal of a task valid by the format already exists — the zone (R32). The limit for authors, which `module-kit` will check, will lift it.
-- **Canvas's own table of widths:**
-  - a box stands where the task's layout put it, and strokes in page units fall into it on any device — the argument of R23. The runner and the synthetic samples will repeat the layout without a browser;
+— *Why:* the author's answers in the planning of T46, 2026-10-27, all by the recommendations: the page 1000 × 1400 and a `TypeError` for a task that does not fit, a table of widths of its own, a crop of each box, boxes instead of groups, the property `filled`, a sample with the device's table. The page at the sheet's left with the sheet past it, and no zoom, are the author's choice of 2026-11-22 (R73). The sources are in [architecture.md](architecture.md), section 4.
+- **A page like the sheet.** A constant page keeps the check of an assigned history, the crop, the marks and the screen apart from the task: `task` and `history` are assigned in any order (R27). Ten short items — the example of concepts 8 spec — stand in two columns and leave room for scratch work.
+- **The statement above the page**, by the arguments of R23: HTML grows with the browser's zoom and wraps, its place does not depend on fonts, and the sizes of its pictures are CSS px (R51 spec).
+- **A `TypeError`, not shrinking:**
+  - a child does not write smaller because the box is smaller: the answer would go past the frame, and the box would count as empty and not be read;
+  - the box rule was chosen at one scale (R37).
+- **A table of widths, not a font:**
+  - a box stands where the task's layout put it, and strokes in page units fall into it on any device — the argument of R23. The synthetic samples and `module-kit` repeat the layout without a browser; the runner does not need it, the boxes' rectangles lie in the sample;
   - the SVG itself fits the text to the width. A font in the package would have to be waited for, and its license and weight are one more dependency;
-  - in WebKit only the simple case is reliable — one `<text>`, one point: the new layout of SVG text is turned off there.
+  - in WebKit only the simple case is reliable — one `<text>`, one point.
 - **The box's crop:**
-  - the card gives `canvas` «вырезку ячейки» (the crop of an answer slot), and the "Revisit" of R25 waited for it;
-  - this is how T79 of `tutor` reads answer slots, and the reading of digits on the device, which `tutor` advises, takes the same picture;
-  - the model need not search for what is in which box, and the crop rule is the one the eval protocol has already taken (R31);
+  - the card gives `canvas` «вырезку ячейки» (the crop of an answer slot), and the crop rule of R25 makes it;
+  - `tutor` reads answer slots so, and the reading of digits on the device takes the same picture;
+  - the model need not search for what is in which box, and the crop rule is the one the eval protocol has taken (R31);
   - the crop has no fonts on it, and its bytes are the same in any browser engine;
-  - the scratch work does not go. Of the forms that give the same use, this is the poorest in data: so requires the rule of recommendation of П-21, by which R52 spec was decided.
-- **Boxes instead of groups.** A group of R24 joins strokes closer than 50 units and 2 s to each other. And "47 ÷ 6 = [ ] r [ ]" is written in a row, and one group would take both boxes. A mark on the workbook is about the answer in a box, and the table of boxes names exactly that.
-- **A property, not an event.** R27 rejected two events for one action, and the second amendment to R36 spec fixed the `detail` of `historychange`.
-- **A sample with the device's table:**
-  - the share of points depends on how densely they stand (R26), and the points of eval-set samples and child samples are resampled (R09). The device's table and the boxes' rectangles spare the runner the layout and the recount;
-  - neither the check nor eval reads the scratch work, and a child sample does not need it.
+  - the scratch work does not go: of the forms that give the same use, this is the poorest in data, as the rule of recommendation of П-21, by which R52 spec was decided, requires.
+- **Boxes instead of groups.** A group of R24 joins strokes closer than 50 units and 2 s to each other, and "47 ÷ 6 = [ ] r [ ]" is written in a row: one group would take both boxes. A mark on the workbook is about the answer in a box, and the table of boxes names exactly that. The digest holds all the page's boxes, so that a context of another layout differs even where the filled boxes stayed in place.
+- **A property, not an event:** R27 rejected two events for one action.
+- **A sample with the device's table:** the share of points depends on how densely they stand (R26), and the points of eval-set samples and child samples are resampled (R09). The device's table and the boxes' rectangles spare the runner the layout and the recount, and neither the check nor eval reads the scratch work.
 
 — *Rejected:*
 - **a width of 1000 and a height by the lines** — `SHEET` would become a function of the task, and a history given before the task would be checked against a page not its own;
-- **the height as a setting of the module** — R06 rejected it with the reservation "Come back to it if a task needs more than the sheet". On the workbook that is exactly a task that did not fit. The answer to it is the limit for authors and a `TypeError`, and a height from the module would make the check of the history depend on the task, as a height by the lines would;
+- **the height as a setting of the module** — on the workbook that is a task that did not fit, and its answer is the format's rule and a `TypeError`; a height from the module would make the check of the history depend on the task;
 - **the statement on the page** — its place would depend on the font, and the pictures' sizes are CSS px;
-- **shrinking down to a limit, and without a limit** — for the reasons above;
+- **shrinking, down to a limit or without one** — for the reasons above;
 - **a font of its own in the package** and **a layout by the device's font** — for the reasons above;
 - **a box sized by the answer** — the key is closed, and the open view does not know it; **a box that grows** — the lines under it would shift under the pen;
-- **a stroke by its bundle** — a fraction bar does not join bundles (R25); **clipping the ink by the border** — a digit beyond the edge would be lost;
+- **a stroke by its bundle** — a fraction bar does not join bundles (R25); **clipping the ink by the frame** — a digit beyond the edge would be lost;
 - **forbidding writing outside the boxes** — working in the margins is usual for a school workbook;
 - **one crop of the strokes of all the boxes** — the model would search for what is in which box; **a crop of the whole page** — the scratch work would go to the provider;
 - **the groups of R24 over the whole page** and **inside the boxes** — for the reasons above;
 - **an event of its own** and **the filled state in `detail`** — for the reasons above;
 - **a hidden copy of the lines in HTML** — two sources of one text, and the screen reader would show the wrong place;
-- **a sample as for the sheet** — the child sample would hold the scratch work; **deciding the sample in E5** — the row for the protocol would come too late for epic E3 of `spec`;
-- **splitting the task** — the author's answer.
+- **a sample as for the sheet** — the child sample would hold the scratch work.
 
 — *Revisit:*
-- the layout's numbers — by the sweep of T47. After the first release only a decision of its own changes them: the histories know neither the task nor the layout. Under new numbers old answers would fall into other boxes or into the scratch work, and `filled` and the crops would change with them. Such a decision names how `app` opens the histories written before it. An edit of a task's text is already another task and a new version of the module (R44 spec), and the history of another task under this one is the consumer's error (R27);
-- the text in Safari — by T22, or when WebKit turns on the new SVG layout;
-- a copy of the lines in HTML — if VoiceOver on the iPad does not read the SVG (T22);
-- the limit of lines — by `spec`'s answer to T47's row;
-- the empty box — by epic E3 and T29 in `spec`'s RUN.md: concepts 9.1 spec has no "no answer";
-- the growth of the lines' text with the page's zoom (WCAG 1.4.4) — by the standard of T07 of `app` (О-24);
-- one crop — if `spec` chooses it in В45: T49 keeps this option cheap.
+- the layout's numbers: a change is a change of `format/page.yaml` by the format's versions, which `canvas` asks for by a row «в реестр spec». The histories know neither the task nor the layout: under new numbers old answers would fall into other boxes or into the scratch work, and `filled` and the crops would change with them, so the change names how `app` opens the histories written before it. An edit of a task's text is another task and a new version of the module (R44 spec), and the history of another task under this one is the consumer's error (R27);
+- on devices, the debt Д7: the lines' font size and fonts on children's tablets, the text and the frames in Safari, VoiceOver and TalkBack by lines and by touch, and a copy of the lines in HTML if VoiceOver on the iPad does not read the SVG.
 
-— *Consequence:*
-- **T47**: the page and the template layer, the `TypeError` and a row «в реестр spec» on the limit of lines;
-- **T48**: the box rule, its test vectors and `filled`;
-- **T49**: `exportWork()` on the workbook, the context `{ boxes, digest }` and the marks with an answer slot by place;
-- **T50**: sections 1 and 3 and a "Consequence" about the tasks of E5: the sample file, the synthetic samples, the samples page and the probe on devices;
-- amendments to R06, R09, R23, R24, R25, R26, R27, R28 and R32;
-- **table 3 of RUN.md**: В45–В48 «в реестр spec».
-
-— RUN.md, T46–T49, E6, table 3; [architecture.md](architecture.md), sections 1, 2, 2.7 and 4.
-
-— *Amendment 2026-10-27:* the layout's numbers, the table of widths and the rules of lines are R35. Its planning refined four places:
-- "the characters' widths are canvas's own table by classes": a class is for the digits and for the operation and comparison signs, and the letters and the punctuation marks each have a width of their own;
-- "a piece is one `<text>`": a piece is the part of a piece on one line of the page — a piece wrapped onto two lines cannot be drawn by one `<text>` without `tspan`;
-- "the boxes and the text do not shrink": the font size and the boxes do not change, and the fitting by `textLength` stretches or squeezes the characters — in the image's fonts by less than ⅛;
-- the item's number in the error's path is from 0, `task.items[i]`, as in the format's path `#/items/0`, and in the error's text from 1.
-
-"The runner and the synthetic samples will repeat the layout" of the "Why" is the synthetic samples and `module-kit`: the runner does not need it, the boxes' rectangles lie in the sample (В47). The author split the task T47 in its planning: the layout is T47, the template layer T51. — R35.
-
-— *Amendment 2026-10-27:* the box rule is R37. Its planning refined two places:
-- "the earlier place" is earlier in the task's order: by item, then by box, from 1. On any page of R35 this is also the order from top to bottom, left to right, and the runner, which has the numbers and the rectangles of the boxes in the sample, does not need the layout;
-- "the parameters are in fractions of the box" — in thousandths: of the box's width horizontally and of its height vertically.
-
-The rule is not "the share of points" but "the middle of the frame of points": the sweep of T48 chose it from both families and a variant. — R37.
-
-— *Amendment 2026-10-27:* the "Consequence" about T49 is half done: the work for the check is R38, and T53 places the marks with an answer slot by place — the author split T49 in its planning. The workbook's digest holds all the boxes of the page, not only the filled ones: for a context of another layout it is different, even if the filled boxes stayed in place, and the check of marks of T53 will not let it through. — R38.
-
-— *Amendment 2026-10-27:* the "Consequence" about T49 is done wholly: the marks with an answer slot by place are T53 (R39). — R39.
-
-— *Amendment 2026-10-27:* the "Consequence" about T50 is done. The workbook is in [architecture.md](architecture.md), sections 1 and 3, its whole design in section 3.8, and subsection 2.7 is "Decided". From the decisions of E6, R32–R39, this follows for the tasks of epic E5. The bodies of the tasks in E2's archive are not edited: their planning takes this up.
-- **T16**: the eval protocol takes the box rule and `vectors/boxes.json` as they are (В47), and with them the workbook's sample. If the protocol decides otherwise — an amendment to R34 and section 3.5.
-- **T17**: the workbook's sample file (section 3.5):
-  - the crops of the filled boxes at eval's heights, by the same `cellsForCheck`, with the item and the box;
-  - the table "box → stroke IDs" that the device built, and the rectangles of all the page's boxes;
-  - a workbook's sample has no groups and no group boxes;
-  - eval-set samples and child samples hold only the boxes' strokes, and the table moves to the new numbers of the strokes.
-- **T18**: the synthetic samples carry workbook pages too, in every composition: tasks like the layout's set, `src/core/pages.fixture.ts`, and writing by seed, as in the sweep of the box rule, `src/core/workbooks.fixture.ts`. An empty workbook, like an empty sheet, gives no crops.
-- **T19**: the samples page shows the workbook too: it gives the element the task and the module manifest (R32). The workbook's printed text takes the page's font, and whatever it is, it does not move the layout (R34, R36).
-- **T20**: a workbook's markup is by box: the value in each box. On the workbook the table of boxes replaces "the strokes of each line" of section 3.5. On saving, the page shows the boxes' crops — what the model will see.
-- **T21**: the element rejects a workbook's task that did not fit on the page (R35). So the build checks that every workbook task from the file of the measurement's tasks fits on the page — otherwise only the volunteer would see it.
-- **T22** tries on devices what R33–R37 left to it:
-  - the share ⅘ and quick presses of «Выше» and «Ниже»;
-  - the lines' font size and fonts on children's tablets;
-  - the text, its reset and the borders in Safari;
-  - VoiceOver and TalkBack — by lines and by touch;
-  - a fraction by finger and by pen in a box of 100, and with it the margin and the limit of the box rule.
-
-  Before the first release an amendment with new vectors changes the layout's numbers and the rule, and after it only a decision of its own.
-- **T24**: the first release carries the workbook too: a new canvas kind comes out before the module that takes it (R44 spec; architecture 3.2 spec). So the author decided in the planning of E6: T24 or a task of its own comes out first.
-- **T25**: section 3 is about the workbook too. `tutor`'s CI reads the workbook's samples if the measurement takes them: T78–T80 of `tutor` run on their own synthetic samples, without `canvas` (`tutor` at b028234, read 2026-10-27).
-
-The «Основа» of E5 in table 2 of RUN.md names this amendment. — RUN.md, T50, table 2; [architecture.md](architecture.md), sections 1, 2, 2.7, 3 and 3.8.
-
-— *Amendment 2026-10-27:* "Revisit: the empty box — by epic E3 and T29 in `spec`'s RUN.md" is decided: an empty answer slot is "unreadable" with the reason `blank` (R56 spec). It needs no crop: `filled` names the empty boxes. — R40.
-
-— *Amendment 2026-11-11 (T93):* the workbook's panel name is «Кнопки тетради», and «Тетрадь» is the name of its scroll container while it scrolls (the T93 amendments to R28 and R33). — R28, R33.
-
-— *Amendment 2026-11-11 (T94):* **the "Revisit" about the growth of the lines' text with the page's zoom (1.4.4) is decided by R73: the buttons «Крупнее» and «Мельче» grow the printed text up to 200 % at any width, and the nonconformance that `app` declared goes away.** The workbook's page stays 1000 × 1400 units and is not laid out anew: 1.4.10 allows it a two-dimensional layout. — R73.
-
-— *Amendment 2026-11-16 (T118):* the list's items are `<svg role="listitem">` of their place and size, not `<g role="listitem">`: Firefox brings only a box with a size whole into view (the T118 amendment to R36; measurements 1.6). — R36.
+— [architecture.md](architecture.md), sections 2.7, 3.5, 3.8 and 3.10; `src/core/page.ts`, `src/core/boxes.ts`, `src/core/submission.ts`, `src/element/index.ts`; R35–R39.
 
 **R35. The layout of a workbook's page: font size 30 units, box 100 × 100, rows 32 apart, margins 40 and two columns of 440: up to 10 rows, that is up to 20 short items or up to 10 long ones of one line. Short items stand two in a row, row by row, and a long one takes the whole width and wraps. The characters' widths are canvas's own numbers in hundredths of the font size, by a measurement of the image's fonts, and characters are told apart only by explicit code ranges. For now the element rejects the workbook: its template layer is T51.**
 - **The numbers** are in page units, 1000 × 1400 (R34):
@@ -2772,84 +2377,66 @@ Before the questions, two separate agents checked the design — from the side o
 
 — *Amendment 2026-11-09 (T85):* **the numbers and the rule of the layout are now the format's: `format/page.yaml` and the test vectors `format/vectors/pages/` of `spec`, which the package `@altnovatrail/spec` carries as JSON (the format text of `spec`, §§9 and 14; R108 spec). These are the numbers and the vectors of `canvas`, and the element's layout gives each of the 19 vectors of `spec` with no changes. The tests hold it by the package's vectors, and the table of widths and the numbers by the package's `page.json`; no test writes `vectors/pages.json` any more, and it stays as it was, a record that this entry and the archive of E6 refer to (R60).**
 
-**R36. The workbook's template layer: the element shows the lines of its items on the page — the numbers and the pieces of text as SVG, fitted to the layout of R35, and the boxes with a frame of 1 CSS px on whole device pixels. The printing is in the ink's color and the consumer's font, and it takes nothing else inherited. A screen reader reads the lines as a list, and the boxes by the names from the table of labels. `exportWork()` on a workbook until T49 is a refusal `NotSupportedError`, and the element is horizontal whatever the page's writing mode.**
-- **The layer by canvas kind** — the same SVG of the template layer, with the same `viewBox` (R23):
-  - a sheet has the grid, and the layer is `aria-hidden`;
-  - a workbook has the lines without a grid, its root is `role="none"`, without `aria-hidden`;
+**R36. The workbook's template layer: the element shows the lines of its items on the page — the numbers and the pieces of text as SVG, fitted to the layout of R35, and the boxes with a frame of 1 CSS px on whole device pixels. The printing is in the ink's color and the consumer's font, and it takes nothing else inherited. A screen reader reads the lines as a list, and the boxes by the names from the table of labels. The element is horizontal whatever the page's writing mode.**
+- **The layer by canvas kind** — the same SVG of the template layer, with the same `viewBox` as the other layers (R23):
+  - a sheet has the grid, over the whole sheet as far as it goes (R73), and the layer is `aria-hidden`;
+  - a workbook has the lines and no grid, on the page and past it; its root is `role="none"`, without `aria-hidden`;
   - a task of another kind rebuilds the layer, a task with the same lines (`sameLayer`) writes nothing, and the work stays (R20);
-  - a workbook that does not fit is still a `TypeError` at `task.items[i]` (R35).
+  - a workbook that does not fit is a `TypeError` at `task.items[i]` (R35).
 - **The lines:**
-  - `<g class="print">`, in it `<g role="list">`, and in that a `<g role="listitem">` per item, in the task's order;
-  - the number and each part of a piece on a line of the page are a `<text x y textLength lengthAdjust="spacingAndGlyphs">` by `PageText`, without `tspan`. The code reads no sizes of the text (R34);
-  - a box is a `<rect role="img">` by `PageBox`.
+  - `<g class="print">`, in it `<g role="list">`, and in that an item per line of the task, in its order: an `<svg role="listitem" x y width height overflow="visible">` of the place and size `PageItem` gives — its column's left edge, its row's top, its column's width or the page's within its margins, and the height of its lines;
+  - in the item, the number and each part of a piece on a line of the page are a `<text x y textLength lengthAdjust="spacingAndGlyphs">` by `PageText`, without `tspan`, and a box is a `<rect role="img">` by `PageBox`, each with its `x` and `y` from the item's origin. The code reads no sizes of the text (R34);
+  - a value a worked example's demo writes in a box is a print node of its own right after the box (R61).
 - **The printing takes nothing inherited.** The printing group has `all: initial`, and after it `font-family: inherit`, `visibility: inherit`, `pointer-events: none`, `direction: ltr`, `font-variant-numeric: tabular-nums`, font size 30 and `color: var(--novatrail-canvas-ink, #111)`. The text is `fill: currentColor`, the frame `stroke: currentColor`.
-- **The box's frame** is 1 CSS px, `vector-effect: non-scaling-stroke` and `shape-rendering: crispEdges`.
+- **The box's frame** is 1 CSS px, `vector-effect: non-scaling-stroke` and `shape-rendering: crispEdges`; a filled box's is 3 CSS px, and its name «Окошко, заполнено» (R37).
 - **Color:**
   - the printing and the frames are in the ink's color, and they have no theme variable of their own;
   - an invalid value of the variable gives them, as it gives the ink of the drawing surface, the color of the page's text, not the black of `all: initial`;
-  - in forced colors, an explicit `fill` and `stroke` of CanvasText: SVG keeps the parent's color there ([architecture.md](architecture.md), section 4), and the theme's ink would stay.
+  - in forced colors, an explicit `fill` and `stroke` of CanvasText, and Highlight for a filled box's frame: SVG keeps the parent's color there ([architecture.md](architecture.md), section 4), and the theme's ink would stay.
 - **Accessibility:**
   - the numbers are text, and a screen reader reads them, like the markers of an `<ol>`;
-  - a box's name is «Окошко», and among several in a line «Окошко 1», «Окошко 2», by place. Whether it is filled, in the name, is T48;
+  - a box's name is «Окошко», and among several in a line «Окошко 1», «Окошко 2», by place, with whether it is filled (R37);
   - the language of the lines is the manifest's `languages.explanation`, as an attribute `lang` on `<g role="list">`. Without a manifest there is no attribute, and the lines are in the element's language, like the statement (R32);
-  - a box has a `lang` of its own, the language of the labels, by the element's `lang`, like the row of buttons (R28). A new `lang` of the element changes the boxes' names together with the buttons' labels;
-  - the panel's name is by the canvas kind: Sheet or Workbook, «Лист» or «Тетрадь».
-- **The labels** — the table of R28 also has `workbook` and `box`: Workbook and Box, «Тетрадь» and «Окошко».
-- **`exportWork()`** on a workbook until T49 is a rejected promise, `DOMException` `NotSupportedError`, for an empty workbook and for a written-on one.
-- **Marks** until T49 are as on a sheet: strokes hold them, not boxes.
-- **The page's writing mode.** `:host { writing-mode: horizontal-tb }`: the element — both sheet and workbook — is horizontal under an ancestor's vertical writing. A `writing-mode` on the element itself is stronger: that is the consumer's choice.
+  - a box has a `lang` of its own, the language of the labels, by the element's `lang`, like the bar of buttons (R28). A new `lang` of the element changes the boxes' names together with the buttons' labels;
+  - the labels of R28 name the scroll container by the canvas kind, Workbook or «Тетрадь», and the bar Workbook buttons or «Кнопки тетради»; a box is Box or «Окошко».
+- **1.4.4 of the printing.** The printing scales with the page, its font size on the screen 30 × k CSS px, k = min(A / 1000, 1) (R73), 9.6 at 320 CSS px: the browser's zoom grows it only until the page fills the element's width. The lines do not meet 1.4.4, a nonconformance declared with no term, for nothing zooms the sheet (R34, R74; [architecture.md](architecture.md), section 3.10).
+- **The page's writing mode.** `:host { writing-mode: horizontal-tb }`: the element — sheet, workbook and task from paper — is horizontal under an ancestor's vertical writing. A `writing-mode` on the element itself is stronger: that is the consumer's choice.
 - **Scrolling to an item.** `scrollIntoView` of an item that is not seen scrolls the container at once. The item comes into the visible part when the layout sets a new `viewBox`, after two animation frames.
 - **Tests:**
   - `src/element/workbook.test.ts`, in Chromium, at densities 1 and 2:
     - the start and the end of each text are where the layout puts them, in the three fonts of the image, under an ancestor's hostile styles and `dir=rtl`;
-    - the boxes lie over the ink at any width and scrolling;
+    - the boxes lie over the ink at any width and scroll;
     - the eraser does not take the template;
     - the frame, on a screenshot;
     - the list, the order and the names, in the DOM and in Chromium's own tree, through `cdp()` by the `frameId` of the test's iframe;
     - `:lang()`, `scrollIntoView` under any writing mode of the page, the switch between canvas kinds, the theme and `exportWork()`;
+    - the parts are read in the print's units, through the matrix from the part to the print, the frames' pixels through the print's matrix, and an item on the screen by its parts: Firefox's `getBoundingClientRect()` of an inner `<svg>` is not its item's box;
   - forced colors, in `forced-colors.test.ts`.
 
-— *Why:* the author's answer in the planning of T51, 2026-10-27, by the recommendation: fix the page's vertical writing in T51. The rest was decided by R34, R35 and the body of T51, accepted together with the plan of T47, and the probes in the planning of T51 closed its questions. The sources are in [architecture.md](architecture.md), section 4.
+— *Why:* the author's answer in the planning of T51, 2026-10-27, by the recommendation — fix the page's vertical writing —, R34 and R35, and the probes in the planning of T51 (measurements 1.4). The sources are in [architecture.md](architecture.md), section 4.
 - **A frame on whole pixels.** With `crispEdges` each edge is the full ink color, 18.9:1 for `#111`, at densities 1, 1.25, 1.5 and 2, and its width is 1–2 device pixels. An antialiased frame at density 1 falls to 3.59:1, and with `#555` to 2.41:1, below 3:1 (WCAG 2.2, 1.4.11).
-- **The reset** was checked under an ancestor's hostile styles in three fonts: the start of the first character and the end of the last are where the layout puts them, to 0.05 of a unit or closer. `all: initial` alone is not enough: it does not reset `direction`, and it resets `visibility` and `pointer-events` the wrong way (R35; T47).
+- **The reset** was checked under an ancestor's hostile styles in three fonts: the start of the first character and the end of the last are where the layout puts them, to 0.05 of a unit or closer. `all: initial` alone is not enough: it does not reset `direction`, and it resets `visibility` and `pointer-events` the wrong way (R35).
 - **Color through `color`** — this way an invalid value of the variable behaves for the printing as for the ink: CSS computes it as `unset`.
 - **The numbers are read**, as in a numbered list of HTML: the tutor and `app` name an item by its number.
-- **The refusal of `exportWork()`**: `null` would say that nothing is written, and a crop of all the strokes would send the scratch work (R35).
+- **An item as an `<svg>` with a size**, the author's answer to В80, 2026-11-16, by the recommendation: Firefox brings an SVG group into view as a point at its origin — a `<g>` of no transform not at all, one placed by `transform` only to the edge of the visible part —, while a nested `<svg>` with a size it brings whole, as Chromium and WebKit bring all three (measurements 1.5 and 1.6).
 - **`:host`, not the printing:** vertical writing lays the whole scene on its side, and scrolling to an item scrolls nothing. `:host` overrides an inherited writing mode, but not the consumer's own.
 - **The tree through the test's `cdp()`:** the Playwright provider gives a session of the page, and the tree of the test's iframe is taken by its `frameId`. The CDP tree has no `lang`, and `:lang()` checks the language.
 
 — *Rejected:*
 - **an antialiased frame** — for the reason above;
 - **a theme variable of its own for the printing** — the printing goes in the ink's color, as the statement goes in the consumer's color;
-- **the grid's color for the frame** — 1.4:1 on white (R34);
+- **the grid's color for the frame** — 1.4:1 on white;
 - **`aria-hidden` on the numbers** — an item without a number cannot be found by the tutor's words;
 - **text on the drawing surface** — a screen reader does not read it;
 - **HTML text in `foreignObject`** — the browser's layout lays it out, not R35;
+- **an item as a `<g>` placed by `transform`** — Firefox shows 0.5 px of the item; **a `<g>` without a place, waiting for Firefox's own fix** — Firefox does not bring it into view at all;
 - **a Vitest command of its own for the tree** — the test's `cdp()` already gives a session;
 - **resetting the writing mode only on the printing** — vertical writing breaks the whole element.
 
 — *Revisit:*
-- the reset in WebKit, `-webkit-text-size-adjust`, the frame and the text in Safari, VoiceOver on iPad — T22: the image has no WebKit;
-- a copy of the lines in HTML — if VoiceOver on iPad does not read the SVG (R34);
-- exploring by touch — VoiceOver and TalkBack under the finger — by T22. Over the lines lies the drawing surface, which takes input (R23), and a finger may land on it rather than on an item. Only reading in order is checked: the tree and the roles;
-- the lines' text growing with the page's zoom (1.4.4) — by the standard of T07 of `app` (R34; О-24).
+- on devices, the debt Д7: the reset in WebKit, `-webkit-text-size-adjust`, the frame and the text in Safari; VoiceOver on the iPad, and a copy of the lines in HTML if it does not read the SVG (R34); exploring by touch with VoiceOver and TalkBack — over the lines lies the drawing surface, which takes input (R23), and a finger may land on it rather than on an item: only reading in order is checked, the tree and the roles.
 
-— *Consequence:*
-- amendments to R23, R27, R28, R32 and R35;
-- **T48** — whether a box is filled, in its name and on the box itself, and in forced colors Highlight;
-- **T49** — the workbook's work for checking, instead of the refusal, and marks on boxes.
-
-— RUN.md, T51; [architecture.md](architecture.md), sections 2.7, 3.1, 3.2, 3.3, 3.7 and 4; `src/element/`, `demo/`.
-
-— *Amendment 2026-10-27:* a filled box's frame is 3 CSS px, and in forced colors Highlight. A filled box's name is «Окошко, заполнено» (R37). — R37.
-
-— *Amendment 2026-10-27:* `exportWork()` on a workbook no longer refuses with `NotSupportedError`: it gives the crops of the filled boxes or `null` (R38). — R38.
-
-— *Amendment 2026-11-11 (T93):* the table of labels also has `sheetButtons`, `workbookButtons` and `exampleButtons`, the panel's names: «Кнопки листа», «Кнопки тетради» and «Кнопки примера». `sheet`, `workbook` and `example` now name the scrolling container (the T93 amendments to R28 and R33). — R28, R33.
-
-— *Amendment 2026-11-11 (T94):* **the "Revisit" on 1.4.4 is decided by R73:** the printing grows with the sheet's zoom up to 200 %, and the font size on screen is `30 × k` CSS px, at 320 CSS px and 200 %, 19.2. — R73.
-
-— *Amendment 2026-11-16 (T118):* **an item of the list is an `<svg role="listitem" x y width height overflow="visible">`, not a `<g>`** — the place and size `PageItem` gives: its column's left edge, its row's top, its column's width or the page's within its margins, and the height of its lines —, and its `<text>`, its `<rect>` and a demo's value in a box take their `x` and `y` from the item's origin: what "by `PageText`" and "by `PageBox`" above place, the item's `<svg>` now moves. Firefox brings an SVG group into view as a point at its origin: a `<g>` of no transform it did not scroll to at all, and one placed by `transform` it brings only to the edge of the visible part, while a nested `<svg>` with a size it brings whole, as Chromium and WebKit bring all three (measurements 1.5 and 1.6; Д10). The tests read the parts in the print's units, through the matrix from the part to the print, the frames' pixels through the print's matrix, and the item on the screen by its parts: Firefox's `getBoundingClientRect()` of an inner `<svg>` is not its item's box. — *Why:* the author's answer to В80, 2026-11-16, by the recommendation. — *Rejected:* the `<g>` placed by `transform`, which Д10 named — Firefox shows 0.5 px of the item; the `<g>` as it was, waiting for Firefox's own fix. — measurements 1.6; R78.
+— [architecture.md](architecture.md), sections 3.1, 3.3, 3.7, 3.8, 3.10 and 4; measurements 1.4, 1.5 and 1.6; `src/element/index.ts`, `src/element/labels.ts`, `src/element/workbook.test.ts`; R37, R61.
 
 **R37. The box rule: a stroke belongs to a box if the middle of the frame of its points lies in the box widened by 120 thousandths of its size, and the frame itself is no wider and no taller than 1600 thousandths of the box. Otherwise the stroke is scratch work. Of two boxes the rule takes the one with more of the stroke's points, then the earlier by (item, box). Which boxes are filled, the property `filled` says. A filled box's frame is 3 CSS px, and its name says «заполнено».**
 - **The rule** is `cellOf` in `src/core/boxes.ts`, in integers:
@@ -3256,161 +2843,67 @@ The rest are the architect agent's corrections in the planning of T49 (R38):
 
 ## E7. The new `spec`: the task's fields and the example's demo
 
-**R42. On a sheet `filled` for a slot `anywhere` or `sheet` is `[[has a stroke]]`, otherwise `null`. The element takes a worked example through the property `workedExample`, and then it is not a task: the learner does not write, and the demo's parts are opened by the element's buttons. For `app` there are the property `demoState` and the event `demochange`. The demo's paragraphs and images stand above the sheet, under the statement, and a polite region `status` announces the opened part.**
+**R42. On a sheet `filled` for a slot `anywhere` or `sheet` is `[[has a stroke]]`, otherwise `null`. The element takes a lesson's worked example through the property `workedExample`, and then it is not a task: the learner does not write, its canvas takes no pointer, and the demo's parts are opened by the element's Next and Demo, in a row of glass at the band's bottom with the slot `actions` after them. For `app` there are the property `demoState` and the event `demochange`. The demo's paragraphs and pictures stand above the sheet, under the statement, a picture on an area of the sheet on the demo layer, and a polite region `status` announces the opened part.** 2026-11-01, T56–T61 and T64 (epic E7).
 - **`filled` on a sheet:**
-  - for a slot `anywhere` or `sheet`, `[[true]]` if the sheet has a stroke that `exportWork()` would take, otherwise `[[false]]`. "Has a stroke" is the same as «Очистить» being enabled (R28): the stroke under the pen does not count yet, and a stroke under the eraser before lift-off still counts, as on a workbook (R37);
-  - a sheet with only `choice` slots, a sheet without a task and an example are `null`: the element has nothing to say, and only `app` sees the choice of an option. The format gives no mixed task: a slot `anywhere` or `sheet` is the only one in its task (the README of the format, §14), and the element rejects a slot in a zone (R32). So the type is as before — `readonly (readonly boolean[])[] | null`;
-  - the time of change is as on a workbook: an action changes `filled` before `historychange`, and an assignment of `task` and `history` changes it without an event. The value is the same frozen array until it changes;
-  - `app` reads the exit condition `answer_slots_filled` by the slot binding: for `choice`, its own choice of an option, for other slots, `filled[item − 1][slot − 1]`.
-- **The example is the property `workedExample`:** the open view of the segment `worked_example`, the type `WorkedExample` of the package of `spec` (R41) — the statement, the canvas and the demo's parts. The element checks it like a task (R32).
-  - The element shows a task or an example, not both. A `TypeError` is an example when `task` is set, the history is not empty or a stroke or an eraser press is under way, and a task when an example is set; `undefined` removes either. One lesson segment is a new element (R20): `app` gives each segment its own;
-  - an equal example — by content, as `sameTemplate` — changes nothing, and another one replaces everything and returns the demo to its start, without an event;
-  - **example mode:**
-    - `task` is `undefined`; `history` is empty, a non-empty one is a `TypeError`, and there is no `historychange`;
-    - `marks`: assigning marks is a `TypeError`, there is nothing to mark, and `undefined` may be assigned, and they read as `undefined`. `exportWork()` gives `null`, and `filled` is `null`;
-    - `tool` is `"pen"`, only it may be assigned, and there is no `toolchange`. `undo()` and `clear()` do nothing;
-    - `manifest` is checked as always, and gives the language of the statement and of the parts. `media` gives all the example's images;
-    - the drawing surface takes no input, so the example's sheet neither turns pen mode on nor off (R29). One finger and the pen scroll the sheet by the browser's scrolling, and «Выше» and «Ниже» stay (R33). How exactly the sheet takes no input is T59;
-    - the row of buttons is named by the segment's kind — «Пример», "Worked example", — as a workbook names its own (R34). In it, in order, are «Дальше», «Показ», «Выше» and «Ниже», and there is no «Пера», «Ластика», «Отменить», «Очистить» or «Рисовать пальцем». The Tab stop is on the first visible button, «Дальше».
-- **The demo's parts are opened by the element:**
-  - in the row, «Дальше», which opens the next part, and the disclosure button «Показ», `aria-expanded`, which hides and shows the whole demo (APG, Disclosure);
-  - **`demoState`** is a frozen `{ opened, hidden }`. `opened` is how many parts are open, from the first, from 0 to all, and `hidden` whether the whole demo is hidden. At first it is `{ opened: 0, hidden: false }`: the learner opens each part themself. Parts do not close one at a time;
-  - `demoState` is assigned after `workedExample`, as `marks` after `task` and `history` (R26). Before an example the property is `undefined`: assigning a state is a `TypeError`, and `undefined` may be assigned, and it changes nothing. A state is an object with only `opened`, an integer from 0 to the number of parts, and `hidden`, `true` or `false`; anything else is a `TypeError` with the field's path. A new or another example returns the state to its start;
-  - **`demochange`** is a `CustomEvent` with the same `detail`, it bubbles and is `composed`, only when the learner changed the state with a button. Assigning `demoState` gives no event and announces nothing, as with `tool` and `toolchange` (R27, R28). `app` keeps the state and returns it, and it may also lead the parts itself;
-  - «Дальше» is `aria-disabled` while the demo is hidden or all the parts are open, and it keeps focus, as «Выше» and «Ниже» do at the edge (R33).
-- **Paragraphs and images beside the sheet** — above the sheet, under the statement: a numbered list of the open parts in the same column and scrolling as the statement (R23). An image beside the sheet is as in the statement: a frame of its own size with the description, until the file has come. An image on a sheet area stands on the demo layer, at the area's size (the README of the format, §21), and in the list there is its item with the description. An opened part is scrolled into view at once, without animation, and there is one target: for an image on an area, its sheet area, for the other parts, their list item. The layout keeps a sheet scrolled into view in place when the list above it grows.
+  - for a slot `anywhere` or `sheet`, `[[true]]` if the sheet has a stroke that `exportWork()` would take, otherwise `[[false]]`. "Has a stroke" is «Очистить» enabled (R28): the stroke under the pen does not count yet, and a stroke under the eraser before lift-off still does, as on a workbook (R37);
+  - a sheet with only `choice` slots, a sheet without a task and a worked example are `null`: the element has nothing to say, and only `app` sees the choice of an option. The format gives no mixed task — a slot `anywhere` or `sheet` is the only one of its task (the format's README, §14) — and the element rejects a slot in a zone (R32), so the type is `readonly (readonly boolean[])[] | null`, one for both canvas kinds;
+  - it changes as on a workbook: an action changes it before `historychange`, an assignment of `task` or `history` without an event, and it is the same frozen array until it changes;
+  - `app` reads the exit condition `answer_slots_filled` by the slot's binding: for `choice` its own choice of an option, for the others `filled[item − 1][slot − 1]`.
+- **The example** is the open view of the segment `worked_example`, spec's type `WorkedExample` (R41): its statement, its canvas — a sheet with a grid, or a workbook with the example's lines (R61) — and the demo's parts — a paragraph, a picture beside the sheet with its size, a picture on an area of the sheet, which has no size of its own, and on a workbook a box it fills. `exampleOf` (`src/core/example.ts`) checks it as strictly as a task (R32), each field named by its path from `workedExample`, with the format's rules `lesson.areas` (an area lies on the page, 1000 × 1400), `lesson.example-fills` and `lesson.workbook-page`; `tools` on its canvas is a `TypeError`. `sameExample` is equality by content, the default grid filled in.
+- **A task or an example, not both.** An example while `task` or a task from paper (`paper`) is shown, while the history is not empty, or while a stroke or an erasing is under way is a `TypeError`, checked before its shape; so are a task and a task from paper while an example is shown. `undefined` removes each property's own alone. An equal example changes nothing; another one replaces it and returns the demo to its start, with no event. Whatever the hands held when the example came — a palm, two scrolling fingers — goes, and captured pointers run to their lift doing nothing. One lesson segment is one element: `app` gives each its own (R20).
+- **Example mode:**
+  - `task` is `undefined`; `history` is empty, a non-empty one is a `TypeError`, and there is no `historychange`; assigning marks is a `TypeError` (nothing to mark), `undefined` may be assigned and they read `undefined`; `exportWork()` gives `null` and `filled` is `null`; `undo()` and `clear()` do nothing;
+  - `tool` is `"pen"`, the template's tools are the pen alone, and `"eraser"` and `"hand"` are a `TypeError` (R88); there is no `toolchange`;
+  - `manifest` is checked as always and gives the language of the statement and the parts; `media` gives every picture of the example;
+  - **the canvas takes no pointer:** the CSS rule `.sheet.example canvas { pointer-events: none; touch-action: auto; }` — on the sheet's class, not the element's style, so that without the class the canvas inherits the consumer's `none` again (R20). A press reaches the stage: a finger or a pen scrolls the container or the page by native scrolling and a pinch zooms the page, as over the statement (R23); nothing in the element zooms the sheet (R73). The sheet neither turns pen mode on nor off (R29). The stage bans the context menu and selection, so a long press or a right click opens no menu over the sheet, and `#down` ignores an event a script sends the canvas;
+  - **the sheet is the task's page alone**, 1000 × 1400 units fitted to the width: nothing past it to scroll across (`#reach` returns `SHEET`; R73). On a workbook the example's lines stand on it in the task's layout with empty boxes, and an opened `fill` writes its value in its box (R61);
+  - **no bar**: the vertical bar of glass (R84) is hidden, for it holds only the tools of writing. The scroll container, while it scrolls, is named «Пример», "Worked example" (R33).
+- **The row:** Next («Дальше», an arrow forward) and Demo («Показ», a disclosure button with `aria-expanded`, its icon an arrow down while the demo is shown and along the row while hidden; APG, Disclosure), both mirrored in right to left (R46), stand in a row of the bar's glass at the bottom of the band, in its middle, each with its label beside its icon and each a stop of Tab of its own, no arrow keys between them; after a line, shown only while something is slotted, the named slot `actions`, where `app` puts its «Continue», as the mockup has one row (R84; the author's answer (a) to В85, 2026-11-17). Next opens the next part; Demo hides and shows the whole demo. A row narrower than its buttons scrolls across inside its glass, and focus brings a button wholly into it. A removed example hands the focus from Next or Demo to the pen's button.
+- **`demoState`** is a frozen `{ opened, hidden }`, spec's `DemoState`: `opened` how many parts are open, from the first, 0 to all; `hidden` whether the whole demo is hidden. It starts `{ opened: 0, hidden: false }` (`DEMO_START`, one object for all elements): the learner opens each part themself. Without an example it is `undefined`: assigning a state is then a `TypeError`, before its shape is checked, and `undefined` changes nothing. A state is an object of `opened`, a whole number from 0 to the number of parts, and `hidden`, `true` or `false`, else a `TypeError` that names the field (`demoStateOf`); it is copied and frozen, and one equal by content leaves the same object. Parts do not close one at a time for the learner; `app` may give fewer.
+- **`demochange`** is a `CustomEvent` with the same `detail`, bubbling and `composed`, only when the learner changed the state with Next or Demo. Assigning `demoState` gives no event, announces nothing and scrolls nothing, as `tool` and `toolchange` (R27, R28). `app` keeps the state on the device and gives it back, and may lead the parts itself.
+- **Next** is `aria-disabled` while the demo is hidden or all its parts are open, and keeps the focus (R28). A press opens the part, lays the list out at once — so the sheet's new place is set before the container's scroll is heard and `ResizeObserver` does not bring the scroll back, and a sheet scrolled into sight stays where it was —, brings the part into sight, tells the region, and sends `demochange`. Demo changes `hidden` alone: the open parts stay, out of sight, a sheet in sight stays where it was, and nothing scrolls.
+- **Into sight:** one target — for a picture on an area its area, for the other parts their list item —, by `scrollIntoView({ block: "nearest", behavior: "instant" })`, with a `scroll-margin-bottom` of the row's height and 32 px, so that what comes from below stops 16 px above the row. Then, while the consumer's band (`--novatrail-canvas-top`) covers its top, the scroller of the chain scrolls back by the cover, a scroller at its start handing the rest to the next, and each again only while its step leaves less covered than the last. A scroll margin at the top would hold for every scroller of the chain alike — the container and the page —, while the band stands over the top of what the rail sticks in and the scrollers within it, not over the page when the rail sticks in a scroller of its own. An area taller than what is in sight comes by its top: from below `nearest` places it so, and from above the band's loop brings its top back. The target of an area is the spot, a box of the area in the sheet's own flow, in shares of the page, with `visibility: hidden` — so it paints nothing and takes no pointer from the stage —, not the picture on the sticky stage, which moves only at the next frame; `clear()` takes the spot's place off.
+- **Paragraphs and pictures beside the sheet** — above the sheet, under the statement: a numbered list of the open parts in the statement's column and scrolling (R23), as wide as the page and at its left (R73). A paragraph is its text, never markup (R02 spec); a picture beside the sheet is a frame of its own size, as in the statement, showing its description until its file is decoded, standing in its item's line from its top, so the item's number stays at the top.
+- **Pictures on areas** stand on the demo layer, an SVG with the `viewBox` of the other layers, in the frame of the ink (R23): an `<image>` at the area's `x`, `y`, `width` and `height`, stretched over it, `preserveAspectRatio="none"` — its corners at the area's (SVG 2; "at the size of its area", the format's README, §21) —, later parts on top by document order, placed by `placeOver` as a workbook's box is. Until its file is decoded the sheet is empty there and the description is in the item. A hidden demo is `display="none"` on the layer's group, which SVG has no `hidden` for. In forced colours a picture keeps its file's colours (CSS Color Adjust changes properties only).
+- **Loading** is the element's one `Pictures` (`src/element/pictures.ts`): it asks for all the example's pictures when the example comes — the statement's and every part's —, holds each file and URL while the example names it, and decodes the URL before showing, so a part Next opens shows its picture in the same press; a hidden demo or a smaller `opened` asks for nothing again. The references are named at one place, the template's change: a file both the old and the new name stays, the gone ones go with their frames, and a loading under way goes to its reference only if named again. Chromium shows a new `<img>` or `<image>` with a decoded URL in the nearest frame (the HTML Standard's list of available images); where a browser does not, the frame shows the description until it decodes.
 - **Accessibility:**
-  - the reading order is the row of buttons, the statement, the list of parts. Unopened parts are not in the DOM, and a hidden demo is the attribute `hidden` on the list: the opened parts and their images stay;
-  - a screen reader finds an image on an area by its description in the list item, and the demo layer stays `aria-hidden`, as the marks layer names its frames in words (R26);
-  - an opened part is announced by a polite region `role="status"`, empty in the shadow root from the very start: the part's text or the image's description, and for a decorative image only the part's number. Focus stays on «Дальше», so the learner opens the next part with the same press. The part's number is in the element's language, the part itself in the manifest's language, with separate `lang` attributes. «Дальше» points to the region by `aria-controls`, and «Показ» to the list: both control what they do not contain (WAI-ARIA 1.2, `status` and `aria-expanded`);
-  - the buttons are by R28: a target of 44 × 44 CSS px, `aria-disabled` does not take focus away, system colors in forced colors mode. The accessibility level still waits for О-24 and the standard of T07 of `app`, and T22 will check VoiceOver and the region inside the shadow root.
+  - the reading order is the row — Next, Demo, the slot `actions` —, the statement, the list of parts. Unopened parts are not in the DOM; a hidden demo is the attribute `hidden` on the list, its parts and their pictures kept;
+  - a picture on an area is read in its item: a `role="img"` inside the item with its description, the item keeping its own role; a decorative one is an empty item, and a decorative picture beside the sheet an unnamed frame. The demo layer is `aria-hidden`, as the marks' layer names its frames in words (R26);
+  - an opened part is announced by a polite region `role="status"`, empty in the shadow root from the start, out of sight but not hidden (a hidden region announces nothing): «Часть 2 из 4.» or "Part 2 of 4." in the labels' language, marked with its `lang`, then the part's text, the picture's description or the filled box (R61) in the manifest's language, with no `lang` of its own without a manifest; for a decorative picture the number alone. The region empties on an assigned state, on Demo, and on a new or removed example, so the same words can be announced again. Focus stays on Next, so the next press opens the next part. Next points to the region by `aria-controls` and Demo to the list (WAI-ARIA 1.2, `status`, `aria-expanded`);
+  - the buttons are 44 × 44 targets, `aria-disabled` keeps the focus, system colours in forced colours (R28, R84); the level is WCAG 2.2 AA, R90 spec ([architecture.md](architecture.md), section 3.10).
+- **For `app`:** React assigns properties in JSX order, so `app` writes `workedExample` before `demoState`, as `history` before `marks` (R26), listens to `ondemochange`, and gives back the state `demochange` told or none at all — a new literal on every render would return the demo to its start. It gives each segment a new element, in React by a new `key`, and imports the entry point before the first render, or React writes an attribute. React assigns `undefined` to a removed property, so `null` comes only if the consumer writes it.
 
-— *Why:* the author's answers in planning T56, 2026-11-01, all as recommended:
-- `filled` on a sheet is `[[has a stroke]]`: the exit condition asks the element (architecture 3.2 spec), and `app` reads one type for both canvas kinds with one piece of code. A stroke counts if `exportWork()` would take it — the same rule as for a workbook's box (R37);
-- the element opens the parts, and `app` knows and sets the state: the format lets the learner open and hide (the format's README, §21), `app` has no player yet, and the example needs trying now — on the demo page and in the test consumer. A property and an event are the same contract as `tool` and `toolchange`;
-- above the sheet: that is where the statement stands (R23), and there is one column at any width. The sheet shifts when a part opens, but nobody writes on an example's sheet;
-- as one task (rule 11), though it is about 60–80 minutes of reading: the contract with `app` is one for both questions.
-
-The rest is the plan's proposal, which the architect agent checked. The sources are [architecture.md](architecture.md), section 4, "Filled answer slots and the worked example".
+— *Why:* the author's answers in planning T56, T59, T60, T61 and T64, 2026-11-01, each as recommended; sources 9.14, 9.15 and 9.16.
+- `filled` on a sheet as `[[has a stroke]]`: the exit condition asks the element (architecture 3.2 spec), `app` reads one type for both canvas kinds with one piece of code, and a stroke counts by the rule of a workbook's box (R37).
+- The element opens the parts and `app` knows and sets the state: the format lets the learner open and hide (the format's README, §21), and the example is tried without `app`'s player, on the demo page and in the test consumer. A property and an event are the contract of `tool` and `toolchange`.
+- Above the sheet, where the statement stands (R23), one column at any width: the sheet shifts when a part opens, but nobody writes on it.
+- The canvas taking no pointer, not filtering events: the browser's own scrolling and pinch over the sheet, as over the statement, with nothing to write.
+- Next and Demo in one row with `app`'s «Continue», as the mockup draws it (R84); no bar, for nothing on it would serve a sheet nobody writes on. The labels are concepts 15 spec's demo, «показ автора»; «из 4» tells how many are left.
+- All pictures at once: an opened part shows its picture in the same press, at the price of the files of parts the learner will not open, within one example.
+- Stretched over the area: where the drawing falls on the sheet's cells does not depend on the file; the price is distortion where the author did not give the area the picture's proportions, as the format bids. The later part on top: what was just opened is seen whole.
 
 — *Rejected:*
-- **`filled` per slot, with `null` for a `choice`**: the type would change for a form the format does not allow;
-- **`false` for a `choice`**: it says "empty" of what the element does not see;
-- **`app` folds the `replay` history itself**: it would not be the element that the condition asked, and `app` would repeat the eraser's rule up to the lift;
-- **the example through `task`**: the types and the errors of the check would mix, and `app` would sort out what came;
-- **an element of its own for the example**: a second tag and a second copy of the row of buttons;
-- **the name `example`**: in `spec`, "examples" are the format's example files. The name `workedExample` is the format's, like `task` and `manifest` (R32);
-- **the names `demo` and `hidden`**: `demo` is already the example's parts, `workedExample.demo`, and the folder of the demo page, and `hidden` is an HTML attribute, which would hide the whole element;
-- **an event on an assignment of `demoState`** — as with `tool` (R28): `app` would hear its own action;
-- **closing the parts one at a time** — the format only lets them be opened one at a time and the whole demo be hidden;
-- **a «Дальше» that shows a hidden demo and opens a part**: two changes by one press, and the learner's choice to hide the demo is undone;
-- **the parts beside the sheet on a wide screen and above it on a narrow one**: two layouts, the element wider than 1000 CSS px, and on a narrow tablet above the sheet all the same;
-- **focus on the opened part**: it breaks repeated presses of «Дальше» and leads out of the row of buttons;
-- **`aria-live="assertive"`**: a part of the demo does not call for interrupting the learner (WAI-ARIA 1.2, the role `status`).
+- **`filled` per slot with `null` for a `choice`** — the type would change for a form the format does not allow; **`false` for a `choice`** — it says "empty" of what the element does not see; **`app` folding the `replay` history itself** — not the element the condition asks, and `app` would repeat the eraser's rule up to the lift;
+- **the example through `task`** — the types and the check's errors would mix, and `app` would sort out what came; **an element of its own** — a second tag and a second copy of the buttons;
+- **the names `example`, `demo`, `hidden`** — in `spec` "examples" are the format's example files; `demo` is `workedExample.demo` and the demo page's folder; `hidden` is an HTML attribute that would hide the element;
+- **`touch-action: pan-y` on the canvas** — the events would come, each handler would filter them, and a pinch over the sheet would not zoom;
+- **an event on an assignment of `demoState`** — `app` would hear its own action; **the element keeping a state given before the example to check later** — the error would surface away from where it was made;
+- **closing parts one at a time** — the format opens them one at a time and hides the whole demo; **a Next that also shows a hidden demo** — two changes by one press, undoing the learner's choice to hide;
+- **a number without the total** — the learner would learn of the end only by a paler Next; **Demo filled like the chosen tool** — it reads as a toggle and draws the eye from Next; **a line «Показ спрятан» in place of the list** — it repeats the icon;
+- **the parts beside the sheet on a wide screen** — two layouts, and above the sheet on a narrow tablet all the same;
+- **focus on the opened part** — it breaks repeated presses of Next and leads out of the row; **`aria-live="assertive"`** — a part does not call for interrupting the learner (WAI-ARIA 1.2, `status`);
+- **loading a picture when its part opens** — each part would first show its description, perhaps for seconds over the network, and fewer `opened` from `app` would drop files to ask for again; **the files at once, the URL and decoding on showing** — a frame or two of description on every Next, and `SVGImageElement` has no `decode()` in SVG 2;
+- **the demo layer as an HTML block with a matrix** — a second way of shifting beside `viewBox`, which R23 rejected; **fitting the picture, `xMidYMid meet`** — the drawing slides off the cells the author set it on; **the earlier part on top** — a new part would go under the old, and Next might show nothing;
+- **scrolling to the picture on the stage** — it stands at its old place until the next frame;
+- **Next and Demo on a bar with «Continue» in a row of its own, or drawn by `app`** — options (b) and (c) of В85, R84.
 
 — *Revisit:*
-- the demo's own buttons, to be made ones that can be switched off, if `app`'s lesson player wants one «Дальше» button for parts and segments alike;
+- Next and Demo made ones that can be switched off, if `app`'s lesson player wants one Next for parts and segments alike;
 - `filled` for a slot in a zone — with the epic of zones (R32);
-- a learner's writing on an example's sheet and a demo above a lesson's task — with the format's minor versions (R58 spec);
-- the buttons and the announcement — with the standard of T07 `app` (О-24).
+- a learner's writing on an example's sheet, and a demo above a lesson's task — with the format's minor versions (R58 spec);
+- on devices (Д7 in [run/DEBT.md](../run/DEBT.md)): VoiceOver on the `status` region in a shadow root and on the hidden demo layer; scrolling and pinch over the example's sheet by finger and pen on iPad; the sheet's place in an element without a height as the list grows; a picture in the same press, the frame's fallback and a picture on an area by a `blob:` URL in Safari; the scroll to the `visibility: hidden` spot.
 
-— *Consequence:*
-- **T57** — `filled` on a sheet by this decision;
-- **T58** — the check of the example and its parts;
-- **T59** — the property `workedExample`, the example's mode and the row without tools;
-- **T60** — the list of parts, the buttons, `demoState` and `demochange`, the `status` region;
-- **T61** — the pictures on the sheet's areas and their descriptions in the list;
-- **T22** in E5 — VoiceOver on the `status` region in a shadow root, and the scrolling of an example's sheet on a tablet;
-- **В52–В54** — rows «в реестр spec» in table 3 of RUN.md;
-- amendments to R28, R37 and R40.
-
-— RUN.md, T56–T61, table 3; [architecture.md](architecture.md), the status, sections 2, 2.8 and 4.
-
-— *Amendment 2026-11-01:* T58 built the example's type and its check. The example is the type `WorkedExample` of the `spec` package, and canvas's own narrowed types are `CheckedExample`, its canvas `ExampleCanvas` and its parts `ExamplePart`: a paragraph, a picture beside the sheet and a picture on an area, `AreaPicture` (`src/core/example.ts`). The check `exampleOf` names a field by its path from `workedExample`. The canvas is only a sheet with a grid, and `tools` and a workbook are a `TypeError`; a picture on an area has no size of its own, and the area lies on the sheet by the rule of `lesson.areas`. The equality `sameExample` is by content, with the default grid. The entry points give the type `WorkedExample`, but not the check. — RUN.md, T58.
-
-— *Amendment 2026-11-01:* T59 built the property `workedExample` and the example's mode. The author's answers in planning T59, both as recommended:
-- **the sheet takes no input**, this way: the drawing surface has `pointer-events: none` and `touch-action: auto` — by a CSS rule on the sheet's class, not by the element's style, so that without the class the drawing surface inherits the consumer's `none` again (R20). A press reaches the scene: a finger and a pen scroll the container or the page by native scrolling, and a pinch zooms, as over the statement (R23). An example's sheet neither turns pen mode on nor off (R29). The ban on the context menu and on selection moved from the drawing surface to the scene, and at the start of the press handler stands a guard for events that a script sends straight to the drawing surface. Rejected: `touch-action: pan-y` on the drawing surface — the events would come, each handler would filter them out itself, and a pinch over the sheet would not zoom;
-- **the row «Пример»** is built by the same row of buttons: it knows its kind — sheet, workbook or example — and hides the writing buttons by the attribute `hidden`. When the visibility changes, the Tab stop and the focus move off a hidden button to the first visible one. Before T60 that is «Выше», and from T60 on, «Дальше». Rejected: a row of the example's own — a second copy of the keyboard, the labels and the theme.
-
-Also decided in execution:
-- the element checks its state before the value: an example with a task set, a non-empty history or a stroke in progress is a `TypeError` before the check of its shape. Each property removes only its own, and `task = undefined` with an example does not remove the example;
-- whatever the hands held when the example came — a palm, two scrolling fingers — goes: the sheet takes input no more, and the captured pointers run to their lift and do nothing;
-- as long as no button of the row has been in focus, the Tab stop is on the first visible button, whichever it has become: «Перо» on a sheet, «Выше» on an example (R28);
-- an example's sheet never has marks: the check of the marks rejects a submission without groups or without lines, and an example's history is empty. There are none to remove on entering an example;
-- React 19.3.1's sources: React assigns `undefined` to a removed property of a custom element, and the element gets `null` only if the consumer wrote it itself. The README needs no note about it. But React assigns the changed properties in JSX order, so `app` gives each segment a new element — in React, by a new `key` — and imports the entry point before the first render: before the registration React writes an attribute ([architecture.md](architecture.md), sections 3.3 and 4).
-
-— `src/core/example.ts`, `src/element/`, `demo/`; [architecture.md](architecture.md), sections 3.1, 3.3, 3.7 and 4; RUN.md, T59; README.md.
-
-— *Amendment 2026-11-01:* T60 built the parts of the demo. The author's answers in planning T60, all as recommended:
-- **the labels** are «Дальше» and "Next", «Показ» and "Demo": in concepts 15 spec, «показ автора» is demo. The `status` region announces an opened part so: «Часть 2 из 4.» or "Part 2 of 4." in the labels' language, and after it the part's text or the picture's description in the manifest's language; for a decorative picture, only the number. «Из 4» tells how many are left and is not declined. Rejected: a number without the total — the learner would learn of the demo's end only by a faded «Дальше»;
-- **«Показ»** tells of itself by a triangle — ▾ while the demo is visible, and ▸ when it is hidden —, an SVG with no name, and the label does not change: the state for a screen reader is `aria-expanded`. A hidden demo and a demo with no opened parts take no space, and nothing else is seen. Rejected: a fill, as for the chosen tool — from the first second it distracts from «Дальше» and reads as a toggle; a line «Показ спрятан» in place of the list — it repeats the triangle;
-- **React 19** assigns properties in JSX order, so `app` writes `workedExample` before `demoState`, as `history` before `marks`, and listens to `ondemochange`. As with `tool`, `app` either gives no state at all or gives what `demochange` said: a new literal on every re-render would bring the demo back to its start. The property stays as it was. Rejected: the element keeps a state that came before the example and checks it later — an error in it would surface later, and not where it was made;
-- **by rule 11** T60 is split: T64 takes the shared loading of the pictures of the statement and of the list, and the order is T60 → T64 → T61, since the demo layer needs the same loading. Until T64 a picture beside the sheet in the list is a frame of its own size with its description, like a picture of the statement whose file has not come.
-
-Also decided in execution (the architect agent's review and the code):
-- `demoState` is the element's own frozen object: what is assigned is checked and copied, and an assignment equal by content leaves the same object. The start is one frozen object for all elements. The element checks the state before the value: without an example, a `TypeError` before the check of its shape. Both entry points give the type `DemoState`: `app` keeps the state on the device, like the writing history;
-- the `status` region empties on an assignment of the state, on «Показ» and on a new or removed example: then the same words can be announced again. The part's number is in the labels' language, as the row of buttons finds it, not in the `lang` attribute's: with `lang="fr"` the number is English and marked `en`. The part's words are in the manifest's language, and without a manifest without a `lang` of their own. The region is out of sight for all but a screen reader, not hidden: a hidden one announces nothing;
-- a picture on an area in the list is a list item inside which is a `role="img"` with its description: the role on the item itself would take the item's own role off it. A decorative picture beside the sheet is a frame of its own size with no name, and one on an area an empty item;
-- on a press of «Дальше» the layout runs at once, before the item is scrolled into view: otherwise the scroll event would count the visible part by the sheet's old place, and `ResizeObserver` would bring the scroll back. The item comes into view by its nearest edge, and if the row of buttons sticks above it, whatever scrolls back goes back by as much as the row covers of it, and a scroller at its start passes the rest on to the next one, as «Выше» does (R33). One `scroll-margin` in CSS would act on every scroll of the chain — on the sheet's container, above which the row stands, and on the page, above which it sticks. An element without a height does not hold the sheet in place, as when the statement grows: the page's scroll anchor is the host. T22 will check it;
-- «Дальше» and «Показ» stand first in the row and are hidden by the attribute `hidden` on a sheet and a workbook, so there are now nine buttons in the row. The Tab stop in an example is on «Дальше», and a removed example hands the focus from «Дальше» to the pen's button.
-
-— `src/core/example.ts`, `src/element/`, `demo/`; [architecture.md](architecture.md), sections 2.8, 3.1, 3.3 and 3.7; RUN.md, T60 and T64; README.md.
-
-— *Amendment 2026-11-01:* T64 built one loading of the pictures of the statement and of the demo, `Pictures` (`src/element/pictures.ts`). The author's answer in planning T64, as recommended:
-- **the element asks for all the example's pictures when the example comes**: the statement's, and those of the parts beside the sheet and on the sheet's areas, which T61 will place. The file and the URL are held while the example names the reference, and the URL is decoded before it is shown: a part that «Дальше» opened shows its picture in the same press, and a hidden demo and a `demoState` with a smaller `opened` ask for no files again. The price is the files of the parts the learner will not open, within one example. Rejected:
-  - loading when a part is opened: each opened part would first show its description, and with an `app` that takes media over the network perhaps for seconds. A picture on an area would come later than its part, and fewer opened parts from `app` would drop files, which would be asked for again;
-  - the files at once, and the URL and the decoding on showing: a frame or two of the description on every «Дальше», and each kind of picture would decode the file itself, and `SVGImageElement` in the IDL of SVG 2 has no `decode()` — Chromium gives it beyond the standard.
-
-Also decided in execution (the architect agent's review and the code):
-- the references are named by one place of the element — the change of the template, right after the statement has changed its frames. A file that both the past and the new ones name stays, and is seen in the new frame at once, and the references gone are removed when their frames are no more — with no needless writes into frames that are going. A reference named again the loading leaves alone, and a reference without a file it asks for again; a loading in progress runs to its end, and its file goes to the reference only if it is named again;
-- a picture is shown by its display — what to show at the URL and what to do when the URL has gone —, and the loading keeps the displays apart from the named references. The frame of the statement and of the list of parts is one such display, `framed` in `statement.ts`, and T61's demo layer will set its own, without a frame;
-- Chromium shows a new `<img>` with an already decoded URL synchronously — that is how the HTML Standard describes the document's list of available images —, and the loading holds the picture that decoded the URL while the URL lives. A browser may throw an entry out of the list or not keep it at all: then the frame waits for its picture to decode and until then shows the description, not emptiness. T22 will check Safari;
-- a picture's frame in the list of parts stands in its item's line, from its top: the item's number is then at the top, as for a paragraph, not at the picture's bottom edge;
-- the test "an equal example changes nothing" waited for one call of `media`, and an example with parts gives a call for each reference — now it checks the list of references.
-
-The sources are [architecture.md](architecture.md), section 4, "Shared loading of pictures".
-
-— `src/element/`, `demo/`; [architecture.md](architecture.md), sections 3.3, 3.7 and 4; RUN.md, T64 and T61; README.md.
-
-— *Amendment 2026-11-01:* T61 put the pictures on the sheet's areas on the layer of the author's demo. The author's answers in planning T61, all as recommended:
-- **the demo layer is SVG.** A picture on an area is an `<image>` with the area's `x`, `y`, `width` and `height` in the sheet's units, and the layer's `viewBox` is written by the same layout as the template's, the sketch's and the marks', in the frame of the ink (R23). Rejected: an HTML block 1000 × 1400 with the matrix (k, 0, 0, k, 0, −vy·k) — a second way of shifting beside `viewBox`, a shift across the whole sheet, which R23 rejected for SVG. The matrix remains the widget layer's, when it comes;
-- **the picture is stretched over the area**, `preserveAspectRatio="none"`: the picture's corners are at the area's corners (SVG 2). That is how "at the size of its area" (the format's README, §21) and "to the size of the area" above read, and where the drawing falls on the sheet's cells does not depend on the file. The price is distortion, if the author did not give the area the picture's proportions, as the format bids. Rejected: fitting it in, `xMidYMid meet` — the drawing slides off the cells the author set it on, and its size is no longer the area's;
-- **of overlapping areas, the later-opened part is on top**, by the order of the SVG document: what the learner has just opened is seen whole. Rejected: the earlier-opened on top — a new part would go under the old ones, and «Дальше» might show nothing.
-
-Also decided in execution (the architect agent's review, a probe and the code):
-- the pictures on the sheet are set and removed by the list of parts, `Parts`, together with their items: each part with an area, a decorative one too, is an `<image>` at the end of the layer's group and a display of its own in the loading (T64), without a frame. The place of an `<image>` and of a workbook's box is set by one helper, `placeOver`. While there is no file or it is not decoded, the sheet is empty there, and the description is in the item. A hidden demo is `display="none"` on the group: SVG has no attribute `hidden`. A new example gives the group its visibility back;
-- an opened picture on an area scrolls the sheet to the area's block in the sheet itself, not to the picture in the sticky scene: until the next frame that one stands at its old place, and the row that covers it would be counted wrongly. The block is `visibility: hidden`: otherwise a positioned neighbor of the scene would be drawn and take the pointer over the drawing surface —, and its place is in fractions of the sheet, so the layout has nothing to write. It is set by the item, which remembers its area, and `clear()` removes the place: then no task after an example depends on `visibility`. An area taller than the visible part comes into view by its top, under the row: from below "nearest" places it so, and from above "nearest" places its bottom, and the row's loop brings the top back;
-- a probe in Chromium: an `<image>` with a URL that the loading decoded is drawn in the nearest frame after its insertion, and without the decoding a large picture comes some six frames later. In forced colors a picture on the sheet is in its file's colors: CSS Color Adjust changes only the colors of properties;
-- the review held that an SVG file without `viewBox` is not stretched in `<image>`, and that the tests therefore need a PNG. The probe refuted it: Chromium stretches an SVG file, with `viewBox` and without. The tests need a PNG of four colors because the corners of a one-colored picture cannot be seen on a snapshot, and the format gives pictures only as rasters.
-
-For T22: Safari and iPad — a picture on an area by a `blob:` URL in the first frame, the scroll to a `visibility: hidden` block, and VoiceOver, which does not see the demo layer.
-
-The sources are [architecture.md](architecture.md), section 4, "Pictures on the sheet's areas".
-
-— `src/element/`, `demo/`; [architecture.md](architecture.md), sections 3.1, 3.2, 3.3, 3.7 and 4; RUN.md, T61 and table 3; README.md.
-
-— *Amendment 2026-11-01:* T62 brought what epic E7 decided together into [architecture.md](architecture.md), section 3.9, and subsection 2.8 is "Decided" and stays as a record. E7 was done on 2026-11-01: T55, T56, T57, T58, T59, T60, T64 and T61, and beside it, outside the epics, T63 (R40–R42). There are no new decisions, and the next number is still R43. The "Consequence" of E7's decisions for the tasks of E5, whose bodies in the archive of E2 are not edited:
-- **T22** — on the devices, beyond the list of the 2026-10-27 amendment to R34: VoiceOver on the polite `status` region in a shadow root and on the hidden demo layer; the scrolling of an example's sheet by finger and by pen, and a pinch over it, on iPad; a sheet that shifts, on an element without a height, when the list of parts grows; an opened part's picture in the same press, the frame's fallback decoding and a picture on an area by a `blob:` URL in Safari; the scroll to an area's block with `visibility: hidden`;
-- **T24** — the first release carries the lesson's worked example too: the properties `workedExample` and `demoState`, the event `demochange`, and in the README the order of the properties for React (R44 spec; section 3.4). Where this release is to be — in E5, or as an epic of its own, E8, with a task of the package alone that it would take out of T24 — the author decides: `spec`'s cross-repository plan asks for the first release before `app`'s code (В56 in table 3 of RUN.md);
-- **T18–T21** — the example gives no samples: the learner does not write on its sheet (R58 spec), so the synthetic samples and the samples page do not need it, and the sheet and the workbook in them are as before.
-
-— RUN.md, T62, tables 2–4; [architecture.md](architecture.md), the status, sections 1, 2, 2.8, 3, 3.1, 3.4 and 3.9; README.md.
-
-— *Amendment 2026-11-01:* the author answered В56: the next epic is E8 «Первый релиз» of table 2 of RUN.md, taken the same day, and E7, together with T63, went to the archive [plan/E7.md](plan/E7.md). For T24 of the "Consequence" of the amendment above this means: the first release puts out the package alone — both canvas kinds and the worked example — by a task that E8 will take out of T24, and the samples page and the synthetic samples stay T24 in E5 and come out in later releases. The first release's composition, an amendment to R08, is for the planning of that task to decide, and before the release itself comes the move to a tag of `spec`'s line 0.6: the format 0.2 and `spec`'s types of the element. So the first release comes out when `app` waits for it: `spec`'s cross-repository plan puts it before `app`'s code, after E7 and the move to the line 0.6 (COORDINATION.md on `spec`'s `main`, commit c0e7c98, read 2026-11-01, rows 5.3 and 5.5). Rejected: E5 whole — the release would wait for the eval protocol and the texts of consent, epics E3 and E4 in `spec`'s RUN.md; taking no epic yet — `app` would be left without a package.
-
-— RUN.md, «Сделанные эпики», tables 1–4; [plan/E7.md](plan/E7.md); [architecture.md](architecture.md), sections 2.8 and 3.4; README.md; CLAUDE.md.
-
-— *Amendment 2026-11-02:* `spec` recorded the rows «в реестр spec» on 2026-11-01, all as `canvas` recommended: В52–В54 by a second amendment of the same day to R36 spec, В55 by a second amendment to R51 spec, and В51 by the card architecture 3.2 spec (Д58 in `spec`'s RUN.md). The types `workedExample`, `demoState`, `DemoState`, `DemoChangeEvent` and `demochange` came out in `@altnovatrail/spec/canvas`, and T69 takes them. A module's picture SHOULD have an opaque light background, and `module-kit` warns of a transparent one, so `canvas` needs no backing under a picture. — R44.
-
-— *Amendment 2026-11-02:* the triangle of «Показ» gave way to icons of the set, by the table of architecture 6 spec: an arrow down while the demo is visible, and one along the row when it is hidden, mirrored in right-to-left. The state is still told by `aria-expanded`, and the label does not change. «Дальше» has an arrow forward, mirrored too (R46). — R46.
-
-— *Amendment 2026-11-09 (T85):* **with the format 0.4 a worked example may stand on a workbook too: the element lays out the example's lines as a task's lines, and the demo's step `fill` writes in the value of its box — R61.**
-
-— *Amendment 2026-11-11 (T93):* the example's row of buttons is called «Кнопки примера», "Worked example buttons", and «Пример» is the name of its scroll container, while it scrolls (the T93 amendments to R28 and R33). — R28, R33.
-
-— *Amendment 2026-11-11 (T94):* **a worked example has the zoom's pair in its row too, and, while the sheet is zoomed, «Левее» and «Правее» as well (R73).** A finger on its sheet scrolls along both axes by native scrolling; the example's parts stick to the container's left edge at the width of the fit; «Дальше» brings a picture's area into view sideways too, `scrollIntoView` with `inline: "nearest"`. When it brings a part out from under the row, the scroll of the chain runs again as long as each of its steps leaves less covered than the last: a row that the element's bottom has pressed above its place drops into its place as the page scrolls and covers the part again, and the next step brings it out. This came out with a taller row. — R73.
-
-— *Amendment 2026-11-17 (T121):* **«Дальше» and «Показ» stand no longer in the row of buttons but in a row of glass of their own at the bottom of the element, each with its label, each a stop of Tab of its own, with no arrows between them, and after a line the named slot `actions`, where `app` puts its «Continue»; the example's bar, still named «Кнопки примера», holds the zoom's pair alone (R84; the author's answer (a) to В85, 2026-11-17).** The reading order is the bar, the row, the statement and the list of parts. A part that Next brings into sight stops above the row. What this entry and its amendments say of «Выше» and «Ниже» on the example no longer holds (the T121 amendment to R33). — R84; RUN.md, T121.
+— RUN.md, T56–T61 and T64 (bodies — [docs/plan/E7.md](plan/E7.md)), T121 ([docs/plan/E13.md](plan/E13.md)); T251 of spec's RUN.md; [architecture.md](architecture.md), sections 2.8, 3.1, 3.3, 3.9 and 3.10; sources 9.14, 9.15 and 9.16; R20, R23, R26, R28, R29, R32, R33, R37, R46, R61, R73, R84, R88; R58 spec, R90 spec; `src/core/example.ts`, `src/element/index.ts`, `src/element/parts.ts`, `src/element/pictures.ts`, `src/element/tools.ts`.
 
 **R43. The test coverage of `canvas` goes to Codecov from `.github`'s TypeScript wrapper. `ci-test` writes it, by the flag `--coverage`, as one lcov report, `coverage/lcov.info`, with the v8 provider over all three Vitest projects. The report holds only the package's code — every module of `src/` but the tests, fixtures and type checks, and also one that no test loads, with zeros. `.github`'s wrappers are at v0.1.12, and a merge is held by `codecov/patch`, at least 90 % of the changed lines, once the author puts it in the ruleset.**
 - **The contract** — the 2026-11-01 amendment to R19 .github and architecture 3.3 .github, "Coverage", at v0.1.12: the report is exactly `coverage/lcov.info`; a module without tests is in the report with zeros, through `coverage.include`; Vitest cleans `coverage/` itself; the caller has no artifact `typescript-coverage` of its own; its job gives `contents: read` and `id-token: write`; `.github/codecov.yml` follows `.github`'s template: patch 90 %, project only for information, a comment only when the coverage changes.
@@ -3550,49 +3043,37 @@ The sources are [architecture.md](architecture.md), section 4, "Pictures on the 
 
 — RUN.md, tables 1–4; T73 in [plan/E8.md](plan/E8.md); [architecture.md](architecture.md), the status and sections 2.4, 3.3, 3.4, 3.6, 3.7, 3.9 and 4; README.md; CLAUDE.md; `.devcontainer/`; `.github/dependabot.yml`; `package.json`; `package-lock.json`; `src/element/pictures.ts`, `src/element/index.ts`, `src/element/interface.check.ts`, `src/element/consumer.test.ts`.
 
-## The icons of the row's buttons
+## The icons of the element's buttons
 
-**R46. Each button of the row shows, before its label, an icon of the set Material Symbols by the table of values of architecture 6 spec (R78 spec). The icons are written into the module `src/element/icons.ts` by the script `scripts/icons.ts` from the set's package `@iconify-json/material-symbols` 1.2.97, with `@iconify/utils` 3.1.7 — both in `devDependencies` —, and the same script writes `NOTICE`, which goes into the package's archive. `ci-lint` fails if the module or `NOTICE` is not what the script writes. An icon is an SVG with no name for a screen reader, in the color of the button's text; the chosen tool's has a fill, «Показ»'s is an arrow down or along the row, and those of «Отменить», «Дальше» and a hidden «Показ» are mirrored in right-to-left. The label stays the button's text, and the button's padding is 8 px instead of 16, so that the row loses no room.**
+**R46. Each button of the element shows an icon of the set Material Symbols, style Rounded, by the table of values of architecture 6 spec (R78 spec). The script `scripts/icons.ts` writes them into the module `src/element/icons.ts` from the set's package `@iconify-json/material-symbols`, with `@iconify/utils` — both in `devDependencies` —, and writes `NOTICE`, which goes into the package's archive; `ci-lint` fails if either is not what the script writes. An icon is an SVG with no name for a screen reader, in the colour of its button's text; the chosen tool's and the shown task's are filled, and those of «Отменить», «Дальше» and a hidden «Показ» are mirrored right to left.**
+- **The values**, `TABLE` of `scripts/icons.ts`, by their buttons' keys in `labels.ts`:
+  - the bar (R84): «Перо» `ink-pen`, «Ластик» `ink-eraser` and «Рука» `pan-tool` (R88), each filled while it is the tool in use; «Отменить» `undo`, mirrored; «Очистить» `delete-sweep`;
+  - a task from paper (R87): "Hide the task" and "Show the task" `article`, filled while the tracing paper is shown; the grid's button, by the grid it shows (R88): dots `background-dot-small`, lines `view-headline`, blank `crop-square`, squares `grid-on`;
+  - a worked example's row (R42): «Дальше» `arrow-forward`, mirrored; «Показ» `keyboard-arrow-down` while the demo is shown and `keyboard-arrow-right`, mirrored, while it is hidden — the state is still told by `aria-expanded`;
+  - a value without a fill takes the outline in both states. A button that `canvas` brings in and the table lacks gets its icon by a row «в реестр spec» for architecture 6 spec, and stands in `TABLE` meanwhile.
 - **How an icon gets into the build:**
-  - the script holds the table of the row's values — the base of the name, the fill and the mirroring — as architecture 6 spec gives it, and takes from the set the outline `<base>-outline-rounded`, and, where there is a fill, `<base>-rounded` too. A name that the set does not have, or an icon not made of filled `path` contours alone, stops the script. For the line icons — the arrows and «Отменить» — the outline in the set is an alias of the fill, as R78 spec says;
-  - the module is data: each icon has its name, `viewBox` and the contours `d`, and each value of the row its icons and mirroring. The element builds the SVG through `createElementNS`, without `innerHTML`, so a page's Trusted Types policy does not touch it, and the SVG has its own size of one letter — in case the element's style does not come. The module is formatted by the same Biome that `ci-lint` checks with — the script runs it with this same Node by its path in `node_modules`, without looking for the program in `PATH` —, and its header names the set, its version and its license. The module is excluded from SonarCloud's search for duplicates, `sonar.cpd.exclusions` in `.sonarcloud.properties`: SonarCloud reads records of one kind as copies of each other, and in pull request #72 it counted 72 duplicated lines, 10.8 % of the new lines, against the threshold of 3 %;
-  - at run time, not one request: the contours are in the build (R78 spec; R07). `canvas` has no bundler — only `tsc` (R12) —, and a bundler's plugin does not suit it;
-  - `just icons` writes the module and `NOTICE` anew, and `node scripts/icons.ts --check` in `ci-lint` checks them, as `spec`'s `just types-check` checks its types. A raise of the set by Dependabot is red until `just icons` is run in its pull request.
-- **`NOTICE`** names the set, its author and its license, the address `google/material-design-icons` and the version of the set's package (R78 spec). It is in `files` of `package.json`, `scripts/package.ts` requires it in the archive, `release-files` puts it into the archive, and `release.yml` into the list of the release's paths. The license text is the `LICENSE` of the package itself, the same Apache-2.0.
-- **Licenses and versions.** `@iconify-json/material-symbols` is Apache-2.0, `@iconify/utils` and its five dependencies MIT: all from `spec`'s list, without exceptions. The icons go into what ships, though the set's package is in `devDependencies` (the 2026-11-02 amendment to R39 spec), and the code of `@iconify/utils` does not: only the set's data gets into the module. Both versions are the latest that came out no later than three days before installation (R12): 1.2.97 on 2026-10-28, 3.1.7 on 2026-09-06 (the npm registry, read 2026-11-02).
+  - the script takes from the set the outline `<base>-outline-rounded`, and, where there is a fill, `<base>-rounded` too. A name the set does not have, or an icon made of anything but filled `path` contours, stops it. For the line icons, such as «Отменить», the outline in the set is an alias of the fill, as R78 spec says;
+  - the module is data: each icon its name, `viewBox` and contours `d`, and each value of `ROW` its two icons and its mirroring. The element builds the SVG through `createElementNS`, without `innerHTML`, so a page's Trusted Types policy does not touch it, and the SVG has its own size of one letter, should the element's style not come. The script formats the module by the Biome `ci-lint` checks with, run by this Node from `node_modules`, not from `PATH`, and its header names the set, its version and its license. `.sonarcloud.properties` excludes the module from the search for duplicates, `sonar.cpd.exclusions`: SonarCloud reads records of one shape as copies of each other (in pull request #72, 72 lines, 10.8 % of the new ones, against a threshold of 3 %);
+  - at run time not one request: the contours are in the build (R78 spec; R07). `canvas` has no bundler, only `tsc` (R12);
+  - `just icons` writes the module and `NOTICE` anew, and `node scripts/icons.ts --check` in `ci-lint` checks them, as `spec`'s `just types-check` checks its types.
+- **The set's version** is the one a row of spec's COORDINATION.md names for `canvas`, `skill-map` and `app` together, which build in the same set, and it moves only by such a row: Dependabot ignores the package in `.github/dependabot.yml`, and the change that raises it runs `just icons` in its own branch ([sources 5.10](sources.md)). `@iconify/utils` moves by R12. The version is set in `package.json` and its lock file.
+- **`NOTICE`** names the set, its author, its license and the address `google/material-design-icons`, and the set package's version (R78 spec). It is in `files` of `package.json`, `scripts/package.ts` requires it in the archive, `release-files` puts it there, and `release.yml` lists it among the release's paths. The license text is the package's own `LICENSE`, the same Apache-2.0.
+- **Licenses.** `@iconify-json/material-symbols` is Apache-2.0, `@iconify/utils` and its dependencies MIT, all from `spec`'s list without exceptions. The icons ship though the set's package is in `devDependencies` (R39 spec); the code of `@iconify/utils` does not, only the set's data gets into the module.
 - **The look:**
-  - the icon is before the label, 1.125em, with a gap of 4 px; the button's padding is 8 px at the sides instead of 16, and its height and width are no less than 44 px (R28). With the former padding and an icon of 1.25em, the row in pen mode wrapped onto an extra line already at a width of 800 px. With the chosen ones, the row of the sheet, of pen mode and of the example stands in as many lines as without icons, in English at 360, 400, 600, 768, 800 and 1000 px, and in Russian at 360, 480, 800 and 1000 px, while an extra one remained for the sheet at 480 px in English and at 600 px in Russian, and in pen mode at 400 and 768 px in Russian (a measurement in Chromium, 2026-11-02);
-  - the color is `currentColor`: in forced colors mode an icon is in the color of its button's text: ButtonText, HighlightText for the chosen tool, GrayText for an unavailable button (R23);
-  - the fill is on the chosen «Перо» or «Ластик», and their choice is still told to a screen reader by `aria-checked`. On «Рисовать пальцем» no fill is seen: the finger mode, once on, hides the button (R29);
-  - «Показ» — an arrow down while the demo is visible, and along the row when it is hidden, instead of R42's triangle, and the state is still told by `aria-expanded`;
-  - in right-to-left, the row's `:dir(rtl)` mirrors the icons of «Отменить», «Дальше» and a hidden «Показ»: their direction runs along the row (architecture 6 spec). So do the keyboard's arrows: the one that points along the row leads to the next button — in right-to-left, ArrowLeft —, otherwise the arrow of «Дальше» and the key would lead different ways. Before T73 ArrowRight led to the next button in either direction (R28).
-- **The label** is visible beside the icon until the accessibility standard of T07 `app` decides otherwise (О-24; R78 spec).
+  - on the bar a button shows its icon alone, 20 px in a target of 44 × 44 CSS px, its label in the button out of sight and in its tooltip (R84); «Дальше» and «Показ» show their label beside the icon, 20 px too;
+  - the colour is `currentColor`: the tool in use is the accent, the others the ink's colour; in forced colours an icon is ButtonText, HighlightText for the chosen tool and GrayText for an unavailable button (R23, R84). The choice of a tool is still told by `aria-checked`;
+  - right to left, the bar's `:dir(rtl)` mirrors the icons of `mirrored` values: their direction runs along the reading. The bar itself stays at the element's left (R84).
 
-— *Why:* R78 spec and Д61 in `spec`'s RUN.md bid `canvas` set the icons by its move to the tag, and I decided in planning T73: in the same branch. The way is the one R78 spec names for a package without a bundler: a script on `@iconify/utils`, and a check in CI by Д61 there too. The contours are data, not SVG text: the element builds its SVGs through the DOM anyway. The padding of 8 px is by measurement: an icon with its gap added ≈ 26 px to a button.
+— *Why:* R78 spec bids every UI package draw the one set and build its icons in without a request at run time; for a package without a bundler its way is a script on `@iconify/utils` with a check in CI. The contours are data, not SVG text, since the element builds its SVGs through the DOM anyway. One version by a row of COORDINATION.md: the 2026-11-17 amendment to R78 spec, after the author's answer to a question of `app`, «Одна версия по строке плана» — `app` builds in `canvas`, `skill-map` and its own icons at one version of the set, and Dependabot's raises a week apart would split it.
 
 — *Rejected:*
-- unplugin-icons and other bundler plugins — there is no bundler (R12);
-- SVGs copied into the repository, and Iconify components that fetch icons over the network — R78 spec rejected them;
-- an icon's body as an SVG string through `innerHTML`: on a page with Trusted Types it would fail;
-- a module without a check in CI: a hand edit or a new version of the set would silently drift apart from `NOTICE` and from the table;
-- a padding of 16 px — the row wrapped onto an extra line; an icon of 1em — smaller than the label, and it wins no more in width than 1.125em with a padding of 8 px (a measurement);
-- a fill on «Рисовать пальцем», which nobody would see.
+- **unplugin-icons and other bundler plugins** — there is no bundler (R12);
+- **SVGs copied into the repository, and Iconify components that fetch icons over the network** — R78 spec rejected them;
+- **an icon's body as an SVG string through `innerHTML`** — on a page with Trusted Types it would fail;
+- **a module without a check in CI** — a hand edit or a new version of the set would silently drift from `NOTICE` and from the table;
+- **the set raised by Dependabot** — each package would move on its own, and `app` would build in two versions.
 
-— *Revisit:*
-- when T07 `app` decides whether the label is visible beside the icon (О-24);
-- when `canvas` brings in a tool that is not in the table: its icon is named by an amendment to R78 spec on a row «в реестр spec», and the set has no protractor.
-
-— *Consequence:* amendments to R28 and R33 — the icons, «значки», in "Rejected", to R42 — the triangle of «Показ», to R12 — two packages and the script. In E5 the page's build carries the icons, and the notices in its file name the set (T19).
-
-— `scripts/icons.ts`, `scripts/icons.test.ts`, `src/element/icons.ts`, `src/element/tools.ts`, `src/element/index.ts`, `NOTICE`, `package.json`, `justfile`, `scripts/package.ts`, `.github/workflows/release.yml`, `.github/dependabot.yml`, `.sonarcloud.properties`; `src/element/tools.test.ts`, `src/element/forced-colors.test.ts`; [architecture.md](architecture.md), sections 3.3, 3.4 and 3.7; RUN.md, T73 in [plan/E8.md](plan/E8.md).
-
-— *Amendment 2026-11-11 (T94):* **four more values of the row — «Крупнее», «Мельче», «Левее» and «Правее» — with the icons `zoom-in`, `zoom-out`, `arrow-left-alt` and `arrow-right-alt`, without a fill and not mirrored (R73).** `arrow-forward` is already «Дальше»'s, and `arrow-left-alt` has another arrowhead. В76 carries them into the table of architecture 6 spec; until it is recorded they are in `TABLE` of `scripts/icons.ts`. — R73.
-
-— *Amendment 2026-11-12 (T110):* **`spec` took the four values of the T94 amendment, with their icons, into the table of architecture 6 spec by В76 (Д219 spec): in `TABLE` of `scripts/icons.ts` they now follow the table, like the rest.** — R73, R77; RUN.md, T110.
-
-— *Amendment 2026-11-17 (T121):* **the values up, down, left and right leave the table of `scripts/icons.ts` and `src/element/icons.ts` with their buttons, and the buttons of the bar show an icon alone, 20 px, their label out of sight (R84).** Next and Demo of a worked example keep the label beside the icon. — R84; RUN.md, T121.
-
-— *Amendment 2026-11-18 (T126):* **the set's package `@iconify-json/material-symbols` is 1.2.99, the version of `skill-map`, and it moves only by a row of spec's COORDINATION.md, together with `skill-map` and `app`, which build in the same set: Dependabot ignores it in `.github/dependabot.yml`.** "A raise of the set by Dependabot is red until `just icons` is run in its pull request" above is replaced by this: the change that raises the set runs `just icons` in its own branch. The version is the row's, not the latest past R12's pause: 1.2.100 came out on 2026-11-14 (sources 7.12). `just icons` wrote the row's icons the same, and only the set's version in the header of `src/element/icons.ts` and in `NOTICE` changed. Dependabot's pull request #134, to 1.2.99, is closed unmerged. *Why:* the 2026-11-17 amendment to R78 spec, after the author's answer to a question of `app`, «Одна версия по строке плана»: `app` builds in `canvas` and `skill-map` and its own icons at one version of the set, and three Dependabot raises a week apart would break it; the first raise is row 5.20 of spec's COORDINATION.md ([sources 5.10](sources.md)). *Rejected:* merging #134 — the set would still move by Dependabot after it. — R12, R78 spec; `.github/dependabot.yml`, `package.json`, `package-lock.json`, `NOTICE`, `src/element/icons.ts`; RUN.md, T126.
+— `scripts/icons.ts`, `scripts/icons.test.ts`, `src/element/icons.ts`, `src/element/tools.ts`, `src/element/index.ts`, `NOTICE`, `package.json`, `justfile`, `scripts/package.ts`, `.github/workflows/release.yml`, `.github/dependabot.yml`, `.sonarcloud.properties`; `src/element/tools.test.ts`, `src/element/forced-colors.test.ts`; [architecture.md](architecture.md), sections 3.3, 3.4 and 3.7.
 
 ## `spec` tag v0.9.8
 
@@ -4523,84 +4004,62 @@ How it is built — [architecture.md](architecture.md), section 3.3.
 
 — RUN.md, T102, table 3; R67, R69, R71; [architecture.md](architecture.md), section 3.6; the README of the part `legal` in `spec`; `scripts/legal.ts`, `scripts/legal.test.ts`, `page/sets.ts`, `page/steps.ts`, `page/texts.ts`, `page/main.ts`, `scripts/page.ts`, `justfile`, `tasks/spec-v0.15.0/`.
 
-## The sheet's zoom
+## The sheet past the page
 
-**R73. The sheet is zoomed by the row's buttons «Крупнее» and «Мельче» — from fit to the width up to twice as large, in steps of a quarter —, one zoom for the whole page, in its memory. A zoomed-in sheet scrolls in its container across too: by the row's «Левее» and «Правее», two fingers and keys —, and the statement and the parts of the example stay at the fit width, at the left edge. The drawing surface is only the visible part, on both axes. With this the print of the workbook's lines grows up to 200 %, and the nonconformance 1.4.4 that `app` declared goes away (R90 spec).**
-- **The zoom** z is 100, 125, 150, 175 or 200 %; `k = min(A / 1000, 1) × z`. The fit holds the limit of 1000 CSS px of R23, and the zoom goes beyond it: on a wide screen at 200 % the sheet is 2000 CSS px. The browser's zoom works as before: it grows the sheet while the area is wider than 1000 CSS px, and the buttons do always (technique G178).
-- **The buttons** are the pair «Крупнее» and «Мельче», "Zoom in" and "Zoom out", after «Выше» and «Ниже», with the icons `zoom-in` and `zoom-out`; at the limit a button is disabled, `aria-disabled`, and keeps focus. While z is above 100 %, they are followed by the pair «Левее» and «Правее», "Left" and "Right", with the icons `arrow-left-alt` and `arrow-right-alt`, which are not mirrored: the sides are the screen's. The pair across stands after the zoom pair: the last «Мельче» hides it and does not move the buttons under the finger. In a right-to-left row — by `dir`, as its icons are mirrored (R46) — «Левее» still stands to the left of «Правее». The worked example has both pairs too. The four values wait for the tables of words and of icons of architecture 6 spec — row В76 of table 3 of RUN.md —, and until then stand in `labels.ts` and `scripts/icons.ts`.
-- **For the whole page.** The zoom is in the memory of the module `session.ts`, beside the pen mode (R29): a new task is a new element (R20), and it opens at the same zoom until the page is loaded anew. Nothing is stored and nothing leaves, and the agreement with `app` is as before. A press on any sheet lays out every sheet of the page anew, and while someone writes or erases on one of them it does nothing: nothing moves under the pen (R33).
-- **The layout.** A column as wide as the sheet, `1000·k`, and in a wide area centered, as before. While z is above 100 %, the container scrolls across too, `overflow-x: auto`, left to right in any direction of the page: the statement and the list of parts keep the element's direction as the style computes it — by the attribute `dir` or by `direction`. The statement and the parts are at the fit width, `min(A, 1000)`, and stick to the left edge of the container: they wrap as at 100 % and do not move across. At 100 % the container does not scroll across, and everything is as before the zoom.
-- **The stage** sticks to the top and to the left edge of the container and is as wide as its visible part: the drawing surface is the visible part on both axes, and its buffer does not grow with the zoom. In an element without a height the stage is still as tall as the whole sheet: at z 2, a column of 1000 and density 2 the buffer is 2000 × 5600 pixels, ≈ 45 MB, twice the 22 MB at 100 %.
-- **The view.** `View` is `k`, `vx` and `vy`: `vx` is the left edge of the visible part in units of the sheet. The element takes `k` by the sheet's width on the screen — the drawing surface is no longer as wide as the sheet —, and `vx` and `vy` by the offset of the drawing surface from the sheet. The SVG layers get the `viewBox` `vx vy W/k H/k`, the drawing surface a shift by `−vx` and `−vy`, the input `x = (clientX − r.left) / k + vx`. For the eraser the visible part is clipped by the container across too, so beyond the edge it takes nothing (R22). The crop, the groups, the boxes and the marks are in units of the sheet and know nothing of the zoom.
-- **The anchor** is the top left corner of the visible part, as R23 holds `vy` at a new width: a new `k` — from a press, the window or the browser's zoom — leaves it at the same place of the sheet if the top, or the left edge, of the sheet has left the view. While the top of the sheet is in view, the sheet grows down and to the right, and nothing scrolls.
-- **Across.** «Левее» and «Правее» scroll what two fingers would scroll that way, by ⅘ of the visible width, `behavior: "instant"`, and stand disabled at the edge, as «Выше» and «Ниже» do (R33). The chain is the same: the container, the nearest ancestor with `overflow-x` scrolling that can scroll, otherwise the page; an ancestor with `overscroll-behavior-x: contain` or `none` does not pass it on. In a right-to-left ancestor `scrollLeft` goes from 0 at the right edge to minus the overflow. Across, the row covers nothing.
-- **Two fingers** (R29) scroll across too while z is above 100 %. The threshold is the distance their midpoint has traveled, 8 px, and the first step comes without a jump: the share of the path along each axis that lies past the threshold. If, when crossing the threshold, the midpoint has traveled twice as far along one axis as along the other, the gesture goes along it alone to its end — the "rail", `RAIL` in `hands.ts`: scrolling down does not drift across. Otherwise along both. What to scroll on each axis is chosen by the gesture's first step along it. On a sheet that does not scroll across — at 100 % —, the threshold counts only the path down, as before.
-- **The keyboard.** While the sheet is wider than the container, the arrows left and right scroll the region of T93 across, by the browser. An element without a height whose zoomed-in sheet is wider than it is a region with a Tab stop too: by the overflow across (the axe rule `scrollable-region-focusable`).
-- **The worked example:** the drawing surface takes no input, and a finger scrolls the sheet on both axes by native scrolling. «Дальше» brings the picture's area on the sheet into view across too, `scrollIntoView` with `inline: "nearest"`.
-- **The tests** are `src/element/zoom.test.ts`, at density 1 and 2, at widths of 320, 640, 1000 and 1400 CSS px: `k`, the drawing surface's buffer, the statement at the edge, the anchor, a stroke and the eraser with a shift across, one crop at any zoom, «Левее» and «Правее» under an ancestor's zoom, the zoom for the whole page and the pen, the workbook's print twice as large at 320 and 640 (1.4.4), a region without a height with axe and the arrows, two fingers across and the rail, the layers with one view. The rail is `src/core/hands.test.ts`, the steps `src/core/zoom.test.ts`, `vx` `src/core/screen.test.ts`.
+**R73. The sheet goes past the page, and nothing zooms it. The task's page, 1000 × 1400 units (R06), stands at the sheet's left, fitted to the width of its area up to a CSS px a unit; the sheet goes on to the right and down as far as the page, the ink and the tracing paper go, and one view more, within the reach of 10000 × 14000 units. The container scrolls it across as well as down; the statement and a demo's parts keep the page's width at its left.** 2026-11-22, T251 of spec's RUN.md (epic E19).
+- **The scale** `k = min(A / 1000, 1)`, A the container's width in CSS px: the page fits the width, and on a wide screen it is 1000 CSS px, a pixel a unit as on the picture (R23; `fitScale` and `K_MAX` in `src/core/screen.ts`). Nothing in the element changes `k` but the width: no buttons, no pinch, no property.
+- **The extent** (`extentOf` in `src/core/sheet.ts`, `#reach` in `src/element/index.ts`): right and bottom are the furthest of the page, the strokes of the sheet and the tracing paper's rectangle where it lies (its own strokes count with it, R87), plus one view of the window in units, at the window's own fit, `innerWidth / fitScale(innerWidth)` across and `innerHeight / fitScale(innerWidth)` down — the window, not the container, for a container as tall as its content would grow the sheet by itself, and a room that the container's size set would change inside the observer's report, which the browser tells the window as a loop —, each rounded up and kept within `REACH`. A stroke, an undo, a clearing, a new history, the tracing paper moved or given and a resize of the window lay the sheet out anew when the extent changes (`#regrow`), and the sheet takes its size from the stylesheet, by the extent's ratio to the page (`--across`, `aspect-ratio`), so that a resize of the container sizes it with no script; there is always somewhere to move it to and write, and an undo or a clearing takes the room back. A worked example's sheet is its page alone: the learner does not write on it (R42).
+- **The layout.** The column is as wide as the extent times `k`, the sheet's box in its proportions; the stage, the visible part on both axes, is no larger than the container, and the canvas's buffer does not grow with the extent (R23). The container scrolls both ways, `overflow: auto`, with no scrollbars, `scrollbar-width: none` — the author's word of 2026-11-22: they took a strip of the sheet at its right and bottom, and it is moved as "Moving it" below says —, and runs left to right whatever the page's direction: the column is the page's fit times `--across`, the extent's width over the page's; the statement and a demo's parts are as wide as the page, stick to the container's left, and keep the element's own direction, as its style computes it — by `dir` or by `direction`. The grid's path rules the whole extent and is drawn anew when the extent or the grid changes (`gridPath`). The anchor is the top left corner of the visible part, as R23 holds it: a new width keeps it where it was on the sheet, unless the sheet's top, or its left, is in sight.
+- **The padding** `--novatrail-canvas-pad-top` and `--novatrail-canvas-pad-bottom`, which the consumer sets when its own bars float over the element's top and bottom (the mockup's glass bars; R148 spec): the column takes them as its padding, so the statement starts below the first and the sheet scrolls up past the second, and the bar's band ends above the second (R84). The padding is the sheet's paper, not the page's background: its grid goes on above the sheet, where no statement stands, and below it, a ruling on each step as the sheet's own, the one on the sheet's edge too (`gridBand`), by the author's word of 2026-11-22 — under floating bars a white strip cut the sheet off. Both are 0 by default, and with 0 no band shows.
+- **Moving it:** the hand (R88), two fingers, one finger in pen mode (R29, R84), the wheel, the trackpad and the keys of the scroll container's region, across too once the sheet is wider than the container (R33). What a drag scrolls on each axis its first step along that axis chooses — the container, the nearest ancestor that can, the page —, and a gesture of the fingers that at the slop has gone twice as far along one axis as the other goes along it alone to its end, `RAIL` in `src/core/hands.ts`.
+- **What stays the page:** the task's zones, the workbook's lines and boxes and a worked example's areas lie on it (R06, R34, R42); the work for checking is the crop of the strokes wherever they lie (R25), and `exportPicture()` is the page with the ink past it, but not the room of one view (R83).
+- **WCAG.** 1.4.10: the sheet scrolls in two directions, which a two-dimensional layout is allowed. 1.4.4 rests on the browser's zoom, which enlarges and reflows the statement, a demo's parts and the labels; the page and the workbook's print grow with it only until the page fills the element's width, so 1.4.4 of the workbook's lines is a nonconformance declared with no term (R74; architecture 3.10).
+- **The tests** are `src/element/wide.test.ts`: the extent past the ink and back, a history far past the page, the statement's width and direction, the anchor, a stroke and the eraser past the page, the region across without a height, one view of every layer, the grid over the extent, a worked example's page alone, and the hand. The extent's arithmetic is `src/core/sheet.test.ts`, the rail `src/core/hands.test.ts`, `vx` `src/core/screen.test.ts`.
 
-— *Why:* the author's answers in the planning of T94, 2026-11-11. Buttons of its own, not the browser's zoom: with `k = A / 1000` the browser's zoom reduces A in CSS px, and the workbook's print on an iPad and in an `app` column narrower than 1000 px does not grow at all, while Understanding 1.4.4 requires that up to 200 % "it should still be possible to get 200% text enlargement in some way compared to the default 100% zoom"; the buttons are technique G178. The zoom is for the whole page: the author first chose a zoom per element, and then, on the agent's argument — R29 keeps the pen mode on the page for the same reason —, the page, by the recommendation. «Левее» and «Правее» are in T94 whole, not by the recommendation: they had been proposed as a task of their own, T103. The labels and the icons are by the recommendations. The anchor, the visibility of the pair across and the rail's threshold were decided by the executor. Before the work a separate agent checked the design; its corrections are `k` by the sheet and not by the drawing surface, the order of the pairs in the row, the visibility of the pair across by the zoom and not by the overflow, the rail, and the zoom on the page. The sources are [architecture.md](architecture.md), section 4.
+— *Why:* the author's choice for T251, 2026-11-22, by the interface mockup of `spec/draft/mockup/` (R148 spec): the drawing area fills what is in sight, as in Apple Notes — «Лист шире страницы», the page at the left and the sheet growing right, «Слева, лист растёт вправо» —, and «кнопки масштабирования удали — они не нужны»; asked then of 1.4.4 of the print, «функционал масштабирования убираем»: no zoom of any kind, in the element or in `app` (R74). A sheet that grows with the ink gives room wherever the learner writes, and the hand moves it with any pointer (R88). The page stays 1000 × 1400 units: the zones, the lines, the crop's rule and the samples count in them (R06). The reach bounds a history's numbers and the rules' whole numbers (R06); ten pages each way is more than a task needs.
 
 — *Rejected:*
-- **only the browser's zoom with a lower limit of the sheet's width** — R23 rejected it: on a narrow tablet the sheet would scroll across at 100 % too, and on an iPad it would still not reach 200 %;
-- **a two-finger pinch** — more code, and its single-pointer replacement under 2.5.1 is the same buttons;
-- **a zoom per element, from 100 %** — the learner would press «Крупнее» on every task; **a property `zoom` and an event** for `app` — a new clause of the agreement for what the page remembers anyway;
-- **«Левее» and «Правее» as a task of their own or as a declared nonconformance with 2.5.1 and 2.5.7** — the author's answer;
-- **«Увеличить» and «Уменьшить»** — longer, and the row wraps more often; **«Влево» and «Вправо»** — do not pair with «Выше» and «Ниже»;
-- **the icons `arrow-back` and `arrow-forward`** — `arrow-forward` is already «Дальше»'s;
-- **the anchor at the middle of the visible part** — R23 has one rule for any new `k`, and the line that is read from the top stays in place;
-- **«Левее» and «Правее» by the overflow** — they would come and go with the window's size and the scrollbar, and the row would change under the pen too;
-- **a drawing surface as wide as the sheet** — at z 2 and a column of 1000 it would be 2000 CSS px.
+- **the page zoom of 100–200 %** by the bar's buttons «Крупнее» and «Мельче», one for the whole page — the author's word above; the hand and a sheet wider than the screen replace it, and 1.4.4 of the print is declared instead (R74);
+- **a sheet of a fixed width of three screens**, as the mockup draws it — the mockup's `SW = 3W` is a drawing convenience: a fixed width runs out where the learner writes, and a wide empty sheet scrolls for nothing;
+- **centring the page on a wide screen** — the sheet grows to the right, and a page in its middle would leave room at its left that nothing fills;
+- **a sheet without a bound** — a history with points of any size would reach the rules' whole numbers and the stage's arithmetic;
+- **a pinch of two fingers** — more code, and a single pointer would need its replacement (2.5.1);
+- **a drawing surface as large as the sheet** — at ten pages it would be many times the container; the stage stays the visible part (R23).
 
-— *Revisit:* the zoom's step, the rail's threshold and the row in three lines on a narrow tablet — on devices (Д7); the drawing surface's buffer in an element without a height — there too; the zoom in the agreement with `app`, if `app` wants to remember it longer than the page does.
+— *Revisit:* the room of one view, the reach and the rail on devices (Д7 in [run/DEBT.md](../run/DEBT.md)).
 
-— *Consequence:*
-- the T94 amendments to R23, R28, R29, R33, R34, R36, R42 and R46;
-- **table 3 of RUN.md** — В76 «в реестр spec»: the four values in the tables of architecture 6 spec and the removed nonconformance 1.4.4 of the workbook's lines at `app`;
-- **T95** — 1.4.4 is not among `canvas`'s nonconformances.
-
-— RUN.md, T94; [architecture.md](architecture.md), sections 2.7, 3.1, 3.2, 3.3, 3.7, 3.8 and 4; README.md; `src/core/zoom.ts`, `src/core/screen.ts`, `src/core/hands.ts`, `src/element/session.ts`, `src/element/index.ts`, `src/element/tools.ts`, `src/element/labels.ts`, `scripts/icons.ts`, `src/element/icons.ts`, `src/element/zoom.test.ts`.
-
-— *Amendment 2026-11-12 (T110):* **the row's four values — «Крупнее», «Мельче», «Левее» and «Правее», "Zoom in", "Zoom out", "Left" and "Right", with the icons `zoom-in`, `zoom-out`, `arrow-left-alt` and `arrow-right-alt` without fill and without mirroring — are now in both tables of architecture 6 spec: `spec` recorded В76 by recommendation (a) (Д219 spec). The notes that they wait for В76 are removed from `src/element/labels.ts` and `scripts/icons.ts`, and the test of the buttons' words `labels.test.ts` holds these four too.** — R77; RUN.md, T110.
-
-— *Amendment 2026-11-17 (T121):* **«Крупнее» and «Мельче» stay, on the bar after a line; «Левее» and «Правее» are gone (the T121 amendment to R33): a zoomed sheet is dragged across by the fingers and scrolled by the wheel and the keys.** — R84; RUN.md, T121.
+— T251 of spec's RUN.md; [architecture.md](architecture.md), sections 3.1, 3.2, 3.3, 3.10; R06, R23, R29, R33, R83, R84, R88; R148 spec; `src/core/sheet.ts`, `src/core/screen.ts`, `src/core/hands.ts`, `src/core/grid.ts`, `src/element/index.ts`, `src/element/wide.test.ts`.
 
 ## Declared nonconformances
 
-**R74. What the element does not yet meet of the standard of UI packages (R90 spec) is named by [architecture.md](architecture.md), section 3.10 — the criterion, what stands instead and when it goes. Two criteria are declared: 1.4.12 — the workbook's print does not take the user's text spacing —, and 3.1.2 — the value of the demo in a workbook box, and the name of the sheet's region in an element without an attribute `lang` from the table of labels, sound in a language not their own. `canvas` has no nonconformance 1.4.4 (R73), and the answer in handwriting is declared by `app` (О-25).** The result of epic E10, T95, 2026-11-11.
-- **1.4.12.** The workbook's print drops the inherited spacing, `all: initial`, and each piece of it keeps the layout's width, `textLength` with `lengthAdjust="spacingAndGlyphs"` (R36): the user's spacing does not change it, wherever it is set (the probe of T95). Instead: print up to 200 % by the buttons «Крупнее» and «Мельче» (R73), and the consumer's font. There is no deadline: the place of a piece and of a box is set by `spec`'s page rule, `format/page.yaml` (the T85 amendment to R35), and this goes only if the rule gives the lines room for spacing — question В77 in RUN.md.
-- **3.1.2, the value of the demo.** The demo step `fill` writes the value into the box (R61), and the box's name, the item of the list of parts and the announcement of the region `status` speak it in the language of the labels, not of the lines (T91; R42). This is heard when the value is a word and the interface language is not the language of the module's lines. It goes with a task of epic E12: the value as its own node with the language of the lines, in all three places.
-- **3.1.2, the name of the region.** The scroll container has no `lang` of its own — it would fall on the statement too —, so the English name of the region sounds in the element's language when the element has no attribute `lang` from the table of labels: there is no attribute at all, or it is outside the table (T93). `app` always sets the attribute, and its languages are `en` and `ru` (R92 spec), so this never happens with it. The attribute outside the table goes with a task of epic E12: the labels' language on the container, and the element's language on the column, the only node in it. Without the attribute the element's language is inherited, and it cannot be given to the column.
-- **Not declared:** the row of buttons that in a low window goes away with the scrolling in an element without a height — `app` gives the element a height (T92; section 3.3); the order of the arrows in the pair «Левее» and «Правее» on a right-to-left page (T94) — `app` has no such pages, and the languages `en` and `ru` are written left to right; the handwriting of the samples page — it is the sample itself, the exception of 2.1.1 for a path.
-- **A new nonconformance** goes into section 3.10 and into a row «в реестр spec» for `app`'s page "Accessibility", and one that is gone leaves them the same way.
+**R74. What the element does not yet meet of the standard of UI packages (R90 spec) is named by [architecture.md](architecture.md), section 3.10 — the criterion, what stands instead and when it goes —, and `app` takes it onto its page «Доступность». Four are declared: 1.4.4 — the workbook's print grows with the browser's zoom only until the page fills the element's width —; 1.4.12 — the workbook's print does not take the user's text spacing —; 2.5.7 — the sheet and the tracing paper are moved with a single pointer by dragging alone —; 3.1.2 — the name of the sheet's region in an element without an attribute `lang`. The answer in handwriting `app` declares (О-25).**
+- **1.4.4 Resize Text.** The page fits the element's width, k = min(A / 1000, 1) (R23, R73), and the browser's zoom shrinks A in CSS px: the page, and the workbook's lines printed on it in SVG, scaled by k, grow with the zoom only until the page fills the element's width — not at all on an area narrower than 1000 CSS px at 100 %, a tablet or a column of `app`, and on a wider one only to its width. Nothing else zooms the sheet (R73). Instead: the statement, the demo's parts and the bar's labels are HTML and grow and reflow with the browser's zoom; on an area wider than the page the browser's zoom enlarges the print too. No term: nothing zooms the sheet, in the element or in `app`.
+- **1.4.12 Text Spacing.** The print of the workbook's lines — the numbers, the pieces of text, the demo's values in the boxes — drops the inherited spacing, `all: initial`, and each piece keeps the layout's width, `textLength` with `lengthAdjust="spacingAndGlyphs"` (R36): the user's spacing, set even inside the shadow tree, does not change it (sources 9.20, the probe). Instead: the consumer's font, and the browser's zoom on an area wider than the page; the statement, the demo's parts and the bar's labels take the spacing, and no label is clipped. No term: the place of a piece and of a box is set by `spec`'s page rule, `format/page.yaml`, by the table of widths (R34, R35), and this goes only if the rule gives the lines room for spacing.
+- **2.5.7 Dragging Movements.** The sheet is moved with a single pointer by dragging alone: the hand under any pointer (R88), one finger in pen mode (R29), two fingers always (R84); and the tracing paper of a task from paper by dragging its grip (R87). The sheet's scrolling is the element's own, which Understanding 2.5.7 counts, and the keyboard is no substitute (sources 9.10; product 13.1 spec). Instead: the wheel, the trackpad and the keys of the scroll container's region (R33), the arrow keys on the grip, and in an element without a height the page's own scrolling down, which 2.5.7 does not count. No term: a single-pointer way without dragging comes back only by a change of R90 spec (R84).
+- **3.1.2 Language of Parts, the region's name.** The region's name is a label (R33), and the scroll container holds the statement, the parts and the sheet in one column:
+  - with an attribute `lang` the table of labels does not know — the RFC 4647 lookup finds nothing, as for `de`, `fr-CA` or an empty attribute, not for `ru-RU` or `en-GB` —, the container takes the labels' `lang`, English, and the column, its only node, the attribute's: the name is voiced in its own language, and the rest in the element's;
+  - with an attribute the table knows, both take it: Firefox gives a shadow tree no language of its host, and WebKit takes no new one into it, though HTML has a node whose parent is a shadow root take its host's (measurements 1.5);
+  - without the attribute neither has a `lang`, and the English name is voiced in the page's language, which the element inherits: the container cannot be given `lang="en"`, which would fall on the column too, and the column cannot be given the page's language, which the element does not read (R28; [architecture.md](architecture.md), section 3.3). This is the nonconformance. Instead: the English name. No term; `app` never has it — it always sets the attribute, in `en` or `ru` (R92 spec).
+  - `#nameRegion` sets both languages with the region's name — on a new value of the attribute, its removal and a change of the canvas kind. The other fallback labels — the bar's buttons, the boxes' names, the parts' numbers — carry their own `lang="en"` (R28), and a demo's value in a box is a node of its own in the lines' language (R61).
+- **Declared by `app`, not by `canvas`** (R11 app): an answer in handwriting — 2.1.1, 2.5.1 and 2.5.7, until a second way of answering (О-25); a task from paper solved in handwriting — 2.1.1, with no term (R162 spec); submission on «Проверить» — 3.3.4, `app`'s button, since `exportWork()` submits nothing.
+- **Limits, not nonconformances:** the handwriting of the samples page is the sample itself, the exception of 2.1.1 for a path, and the page is no screen of `app` (sources 9.20).
+- **Not checked:** the keyboard in the region in Safari (R33); VoiceOver and TalkBack, Д7; the accessibility trees of WebKit and Firefox, which the tests read only through the DOM and axe (R78).
+- **A new nonconformance** that a task or a review finds goes into section 3.10 and into a row «в реестр spec» for `app`'s page, and one that is gone leaves both the same way.
 
-— *Why:* R90 spec tells a package to declare by itself, and `app` to gather what is declared. The list was gathered from «Открыто» of T90–T94 and from the criteria that the tasks of E10 did not touch. Of them only 1.4.12 would fail without a declaration: Understanding 1.4.12 exempts content from spacing that did not take effect only if it is "not actively and purposely preventing" it, and the workbook's print prevents it on purpose. The sources are [architecture.md](architecture.md), section 4.
+— *Why:*
+- R90 spec bids a package declare by itself, and `app` gather what is declared;
+- 1.4.4: Understanding 1.4.4 — "it should still be possible to get 200% text enlargement in some way compared to the default 100% zoom" —, and its technique G178 is controls on the page (sources 9.18). The page's fit caps the print at the element's width, and the author's choice for T251, 2026-11-22, took the zoom's buttons away (R73) and, asked of 1.4.4, any zoom with them — «функционал масштабирования убираем» —, so the print has no way to 200 % on a narrow area, and the nonconformance stays;
+- 1.4.12: Understanding 1.4.12 exempts spacing that did not take effect only if the content is "not actively and purposely preventing" it (sources 9.20), and the print prevents it on purpose;
+- 3.1.2: the path through the column keeps one node with the element's language, and the name is set in the step that sets the languages.
 
 — *Rejected:*
-- **print with the user's spacing** — without `textLength` a piece wider than its place would run onto the box, and the box's place is `spec`'s page rule and the place of its crop (R38). A margin for spacing in the layout is a matter for `spec`'s rule: 0.12 of the font size for each character — more than a fifth of a digit's width, 0.53 of the font size by the table of widths (R35) —, and the workbook's lines would become shorter for every learner;
-- **not declaring 3.1.2 of the demo's value**, since the boxes' values are usually numbers: the format does not forbid a word in a box;
-- **the region's name through `aria-labelledby` on a node with `lang="en"`** — the name the browser computes is a string without a language, and the path through the column, which would hold the element's language, is shorter;
-- **declaring the row in a low window a nonconformance with 2.5.1** — decided by T92: `app` gives the element a height.
+- **a scale of the page beyond the fit**, `k` up to 2 by a setting of `app` given by a style property — technique G178 with no button on the bar —, and **the zoom of the page on a workbook's bar alone** — the author's word for T251, 2026-11-22: no scaling of any kind;
+- **print with the user's spacing** — without `textLength` a piece wider than its place would run onto the box, and the box's place is `spec`'s page rule and the place of its crop (R38). A margin for spacing is a matter of `spec`'s rule: 0.12 of the font size a character is more than a fifth of a digit's width, 0.53 of the font size by the table of widths (R35), and the lines would shorten for every learner;
+- **the region's name through `aria-labelledby` on a node with `lang="en"`** — the name the browser computes is a string without a language;
+- **`lang` on the container and the column only while the container is a region** — a `lang` without a name falls on nothing, and the role and the language would part where the region comes and goes: on scrolling, focus and `blur`;
+- **the column's language read from an ancestor without the attribute** — the element would watch the `lang` of every ancestor and of the document, whose changes give no events, and `app` sets the attribute.
 
-— *Consequence:*
-- table 3 of RUN.md — В77 «в реестр spec»: what `canvas` declares and where, and the workbook's page rule;
-- table 2 of RUN.md — epic E12.
-
-— RUN.md, T95, tables 2 and 3; R28, R33, R34–R37, R42, R61, R70, R73; R92 spec; [architecture.md](architecture.md), sections 2, 3, 3.3, 3.9, 3.10 and 4; README.md.
-
-— *Amendment 2026-11-12 (T106):* **with an attribute `lang` that the table of labels does not know, the region's name sounds in its own language: the scroll container takes the labels' `lang` — English —, and the column, the container's only node, takes the attribute's `lang`, so the statement, the parts and the sheet stay in the element's language. The second nonconformance 3.1.2 has narrowed to an element without an attribute `lang`.** "Does not know" means that the RFC 4647 lookup found nothing in the table, and the labels are the fallback English ones: so it is with `de`, `fr-CA` and an empty attribute, which names the language unknown and gives it to the column as such, but not with `ru-RU` and `en-GB`. The languages are then set by the same step as the region's name, `#nameRegion` — on a new value of the attribute, its removal and a change of canvas kind. With an attribute from the table the name is already in the element's language, and neither the container nor the column has a `lang` of its own, as before (T93). Without the attribute the element's language is inherited: the element does not read an ancestor's language (R28; [architecture.md](architecture.md), section 3.3), and cannot name it for the column, so this nonconformance stays, with no deadline, and `app`, which always sets the attribute, does not have it. Rejected:
-- **`lang` on the container and the column only while the container is a region** — a `lang` without a name falls on nothing, and two steps, the role and the language, would diverge in the places where the region appears and goes: on scrolling, on focus and on `blur`;
-- **the column's language as an ancestor's language read along the tree when there is no attribute** — the element would watch the `lang` of all its ancestors and of the document, and a change in them gives no events; `app` sets the attribute, and such a consumer can only be a third party's.
-
-— RUN.md, T106; table 3, В77; [architecture.md](architecture.md), sections 3.3 and 3.10.
-
-— *Amendment 2026-11-12 (T107):* **the first nonconformance 3.1.2, the value of the demo, is gone: the value of the step `fill` sounds as its own node in the language of the lines — in the box, in the item of the list of parts and in the announcement of the region `status` —, and not as part of a label in the language of the labels (the T107 amendment to R61). Of the declared ones, 1.4.12 of the workbook's print and 3.1.2 of the region's name in an element without an attribute `lang` remain.** Section 3.10 holds the value in a row of "What the element holds", by the tests `parts.test.ts` and `labels.test.ts`, and the nonconformance's row is gone. For `app`'s page "Accessibility" — a change of row В77 of table 3: `spec` has not recorded it yet (`spec`'s RUN.md on `main`, 6a4ba48, read 2026-11-12). How VoiceOver and TalkBack hear the value behind the box, Д7 will check.
-
-— RUN.md, T107; table 3, В77; table 4, Д7; [architecture.md](architecture.md), section 3.10.
-
-— *Amendment 2026-11-12 (T110):* **`spec` recorded В77 by recommendation (a): `app` takes the nonconformances onto its page "Accessibility" from section 3.10, the card architecture 3.2 spec names it, and the second 2026-11-12 amendment to R90 spec says that with `canvas` v0.3.14 or newer `app` takes only 1.4.12 — it never has the region's name without an attribute `lang` (Д218 spec).** — R77; RUN.md, T110.
-
-— *Amendment 2026-11-14 (T111):* **with an attribute `lang` from the table of labels the scroll container and the column take it too, not nothing: Firefox gives a shadow tree no language of its host, and WebKit takes no new one into it, though HTML has a node whose parent is a shadow root take its host's (measurements 1.5). So `:lang()` in the tree matched nothing in Firefox, and the old language in WebKit after a change.** The T106 rule for an attribute the table does not know stays, and an element without the attribute still has no `lang` in its tree: nothing could name the page's language for it, and the nonconformance on the region's name stays as section 3.10 says. — R78; RUN.md, T111; [architecture.md](architecture.md), section 3.10; `src/element/index.ts`.
+— [architecture.md](architecture.md), sections 3.3 and 3.10; R28, R33, R34–R36, R61, R73, R84, R87, R88; R90 spec, R92 spec; `src/element/index.ts` (`#nameRegion`); `src/element/keyboard.test.ts`, `src/element/a11y.test.ts`, `src/element/labels.test.ts`.
 
 ## Tests under load
 
@@ -4812,19 +4271,21 @@ How it is built — [architecture.md](architecture.md), section 3.3.
 
 ## The picture of a work
 
-**R83. The picture of a work is the element's own method `exportPicture(): Promise<Blob>`: the PNG of the strokes the surface shows, with no condition — the whole sheet, or the workbook's whole page with its draft, 1000 × 1400 px, a pixel a unit —, for `StoredWork.picture` of `PutWork`. Each stroke is the outline the screen fills, black on white, and the pixels go through the crop's encoder, grey, 8 bits: 1,576,640 bytes at most.** 2026-11-17, T120.
+**R83. The picture of a work is the element's method `exportPicture(): Promise<Blob>` of the agreement's `CanvasElement`: the PNG of the strokes the surface shows, with no condition — the sheet's page, or the workbook's whole page with its draft, and the ink past the page, right and down (R73) —, for `StoredWork.picture` of `PutWork`. Each stroke is the outline the screen fills, black on white, at a pixel a unit while the picture's rows hold no more bytes than the page's and scaled down past that, and the pixels go through the crop's encoder, grey, 8 bits: 1,576,640 bytes at most.** 2026-11-17, T120; past the page 2026-11-22, T251 of spec's RUN.md (epic E19).
 - **What it gives:**
-  - always a `Blob` of the type `image/png`, never `null`: an empty sheet, a workbook with no box filled and a worked example give a white surface, and the picture is the same before the first `exportWork()` and after it. `app` puts the work when it writes it to the device, at each submission and when the attempt closes, and `api` checks the picture's PNG signature ([the contracts text](../spec/contracts/README.md), section 15);
-  - the surface whole, whatever the element's size, zoom, scroll and density of the screen: the sheet of R06, and on a workbook its page, which is the sheet's (R34);
-  - the strokes as `exportWork()` and `filled` take them at the call, and as the history has them: not the stroke under way, but the strokes under an eraser not yet lifted, which the screen already hides. No template, grid, demo or tutor's marks, no theme and no forced colours: the contract names the strokes alone;
+  - always a `Blob` of the type `image/png`, never `null`: an empty sheet, a workbook with no box filled and a worked example give the white page, and the picture is the same before the first `exportWork()` and after it. `app` puts the work when it writes it to the device, at each submission and when the attempt closes, and `api` checks the picture's PNG signature alone ([the contracts text](../spec/contracts/README.md), section 15), so the size changes nothing there;
+  - **the extent** (`pictureOf` in `src/core/sheet.ts`, `#inkReach` in `src/element/index.ts`): the page whole, whatever the element's size, scroll and density of the screen — the page of R06, and on a workbook its page, which is the sheet's (R34) —, and the ink past it, right and down: the strokes of the sheet and the tracing paper's rectangle where it lies, counted whole with its strokes (R87), `INK_REACH` added to their right and bottom, with no room past the ink, within `REACH` (R06). The room of one view that R73 adds is for writing, not the work. A worked example's picture is its page: it has no ink (R42);
+  - **the scale:** a pixel a unit while the rows, (width + 1) × height bytes with their filter bytes, hold no more than the page's, `PICTURE_BYTES = (1000 + 1) × 1400`; past that, the scale at which they hold just that, the width and the height rounded down. The size is in the PNG's header, and `app` shows the picture as an image;
+  - the strokes as `exportWork()` and `filled` take them at the call, and as the history has them: not the stroke under way, but the strokes under an eraser not yet lifted, which the screen already hides. No template, grid, demo or tutor's marks, no theme and no forced colours: the contract names the strokes alone. On a task from paper, the strokes of both layers, the tracing paper's where it lies, hidden or not, with the crop's picture laid in grey and multiplied, at the picture's scale (R87);
   - each stroke by its path the screen fills, built once (`#finished`): a pen's line widens with its pressure as on the screen (R18), and the picture looks as the sheet does;
-  - the pixels: a `<canvas>` of its own, out of the document, filled white, the paths black at a pixel a unit, read back by `getImageData`, the red of a pixel its grey, and `encodePNG` of the crop (R25). The canvas gives its memory back at once, set to 0 × 0: WebKit caps what all canvases hold.
-- **Size:** the encoder spends at most 9 bits on a byte of a row and on its filter byte, so 1000 × 1400 with its chunks is 1,576,640 bytes at most, 1.5 MiB of the 4 MiB a stored work holds with its history and contexts. Handwriting leaves most rows white, which the encoder takes as repeats. `png.test.ts` holds the bound on noise of that size.
-- **The agreement:** `CanvasElement` of `@altnovatrail/spec/canvas` at v0.18.6 has no such method (R36 spec; R74 spec). It is the package's own, on `NovatrailCanvas`, which `HTMLElementTagNameMap` gives for `novatrail-canvas`, as `undo()` and `clear()` are; that spec's agreement names it is row В82 «в реестр spec». `interface.check.ts` holds both: the method on `NovatrailCanvas`, and none on `CanvasElement` yet.
-- **Tests:** `src/element/surface.test.ts`, in the three engines — a PNG of 1000 × 1400 by its signature and header on a sheet and on a workbook, before the first submission and after it, the same bytes; the draft of a workbook on it; undo takes a stroke off it; a worked example's is white; and against the surface's own canvas, every dark pixel of the picture over ink of the screen, and the screen's full ink over ink of the picture.
+  - the pixels: a `<canvas>` of its own, out of the document, filled white, the paths black at the picture's scale, read back by `getImageData`, the red of a pixel its grey, and `encodePNG` of the crop (R25). The canvas gives its memory back at once, set to 0 × 0: WebKit caps what all canvases hold.
+- **Size:** the encoder spends at most 9 bits on a byte of a row and on its filter byte, so rows within `PICTURE_BYTES` with their chunks are 1,576,640 bytes at most, 1.5 MiB of the 4 MiB a stored work holds with its history and contexts, however far the ink goes. Handwriting leaves most rows white, which the encoder takes as repeats. `png.test.ts` holds the bound on noise of the page's size, and `sheet.test.ts` that `pictureOf` keeps the rows within `PICTURE_BYTES` and as large as they can be within it.
+- **The agreement:** `CanvasElement` of `@altnovatrail/spec/canvas` names `exportPicture(): Promise<Blob>`, with the comment of "What it gives" above (R36 spec), and `interface.check.ts` holds it through `CanvasElement`, as `exportWork()`.
+- **Tests:** `src/element/surface.test.ts`, in the three engines — a PNG of 1000 × 1400 by its signature and header on a sheet and on a workbook with ink on the page, before the first submission and after it, the same bytes; the draft of a workbook on it; undo takes a stroke off it; a worked example's is white; and against the surface's own canvas, every dark pixel of the picture over ink of the screen, and the screen's full ink over ink of the picture. `src/element/wide.test.ts` holds that a stroke past the page is on it, at the size `pictureOf` gives, and `src/core/sheet.test.ts` the arithmetic of `pictureOf`.
 
-— *Why:* row 5.14 of COORDINATION.md spec, whose text the orchestrator gave (T172 spec; R156 spec): the author decided В66 `app` on 2026-11-16 — whoever draws the sheet and the crop draws the picture too, and they look the same —, and the card architecture 3.2 spec at v0.18.6 describes the method, though it names none: «the PNG of the strokes its sheet's or workbook's surface shows, with no condition, drawn as it draws the sheet and the crop». «Сделай эпик E…» is the author's word on this task.
+— *Why:* row 5.14 of COORDINATION.md spec, whose text the orchestrator gave (T172 spec; R156 spec): the author decided В66 `app` on 2026-11-16 — whoever draws the sheet and the crop draws the picture too, and they look the same —, and the card architecture 3.2 spec describes the method: «the PNG of the strokes its sheet's or workbook's surface shows, with no condition, drawn as it draws the sheet and the crop». «Сделай эпик E…» is the author's word on this task. The picture past the page is the author's choice of 2026-11-22 for T251, option (a) of the point the sheet past the page opened (R73).
 - **The screen's outline.** The picture is the work as the learner saw it. An even line is for what a model reads (R20, «Even line»), and the stored work goes to no model: the server keeps its bytes and reads none of them ([the contracts text](../spec/contracts/README.md), section 15).
+- **The ink past the page.** The sheet goes past the page (R73), and the stored work is all that was written: a picture of the page alone would cut off ink to its right and below it, with nothing to tell the learner. Scaling down past the page's bytes keeps the bound of a picture of a fixed size, so the limit of a stored work holds at any reach, and the PNG names its own size.
 - **The crop's encoder.** One form of PNG for both pictures of the element, grey and with no ancillary chunk, and a bound under the limit that no browser's encoder gives. The noise some browsers add to what `getImageData` reads, or the white a fingerprinting guard gives, is accepted, as R20 accepted the noise: nothing outside the tests compares the picture's bytes, and the test engines add none.
 - **A pixel a unit**, as R20's picture was: the ink is 3 px, as on a screen of a pixel a unit. Two pixels a unit would be four times the pixels and a bound of 6.3 MB, over the limit; half a pixel would thin the ink to 1.5 px.
 - **A promise**, as `exportWork()` gives: one form for the two methods, and room to draw off the main thread later.
@@ -4835,45 +4296,40 @@ How it is built — [architecture.md](architecture.md), section 3.3.
 - **`toBlob` of the canvas**, as R20's `exportPNG()` — the browser's encoder, its colour type and size its own, with no bound under the limit;
 - **`null` on an empty surface**, as `exportWork()` — the picture has no condition, and `app` puts the work before the first submission too;
 - **the template, the grid and the marks on the picture** — the contract names the strokes;
-- **the method in spec's `CanvasElement` now** — `spec` is read-only here: row В82.
+- **the page alone, with a warning on the bar when ink goes past it** — the stored work would be short of what was written (T251);
+- **the sheet stopping at the page for a task that is checked** — it takes back the sheet past the page the author chose (R73; T251);
+- **the ink's extent at a pixel a unit, unscaled** — ten pages each way would have no bound under the limit.
 
-— *Consequence:* the release of the merge to npm, the next version of the line 0.3, which T62 `app` takes (row 6.14 of COORDINATION.md spec); the amendments to R05, R06, R07, R20 and R27; [architecture.md](architecture.md), section 3.3, whose budget is 51 KB in `docs-budgets.json`, not 50: the method adds ≈ 1 KB to a section at its limit.
+— *Consequence:* [architecture.md](architecture.md), section 3.3, whose budget in `docs-budgets.json` the method raised; R36 spec names the picture past the page.
 
-— RUN.md, T120 (body — [docs/plan/E13.md](plan/E13.md)); row 5.14 spec; R36 spec, R74 spec, R156 spec; [the contracts text](../spec/contracts/README.md), section 15; R05, R06, R07, R18, R20, R25, R27, R34; `src/element/index.ts`, `src/element/interface.check.ts`, `src/element/surface.test.ts`, `src/core/png.test.ts`, `docs-budgets.json`, `run/QUESTIONS.md`.
-
-— *Amendment 2026-11-18 (T127):* **"The agreement" above is replaced: `CanvasElement` of `@altnovatrail/spec/canvas` names `exportPicture(): Promise<Blob>` from v0.18.27, with the comment of this entry's "What it gives" (the second 2026-11-17 amendment to R36 spec, the author's answer to В82 (a)), and `canvas` is on that tag (R86). The method is the agreement's, as `exportWork()` is; `interface.check.ts` holds it through `CanvasElement`, without the `@ts-expect-error`, and row В82 has left [run/QUESTIONS.md](../run/QUESTIONS.md). What the method gives is unchanged.** — R86; RUN.md, T127; row 5.19 spec; sources 6.19.
+— RUN.md, T120 (body — [docs/plan/E13.md](plan/E13.md)); T251 of spec's RUN.md; row 5.14 spec; R36 spec, R74 spec, R156 spec; [the contracts text](../spec/contracts/README.md), section 15; R05, R06, R07, R18, R20, R25, R27, R34, R42, R73, R87; [architecture.md](architecture.md), section 3.3; `src/core/sheet.ts`, `src/element/index.ts`, `src/element/interface.check.ts`, `src/element/surface.test.ts`, `src/element/wide.test.ts`, `src/core/sheet.test.ts`, `src/core/png.test.ts`.
 
 ## The tool bar by the interface mockup
 
-**R84. The element's buttons are the interface mockup's vertical bar of glass, drawn by `canvas` with the style properties `app` sets: 52 CSS px wide, radius 26, 16 px from the element's left edge, in the middle of the part in sight, over the sheet; its buttons icons alone in 44 × 44 targets, each with a tooltip that Escape dismisses; the tool in use filled with the accent. No button scrolls the sheet: in pen mode one finger drags it, two always, and 2.5.7 is a declared nonconformance.**
+**R84. The element's buttons are the interface mockup's vertical bar of glass, drawn by `canvas` with the style properties the consumer sets: 52 CSS px wide, radius 26, 16 px from the element's left edge, in the middle of the part in sight, over the sheet; its buttons icons alone in 44 × 44 targets, each with a tooltip that Escape dismisses; the tool in use filled with the accent. No button scrolls the sheet: the hand moves it with any pointer (R88), in pen mode one finger drags it, two always, and 2.5.7 is a declared nonconformance. A worked example has no bar: its Next and Demo stand in a row of the same glass at the bottom.** 2026-11-17, T121.
 - **The look** is the README of `spec/draft/mockup/`, "The style" and "Two sizes" (R148 spec): `.glass` — `rgba(255,255,255,0.76)`, `blur(22px) saturate(180%)` and its shadow —, the paper alone where `backdrop-filter` is not supported; the selected tool the accent at 12 % with the accent's icon, `#0071E3`, whose contrast to its fill holds 1.4.11 for an icon ("Contrast"); icons of Material Symbols, Rounded, by the table of architecture 6 spec (R78 spec; R46). The mockup's highlighter is not taken: a new tool is behaviour (R148 spec).
-- **The layout:** the shadow root's `.frame` is a grid of one cell, the rail and the scroll container in it. The rail sticks to the top of what scrolls the element, `--novatrail-canvas-top` below it, as tall as the element's part in sight — the frame, or the scroller's or the window's height below the offset, which the element measures, a percentage and `auto` with it —, as wide as nothing, so that a consumer's `pointer-events: none` stops the bar too, and centres the bar; the bar takes no room of the layout. A bar taller than the rail less 32 px scrolls inside its glass (1.4.10; "Two sizes": "its height of 390 holds the tool bar, which scrolls inside its glass when it does not fit"). At 320 CSS px the seven tools fit, and the page does not scroll sideways. A worked example's bar holds the zoom's pair alone, and its Next and Demo — actions, which keep their labels (R90 spec), each a stop of Tab of its own — stand in a row of the same glass at the rail's bottom, in its middle, and after a line the named slot `actions`, where `app` puts its «Continue», as the mockup has one row (`Main.dc.html:888`): the author's answer (a) to В85, 2026-11-17.
-- **The tooltip** is the element's own (the 2026-11-14 amendment to R90 spec; WCAG 1.4.13): the button's label, on a mouse's or a pen's hover and on keyboard focus, not on a touch; Escape dismisses it, heard on `document` while it shows; the pointer can move onto it, and it goes 200 ms after the pointer has left both. It is `aria-hidden`, for the button's name says the same.
-- **The style properties** `app` sets beside `--novatrail-canvas-*` (R17 app): `--novatrail-canvas-accent` and `--novatrail-canvas-glass`, defaults the mockup's, and `--novatrail-canvas-top` now the offset of the band the bar centres in. They and the attribute by which `app` hides the bar on a phone while its tutor's sheet is open (the 2026-11-14 amendment to R148 spec) are a contract of `canvas` and `app` (R36 spec): row В83 «в реестр spec», to which the author answered (a) on 2026-11-17 — the two properties, and the boolean attribute `tools-hidden`, which takes the rail out of sight and of the accessibility tree. `spec` records it by a task of its own; the release does not wait for its tag.
-- **No buttons that scroll:** «Выше», «Ниже», «Левее» and «Правее» leave the bar, the table of labels and the icons (the second 2026-11-14 amendment to R90 spec; Д242 spec). The sheet, zoomed or not, is dragged by one finger in pen mode — once it has gone past the slop with no second finger — and by two always, never by a pen, and scrolled by the wheel, the trackpad and the keys of its region (R29, R33, R73 and their T121 amendments). 2.5.1 holds: it "does not apply to gestures that involve dragging in any direction". 2.5.7 does not, and [architecture.md](architecture.md), section 3.10, declares it, with no term; row В84 «в реестр spec», answered (a) by the author on 2026-11-17, takes the rows up, down, left and right out of the tables of architecture 6 spec and the nonconformance to `app`'s page «Доступность».
-- **What stays** (R28–R73): a toolbar by the APG, one Tab stop, the radio group of the tools, `aria-disabled` that keeps the focus, 44 × 44 targets, the theme's ink and paper, forced colours, no motion but the scrolling, and `pointer-events: none` stopping the pointer alone.
+- **The layout:** the shadow root's `.frame` is a grid of one cell, the rail and the scroll container in it. The rail sticks to the top of what scrolls the element, `--novatrail-canvas-top` below it, as tall as the element's part in sight — the frame, or the scroller's or the window's height below the offset, which the element measures, a percentage and `auto` with it —, less `--novatrail-canvas-pad-bottom` (R73), and as wide as nothing, so that a consumer's `pointer-events: none` stops the bar too; it centres the bar, which takes no room of the layout. A bar taller than the rail less 32 px scrolls inside its glass (1.4.10; "Two sizes": "its height of 390 holds the tool bar, which scrolls inside its glass when it does not fit"). At 320 CSS px the bar of a task from paper, its seven buttons, fits, and the page does not scroll sideways.
+- **The buttons**, top to bottom: on a task from paper "Hide the task" or "Show the task" and a line (R87); the radio group «Инструмент» — «Перо», «Ластик» where the task allows it, «Рука» (R28, R88); «Отменить» and «Очистить»; on a task from paper a line and the grid's button last (R88). A worked example's Next and Demo — actions, which keep their labels (R90 spec), each a stop of Tab of its own — stand in a row of the same glass at the rail's bottom, in its middle, and after a line the named slot `actions`, where `app` puts its «Continue», as the mockup has one row (`Main.dc.html:888`): the author's answer (a) to В85, 2026-11-17 (R42).
+- **The tooltip** is the element's own (WCAG 1.4.13; R90 spec): the button's label, on a mouse's or a pen's hover and on keyboard focus, not on a touch; Escape dismisses it, heard on `document` while it shows; the pointer can move onto it, and it goes 200 ms after the pointer has left both. It is `aria-hidden`, for the button's name says the same. Its fill is opaque, white on `#1d1d1f`, as the mockup's (README of `spec/draft/mockup/`, "The style"; R148 spec): over the canvas, which axe takes for an image, a fill seen through leaves color-contrast «incomplete», and opaque it is what axe measures the white against, 16.8:1. The tests check the tooltip's contrast by axe on a hover too, and `tools.test.ts` moves the mouse to a corner after each test, so that no file inherits a tooltip. The example's row of glass stays seen through, its contrast the test's own.
+- **The style properties** the consumer sets beside `--novatrail-canvas-*` (R17 app): `--novatrail-canvas-accent` and `--novatrail-canvas-glass`, defaults the mockup's, `--novatrail-canvas-top`, the offset of the band the bar centres in, and `--novatrail-canvas-pad-top` and `--novatrail-canvas-pad-bottom`, how far its own bars float over the element's top and bottom (R73); and the boolean attribute `tools-hidden`, which takes the rail out of sight and of the accessibility tree, as `app` does on a phone while its tutor's sheet is open. They are the agreement of `canvas` and `app`, R36 spec and R148 spec, and the comment of `CanvasElement` in `types/canvas/` of `spec`.
+- **No buttons that scroll** (R90 spec; the rows up, down, left and right are not in architecture 6 spec). The sheet is moved by the hand with any pointer (R88), by one finger in pen mode — once it has gone past the slop with no second finger — and by two always (R29) — a pen only under the hand —, and scrolled by the wheel, the trackpad and the keys of its region (R33, R73). 2.5.1 holds: it "does not apply to gestures that involve dragging in any direction". 2.5.7 does not, and [architecture.md](architecture.md), section 3.10, declares it, with no term, for `app`'s page «Доступность».
+- **What stays of R28:** a toolbar by the APG, one Tab stop, the radio group of the tools, `aria-disabled` that keeps the focus, 44 × 44 targets, the theme's ink and paper, forced colours, no motion but the scrolling, and `pointer-events: none` stopping the pointer alone.
 
-— *Why:* row 5.11 of COORDINATION.md spec, whose text the orchestrator gave (R156 spec; the third 2026-11-14 amendment to R76 spec): R148 spec has `canvas` draw the panel by the mockup, and rejected `app` drawing it, which would move the panel's accessibility; the second 2026-11-14 amendment to R90 spec is the author's word on the four buttons. The rail keeps the bar where the mockup has it, in the middle of the screen, in an element with a height as `app` gives it and in one the page scrolls, with no script on scrolling; a tooltip the element draws itself can be dismissed, which the mockup's CSS tooltip cannot. The finger's drag reuses the two fingers' code (R29) and the slop.
+— *Why:* row 5.11 of COORDINATION.md spec, whose text the orchestrator gave (R156 spec): R148 spec has `canvas` draw the panel by the mockup, and rejected `app` drawing it, which would move the panel's accessibility; R90 spec is the author's word on the buttons that scrolled. The rail keeps the bar where the mockup has it, in the middle of the screen, in an element with a height as `app` gives it and in one the page scrolls, with no script on scrolling; a tooltip the element draws itself can be dismissed, which the mockup's CSS tooltip cannot. The finger's drag reuses the two fingers' code (R29) and the slop. A worked example's sheet takes no tool, so it has no bar (R42).
 
 — *Rejected:*
 - **the bar fixed to the window** — the element is any box of a page, and a bar fixed to the window would leave it;
 - **placing the bar by a script on every scroll** — it would lag behind the page's scrolling on a phone; the sticky rail moves with it;
-- **the mockup's "Draw with finger" as a switch** — the mockup draws it pressed while the finger draws, but R29's button is there only while it does not: behaviour is the documents' (R148 spec);
 - **a tooltip by CSS alone**, as the mockup's `.tip` — Escape cannot dismiss it (WCAG 1.4.13);
 - **the tooltip as the button's description** — a screen reader would read the same words twice;
-- **the arrows behind one button "Move"** — rejected by the amendment to R90 spec;
-- **the new properties without asking `spec`** — they are the contract of R36 spec;
-- **a worked example's row of Next, Demo and the zoom's pair, with `app`'s «Continue» in a row of its own** (option (b) of В85) — two rows where the mockup has one; and **`app` drawing Next and Demo** (option (c)) — the demo's accessibility would move to `app` (R148 spec).
+- **a tooltip seen through**, as the mockup had it — axe leaves its contrast «incomplete», and skips the rule for the whole tree when told to ignore it; **moving the mouse away alone** — the next test that leaves a tooltip would fail `main`, and a learner's tooltip would go unchecked;
+- **the arrows behind one button "Move"** — rejected by R90 spec;
+- **new properties without asking `spec`** — they are the contract of R36 spec;
+- **Next and Demo on a bar, with `app`'s «Continue» in a row of its own** (option (b) of В85) — two rows where the mockup has one; and **`app` drawing Next and Demo** (option (c)) — the demo's accessibility would move to `app` (R148 spec).
 
-— *Consequence:* the release of the merge to npm, which `app` takes by row 6.18 of COORDINATION.md spec, putting its «Continue» into the slot `actions`; the T121 amendments to R28, R29, R33, R42, R46 and R73; [architecture.md](architecture.md), sections 2.6, 3.1, 3.2, 3.3 and 3.10; measurements 1.7, the comparison with the mockup; rows В83–В85 of [run/QUESTIONS.md](../run/QUESTIONS.md); Д11 of [run/DEBT.md](../run/DEBT.md) closes. The budget of [architecture.md](architecture.md), section 3.3, is 53 KB in `docs-budgets.json`, not 51: the bar, its tooltip and what `app` sets add ≈ 1.4 KB to a section at its limit.
+— *Consequence:* the budget of [architecture.md](architecture.md), section 3.3, in `docs-budgets.json`: the bar, its tooltip and what the consumer sets.
 
-— RUN.md, T121 (body — `run/TASKS.md`); row 5.11 spec; R36 spec, R76 spec, R78 spec, R90 spec, R146 spec, R148 spec; Д242 spec, Д244 spec; R28, R29, R33, R42, R46, R73; `src/element/tools.ts`, `src/element/index.ts`, `src/core/hands.ts`, `src/element/labels.ts`, `scripts/icons.ts`.
-
-— *Amendment 2026-11-17 (T121, after its merge):* **the tooltip's fill is opaque, `#1d1d1f`, not the mockup's `rgba(29,29,31,0.92)`.** Over the canvas, which axe takes for an image, a fill seen through left color-contrast «incomplete» (`imgNode`) whenever a tooltip showed: on `main` the mouse a test file before left over a bar's button failed four sheets of `a11y.test.ts` in Firefox (CI run 44001353394). Opaque, the fill is what axe measures the white against, 16.8:1, and the tests check the tooltip's contrast by axe itself, on a hover too; the eye sees no difference at 8 % of the paper behind. The example's row of glass stays seen through, its contrast the test's own. `tools.test.ts` moves the mouse to a corner after each test, so that no file inherits a tooltip; row В86 «в реестр spec» asks the mockup to take the opaque fill. *Rejected:* moving the mouse away alone — the next test that leaves a tooltip would fail `main` the same way, and a learner's tooltip would still go unchecked; naming color-contrast «incomplete» while a tooltip shows, or checking it by hand as before — axe skips the rule for the whole tree then, not for the tooltip alone. — RUN.md, T121 (body — `docs/plan/E13.md`); `src/element/index.ts`, `src/element/a11y.test.ts`, `src/element/axe.fixture.ts`.
-
-— *Amendment 2026-11-17 (T123):* **`spec` recorded the author's answers to В83–В85 at v0.18.14, and `canvas` is on that tag (R85): the style properties, `tools-hidden` and the slot `actions` are the 2026-11-17 amendment to R36 spec, and so the comment of `CanvasElement`; the rows up, down, left and right have left both tables of architecture 6 spec, the 2026-11-17 amendment to R90 spec; "the style properties that `app` sets" are named by the first 2026-11-17 amendment to R148 spec. Rows В83–В85 leave [run/QUESTIONS.md](../run/QUESTIONS.md), and the comments of the code and [architecture.md](architecture.md) cite those amendments instead of the rows; what this entry built is unchanged.** — R85; RUN.md, T123; R36 spec, R90 spec, R148 spec.
-
-— *Amendment 2026-11-18 (T127):* **the mockup's tooltip is the element's, white on an opaque `#1d1d1f`, from `spec` v0.18.27: the third 2026-11-17 amendment to R148 spec, the author's answer to В86 (a), and the README of `spec/draft/mockup/`, "The style". The T121 amendment above is no longer a difference from the mockup, and row В86 has left [run/QUESTIONS.md](../run/QUESTIONS.md); the element's tooltip is unchanged.** — R86; RUN.md, T127; row 5.19 spec; sources 6.19.
+— RUN.md, T121 (body — [docs/plan/E13.md](plan/E13.md)); T251 of spec's RUN.md; row 5.11 spec; R36 spec, R76 spec, R78 spec, R90 spec, R146 spec, R148 spec; R28, R29, R33, R42, R46, R73, R87, R88; [architecture.md](architecture.md), sections 2.6, 3.1, 3.2, 3.3 and 3.10; measurements 1.7; `src/element/tools.ts`, `src/element/index.ts`, `src/core/hands.ts`, `src/element/labels.ts`, `scripts/icons.ts`.
 
 ## The move to `spec` v0.18.14
 
@@ -4911,8 +4367,8 @@ How it is built — [architecture.md](architecture.md), section 3.3.
 
 ## A task from paper
 
-**R87. A task from the learner's paper is its crop, `paper.statement`, laid as tracing paper over a sheet in dots, on a layer of SVG of its own in sheet units: as large as fits within 800 × 700 units in its proportions, at [180, 60] and shown at first, multiplied over the sheet. Its grip "Move the task" moves it by a drag and by the arrow keys, kept wholly on the sheet; the first button of the bar hides and shows it. A stroke begun on the shown paper is the paper's, `on: "tracing"`, from its corner; the work's crop takes in the paper's rectangle with the strokes, by R25, and the crop's picture is laid into it, grey, by our own code.**
-- **The layers:** the paper lies between the demo's layer and the learner's work (concepts 8 spec), `mix-blend-mode: multiply`: the white of the paper lets the dots and the sheet's strokes show, the print stays dark. A thin edge outlines it. Its strokes are drawn over it, moved by its corner, and not at all while it is hidden; they stay in the history and in the work. The sheet's dots stand 25 units apart (`TRACING.dots`).
+**R87. A task from the learner's paper is its crop, `paper.statement`, laid as tracing paper over a sheet of the learner's grid, dots as it comes (R88), on a layer of SVG of its own in sheet units: as large as fits within 800 × 700 units in its proportions, at [180, 60] and shown at first, multiplied over the sheet. Its grip "Move the task" moves it by a drag and by the arrow keys, kept wholly on the sheet; the first button of the bar hides and shows it. A stroke begun on the shown paper is the paper's, `on: "tracing"`, from its corner; the work's crop takes in the paper's rectangle with the strokes, by R25, and the crop's picture is laid into it, grey, by our own code.**
+- **The layers:** the paper lies between the demo's layer and the learner's work (concepts 8 spec), `mix-blend-mode: multiply`: the white of the paper lets the dots and the sheet's strokes show, the print stays dark. A thin edge outlines it. Its strokes are drawn over it, moved by its corner, and not at all while it is hidden; they stay in the history and in the work. The sheet's dots stand 25 units apart (`TRACING.dots`); the other grids' rulings are R88's.
 - **The size and the place:** the paper shows, and takes strokes, once its picture is decoded: before it a stroke would be kept to the wrong size and the crop drawn stretched. Till then the `tracing` given is checked against the largest paper, 800 × 700, and its place does not hang on its size; once it is read, a place that leaves the paper wholly off the sheet moves to the nearest one wholly on it, with no event. A `paper` of the same `statement` Blob changes nothing. A `tracing` the consumer gives is a TypeError when it leaves the paper wholly off the sheet; the grip and the keys keep it wholly on it. The property sends no event; the grip sends `tracingchange` once a drag is let go and after each key, the button after each press.
 - **The grip** is a button of 68 × 44 CSS px above the paper's top edge, with pointer capture; ← → ↑ ↓ move the paper 20 units, with Shift 100; its tooltip is the bar's (R84). **The button** "Hide the task" / "Show the task" changes its name by the state, with no `aria-pressed`: the mockup's state was told twice. Its icon is `article`, filled while the task shows: the mockup's page is `description`, which `app` gives the solution shown (R65 app), and one icon is one value (architecture 6 spec). The region and the bar are "Task from paper" and "Task from paper buttons", «Задача с бумаги» and «Кнопки задачи с бумаги».
 - **The strokes:** a press begun on the shown paper writes on it, its points from the paper's corner, kept to it; an erasing begun on it takes only its strokes, and one begun elsewhere only the sheet's. Hiding the paper ends a stroke or an erasing under way on it, as a lost capture does; taking the paper off or giving another drops it, as a new history does. Undo and Clear act on both. `historyOf` and `Work.restore` keep `on` only with a paper, and a history with `on` given to a sheet is a TypeError.
@@ -4920,7 +4376,7 @@ How it is built — [architecture.md](architecture.md), section 3.3.
 - **The verdict mark**, `VerdictMark`, a task from paper's alone, by the author's word at the check of T235 spec, 2026-11-19: a tick or a cross by each answer of a frame of several tasks, `correct` whether it is right. Its place is the box of the answer its reading gave, laid on the sheet by the crop's `sheetBox`, and a model's box may be off by half a line, as Haiku's was at the same check: the verdict stands by the group of the learner's strokes nearest that box, the pairs of a verdict and a group nearest each other first — the gap between their boxes, then the distance of their centres —, one group a verdict, and none farther than the taller of the two boxes. With no group in reach it stands by the box itself, for the answer may be the photo's ink (R26). It holds none of the strokes: a change of the work puts the marks away. It stands 4 CSS px off that box's right edge, at the middle of its height, 28 CSS px on every screen, kept to the sheet: a tick of `#15803d` or a cross of `#b45309`, an amber, for «not yet» is no failure, on a white circle with a hairline, each above 3:1 on white, so the halo holds them over any page (R90 spec); in forced colours `Highlight` on `Canvas`. It is a `<g>` of `role="img"` named as `app` names it, and fades as a frame does while a stroke comes over it. A verdict at a group or a cell, without `correct`, or on another kind of sheet is a TypeError.
 - **The wavy line**, `WavyLineMark`, a task from paper's alone, which `app` gives with the words of a rung in the hint mode "Show where" (concepts 10 spec; R82 spec): it holds on to the strokes its box takes by the rule of a frame's box (R26), so it goes with them when they are erased, and with none stands under the box itself laid on the sheet, for the mistake may be the photo's ink. It runs 12 units under their box and 10 past each side, kept to the sheet, half a wave half a square of the sheet long (`GRID_STEP` / 4), its crests 3.5 units off its middle, as the mockup draws it: a line of 2.4 CSS px of `--novatrail-canvas-wavy`, `#e8590c` by default, 3.58:1 on white, over a white line of 6.4 px, its halo, which holds it over any page (R90 spec); in forced colours `Highlight` on `Canvas`. It is a `<g>` of `role="img"` named as `app` names it, and fades as a frame does while a stroke comes over it. A wavy line at a group or a cell, or on another kind of sheet, is a TypeError.
 
-— *Why:* T228 and T230 of spec's RUN.md, by the contract of R162 spec and `types/canvas/index.d.ts`, and the author's answers of 2026-11-19: В79 `spec`, (a) — `canvas` declares 2.5.7 of the paper's drag with the sheet's, the arrow keys beside it; the PNG scaled by the handwriting, R25, `drawn` of the contract unchanged. Sheet units let the paper move with the sheet as it scrolls and zooms, and each task keep its own place (`TracingState.at`).
+— *Why:* T228 and T230 of spec's RUN.md, by the contract of R162 spec and `types/canvas/index.d.ts`, and the author's answers of 2026-11-19: В79 `spec`, (a) — `canvas` declares 2.5.7 of the paper's drag with the sheet's, the arrow keys beside it; the PNG scaled by the handwriting, R25, `drawn` of the contract unchanged. Sheet units let the paper move with the sheet as it scrolls, and each task keep its own place (`TracingState.at`).
 
 — *Rejected:*
 - **the verdict mark at the reading's box alone** — a model's box drifts by up to half a line, and a tick by the next answer misleads;
@@ -4932,3 +4388,25 @@ How it is built — [architecture.md](architecture.md), section 3.3.
 - **the wavy line at the model's box alone** — a box drifts as the verdict's does, and a line under the strokes it took stays under the mistake; the box is kept only where no stroke is.
 
 — *Consequence:* [architecture.md](architecture.md), sections 3.1, 3.3 and 3.10; `src/core/tracing.ts`, `src/core/submission.ts`, `src/core/marks.ts`, `src/core/history.ts`, `src/core/work.ts`, `src/element/tracing.ts`, `src/element/index.ts`, `src/element/tools.ts`, `src/element/labels.ts`, `scripts/icons.ts`; `src/core/tracing.test.ts` and `src/element/paper.test.ts` the verdict mark's and the wavy line's. — R162 spec, R74 spec, R90 spec, R148 spec; R22, R24, R25, R26, R28, R84.
+
+## The hand and a task from paper's grid
+
+**R88. The hand is a tool of the element, «Рука», on every sheet the learner writes on: with it a press of any pointer — a pen, a finger, a mouse — moves the sheet and writes nothing. A task from paper's sheet has a grid the learner chooses, `grid`, dots as the task comes, which the bar's last button turns round — dots, lines, blank, squares — and `gridchange` tells.** 2026-11-22, T251 of spec's RUN.md (epic E19).
+- **The hand** is `"hand"` of spec's `Tool`, `"pen" | "eraser" | "hand"` (`types/canvas/` of `spec`), and no tool of the module format: `canvas.tools` names the pen and the eraser alone (`TOOLS` in `src/core/task.ts`; R28), and the element gives the hand besides to a sheet, a workbook and a task from paper (`HAND`, `#allows`). A worked example has no hand: `tool = "hand"` there is a `TypeError`, as the eraser is in a task without it (R42).
+- **What it does:** a press with the hand — of a pen, a finger or a mouse, by any button — takes the pointer by capture and moves the sheet with it, both ways, through the same scrolling as two fingers, `#scroll` and `#flush`: what each axis scrolls, the container, the nearest ancestor that can or the page, its first step along it chooses, for the whole drag (R29, R73). It writes nothing, erases nothing — a pen's eraser neither — and gives no event. One pointer at a time: the first that comes down drags, and another while it does does nothing; the drag ends when its pointer lifts, is cancelled or loses its capture, or the element leaves the page. The touch rule of R29 is not asked: a pen's touch under the hand does not put the page in pen mode, and a palm, like any first pointer, drags. A press under way when the tool changes goes on as it began. The canvas shows the cursor `grab`, and `grabbing` while it drags.
+- **The button** «Рука», "Hand", is a radio button of the group «Инструмент», after the eraser, its icon `pan-tool` of Material Symbols, filled while it is the tool (R46); the learner's choice is told by `toolchange` as any tool's (R28).
+- **The grid of a task from paper** (R87): the property `grid` of spec's `PaperGrid`, `"dots" | "lines" | "blank" | "squares"` — `undefined` without a task from paper, `"dots"` as one comes, and kept when another crop replaces the task. A grid given before the task from paper, or one not of `PaperGrid`, is a `TypeError`; `undefined` changes nothing; the property tells nothing. The learner turns it by the bar's last button, after a line below «Очистить»: dots → lines → blank → squares → dots, and the element sends `gridchange` from the host, `bubbles` and `composed`, with a frozen `detail` `{ grid }`. The grid is a choice of the view, not of the work: `app` keeps it in its solving screen's state across the tasks of one visit and gives it back to a new element, and a reload or a new visit starts with dots — no field of the device's task, the export or the server holds it (R162 spec).
+- **The rulings** (`PAPER_GRIDS`, `rulingsOf` and `nextGrid` in `src/core/tracing.ts`): dots 25 units apart, as the tracing paper's (`TRACING.dots`), lines 40, squares 25, and a blank sheet none, as the mockup draws them. The path covers the whole extent of the sheet (R73). The grid lies under the tracing paper and the learner's work and goes into no crop (R25).
+- **The button's look:** its icon and its name say the grid shown — "Grid: dots", "Grid: lines", "Grid: blank", "Grid: squares"; «Сетка: точки», «Сетка: строчки», «Сетка: пусто», «Сетка: клетки» —, with the icons `background-dot-small`, `view-headline`, `crop-square` and `grid-on`, none filled. Its name, not `aria-pressed`, says the state, as the task from paper's button atop the tools does (R87). Only a task from paper has the button: a module task's grid is its author's (concepts 8 spec; R148 spec).
+
+— *Why:* the author's answers for T251, 2026-11-22, on the interface mockup of `spec/draft/mockup/` (R148 spec): a hand to move about the sheet, «рука чтобы можно было бы перемещаться по канве в стороны», which a mouse needs, having no two fingers, now that the sheet goes past the page (R73); and a button of the grid as in the notes of an iPad, four modes that turn its icon round — «клетки, точки, строчки, пустота», «при нажатии меняется иконка и тип сетки по кругу» —, on the bar where the zoom stood. The hand is the element's because the sheet's extent is: a module author has nothing to decide about moving it. A task from paper has no author's grid, so the learner chooses the paper it is solved on.
+
+— *Rejected:*
+- **the hand as a tool of the module format** — an author has nothing to decide about it, and every sheet needs it;
+- **a pan by the space bar alone**, as drawing programs have — no touch has a space bar;
+- **a pop-over of the four grids** — the author asked for a button that turns them round;
+- **the grid's button on a module task** — a task's grid is its author's (R148 spec);
+- **the grid stored by `canvas`** — it holds no data of its own; the consumer keeps it, as `tracing`;
+- **the grid stored by `app`, by task or by profile** — a field of the device's task and of the export (R135 spec) for a setting of the view, which changes nothing of the work or its check (R162 spec).
+
+— T251 of spec's RUN.md; R162 spec, R148 spec; R28, R29, R46, R73, R84, R87; [architecture.md](architecture.md), sections 3.1, 3.3 and 3.10; `src/core/task.ts`, `src/core/tracing.ts`, `src/element/index.ts`, `src/element/tools.ts`, `src/element/labels.ts`, `src/element/icons.ts`, `scripts/icons.ts`; the tests `src/element/wide.test.ts`, `src/element/tools.test.ts`, `src/element/paper.test.ts`, `src/core/tracing.test.ts`.

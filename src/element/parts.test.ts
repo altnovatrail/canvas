@@ -30,7 +30,6 @@ import {
   watch,
 } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
-import { PAGE_ZOOM } from "./session.js";
 
 // The parts of a worked example's demo in a browser (R42): the row's Next opens them one at a time
 // into a numbered list between the statement and the sheet, and Demo hides and shows the whole
@@ -52,8 +51,6 @@ afterEach(() => {
   for (const element of made.splice(0)) element.remove();
   window.scrollTo(0, 0);
   vi.restoreAllMocks();
-  // The page's zoom (R73): the next test starts at the fit.
-  while (PAGE_ZOOM.step(false)) {}
 });
 
 /**
@@ -331,7 +328,7 @@ test("demochange goes up from the element and out of a consumer's shadow tree, w
 });
 
 test.runIf(devtools)(
-  "a screen reader reads the bar, Next and Demo, the statement and the list of the open parts in that order, in Chromium's own tree, a picture on an area of the sheet by its words, and not the picture itself on the sheet",
+  "a screen reader reads Next and Demo, the statement and the list of the open parts in that order, and no bar, in Chromium's own tree, a picture on an area of the sheet by its words, and not the picture itself on the sheet",
   async () => {
     const { root: shadow, next } = await pictured();
     for (let n = 0; n < 3; n++) next.click();
@@ -357,8 +354,9 @@ test.runIf(devtools)(
         role(node) === "StaticText" && String(node.name?.value).startsWith("A path is 20 m"),
     );
     const list = at((node) => role(node) === "list");
-    expect(toolbar).toBeGreaterThanOrEqual(0);
-    expect(named("Next")).toBeGreaterThan(toolbar);
+    // A worked example has no bar (R84).
+    expect(toolbar).toBe(-1);
+    expect(named("Next")).toBeGreaterThanOrEqual(0);
     expect(named("Demo")).toBeGreaterThan(named("Next"));
     expect(statement).toBeGreaterThan(named("Demo"));
     expect(list).toBeGreaterThan(statement);
@@ -712,18 +710,17 @@ test("Next brings a picture on an area into sight by its area, not by its item: 
   expect(still?.top).toBeCloseTo(box?.top ?? Number.NaN, 0);
 });
 
-test("on a zoomed sheet Next brings a picture's area on the right into sight across too, and the open part stays at the container's left (T94)", async () => {
+test("Next brings a picture's area on the right of the page into sight with no scroll across, for a worked example's sheet is its page alone, and the open part stays at the container's left (R73)", async () => {
   // Tall enough for the whole area in sight.
   const { element, root, list, next, viewport } = await demo(400);
   element.workedExample = onArea({ left: 700, top: 1100, width: 250, height: 200 });
   await settle();
-  while (PAGE_ZOOM.value < 2) PAGE_ZOOM.step(true);
-  await settle();
+  expect(viewport.scrollWidth).toBe(viewport.clientWidth);
   next.click();
   const spot = root.querySelector(".spot");
   const port = viewport.getBoundingClientRect();
   const box = spot?.getBoundingClientRect();
-  expect(viewport.scrollLeft).toBeGreaterThan(0);
+  expect(viewport.scrollLeft).toBe(0);
   expect(box?.left).toBeGreaterThanOrEqual(port.left - 0.5);
   expect(box?.right).toBeLessThanOrEqual(port.right + 0.5);
   expect(box?.top).toBeGreaterThanOrEqual(port.top - 0.5);

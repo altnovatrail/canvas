@@ -1,6 +1,6 @@
 import type { Stroke } from "./ink.js";
 import type { Point } from "./screen.js";
-import { SHEET } from "./sheet.js";
+import { REACH } from "./sheet.js";
 
 /**
  * A rectangle on the sheet, as rbush takes one (R05): in units, or in tenths of a unit where the
@@ -38,7 +38,7 @@ export function extentOf({ id, points }: Stroke): Extent {
   let maxX = Number.NEGATIVE_INFINITY;
   let maxY = Number.NEGATIVE_INFINITY;
   for (const { x, y } of points) {
-    if (!onSheet(x, SHEET.width) || !onSheet(y, SHEET.height)) {
+    if (!onSheet(x, REACH.width) || !onSheet(y, REACH.height)) {
       throw new RangeError(`the stroke ${id} has a point (${x}, ${y}) off the sheet`);
     }
     minX = Math.min(minX, tenths(x));

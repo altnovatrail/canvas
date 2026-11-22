@@ -9,7 +9,8 @@
 //   categories, `other` always among them, chosen by `Intl.PluralRules` of the label's language;
 // - no label tells the learner's gender (R70 spec) or speaks as the AI in the first person (П-15);
 // - the buttons' words are those of spec's table of words, the two of the page's zoom among them
-//   (R91 spec; R73); no button scrolls the sheet, so no label says a direction (R84).
+//   (R91 spec); no button scrolls the sheet, which the hand moves, so no label says a direction
+//   (R84; R88).
 // This module is no entry point of the package.
 
 /**
@@ -21,7 +22,7 @@
 export interface Labels {
   readonly sheet: string;
   readonly workbook: string;
-  /** A task from the learner's paper, its crop as tracing paper over a dotted sheet (R87). */
+  /** A task from the learner's paper, its crop as tracing paper over a sheet (R87). */
   readonly paper: string;
   /** A lesson's worked example, whose row has no tools of writing (R42). */
   readonly example: string;
@@ -29,7 +30,6 @@ export interface Labels {
   readonly sheetButtons: string;
   readonly workbookButtons: string;
   readonly paperButtons: string;
-  readonly exampleButtons: string;
   /** The buttons of a worked example's demo: the next part, and the whole demo, shown or hidden. */
   readonly next: string;
   readonly demo: string;
@@ -38,11 +38,16 @@ export interface Labels {
   readonly eraser: string;
   readonly undo: string;
   readonly clear: string;
-  /** The buttons of the page's zoom, a step larger and a step smaller (R73). */
-  readonly zoomIn: string;
-  readonly zoomOut: string;
-  /** The button that lets a finger write again, in pen mode (R29). */
-  readonly finger: string;
+  /** The tool that moves the sheet and writes nothing (R88). */
+  readonly hand: string;
+  /**
+   * The button of a task from paper's grid, by the grid the sheet shows now: a press turns it to
+   * the next (R88).
+   */
+  readonly gridDots: string;
+  readonly gridLines: string;
+  readonly gridBlank: string;
+  readonly gridSquares: string;
   /** The tracing paper's grip, and the button atop the tools that hides it or shows it (R87). */
   readonly moveTask: string;
   readonly hideTask: string;
@@ -70,7 +75,6 @@ const ENGLISH: Labels = Object.freeze({
   sheetButtons: "Sheet buttons",
   workbookButtons: "Workbook buttons",
   paperButtons: "Task from paper buttons",
-  exampleButtons: "Worked example buttons",
   next: "Next",
   demo: "Demo",
   tool: "Tool",
@@ -78,9 +82,11 @@ const ENGLISH: Labels = Object.freeze({
   eraser: "Eraser",
   undo: "Undo",
   clear: "Clear",
-  zoomIn: "Zoom in",
-  zoomOut: "Zoom out",
-  finger: "Draw with finger",
+  hand: "Hand",
+  gridDots: "Grid: dots",
+  gridLines: "Grid: lines",
+  gridBlank: "Grid: blank",
+  gridSquares: "Grid: squares",
   moveTask: "Move the task",
   hideTask: "Hide the task",
   showTask: "Show the task",
@@ -108,7 +114,6 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
       sheetButtons: "Кнопки листа",
       workbookButtons: "Кнопки тетради",
       paperButtons: "Кнопки задачи с бумаги",
-      exampleButtons: "Кнопки примера",
       next: "Дальше",
       demo: "Показ",
       tool: "Инструмент",
@@ -116,9 +121,11 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
       eraser: "Ластик",
       undo: "Отменить",
       clear: "Очистить",
-      zoomIn: "Крупнее",
-      zoomOut: "Мельче",
-      finger: "Рисовать пальцем",
+      hand: "Рука",
+      gridDots: "Сетка: точки",
+      gridLines: "Сетка: строчки",
+      gridBlank: "Сетка: пусто",
+      gridSquares: "Сетка: клетки",
       moveTask: "Подвинуть задачу",
       hideTask: "Спрятать задачу",
       showTask: "Показать задачу",

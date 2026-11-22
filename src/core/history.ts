@@ -1,7 +1,7 @@
 import type { HistoryEvent } from "@altnovatrail/spec/canvas";
 import { record, shown } from "./fields.js";
 import type { InkPoint, Stroke } from "./ink.js";
-import { SHEET } from "./sheet.js";
+import { REACH } from "./sheet.js";
 
 /**
  * An event of the history of writing (R09, R22): spec's type, of the contract of canvas and app
@@ -204,8 +204,8 @@ function strokeOf(value: unknown, path: string): Stroke {
   const points = Array.from(fields.points, (item: unknown, n): InkPoint => {
     const at = `${path}.points[${n}]`;
     const point = record(item, at);
-    const x = within(point.x, `${at}.x`, 0, SHEET.width);
-    const y = within(point.y, `${at}.y`, 0, SHEET.height);
+    const x = within(point.x, `${at}.x`, 0, REACH.width);
+    const y = within(point.y, `${at}.y`, 0, REACH.height);
     const t = timeOf(point.t, `${at}.t`);
     if (t < latest) {
       throw new TypeError(`${at}.t: ${t}, earlier than the point before it, at ${latest}`);

@@ -60,11 +60,11 @@ function barOf(element: HTMLElement) {
   const line = root?.querySelector(".tools .line");
   const tip = root?.querySelector<HTMLElement>(".tip");
   if (!root || !bar || !line || !tip) throw new Error("the element has no bar of buttons");
-  const [pen, eraser, undo, zoomOut] = ["Pen", "Eraser", "Undo", "Zoom out"].map((label) =>
+  const [pen, eraser, undo, clear] = ["Pen", "Eraser", "Undo", "Clear"].map((label) =>
     buttonOf(element, label),
   );
-  if (!pen || !eraser || !undo || !zoomOut) throw new Error("the bar has not its buttons");
-  return { root, bar, line, tip, pen, eraser, undo, zoomOut };
+  if (!pen || !eraser || !undo || !clear) throw new Error("the bar has not its buttons");
+  return { root, bar, line, tip, pen, eraser, undo, clear };
 }
 
 /** The glass of a bar or a row: the mode's Canvas, its edge the text's. */
@@ -164,7 +164,7 @@ test("with forced colours the bar takes the system's colours, its glass the canv
   element.style.width = "400px";
   theme.append(element);
   await settle();
-  const { bar, line, pen, eraser, undo, zoomOut } = barOf(element);
+  const { bar, line, pen, eraser, undo, clear } = barOf(element);
   // The glass is the canvas's, whatever blurs behind it, and its edge and lines the text's.
   expect(forcedGlass(bar)).toEqual([system("Canvas"), "solid", system("CanvasText")]);
   expect(getComputedStyle(line).backgroundColor).toBe(system("CanvasText"));
@@ -178,8 +178,8 @@ test("with forced colours the bar takes the system's colours, its glass the canv
   // An icon is the colour of its button's text, whatever the mode makes it (R46).
   expect(getComputedStyle(iconOf(eraser)).fill).toBe(system("ButtonText"));
   expect(getComputedStyle(iconOf(pen)).fill).toBe(system("HighlightText"));
-  // Nothing to undo yet, and no smaller zoom than the fit (R73).
-  for (const unavailable of [undo, zoomOut]) {
+  // Nothing to undo yet, and nothing to clear.
+  for (const unavailable of [undo, clear]) {
     expect(unavailable.getAttribute("aria-disabled")).toBe("true");
     expect(getComputedStyle(unavailable).color).toBe(system("GrayText"));
     expect(getComputedStyle(unavailable).borderTopColor).toBe(system("GrayText"));
@@ -195,10 +195,10 @@ test("with forced colours the ring of a button in focus is the system's highligh
   document.body.append(element);
   made.push(element);
   await settle();
-  const { root, pen, zoomOut, tip } = barOf(element);
+  const { root, pen, clear, tip } = barOf(element);
   await userEvent.tab();
-  for (const focused of [pen, zoomOut]) {
-    if (focused === zoomOut) await userEvent.keyboard("{End}");
+  for (const focused of [pen, clear]) {
+    if (focused === clear) await userEvent.keyboard("{End}");
     expect(root.activeElement).toBe(focused);
     expect(focused.matches(":focus-visible")).toBe(true);
     const style = getComputedStyle(focused);

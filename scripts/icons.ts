@@ -36,10 +36,9 @@ export interface Value {
 
 /**
  * The values of the row, as spec's table of values names them, each by its button's key in
- * labels.ts, the two of the page's zoom among them (R78 spec; R73); no button scrolls the sheet
- * (R84). Demo has two, as the demo is shown or hidden. One thing is left out: the table fills the
- * finger's icon while its mode is on, but the mode hides the button (R29), so the fill would never
- * show and is not embedded (R46). The task from paper's button atop the tools fills its icon while
+ * labels.ts (R78 spec); no button scrolls the sheet, which the hand moves (R84). Demo has two, as
+ * the demo is shown or hidden, and the grid of a task from paper's sheet four, one for each grid,
+ * which its button shows (R46). The task from paper's button atop the tools fills its icon while
  * the tracing paper is shown (R87).
  */
 export const TABLE: Readonly<Record<string, Value>> = {
@@ -51,9 +50,11 @@ export const TABLE: Readonly<Record<string, Value>> = {
   eraser: { base: "ink-eraser", filled: true, mirrored: false },
   undo: { base: "undo", filled: false, mirrored: true },
   clear: { base: "delete-sweep", filled: false, mirrored: false },
-  zoomIn: { base: "zoom-in", filled: false, mirrored: false },
-  zoomOut: { base: "zoom-out", filled: false, mirrored: false },
-  finger: { base: "touch-app", filled: false, mirrored: false },
+  hand: { base: "pan-tool", filled: true, mirrored: false },
+  gridDots: { base: "background-dot-small", filled: false, mirrored: false },
+  gridLines: { base: "view-headline", filled: false, mirrored: false },
+  gridBlank: { base: "crop-square", filled: false, mirrored: false },
+  gridSquares: { base: "grid-on", filled: false, mirrored: false },
 };
 
 /** An icon as the element draws it: its view box, and the paths it fills in the button's colour. */

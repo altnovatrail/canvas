@@ -145,9 +145,9 @@ function barOf(element: HTMLElement) {
   const root = element.shadowRoot;
   const bar = root?.querySelector<HTMLElement>(".tools");
   if (!root || !bar) throw new Error("the element has no bar");
-  const [pen, zoomOut] = ["Pen", "Zoom out"].map((label) => buttonOf(element, label));
-  if (!pen || !zoomOut) throw new Error("the bar has no pen and no Zoom out");
-  return { root, bar, pen, zoomOut, glass: glassOf(element, bar) };
+  const [pen, clear] = ["Pen", "Clear"].map((label) => buttonOf(element, label));
+  if (!pen || !clear) throw new Error("the bar has no pen and no Clear");
+  return { root, bar, pen, clear, glass: glassOf(element, bar) };
 }
 
 test("a colour seen through, laid over the paper, is what the eye sees of the two", () => {
@@ -172,16 +172,16 @@ test.each([
     accent: "rgb(143, 180, 255)",
   },
 ])(
-  "in $theme a button in focus shows a solid ring two pixels wide at its edge, in the accent, at least 3:1 to the glass over the paper and to the button's own fill, on the tool in use and on an unavailable Zoom out alike (T92)",
+  "in $theme a button in focus shows a solid ring two pixels wide at its edge, in the accent, at least 3:1 to the glass over the paper and to the button's own fill, on the tool in use and on an unavailable Clear alike (T92)",
   async ({ colours, accent }) => {
     const { element } = await placed(made, 400, undefined, { task: sheetTask() });
     for (const [name, value] of Object.entries(colours)) {
       element.style.setProperty(`--novatrail-canvas-${name}`, value);
     }
-    const { root, bar, pen, zoomOut, glass } = barOf(element);
+    const { root, bar, pen, clear, glass } = barOf(element);
     await userEvent.tab();
-    for (const focused of [pen, zoomOut]) {
-      if (focused === zoomOut) await userEvent.keyboard("{End}");
+    for (const focused of [pen, clear]) {
+      if (focused === clear) await userEvent.keyboard("{End}");
       expect(root.activeElement).toBe(focused);
       expect(focused.matches(":focus-visible")).toBe(true);
       const style = getComputedStyle(focused);
@@ -199,9 +199,9 @@ test.each([
       }
       expect(style.opacity).toBe("1");
     }
-    expect(zoomOut.getAttribute("aria-disabled")).toBe("true");
+    expect(clear.getAttribute("aria-disabled")).toBe("true");
     // The unavailable button is paler by its colour, between the ink and the paper.
-    expect(getComputedStyle(zoomOut).color).not.toBe(getComputedStyle(bar).color);
+    expect(getComputedStyle(clear).color).not.toBe(getComputedStyle(bar).color);
     // Its tooltip shows, over the canvas, which axe takes for an image: the tooltip's fill is
     // opaque, so that axe tells its contrast without looking behind it, WCAG 1.4.3's «at least
     // 4.5:1».
@@ -240,7 +240,7 @@ test.each(KINDS.filter(({ name }) => name.startsWith("a worked example")))(
 );
 
 test("a bar taller than the band it stands in scrolls inside its glass and is still one stop of Tab, and End brings its last button whole into the glass's sight, as focus() does in Chromium and WebKit (1.4.10, 2.4.11)", async () => {
-  const { root, row, viewport } = await placed(made, 400, 300, { task: sheetTask() });
+  const { root, row, viewport } = await placed(made, 400, 200, { task: sheetTask() });
   expect(row.scrollHeight).toBeGreaterThan(row.clientHeight);
   await userEvent.tab();
   expect(root.activeElement?.textContent).toBe("Pen");
@@ -249,7 +249,7 @@ test("a bar taller than the band it stands in scrolls inside its glass and is st
   await userEvent.tab({ shift: true });
   await userEvent.keyboard("{End}");
   const last = root.activeElement;
-  expect(last?.textContent).toBe("Zoom out");
+  expect(last?.textContent).toBe("Clear");
   const box = last?.getBoundingClientRect();
   const glass = row.getBoundingClientRect();
   expect(box?.top).toBeGreaterThanOrEqual(glass.top - 0.5);

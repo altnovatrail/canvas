@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, expect, test } from "vitest";
-import { page, userEvent } from "vitest/browser";
 import { SLOP_PX } from "../core/hands.js";
 import type { HistoryEvent } from "../core/history.js";
 import type { View } from "../core/screen.js";
@@ -22,9 +21,9 @@ import { probe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
 
 // Input on a tablet in Chromium (R29): a pen, fingers and a palm, through the DevTools protocol as
-// the browser gives them — the pen mode they put the page in, the finger's button on the bar, one
-// finger in pen mode dragging the sheet (R84), and two fingers scrolling the sheet or the page. The
-// bar stands over the sheet's left edge, so the pointers here come down to the right of it.
+// the browser gives them — the pen mode they put the page in, which no button of the bar turns off,
+// one finger in pen mode dragging the sheet (R84), and two fingers scrolling the sheet or the page.
+// The bar stands over the sheet's left edge, so the pointers here come down to the right of it.
 
 const made: HTMLElement[] = [];
 beforeEach(() => {
@@ -46,12 +45,14 @@ async function sheet(
   height?: number,
   options: { parent?: HTMLElement; task?: Task } = {},
 ) {
-  const parts = await placed(made, width, height, options);
-  // The finger's button is the bar's last (R29).
-  const finger = [...parts.row.querySelectorAll("button")].at(-1);
-  if (finger === undefined) throw new Error("the bar has no finger's button");
-  return { ...parts, finger };
+  return placed(made, width, height, options);
 }
+
+/** The labels of the bar's buttons it shows, in their order. */
+const shownButtons = (row: HTMLElement) =>
+  [...row.querySelectorAll("button")]
+    .filter((each) => !each.hidden)
+    .map((each) => each.textContent);
 
 /** A stroke of a pen, through the DevTools protocol, from one point of the sheet to another. */
 async function pen(canvas: HTMLCanvasElement, view: () => View, from: number[], to: number[]) {
@@ -145,97 +146,79 @@ test.runIf(devtools)(
 );
 
 test.runIf(devtools)(
-  "the finger's button comes when a pen's stroke ends, named in the element's language; pressing it lets a finger write, gives the focus to Pen, and the next pen brings it back",
+  "pen mode stays on till the page goes: no button of the bar comes with it or turns it off, in the element's language too, and a finger writes nothing after the pen (R29)",
   {
     timeout: budget(775),
   },
   async () => {
-    const { element, root, canvas, finger, view } = await sheet();
-    const named = () =>
-      page.elementLocator(element).getByRole("button", { name: "Draw with finger" });
-    expect(finger.hidden).toBe(true);
-    // While the pen writes, the bar stays as it is.
+    const { element, canvas, row, view } = await sheet();
+    const before = shownButtons(row);
+    expect(before).not.toContain("Draw with finger");
+    // While the pen writes, and after it, the bar stays as it is.
     await input("mousePressed", at(canvas, view(), 300, 300), { pointerType: "pen", force: 0.5 });
     await settle();
     expect(PEN_MODE.on).toBe(true);
-    expect(finger.hidden).toBe(true);
+    expect(shownButtons(row)).toEqual(before);
     await input("mouseReleased", at(canvas, view(), 300, 300), { pointerType: "pen", force: 0 });
-    await expect.element(named()).toBeVisible();
-    element.lang = "ru";
-    const russian = labelsFor("ru").labels;
-    const pressed = page.elementLocator(element).getByRole("button", { name: russian.finger });
-    await userEvent.click(pressed);
-    await expect.poll(() => finger.hidden).toBe(true);
-    expect(PEN_MODE.on).toBe(false);
-    expect(root.activeElement?.textContent).toBe(russian.pen);
-    await swipe(canvas, view, 300, 500);
-    expect(probe(element).strokes.map((each) => each.kind)).toEqual(["pen", "touch"]);
-    await pen(canvas, view, [300, 700], [500, 700]);
-    await expect.poll(() => finger.hidden).toBe(false);
-  },
-);
-
-test.runIf(devtools)(
-  "on a device without touch the finger's button never comes, in pen mode too",
-  async () => {
-    Reflect.deleteProperty(navigator, "maxTouchPoints");
-    const { canvas, finger, view } = await sheet();
-    await pen(canvas, view, [300, 300], [600, 300]);
     await settle();
     expect(PEN_MODE.on).toBe(true);
-    expect(finger.hidden).toBe(true);
+    expect(shownButtons(row)).toEqual(before);
+    element.lang = "ru";
+    await settle();
+    const russian = labelsFor("ru").labels;
+    expect(shownButtons(row)).toEqual([
+      russian.pen,
+      russian.eraser,
+      russian.hand,
+      russian.undo,
+      russian.clear,
+    ]);
+    await swipe(canvas, view, 300, 500);
+    await pen(canvas, view, [300, 700], [500, 700]);
+    expect(PEN_MODE.on).toBe(true);
+    expect(probe(element).strokes.map((each) => each.kind)).toEqual(["pen", "pen"]);
   },
 );
 
 test.runIf(devtools)(
-  "pen mode is the page's: a second sheet is in it as well, and the button of one takes it off both",
+  "pen mode is the page's: a second sheet is in it as well, and a finger writes on neither",
   async () => {
     const one = await sheet();
     const two = await sheet();
     await pen(one.canvas, one.view, [300, 300], [600, 300]);
-    await expect.poll(() => two.finger.hidden).toBe(false);
-    expect(one.finger.hidden).toBe(false);
-    two.finger.click();
-    await expect.poll(() => one.finger.hidden).toBe(true);
-    expect(two.finger.hidden).toBe(true);
+    expect(PEN_MODE.on).toBe(true);
+    await swipe(two.canvas, two.view, 300, 500);
     await swipe(one.canvas, one.view, 300, 500);
-    expect(ids(one.element)).toEqual([1, 2]);
+    expect([ids(one.element), ids(two.element)]).toEqual([[1], []]);
   },
 );
 
 test.runIf(devtools)(
-  "every bar of the page waits for the end of a pen's stroke to show the finger's button, and moves no sheet when it comes: the bar stands over the sheet",
+  "pen mode moves no sheet when it comes: the bars of the page stay as they were, and so do the sheets",
   async () => {
-    const above = await sheet();
-    const below = await sheet();
+    // Each of a height of its own, so that both stand in the window, past the page as they go.
+    const above = await sheet(400, 300);
+    const below = await sheet(400, 300);
     const sheets = [above, below];
     const boxes = () =>
-      sheets.map(({ element, canvas }) => [
+      sheets.map(({ element, canvas, row }) => [
         canvas.getBoundingClientRect().top,
         element.getBoundingClientRect().height,
+        row.getBoundingClientRect().height,
       ]);
     const before = boxes();
-    const tall = below.row.getBoundingClientRect().height;
     const options = { pointerType: "pen", force: 0.5 } as const;
     await input("mousePressed", at(below.canvas, below.view(), 300, 300), options);
     await settle();
     await input("mouseMoved", at(below.canvas, below.view(), 600, 300), options);
     await settle();
-    // In pen mode now, but the stroke goes on: no bar has changed.
-    expect([above.finger.hidden, below.finger.hidden]).toEqual([true, true]);
-    expect(below.row.getBoundingClientRect().height).toBe(tall);
+    expect(boxes()).toEqual(before);
     await input("mouseReleased", at(below.canvas, below.view(), 600, 300), {
       ...options,
       force: 0,
     });
-    await expect.poll(() => above.finger.hidden).toBe(false);
-    expect(below.finger.hidden).toBe(false);
     await settle();
-    // The bar grows by the button, a target of 44 × 44, over the sheet, which stays where it was
-    // and as tall, and so does the one below it.
-    expect(below.row.getBoundingClientRect().height).toBeGreaterThan(tall);
-    const { width, height } = below.finger.getBoundingClientRect();
-    expect([width, height]).toEqual([44, 44]);
+    expect(PEN_MODE.on).toBe(true);
     expect(boxes()).toEqual(before);
   },
 );
@@ -262,7 +245,7 @@ test.runIf(devtools)(
     await settle();
     expect(viewport.scrollTop).toBe(scrolled);
     expect([ids(element), told.length]).toEqual([[1], 1]);
-    // Asked for the finger, one writes again, and drags nothing.
+    // Out of pen mode, as a new page starts, one writes again, and drags nothing.
     PEN_MODE.on = false;
     await twoFingers(viewport, -60, { alone: true });
     await settle();

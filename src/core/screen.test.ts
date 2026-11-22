@@ -14,11 +14,10 @@ test("the layout's k stops at a pixel to a unit, and k on the screen follows the
   expect(scaleFor(1500)).toBe(1.5);
 });
 
-test("the page's zoom takes the fit's k beyond the cap, to twice it at 200 %", () => {
-  expect(fitScale(320, 2)).toBe(0.64);
-  expect(fitScale(640, 1.25)).toBe(0.8);
-  expect(fitScale(1400, 2)).toBe(2);
-  expect(fitScale(1400)).toBe(1);
+test("a sheet past the page takes k from its own width in units: the page keeps its fit", () => {
+  // A sheet 3000 units wide, laid out 1500 pixels wide, as the page at 500 pixels.
+  expect(scaleFor(1500, 3000)).toBe(0.5);
+  expect(fitScale(500)).toBe(0.5);
 });
 
 test("a point goes from the screen to the sheet and back, the visible part scrolled down", () => {
@@ -35,8 +34,10 @@ test("a point goes from the screen to the sheet and back, the visible part scrol
   expect(toScreen(view, onSheet.x, onSheet.y)).toEqual({ x: 50, y: 30 });
 });
 
-test("a point beyond the sheet is clamped to its edge", () => {
+test("a point beyond the sheet's reach is clamped to its edge", () => {
   const view = { k: 0.5, vx: 0, vy: 1000 };
   expect(toSheet(view, -10, -600)).toEqual({ x: 0, y: 0 });
-  expect(toSheet(view, 600, 300)).toEqual({ x: 1000, y: 1400 });
+  // Past the page the sheet goes on, as far as its reach.
+  expect(toSheet(view, 600, 300)).toEqual({ x: 1200, y: 1600 });
+  expect(toSheet(view, 6000, 7000)).toEqual({ x: 10000, y: 14000 });
 });

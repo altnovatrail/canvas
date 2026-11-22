@@ -24,17 +24,23 @@ export const SHEET_KIND = "handwriting_sheet";
 export const WORKBOOK_KIND = "workbook";
 
 /**
- * What a press of the primary button does on the sheet: the pen writes, the eraser erases (R22). A
- * pen's eraser erases whatever the tool, if the task allows the eraser (R28). spec's type (R74
- * spec).
+ * What a press of the primary button does on the sheet: the pen writes, the eraser erases (R22),
+ * the hand moves the sheet (R84). A pen's eraser erases whatever the tool, if the task allows the
+ * eraser (R28). spec's type (R74 spec).
  */
 export type { Tool };
 
-/** The sheet's tools, in the order their buttons stand: the pen, the eraser. */
+/**
+ * The tools of the module format a task allows, in the order their buttons stand: the pen, the
+ * eraser. The hand is no tool of the format: every sheet the learner writes on has it.
+ */
 export const TOOLS: readonly Tool[] = Object.freeze(["pen", "eraser"]);
 
+/** The tool that moves the sheet and writes nothing (R84). */
+export const HAND: Tool = "hand";
+
 export function isTool(value: unknown): value is Tool {
-  return (TOOLS as readonly unknown[]).includes(value);
+  return value === HAND || (TOOLS as readonly unknown[]).includes(value);
 }
 
 /** A paragraph of a task's statement, or a piece of text of a workbook's line. */
