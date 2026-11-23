@@ -53,8 +53,28 @@ export function formulaic(statement: string): boolean {
   return !/\p{L}{2,}/u.test(statement.replace(/\\[A-Za-z]+/g, " "));
 }
 
-/** The atom a power raises: the run of digits, the letter or the bracket at the text's end. */
-const BASE = /(?:\d+(?:[.,]\d+)?|\p{L}|[)\]])$/u;
+/** Whether a character is an ASCII digit. */
+const digit = (c: string | undefined) => c !== undefined && c >= "0" && c <= "9";
+
+/**
+ * The atom a power raises: the number, with one decimal mark, the letter or the bracket at the
+ * text's end. Read back from the end: a pattern anchored at the end alone tries every start, and
+ * is quadratic on a long run of digits.
+ */
+function atomAtEnd(text: string): string | undefined {
+  let start = text.length;
+  while (digit(text[start - 1])) start--;
+  if (start === text.length) {
+    const last = [...text.slice(-2)].at(-1);
+    return last !== undefined && /^(?:\p{L}|[)\]])$/u.test(last) ? last : undefined;
+  }
+  const mark = text[start - 1];
+  if ((mark === "." || mark === ",") && digit(text[start - 2])) {
+    start--;
+    while (digit(text[start - 1])) start--;
+  }
+  return text.slice(start);
+}
 
 class Reader {
   #at = 0;
@@ -159,7 +179,7 @@ function baseOf(out: Piece[]): Piece[] {
     out.pop();
     return [last];
   }
-  const atom = BASE.exec(last.text)?.[0];
+  const atom = atomAtEnd(last.text);
   if (atom === undefined) return [];
   const rest = last.text.slice(0, -atom.length);
   if (rest === "") out.pop();

@@ -49,6 +49,34 @@ test("a power raises the atom before it: a number, a letter, a bracket or a frac
   expect(piecesOf("^2")).toEqual([{ kind: "power", base: [], exponent: [text("2")] }]);
 });
 
+test("a number a power raises keeps one decimal mark, and a long one is read in linear time", () => {
+  expect(piecesOf("1,5^2")).toEqual([
+    { kind: "power", base: [text("1,5")], exponent: [text("2")] },
+  ]);
+  expect(piecesOf("12.3.4^2")).toEqual([
+    text("12."),
+    { kind: "power", base: [text("3.4")], exponent: [text("2")] },
+  ]);
+  expect(piecesOf("a.5^2")).toEqual([
+    text("a."),
+    { kind: "power", base: [text("5")], exponent: [text("2")] },
+  ]);
+  expect(piecesOf("= 𝑥^2")).toEqual([
+    text("= "),
+    { kind: "power", base: [text("𝑥")], exponent: [text("2")] },
+  ]);
+  expect(piecesOf("3 + ^2")).toEqual([
+    text("3 + "),
+    { kind: "power", base: [], exponent: [text("2")] },
+  ]);
+  const digits = "1".repeat(200_000);
+  const started = performance.now();
+  expect(piecesOf(`${digits}^2`)).toEqual([
+    { kind: "power", base: [text(digits)], exponent: [text("2")] },
+  ]);
+  expect(performance.now() - started).toBeLessThan(1000);
+});
+
 test("a stray command is drawn as its sign, a bracket's size dropped, any other as written", () => {
   expect(piecesOf("3 \\cdot 4 \\div 2 \\times \\square")).toEqual([text("3 · 4 ÷ 2 × "), box]);
   expect(piecesOf("\\left(1 + 2\\right) \\ne 4")).toEqual([text("(1 + 2) ≠ 4")]);
