@@ -81,8 +81,8 @@ ci-vuln:
     npm audit --omit=dev --audit-level=high
 
 # The checks of package-lock.json. First, fail if a package of it, the tools of development too,
-# carries a license that spec's list does not allow and is no exception that licenses.json names
-#. The list, the reading of SPDX expressions and the rule of an exception are spec's, at
+# carries a license that spec's list does not allow and is no exception that licenses.json names.
+# The list, the reading of SPDX expressions and the rule of an exception are spec's, at
 # the tag spec/ is on: an exception off the list holds only for a package the lock file marks dev,
 # and covers the builds for each platform it names in optionalDependencies while they are dev too
 # and under the same license. That reads the lock file, licenses.json and spec/ at its
