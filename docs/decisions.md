@@ -868,132 +868,125 @@ The design — [architecture.md](architecture.md).
 
 **R22. The eraser erases whole strokes, along the path of the press: everything its path came near leaves the sheet in one action when it is lifted, and one undo brings it all back. It is turned on by the element's property `tool` and by the pen's eraser. The writing history is the events "stroke", "erasing", "clearing" and "undo" with the sheet's time, and each names the IDs it removed or brought back. The sheet's clock is one for the strokes and the actions.**
 - **Eraser — along the path.** A press takes each stroke whose line comes no farther than the reach from the eraser's path; a touch is a path of one point.
-  - The strokes under the eraser vanish from the screen at once, and leave the sheet when it is lifted — in one action of erasing in the stack of R19. One undo returns them all, to their former places.
+  - The strokes under the eraser vanish from the screen at once, and leave the sheet when it is lifted — in one action of erasing on the stack of undo and clearing. One undo returns them all, to their former places.
   - `pointercancel` throws the press away, and the strokes come back. A press without hits is not an action.
   - On the lift, those of the taken strokes that are on the sheet then leave: for what was removed during the press by undo or clearing and did not come back, there is nothing left to erase.
-  - Outside the visible part of the sheet — where a captured pointer goes — the eraser takes nothing, and the path goes on from its last place on the screen. Otherwise a pointer beyond the edge of the drawing surface would lead the eraser along the sheet's border, to which the coordinate transform pins it, and over the invisible part of the sheet.
-- **Reach** — `ERASER_RADIUS_PX / k + INK_REACH`: 10 CSS px on the screen, whatever the sheet's zoom, plus 2.25 units — half of the pen's widest line. `k` is taken at the moment of the press. A hit is computed on the polyline of the stroke's raw points: the index of rbush 4.0.1 finds the strokes by their boxes, and our own code computes the exact distance from a segment of the path to the segments of the stroke (R05). The index is rebuilt when the sheet's array of strokes has changed, and only when it is accessed.
+  - A tutor's mark is not seen when all its strokes are erased, and it comes back with them after an undo. The strokes under a press of the eraser remove it from the screen at once, and `pointercancel` brings it back.
+  - In pen mode a finger does not erase. Without pen mode, a press of the eraser by a finger is canceled by a second finger that touched soon after: scrolling begins, and nothing is erased.
+  - Outside the drawing surface, clipped to the visible part of the container — where a captured pointer goes — the eraser takes nothing, and the path goes on from its last place on the screen. While the statement is visible above the sheet, the drawing surface goes below it. Otherwise a pointer beyond the edge of the drawing surface would lead the eraser along the sheet's border, to which the coordinate transform pins it, and over the invisible part of the sheet.
+- **Reach** — `ERASER_RADIUS_PX / k + INK_REACH`: 10 CSS px on the screen, whatever the sheet's zoom, plus 2.25 units — half of the pen's widest line (sources 9.3). `k` is taken at the moment of the press. A hit is computed on the polyline of the stroke's raw points: the index of rbush 4.0.1 finds the strokes by their boxes, and our own code computes the exact distance from a segment of the path to the segments of the stroke. The index is rebuilt when the sheet's array of strokes has changed, and only when it is accessed.
 - **Turning on.** The property `tool` — `"pen"` or `"eraser"`, `"pen"` by default: the primary button writes or erases.
-  - The consumer switches it with its own button, like `undo()` and `clear()` in the MVP. Another value is a `TypeError`. A value assigned before the element is registered, the element takes at creation, and an invalid one leaves the pen and writes a warning to the console: an exception in the constructor would leave the element not working.
-  - The pen's eraser — `button` 5, and bit 32 in `buttons` (Pointer Events Level 3) — erases with any `tool`.
-  - A press goes on as it began: a change of `tool` does not change it. One pointer at a time writes or erases (R18).
-- **Sheet** — the strokes in the order in which they went down, not by ID. The action of erasing keeps the erased strokes with their places, and undo returns them to the same places: there is no snapshot of the whole sheet (R19).
+  - The element's buttons «Перо» and «Ластик» switch it, and the element announces the learner's change of the tool by the event `toolchange`; the consumer may switch it too. Another value is a `TypeError`. A value assigned before the element is registered, the element takes at creation, and an invalid one leaves the pen and writes a warning to the console: an exception in the constructor would leave the element not working.
+  - The pen's eraser — `button` 5, and bit 32 in `buttons` (Pointer Events Level 3; sources 9.3) — erases with any `tool`, if the task allows the eraser. In a task without it the pen's back end does nothing, `tool = "eraser"` is a `TypeError`, and a new task without the eraser brings back the pen.
+  - A press goes on as it began: a change of `tool` does not change it. One pointer at a time writes or erases.
+- **Sheet** — the strokes in the order in which they went down, not by ID. The action of erasing keeps the erased strokes with their places, and undo returns them to the same places: there is no snapshot of the whole sheet.
 - **The writing history** — events in the order in which the actions went down, with the sheet's time:
   - "stroke" — the time when it went down, and the stroke itself: the ID, the pointer type and the points with time and pressure. Usually it goes down with its last point. If the stroke ended without `pointerup`, and another action went down while it was being written, then no earlier than that action;
   - "erasing" — the time of the lift and the IDs of the erased strokes, in the sheet's order;
   - "clearing" — the time and the IDs of everything that was on the sheet;
   - "undo" — the time, the IDs it removed and the IDs it brought back.
 
-  The time when an action went down does not decrease along the history. Folding the history gives the sheet without the rules of the stack: it only adds and removes IDs. The events are plain data, in JSON as they are. The history does not go outside yet: the event `historychange` and the property `history` are T15 (R07).
-- **The sheet's clock** — milliseconds from the first access to it, not decreasing. The input recorder takes the time of the points from it, and the work on the sheet the time of erasing, clearing and undo, and only when the action went down: an empty undo does not touch the clock. The page's time — the `timeStamp` of a pointer event and `performance.now()` at the methods — is counted from one origin ([architecture.md](architecture.md), section 4).
-- **Code:** in the DOM-free part — `clock.ts`, `geometry.ts`, `history.ts`, `eraser.ts` and `work.ts`, with tests in Node; in the element — `tool`, the routing of input between the recorder and the eraser, and drawing without the strokes under the eraser. On the page for trials — the button "Eraser".
+  The time when an action went down does not decrease along the history. Folding the history gives the sheet without the rules of the stack: it only adds and removes IDs. The events are plain data, in JSON as they are, and `spec`'s eval protocol takes them as they are. The history goes out by the property `history` and the event `historychange`, and comes in by the same property. The next ID after an assigned history is the greatest in it + 1. An assigned history passes through the actions of the work on the sheet, each recorded action must match the given one, and its time is checked only for its order.
+- **The sheet's clock** — milliseconds from the first access to it, not decreasing. The input recorder takes the time of the points from it, and the work on the sheet the time of erasing, clearing and undo, and only when the action went down: an empty undo does not touch the clock. An assigned history continues it by `resume`: from its last event plus the pause of the groups and 1 ms more, and the sheet's time is the time of its history. The page's time — the `timeStamp` of a pointer event and `performance.now()` at the methods — is counted from one origin (sources 9.3).
+- **Code:** in the DOM-free part — `clock.ts`, `geometry.ts`, `history.ts`, `eraser.ts` and `work.ts`, with tests in Node; in the element — `tool`, the routing of input between the recorder and the eraser, drawing without the strokes under the eraser, and one helper for the upgrade of properties, through which `tool`, `task`, `media` and `history` go, `history` before `marks`. On the page for trials — the button "Eraser".
 
-— *Why:* the author's answers in the planning of T10, 2026-10-25. Not to split the task — not by the recommendation; the eraser along the path, undo and clearing with their own IDs, `tool` and the pen's eraser — by the recommendations. The rest is a «да» to the plan. Before the work a separate agent checked the plan: the sheet's order, the lazy index and the reach in CSS px are its corrections. The sources are [architecture.md](architecture.md), section 4.
+— *Why:* the author's answers in the planning of the eraser: one task, not split, against the recommendation; the eraser along the path, undo and clearing with their own IDs, `tool` and the pen's eraser — by the recommendations. Before the work a separate agent checked the plan: the sheet's order, the lazy index and the reach in CSS px are its corrections. The sources — sources 9.3.
 - **A path, not a touch.** Going over several strokes with the eraser is one action and one undo. A touch stays a particular case.
 - **Under the eraser — at once, off the sheet — on the lift.** So erasing goes down as a stroke does: one action, one event `workchange`, one event of the history. `pointercancel` throws it away, and `exportPNG()` during the press gives the sheet as it still is.
-- **Events with their own IDs.** Whoever reads the history — the runner of `tutor` — does not need to repeat the stack rules of `canvas`. It reads clearing as erasing from the format of `tutor`: «стирание — время и ID стёртых штрихов» ([architecture.md](architecture.md), section 4). IDs are not data about a person, and they add no information about the writing.
+- **Events with their own IDs.** Whoever reads the history — the runner of `tutor` or of eval — does not need to repeat the stack rules of `canvas`: it folds the history only adding and removing IDs, and reads clearing as erasing from the format of `tutor`: «стирание — время и ID стёртых штрихов» (sources 9.3). IDs are not data about a person, and they add no information about the writing.
 - **One time for erasing — the lift's.** The format of `tutor` gives erasing one time, and the work changes when the eraser is lifted.
-- **The order in which they went down.** If T35 allows several touches at once, stroke 3 may go down before stroke 2, and an order by ID would differ from the order of writing.
-- **Index by the change of the array.** Each action gives a new array of strokes (R19), and an index built for its own array does not diverge from it. Editing the index on each action is six places for it to go out of sync: writing, erasing, clearing and the undo of each of the three.
+- **The order in which they went down.** If several touches at once are ever allowed, stroke 3 may go down before stroke 2, and an order by ID would differ from the order of writing.
+- **Index by the change of the array.** Each action gives a new array of strokes, and an index built for its own array does not diverge from it. Editing the index on each action is six places for it to go out of sync: writing, erasing, clearing and the undo of each of the three.
 - **Reach in CSS px.** In the sheet's units the eraser on a phone 360 px wide would be three times smaller than on a screen of 1000 px. Erasing is written by ID, so the history does not depend on the screen.
-- **The pen's eraser.** A pen turned over erases, as on paper, and nothing needs switching. It cannot be passed through the DevTools protocol: the tests give it by synthetic events, and on devices T22 checks it.
-- **One clock.** By the DOM Standard `timeStamp` is a "relative high resolution coarse time", and by High Resolution Time `now()` is the "current high resolution time", and both are counted from the time origin of the global object. The cost: `undo()` gets the time of `performance.now()`, which is later than the click, and the next points of a stroke being written may be pulled up to it by a few milliseconds.
+- **The pen's eraser.** A pen turned over erases, as on paper, and nothing needs switching. It cannot be passed through the DevTools protocol: the tests give it by synthetic events, and on devices the probe on hardware checks it (sources 9.3).
+- **One clock.** By the DOM Standard `timeStamp` is a "relative high resolution coarse time", and by High Resolution Time `now()` is the "current high resolution time", and both are counted from the time origin of the global object (sources 9.3). The cost: `undo()` gets the time of `performance.now()`, which is later than the click, and the next points of a stroke being written may be pulled up to it by a few milliseconds.
 
 — *Rejected:*
 - an eraser by touch — several strokes would be erased by several presses and undone by several undos;
 - each hit as an action of its own — going over five strokes would mean five undos;
 - undo and clearing with the time only — everyone who reads the history would have to repeat the stack rules;
 - a time for each erased stroke — the format of `tutor` does not know it, and the work changes on the lift;
-- splitting the task into the DOM-free part and the eraser on the element (T38) — the author's answer: as one task;
+- splitting the work into the DOM-free part and the eraser on the element — the author's answer: as one task;
 - only `tool` — a pen turned over would not erase; only the pen's eraser — the mouse and the finger would not erase at all;
 - the sheet in the order of the IDs, an index edited on each action and the reach in the sheet's units — for the reasons above;
-- a snapshot of the sheet for each erasing — R19 rejected it.
+- a snapshot of the sheet for each erasing — memory would grow by the whole sheet with each action, and erasing fits an action, not a snapshot.
 
 — *Revisit:*
-- the reach — by the probe on devices (T22); the pen's eraser — if on devices it comes otherwise than in Pointer Events Level 3;
+- the reach — by the probe on devices (Д7); the pen's eraser — if on devices it comes otherwise than in Pointer Events Level 3;
 - a hit by the raw points — if on fast strokes the eraser misses the ink. perfect-freehand smooths the path (`streamline` 0.5), and at a sharp corner with sparse points the ink may move away from the polyline farther than `INK_REACH`. Then — compute by perfect-freehand's middle line, `getStrokePoints`.
 
 — *Consequence:*
-- **T15** — `historychange` and `history`. It needs: a clock that continues the time of an assigned history; the next ID at the input recorder; a check of an assigned history — the IDs do not repeat, what is erased and removed was on the sheet, the time does not decrease; one helper for the upgrade of properties for `tool`, `task` and `history`. T15 also decides how `tool` gets along with the tools from `task`;
-- **T12** — the groups are built from the history with its time; **T14** — a mark disappears when all its strokes are erased: erasing exists;
-- **T17** — the history in a measurement sample is the events of this entry;
-- **T22** — the reach and the pen's eraser on devices;
-- the amendments to R07, R18, R19 and R20;
-- **table 3 of RUN.md** — В33 «в реестр spec»: the events of the history go to the eval protocol.
+- `src/core/eraser.ts`, `src/core/geometry.ts` — the reach and the hits on the stroke's segments;
+- `src/core/work.ts` — the sheet's order, the action of erasing and the index of strokes;
+- `src/core/history.ts` — the events of the history, their fold and the check of an assigned history;
+- `src/core/clock.ts` — the sheet's clock and its continuation of an assigned history;
+- `src/core/groups.ts` — the groups built from the history with its time;
+- `src/element/` — `tool`, the pen's eraser, the routing of input, the marks under the eraser, `history` and `historychange`;
+- `src/eval/` — the history in a sample file;
+- `demo/` — the page for trials;
+- [architecture.md](architecture.md) — the eraser, the writing history and the clock, the element's `tool` and `history`, the sample file, and the code by files;
+- [sources.md](sources.md) — the record of the eraser and the writing history;
+- README.md.
 
-— `src/core/`, `src/element/`, `demo/`; [architecture.md](architecture.md), sections 3.1, 3.3, 3.5, 3.7 and 4; RUN.md, T10, table 3; README.md.
-
-— *Amendment 2026-10-25:* "outside the visible part of the sheet" is now outside the drawing surface, clipped to the visible part of the container: while the statement is visible above the sheet, the drawing surface goes below it (R23). "One helper for the upgrade of properties" from the "Consequence" about T15 already exists: `tool`, `task` and `media` go through it. — R23; RUN.md, T11.
-
-— *Amendment 2026-10-26:* the "Consequence" about T14 is done (R26): a mark is not seen when all its strokes are erased, and it comes back with them after an undo. The strokes under a press of the eraser remove it from the screen at once, and `pointercancel` brings it back. — R26; RUN.md, T14.
-
-— *Amendment 2026-10-26:* the "Consequence" about T15 is done (R27). The history goes out by the property `history` and the event `historychange`, and comes in by the same property. The clock continues an assigned history by `resume`: from its last event plus the pause of the groups and 1 ms more, and the sheet's time is the time of its history. The next ID is the greatest in the history + 1. The check of an assigned history is stricter than the "Consequence" named: the history passes through the actions of the work on the sheet, each recorded action must match the given one, and the time is checked only for its order. The shared helper for the upgrade of properties takes `history` too, before `marks`. How `tool` gets along with the task's tools is T41. — R27; RUN.md, T15, T41.
-
-— *Amendment 2026-10-26:* `tool` is also switched by the element's buttons, «Перо» and «Ластик», and the element announces the learner's change of the tool by the event `toolchange` (R28). The pen's eraser erases with any `tool`, if the task allows the eraser. In a task without it the pen's back end does nothing, `tool = "eraser"` is a `TypeError`, and a new task without the eraser brings back the pen. So it is decided how `tool` gets along with the task's tools — from the amendment about T15. — R28; RUN.md, T41.
-
-— *Amendment 2026-10-26:* in pen mode a finger does not erase. Without pen mode, a press of the eraser by a finger is canceled by a second finger that touched soon after: scrolling begins, and nothing is erased (R29). — R29; RUN.md, T35.
-
-— *Amendment 2026-10-26:* В33 is recorded in `spec` (R31). The eval protocol takes the events of the writing history as they are: erasing and clearing name the IDs of the erased strokes, and undo the IDs it removed and brought back. The runner folds the history without the stack rules, only adding and removing IDs, and reads clearing as erasing (epic E3 in RUN.md of `spec`; concepts 15 spec, "writing history"). — R31.
-
-**R23. The sheet is a stack of layers in its visible part, in the order of concepts 8 spec, and all the layers move in the frame in which the ink is drawn. The task's page fits the width of its area, up to 1000 CSS px, and stands at the sheet's left, the sheet going on past it (R73). On the template is the task's grid, and the element shows the task statement above the sheet, as wide as the page, in the same scrolling. The element gets the task and the media files by the properties `task` and `media`, and the theme by CSS variables.**
+**R23. The sheet is a stack of layers in its visible part, in the platform's order of the layers, and all the layers move in the frame in which the ink is drawn. The task's page fits the width of its area, up to 1000 CSS px, and stands at the sheet's left, the sheet going on past it. On the template is the task's grid, and the element shows the task statement above the sheet, as wide as the page, in the same scrolling. The element gets the task and the media files by the properties `task` and `media`, and the theme by CSS variables.**
 - **The layers** stand in the stage, from bottom to top:
-  - the author's template — an SVG with the grid, `aria-hidden`; on the workbook, its lines and boxes, which a screen reader reads: its root is `role="none"`, the lines a list (R34, R36);
+  - the author's template — an SVG with the grid, `aria-hidden`; on the workbook, its lines and boxes, which a screen reader reads: its root is `role="none"`, the lines a list;
   - the place of the module's widget — empty;
-  - the place of the demo of a worked example (R42);
-  - the tracing paper of a task from paper (R87);
+  - the place of the demo of a worked example;
+  - the tracing paper of a task from paper;
   - the tutor's sketch — an empty SVG;
   - the ink — the drawing surface;
-  - the tutor's marks — `role="none"`, each visible mark `role="img"` with an `aria-label` (R26);
-  - over them, the tracing paper's grip and its tooltip (R87).
+  - the tutor's marks — `role="none"`, each visible mark `role="img"` with an `aria-label`;
+  - over them, the tracing paper's grip and its tooltip.
 
   All the layers are of one size and `position: absolute`. The `viewBox` of each SVG is the visible part of the sheet in its units, `vx vy W/k H/k`, for a stage W × H CSS px. One layout sets it, in the same frame in which the ink is drawn: on scrolling and on a new size.
 - **The view** is `k`, `vx` and `vy` (`View` in `src/core/screen.ts`): k = min(A / 1000, 1) for a container A CSS px wide as laid out — `fitScale`, the cap `K_MAX` —, and `vx`, `vy` the left and the top of the visible part, in units. The cap is the layout's alone: the `k` of input, of the eraser's reach and of drawing comes from the sheet's rectangle on the screen, `scaleFor`, with no cap.
-- **The page and the sheet.** The page stands at the sheet's left, with no margins, and the sheet goes on to the right and down as far as R73 lays it out, `#reach`. The column is as wide as the sheet × k, and the container is `overflow: auto` and runs left to right whatever the page's direction: it scrolls across too. The element is as tall as the statement and the sheet unless it is given a height; then they scroll in it. The consumer's `--novatrail-canvas-pad-top` and `--novatrail-canvas-pad-bottom` pad the column: the statement starts below the first, and the sheet scrolls up past the second (R73).
-- **The stage** is the visible part on both axes: it sticks to the container's top and left, as wide and as tall as the container, or as the sheet × k where that is less. The drawing surface takes a pixel of its buffer for each device pixel (R18), and a new density — the window on another screen, the browser's zoom — lays it out anew. In an element with a height the buffer is no larger than the container however far the sheet goes; in one without, it is as tall as the sheet.
-- **The visible part** follows the scrolling, `#scrolled`, from where the sheet's top and left stand in the container's content, `#sheetEdge`. While the statement is in view, the drawing surface goes on below the visible part of the container, and the eraser takes nothing there, nor anything out of sight (R22). A new width, or a statement of a new height, keeps the top left corner of the visible part at the same place of the sheet, unless the sheet's top, or its left, is in sight. A new height of the container alone touches no scrolling: a scroll in progress is not cut off.
-- **Input** is taken by the drawing surface, the bar's buttons (R84) and the tracing paper's grip (R87). The other layers have `pointer-events: none`, and no `pointer-events` is set on the drawing surface and its ancestors, so the consumer's `none` on the element reaches the drawing surface (R20). The one exception is a worked example's sheet: its drawing surface has `pointer-events: none` by a rule on the sheet's class, and a finger on it scrolls as the browser does (R42). The stage bans the context menu and selection.
-- **The grid** is squares, lines or dots: `squares`, `lines` and `dots`, as in concepts 16.1 spec.
+- **The page and the sheet.** The page stands at the sheet's left, with no margins, and the sheet goes on past the page, the ink and the tracing paper, a view to the right and two down, within its reach, `#reach`. The column is as wide as the sheet × k, and the container is `overflow: auto` and runs left to right whatever the page's direction: it scrolls across too. The element is as tall as the statement and the sheet unless it is given a height; then they scroll in it. The consumer's `--novatrail-canvas-pad-top` and `--novatrail-canvas-pad-bottom` pad the column: the statement starts below the first, and the sheet scrolls up past the second.
+- **The stage** is the visible part on both axes: it sticks to the container's top and left, as wide and as tall as the container, or as the sheet × k where that is less. The drawing surface takes a pixel of its buffer for each device pixel, and a new density — the window on another screen, the browser's zoom — lays it out anew. In an element with a height the buffer is no larger than the container however far the sheet goes; in one without, it is as tall as the sheet.
+- **The visible part** follows the scrolling, `#scrolled`, from where the sheet's top and left stand in the container's content, `#sheetEdge`. While the statement is in view, the drawing surface goes on below the visible part of the container, and the eraser takes nothing there, nor anything out of sight. A new width, or a statement of a new height, keeps the top left corner of the visible part at the same place of the sheet, unless the sheet's top, or its left, is in sight. A new height of the container alone touches no scrolling: a scroll in progress is not cut off.
+- **Input** is taken by the drawing surface, the bar's buttons and the tracing paper's grip. The other layers have `pointer-events: none`, and no `pointer-events` is set on the drawing surface and its ancestors, so the consumer's `none` on the element reaches the drawing surface. The one exception is a worked example's sheet: its drawing surface has `pointer-events: none` by a rule on the sheet's class, and a finger on it scrolls as the browser does. The stage bans the context menu and selection.
+- **The grid** is squares, lines or dots: `squares`, `lines` and `dots`, as spec names them.
   - The step is from 20 to 500 units, 50 by default.
   - The lines lie strictly inside the sheet, at `i × step`, over the whole sheet as far as it goes, and their thickness is in CSS px at any `k`. The dots stand where the lines would cross.
-  - A sheet without a task is in squares of 50: concepts 8 spec knows no sheet without a grid. A task from paper has the learner's grid (R88), and the workbook has its lines and no grid (R36).
+  - A sheet without a task is in squares of 50: spec knows no sheet without a grid. A task from paper has the grid the learner chooses, and the workbook has its lines and no grid.
   - The grid's path is built by the DOM-free part, `gridPath` in `grid.ts`.
-- **The statement** is above the sheet, in the element itself and in the same scrolling; so is the workbook's (R34), and a worked example's parts stand between it and the sheet (R42).
+- **The statement** is above the sheet, in the element itself and in the same scrolling; so is the workbook's, and a worked example's parts stand between it and the sheet.
   - It is as wide as the page, `--page`, and sticks to the container's left: it scrolls down alone. It keeps the element's own direction, `--direction`, while the container runs left to right.
-  - Paragraphs are text, through `textContent`, and pictures are an `<img>` from a `Blob` that the function `media` gives. The statement inherits its font and color from the consumer, and its language is the module manifest's, the property `manifest`, and without one the element's own (R32).
+  - Paragraphs are text, through `textContent`, and pictures are an `<img>` from a `Blob` that the function `media` gives. The statement inherits its font and color from the consumer, and its language is the module manifest's, the property `manifest`, and without one the element's own.
   - A picture stands in a frame of its own size, and the size is given by the task. While the picture has not come, or if it never comes, the frame shows its description, and a screen reader reads it as a picture. A picture with an empty description is decoration, and it has no frame.
-- **The pictures' files** are held by the element's one loader (R42). A reference is one file and one call of `media`, however many pictures show it — the task statement, the example's statement, the demo's parts and the sheet's areas. A file is held while what the element shows names its reference, and the element asks for all of an example's pictures when the example comes. The `blob:` URL is one per reference while the element is on the page, and the loader decodes it, once, before a picture shows it. It is revoked when nothing names the reference any more, when the file did not decode and when the element has left the page. A reference without a file is asked for again with every new task and example, when the element returns to the page and at a new function `media`, which does not cancel the loads already begun.
+- **The pictures' files** are held by the element's one loader. A reference is one file and one call of `media`, however many pictures show it — the task statement, the example's statement, the demo's parts and the sheet's areas. A file is held while what the element shows names its reference, and the element asks for all of an example's pictures when the example comes. The `blob:` URL is one per reference while the element is on the page, and the loader decodes it, once, before a picture shows it. It is revoked when nothing names the reference any more, when the file did not decode and when the element has left the page. A reference without a file is asked for again with every new task and example, when the element returns to the page and at a new function `media`, which does not cancel the loads already begun.
 - **No formulas**: the tasks do not need them.
 - **Properties:**
-  - `task` — the open view of format v0, checked as strictly as the schema: a field the open view does not have is a `TypeError` with its name (R32). Only `undefined` omits a field, and `null` is a value, and a wrong one. The same task, or one equal to it by its template, changes nothing, and another changes only the template, and in it only what has changed: the grid or the statement. The work stays, since a new task is a new element (R20);
+  - `task` — the open view of format v0, checked as strictly as the schema: a field the open view does not have is a `TypeError` with its name. Only `undefined` omits a field, and `null` is a value, and a wrong one. The same task, or one equal to it by its template, changes nothing, and another changes only the template, and in it only what has changed: the grid or the statement. The work stays, since a new task is a new element;
   - `media` — a function that returns a `Promise<Blob>`;
   - `tool`, `task` and `media`, assigned before the element is registered, go through one shared helper: an invalid value leaves the property as the element starts it, and gives a warning.
-- **The theme** is the variables `--novatrail-canvas-paper`, `--novatrail-canvas-ink` and `--novatrail-canvas-grid`, with light defaults at every `var()`; the bar's are R84's, the marks' R26's.
+- **The theme** is the variables `--novatrail-canvas-paper`, `--novatrail-canvas-ink` and `--novatrail-canvas-grid`, with light defaults at every `var()`; the bar and the marks have variables of their own.
   - In forced colors mode the system ones stand in their place: Canvas, CanvasText and GrayText.
-  - The ink is drawn in the drawing surface's color as its style computed it, and is redrawn on a change of the theme. The workbook's print is in the ink's color (R36).
-  - The picture of the work is black on white (R83).
-  - The element is horizontal at any writing mode of the page, `:host { writing-mode: horizontal-tb }` (R36).
+  - The ink is drawn in the drawing surface's color as its style computed it, and is redrawn on a change of the theme. The workbook's print is in the ink's color.
+  - The picture of the work is black on white.
+  - The element is horizontal at any writing mode of the page, `:host { writing-mode: horizontal-tb }`.
 - **Code:**
   - in the DOM-free part — `grid.ts`, `task.ts`, `fitScale` and `scaleFor` in `screen.ts`, `SHEET`, `REACH` and `extentOf` in `sheet.ts`;
   - in the element — the scene of layers, `#layout`, `#reach`, `#sheetEdge`, `#place` and `STYLE` in `index.ts`, and the statement in `statement.ts`;
   - tests in the browsers — `layers.test.ts`, `statement.test.ts` and `wide.test.ts`, the sheet past the page; forced colors mode is two Vitest instances, `forced colors chromium` and `forced colors firefox`, each with `forcedColors: "active"` in Playwright's context, `forced-colors.test.ts` — WebKit has no forced colours to emulate (measurements 1.5);
   - on the page for probes, `demo/` — the grid's kind and step, a statement with a picture and the dark theme.
 
-— *Why:* the author's answers in the planning of T11, 2026-10-25: the statement above the sheet and only an upper cap of `k` by the recommendations, the rest a «да» to the plan. The page at the left with the sheet past it is the author's choice of 2026-11-22 (R73). The sources are [architecture.md](architecture.md), section 4.
+— *Why:* the author's answers: the statement above the sheet and only an upper cap of `k`, as recommended. The page stands at the left with the sheet past it: a sheet that grows with the ink gives room wherever the learner writes. The sources — sources 9.4.
 - **The layers move in the ink's frame.** The browser takes the scrolling step before the frame callbacks (HTML Standard), and Chrome's compositor thread assembles frames even without the main thread. A layer that scrolls by itself would get a frame or two ahead of the ink on scrolling: the ink is redrawn by the scroll event. Moved in one frame, the layers lag all together and do not drift from one another.
 - **`viewBox`, not a shift of an SVG the size of the whole sheet.** The browser rasterizes only the visible part, and a fractional shift does not blur the lines in CSS px. The thickness at `non-scaling-stroke` the browser computes from the viewport of the outermost SVG (SVG 2), so a transform of the page does not change it either.
 - **The statement above the sheet:**
   - so it is at canvas-api — «текст над листом, а не часть листа», — on `tutor`'s board and in `spec`'s prototype;
-  - HTML text grows with the browser's zoom and wraps by the width, while the page, and the workbook's print on it, grow with the browser's zoom only until the page fills the element's width, and past it with the bar's zoom (R73; [architecture.md](architecture.md), section 3.10);
+  - HTML text grows with the browser's zoom and wraps by the width, while the page, and the workbook's print on it, grow with the browser's zoom only until the page fills the element's width, and past it with the bar's zoom;
   - the statement's place on the sheet would depend on the device's fonts, while the strokes lie in the sheet's units. On another device the text would end up under the ink, and the answer slots could run onto it.
 
-  R51 spec has it so: the statement is part of the author's template, and the canvas kind decides whether it stands above the canvas or on it.
+  spec has it so: the statement is part of the author's template, and the canvas kind decides whether it stands above the canvas or on it.
 - **The statement as wide as the page**, at its left: it stays in sight and wraps as it would on the page alone while the sheet goes by under it.
 - **Formulas.** Neither `tutor`'s tasks nor the 603 tasks of MathTrail standalone have any: there it is text with the signs ×, :, − and fractions of the form a/b. Nor are there libraries of formulas: neither KaTeX, nor MathJax, nor MathML is at `tutor`, at canvas-api or at standalone.
 - **The picture's frame.** The task gives the picture a size, and the place for the picture is held until it comes: neither the text nor the sheet moves under the pen. A screen reader will read the description, and while the picture is not there, the learner will see it too.
 - **The files' URLs:**
   - MDN advises revoking the URL when the picture has left the document, not on load;
   - moving the element on the page is a disconnection and a connection in one task, so the URL is revoked after a microtask if the element has not come back;
-  - otherwise the pictures of every task would be held in memory while `app` is open, since the consumer moves to a new task with a new element (R20).
+  - otherwise the pictures of every task would be held in memory while `app` is open, since the consumer moves to a new task with a new element.
 - **The cap of `k`:**
   - a drawing surface as tall as the sheet, in an element without a height, grows with the square of `k`. At a width of 2560 px and a density of 2, the page alone would take a buffer of 5120 × 7168 pixels, ≈147 MB, without the cap, and of 2000 × 2800, ≈22 MB, with it;
   - a square of 50 px and a line of 3 px stay on a wide screen as they are on paper, a pixel a unit as on the picture of the work.
@@ -1002,8 +995,8 @@ The design — [architecture.md](architecture.md).
 
 — *Rejected:*
 - layers that scroll together with the content, and a shift of an SVG the size of the whole sheet instead of `viewBox` — for the reasons above;
-- the statement on the sheet — for the reasons above; the statement at the consumer — the card architecture 3.2 spec gives the canvas «показ содержания модуля: условие, формулы, медиа»;
-- the page in the middle of a wide screen, with margins at its sides — the sheet goes on past it instead (R73);
+- the statement on the sheet — for the reasons above; the statement at the consumer — spec gives the canvas the display of the module's content: the statement and media;
+- the page in the middle of a wide screen, with margins at its sides — the sheet grows to the right, and nothing would fill the room at the page's left;
 - `k` with no cap — the drawing surface's buffer and the square would grow with the screen, and each consumer would guard against it by itself;
 - `k` with a lower limit too — the page would not fit the width of a narrow screen;
 - the cap at `scaleFor` — for the reason above;
@@ -1018,25 +1011,35 @@ The design — [architecture.md](architecture.md).
 - formulas — when a task needs them: with no dependencies — MathML Core, and from LaTeX — Temml;
 - the statement on the sheet — if format v0 puts on the sheet pictures that one writes over.
 
-— `src/core/`, `src/element/`, `demo/`, `vitest.config.ts`; [architecture.md](architecture.md), sections 1, 3.1, 3.2, 3.3, 3.7, 3.10 and 4; RUN.md, T11 (body — [docs/plan/E4.md](plan/E4.md)).
+— *Consequence:*
+- `src/core/` — the grid, the task, the view, the reach;
+- `src/element/` — the layers, the layout, the statement, the theme and their tests;
+- `demo/` — the grid, a statement with a picture, the dark theme;
+- `vitest.config.ts` — the instances of forced colors mode;
+- [architecture.md](architecture.md) — the bounds, the layers, the coordinates, the docking, the code, accessibility.
 
-**R24. The stroke groups are by nearness in space and in time. Two strokes are neighbors if there are no more than 2 s between them, and the boxes of their points come closer than a square — 50 units horizontally and vertically. A group is the strokes that a chain of neighbors joins. The rule takes the visible strokes and counts in integers: in tenths of a unit and in milliseconds. The labels are A, B, C… by place, top to bottom. The group's rectangle is in the sheet's units, and the group box in fractions of the crop is computed by T13.**
-- **The input** is the visible strokes of the final sheet with the time of their points: the fold of the writing history, which is also the strokes on the sheet (R22). What is erased and what is removed by undo does not enter the groups, and what is brought back by undo enters with the time when it was written. Erasing and undo do not split groups. A stroke without points or one ID on two strokes is a `TypeError`, and a rule whose limit is not a finite number from 0 is a `RangeError`.
-- **Integers.** Places are in tenths of a unit, `round(10 × v)`, and time is in whole milliseconds, `round(t)`: so the sample will record them (R09). A half is rounded up: 100.05 units is 1001 tenths. A stroke's span is from the earliest time of its points to the latest. Further on the rule only subtracts and compares.
+**R24. The stroke groups are by nearness in space and in time. Two strokes are neighbors if there are no more than 2 s between them, and the boxes of their points come closer than a square — 50 units horizontally and vertically. A group is the strokes that a chain of neighbors joins. The rule takes the visible strokes and counts in integers: in tenths of a unit and in milliseconds. The labels are A, B, C… by place, top to bottom. The group's rectangle is in the sheet's units, and the group box in fractions of the crop is computed by the crop. The workbook has no groups.**
+- **The input** is the visible strokes of the final sheet with the time of their points: the fold of the writing history, which is also the strokes on the sheet. What is erased and what is removed by undo does not enter the groups, and what is brought back by undo enters with the time when it was written. Erasing and undo do not split groups. A stroke without points or one ID on two strokes is a `TypeError`, and a rule whose limit is not a finite number from 0 is a `RangeError`.
+- **Integers.** Places are in tenths of a unit, `round(10 × v)`, and time is in whole milliseconds, `round(t)`: so the sample records them. A half is rounded up: 100.05 units is 1001 tenths. A stroke's span is from the earliest time of its points to the latest. Further on the rule only subtracts and compares.
 - **Neighbors** — both conditions at once, and in both the boundary is included:
   - the pause between the strokes — from the end of the earlier one to the start of the later one, and for strokes that overlap in time it is 0 — is no more than 2000 ms;
   - the gap between the boxes of their points is no more than 500 tenths, 50 units, horizontally, and as much vertically.
-- **A group** is the strokes linked by a chain of neighbors. The candidates for neighbors are found by an rbush index over the boxes in tenths, widened by the threshold: on integers this is exactly the condition of place. Time is checked separately (R05).
-- **The labels** are by place, top to bottom (R09):
+- **A group** is the strokes linked by a chain of neighbors. The candidates for neighbors are found by an rbush index over the boxes in tenths, widened by the threshold: on integers this is exactly the condition of place. Time is checked separately.
+- **The labels** are by place, top to bottom:
   - the order is by the group's rectangle in tenths: top, left, bottom, right. Then by the earliest start, and only if that too is the same — by the smaller ID;
   - the labels are A…Z, then AA…AZ, BA…ZZ, AAA…;
-  - in the table "label → strokes' IDs" the IDs go in ascending order.
-- **The group's rectangle** is the common rectangle of the points of its strokes in the sheet's units, `[ymin, xmin, ymax, xmax]`, by the geometry it was given: on the device by the raw strokes, in the sample by the recorded ones (R09). The "group box" is already fractions of the crop (concepts 15 spec), and it is computed together with `h_med` by T13.
+  - in the table "label → strokes' IDs" the IDs go in ascending order;
+  - the sample sets the labels before it renumbers the strokes by place.
+- **The group's rectangle** is the common rectangle of the points of its strokes in the sheet's units, `[ymin, xmin, ymax, xmax]`, by the geometry it was given: on the device by the raw strokes, in the sample by the recorded ones. The "group box" is already fractions of the crop: the crop computes it, and its `h_med` is over stroke bundles, without time. The groups give the crop the boxes and the table "label → strokes' IDs".
+- **The workbook** has no groups: its boxes take their place, and the table "box → strokes' IDs" stands in the submission's context instead of the table of labels.
 - **What follows from it:**
-  - what is written later next to older writing is a group of its own (R06);
+  - what is written later next to older writing is a group of its own;
   - a stroke that touches two groups joins them only if it is no farther than 2 s from the strokes of both. Otherwise it enters the one that is nearer in time, or stands alone;
   - lines written one after another do not merge: under a stroke of a line lies a stroke written a line later. The exception is short lines of one or two signs;
-  - a drawing holds together while its neighboring parts are written without a pause for thought.
+  - a drawing holds together while its neighboring parts are written without a pause for thought;
+  - a tutor's mark with a group label holds on to the strokes of its group's row of the table of its submission;
+  - the clock after an assigned history runs from its last event plus 2001 ms, so the first stroke of a new session is no neighbor of the strokes of the past one. `exportWork()` takes the groups from `groupsOf`.
+- **The eval protocol** holds this rule as it is written here, and assigns an erased stroke to the groups of the visible strokes that would have been its neighbors: without visible neighbors — to none, with neighbors in two groups — to both. Its test vectors are `vectors/eval/v1/groups.json` of the package `@altnovatrail/contracts`. The rule changes only in `spec`, and `canvas` brings a change as a row «в реестр spec».
 - **Code** — `groups.ts` in the DOM-free part, with tests in Node:
   - the rule `GROUP_RULE`;
   - the groups `groupsOf`;
@@ -1044,12 +1047,12 @@ The design — [architecture.md](architecture.md).
   - the rectangle `rectOf`;
   - the label `labelOf`.
 
-  The synthetic sheets are in the tests, and the test vectors are `vectors/groups.json`. On the page for probes — the groups under the sheet and the rule's fields.
+  The synthetic sheets are in the tests, and the groups test checks the sheet's code against the eval protocol's vectors. On the page for probes, `demo/`, — the groups under the sheet and the rule's fields.
 
-— *Why:* the author's answers in the planning of T12, 2026-10-25. The rule of pairs, the pause of 2 s, nearness by the boxes, the fractions of the crop in T13 and the groups on the page for probes — by the recommendations. The thresholds 50 × 25, which the author chose first, the sweep over synthetic sheets did not confirm: the "ladder" fell apart. Then the author chose 50 × 50 — also by the recommendation. Before the work a separate agent checked the design. Its corrections are the counting in integers, labels without IDs, the clock of the synthetic samples, the file of vectors from the test and the rectangle as a function of its own. The sources are [architecture.md](architecture.md), section 4.
-- **Nobody has the rule.** `tutor` builds the groups «так, как их построит устройство, — по пространству и времени, без разметки» (R08 tutor), and `spec` puts a rule with thresholds into the eval protocol by T12 (epic E3 in RUN.md of `spec`). Neither the algorithm nor the thresholds are at `tutor`, at `spec` or at MathTrail.
-- **Pairs, not series.** Time is compared between two neighbors, not over the whole sheet. So a return to older writing amid fast work elsewhere still gives a group of its own, as R06 requires.
-- **2 seconds.** The mean pause of writing in children of grades 3 and 5 is about 400 ms, and 2000 ms is the threshold below which studies of writing count a pause as part of the writing itself. A longer pause is thought, and what is written after it is already another thought.
+— *Why:* the author's answers, by the recommendations: the rule of pairs, the pause of 2 s, nearness by the boxes, the fractions of the crop in the crop's rule and the groups on the page for probes. The thresholds 50 × 25, chosen first, the sweep over synthetic sheets did not confirm: the "ladder" fell apart, and 50 × 50 took their place. Before the work a separate agent checked the design. Its corrections are the counting in integers, labels without IDs, the clock of the synthetic samples, the file of vectors from the test and the rectangle as a function of its own. The sources — sources 9.5.
+- **Nobody had the rule.** `tutor` builds the groups «так, как их построит устройство, — по пространству и времени, без разметки», and neither the algorithm nor the thresholds were at `tutor`, at `spec` or at MathTrail (sources 9.5). So the rule is `canvas`'s own, and the eval protocol took it from here.
+- **Pairs, not series.** Time is compared between two neighbors, not over the whole sheet. So a return to older writing amid fast work elsewhere still gives a group of its own.
+- **2 seconds.** The mean pause of writing in children of grades 3 and 5 is about 400 ms, and 2000 ms is the threshold below which studies of writing count a pause as part of the writing itself (sources 9.5). A longer pause is thought, and what is written after it is already another thought.
 - **A square in both directions.** Digits in neighboring squares of the default grid are one group, and across an empty square they are different ones. Vertically the same square holds dots, fraction bars, underlines and the crossbars of a drawing. Lines are kept apart by time: under a stroke lies a stroke written a line later.
 - **The sweep.** Ten synthetic sheets, and the groups on them were written down before the run, through a teacher's eyes: the "ladder" from the study, something written later, two lines in a row, fractions with signs, words in cursive letters, lines like `tutor`'s synthetic samples, something crossed out, a stroke under two writings, an undo of erasing and the rule's boundaries. The probes beyond them are short lines, a column and an answer a line below. What breaks under each rule (the groups on the "boundaries" answer only to their own thresholds and do not count):
 
@@ -1064,60 +1067,44 @@ The design — [architecture.md](architecture.md).
   | an open group, 2 s, 50 × 12 | nothing, and the short lines neither, but dots and bars farther than 12 units move away into groups of their own |
 
   A column whose answer digits are written with a thought of 2.5 s each splits under all the rules with a pause of up to 2 s: this is the price of the pause. The median height of the groups on the "ladder" is 46 units at a digit of 36: the groups of the drawing and of the answer in a circle are taller than a digit.
-- **Integers and subtraction.** `tutor`'s runner repeats the rule in Go, and the Go specification allows several floating-point operations to be fused into one and to give a different result. In JavaScript `Math.hypot` is an approximate function. So the distances along the lines of strokes in the two implementations could diverge at the boundary. Here only the conversion to integers rounds — one multiplication by 10 and the rounding of a half up —, and further on the rule subtracts and compares integers and rounds nothing.
-- **Labels by place.** Labels in the order of writing would give away the course of the work (R09). The ID is also the order of writing, so it decides only when two groups coincide both in place and in start.
+- **Integers and subtraction.** `tutor`'s runner repeats the rule in Go, and the Go specification allows several floating-point operations to be fused into one and to give a different result. In JavaScript `Math.hypot` is an approximate function (sources 9.5). So the distances along the lines of strokes in the two implementations could diverge at the boundary. Here only the conversion to integers rounds — one multiplication by 10 and the rounding of a half up —, and further on the rule subtracts and compares integers and rounds nothing.
+- **Labels by place.** Labels in the order of writing would give away the course of the work, which a sample of the eval set holds no longer. The ID is also the order of writing, so it decides only when two groups coincide both in place and in start.
 
 — *Rejected:*
-- **series by pauses:** a pause longer than 2 s over the whole sheet starts a new series, and a group is only inside a series. A fast return to older writing would merge with it — against R06;
+- **series by pauses:** a pause longer than 2 s over the whole sheet starts a new series, and a group is only inside a series. A fast return to older writing would merge with it, and what is written later next to older writing would be no group of its own;
 - **a group is open while it is being written:** a stroke enters the group next to it if its last stroke landed no earlier than 2 s before. Lines would then be kept apart only by a vertical threshold smaller than the gap between lines, 12 units, and dots and bars farther than 12 would move away into groups of their own. Besides, the rule depends on the order of traversal, and it is harder for the runner to repeat;
-- **place alone** (C1) — R06 already rejected it;
+- **place alone:** what is added later would merge with the earlier writing, and the groups would diverge from those of `tutor`'s measurement;
 - **the thresholds 50 × 25**, which the author chose first, — by the sweep above;
 - **the distance along the lines of strokes:** a circle around the answer would not take everything inside it, but the root and the fused operations would set the device and the runner apart at the boundary;
 - **thresholds from the grid step or from the size of the handwriting:** the rule would need the task's step or an estimate of the handwriting of its own — the device, the runner and the sample alike;
-- **a pause of 4–6 s**, like the long pause in `tutor`'s action log and at canvas-api's line, — by the sweep above;
+- **a pause of 4–6 s**, like the long pause in `tutor`'s action log and at canvas-api's line (sources 9.5), — by the sweep above;
 - **labels in the order of writing**, as in the study's example, — they give away the course of the work; **labels by reading lines** — they need a rule of lines of their own;
 - **erasing and undo as a boundary of groups:** a correction in place would tear a digit off its number;
 - **groups over the whole history, with the erased strokes:** an erased stroke would glue visible ones together, and it is not in the picture;
-- **boxes in fractions of the crop in T12:** they need `sheet_box`, the crop's width and height, and that is T13.
+- **boxes in fractions of the crop in the rule of groups:** they need `sheet_box`, the crop's width and height, and that is the crop's;
+- **`h_med` over the groups:** a median over groups is fragile: a sheet with one drawing and one number gives the median of two numbers, (300 + 32) / 2 = 166 units, and the digits on the crop come out ≈ 6 px.
 
 — *Revisit:*
-- by `tutor`'s measurement, which compares the labels with the model's box (R08 tutor). It came back 2026-10-23, only on the models of Claude (R21 tutor). The reference for the groups is the markup by lines: a group must not go beyond a marked-up line;
+- by `tutor`'s measurement, which compares the labels with the model's box, only on the models of Claude (sources 9.5). The reference for the groups is the markup by lines: a group must not go beyond a marked-up line;
 - when a task's grid step is not 50 — the thresholds, maybe, from the step;
-- when several touches write at once (T35): strokes that overlap in time have a pause of 0;
 - if the measurement shows that the merging of short lines in a row gets in the way.
 
 — *Consequence:*
-- **T13** — the group boxes in fractions of each crop and `h_med`. A median over groups is fragile: a sheet with one drawing and one number gives the median of two numbers, (300 + 32) / 2 = 166 units, and the digits on the crop come out ≈ 6 px. Whether to compute the median over groups, its planning will decide;
-- **T14** — a mark with a group label finds the strokes by the table of its submission;
-- **T15** — a clock that continues an assigned history leaves a pause longer than 2 s after it: otherwise the first stroke of a new session would become a neighbor of the strokes of the past one. `exportWork()` takes the groups from `groupsOf`;
-- **T17** — the sample rounds the places the same way, `round(10 × v)`, and the time to whole milliseconds, and a half up. The labels are set before the strokes are renumbered (R09);
-- amendments to R06 and R09;
-- **table 3 of RUN.md** — В35 «в реестр spec»: the rule and the test vectors — to the eval protocol, and for `tutor`'s action log — to which group to assign what is erased.
-
-— `src/core/`, `src/element/probe.ts`, `demo/`, `vectors/`; [architecture.md](architecture.md), sections 3.1, 3.2, 3.5, 3.7 and 4; RUN.md, T12, T13, T15, E4, table 3; README.md.
-
-— *Amendment 2026-10-25:* T13 of the "Consequence" is decided: `h_med` is computed not over groups but over stroke bundles, without time (R25). The groups give the crop the boxes and the table "label → strokes' IDs". — R25; RUN.md, T13.
-
-— *Amendment 2026-10-26:* the "Consequence" about T14 is decided (R26): a mark with a group label holds on to the strokes of its group's row of the table of its submission. The group boxes in the context also check that it is of this sheet: each stroke of the table lies in the box of its group. — R26; RUN.md, T14.
-
-— *Amendment 2026-10-26:* the "Consequence" about T15 is done (R27): the clock after an assigned history runs from its last event plus 2001 ms, and the first stroke of a new session is not a neighbor of the strokes of the past one. `exportWork()` takes the groups from `groupsOf`. That the context is of this sheet is checked no longer by the group boxes, as the 2026-10-26 amendment said, but by the submission's digest. — R27; RUN.md, T15.
-
-— *Amendment 2026-10-26:* the "Revisit" about several touches is closed: T35 kept one writing pointer (R29), and there are no strokes that overlap in time. — R29; RUN.md, T35.
-
-— *Amendment 2026-10-26:* В35 is recorded in `spec` (R31). The eval protocol takes the group rule and `vectors/groups.json` as they are, and assigns an erased stroke to the groups of the visible strokes that would have been its neighbors: without visible neighbors — to none, with neighbors in two groups — to both. The vectors will come out in `spec`'s releases by way of T35 in RUN.md of `spec`, and `canvas` will take them from there (epic E3 there too). — R31.
-
-— *Amendment 2026-10-27:* the workbook has no groups. Their place is taken by the boxes: the table "box → strokes' IDs" stands in the submission's context instead of the table of labels (R34). — R34.
-
-— *Amendment 2026-11-08:* the group rule is now the eval protocol, as written here, with the groups of an erased stroke beyond it (R94 spec; [the text of the contracts](../spec/contracts/README.md) at the tag v0.9.8, section "The rules the device and the runner share"). Its test vectors are `vectors/eval/v1/groups.json` of the package `@altnovatrail/contracts`, and the groups test checks the sheet's code against them, and `vectors/groups.json` is removed. The rule changes only in `spec`, and `canvas` brings a change as a row «в реестр spec». — R47.
+- `src/core/groups.ts` and `groups.test.ts` — the rule, its functions, the synthetic sheets and the test against the eval protocol's vectors;
+- `src/core/crop.ts` — the group boxes in fractions of the crop;
+- `src/element/` — the clock after an assigned history and `exportWork()`;
+- `demo/` — the groups under the sheet and the rule's fields;
+- [architecture.md](architecture.md) — the units, the groups and their boxes, the crop and the context of the submission;
+- table 3, `run/QUESTIONS.md` — a row «в реестр spec»: the rule changes only in the eval protocol.
 
 **R25. The crop for checking is by stroke bundles: the scale is such that the lower median of the bundles' heights, but no higher than 100 units, becomes the digit height D. The crop fits into Claude's standard level — no longer than 1568 px and no more than 1568 tokens —, and a side smaller than 200 px gets a wider margin. The line is D / 12, and the group boxes are by the ink, outward. The crop's numbers are computed in integers, and the raster and the PNG are code of its own, the same in any JavaScript engine.**
 - **The input:**
-  - the visible strokes of the final sheet, their groups by R24 and the digit height D — an integer number of px from 1 to 256;
-  - places are in tenths of a unit, `round(10 × v)`, a half up, as for the groups (R24). So both the numbers and the raster are computed;
+  - the visible strokes of the final sheet, their stroke groups and the digit height D — an integer number of px from 1 to 256;
+  - places are in tenths of a unit, `round(10 × v)`, a half up, as for the groups. So both the numbers and the raster are computed;
   - errors:
     - a point that is not finite or is outside the sheet, a D not from the range — `RangeError`;
     - a stroke without points, an ID twice, groups that do not cover the visible strokes exactly once each — `TypeError`;
-  - an empty sheet gives no crop, and in its place is `null` (H3).
+  - an empty sheet gives no crop, and in its place is `null`: it is cut off before the AI call.
 - **Bundles and `h_med`:**
   - a stroke lower than 15 units is a bar: a dot, a minus, a fraction bar, an underline. It does not count and links nothing;
   - the other strokes whose boxes touch or overlap are one bundle. A gap of no more than 0 horizontally and vertically, the link is by a chain, and time does not matter;
@@ -1128,9 +1115,9 @@ The design — [architecture.md](architecture.md).
   - w₀ = ⌈(B.xmax − B.xmin) × s⌉ + 2m, where m = 12 px, and B is the box of the visible points; h₀ — the same way;
   - the width is max(w₀, 200), the left margin is m + ⌊(width − w₀) / 2⌋, and the work stands in the middle. The height and the top margin — the same way;
   - the limit is Claude's standard level: max(width, height) ≤ 1568 and ⌈width / 28⌉ × ⌈height / 28⌉ ≤ 1568 tokens. At D′ = 1 the crop always fits.
-- **`sheet_box`** is where the crop together with its margins lies on the sheet, in the sheet's units: xmin = B.xmin − left margin / s, xmax = xmin + width / s, y — the same way.
+- **`sheet_box`** is where the crop together with its margins lies on the sheet, in the sheet's units: xmin = B.xmin − left margin / s, xmax = xmin + width / s, y — the same way. Its formula is `sheetBoxOf`. By the `sheet_box` of its submission, with its margins, the model's box in fractions lands on the sheet — in integers, on the crop itself, with the same numbers as its raster —, and by it the element checks the context that came back with the marks.
 - **The line** is max(D′, 12) / 12 px: at 32 px — 2.67, at 16 — 1.33, at 48 — 4, and no thinner than 1 px. At any D up to 256 its half is smaller than the margin.
-- **The group boxes** are the group's ink: the rectangle of its points, widened by half the line and by the pixel of its edge, in fractions 0–1000 of the crop, `[ymin, xmin, ymax, xmax]`. The raster also paints this pixel, so every pixel of the group's ink lies in its box. The minimum is rounded down and the maximum up, so min < max for any group, a dot's too (Т-32).
+- **The group boxes** are the group's ink: the rectangle of its points, widened by half the line and by the pixel of its edge, in fractions 0–1000 of the crop, `[ymin, xmin, ymax, xmax]`. The raster also paints this pixel, so every pixel of the group's ink lies in its box. The minimum is rounded down and the maximum up, so min < max for any group, a dot's too, as a box of the observation must be.
 - **Integers:**
   - the tenths of the points, H, D′, the margins and the sizes are integers smaller than 2^53. JavaScript computes them exactly, and Go in `int64`;
   - `s`, `sheet_box` and the line are each one division of two integers, and IEEE 754 rounds it the same way in both languages;
@@ -1144,21 +1131,24 @@ The design — [architecture.md](architecture.md).
   - the signature, IHDR, one IDAT and IEND, with no ancillary chunks;
   - inside — a zlib stream of one block of fixed Huffman. Each row is without a filter, and a repeat is searched for in two places: the byte before and the row above;
   - the worst case is 9 bits per pixel, at 1568 tokens ≈ 1.4 MB, and in base64 less than 2 MB. The crop of a sheet of lines weighs a few KB, and that of the whole sheet about 10 KB.
+- **On the workbook** this rule draws the crop of each filled box — by its strokes, as one group, at the manifest's digit height. There are no crop numbers in the workbook's context: there is no snapping there. At the heights of eval the crop of a box is the lower limit, 200 × 200 px, that is, 64 tokens.
 - **What follows from it:**
   - a drawing, a fraction, a column and a circle around the answer do not throw the scale off;
   - the scale depends neither on the groups nor on the order of writing: the same final sheet gives the same crop;
-  - the crop of a measurement sample matches `app`'s crop byte for byte: both compute in tenths. For the eval-set samples and the child samples the numbers are the same if the resampling keeps the extreme points of a stroke;
+  - the crop of a measurement sample matches `app`'s crop byte for byte: both compute in tenths. For the eval-set samples and the child samples the numbers are the same: the resampling keeps the extreme points of a stroke, so `h_med` is by the recorded geometry and the boxes by the groups. The synthetic samples are drawn by the same code;
   - the weak spots are lines that touch, a cross through the whole writing and a frame around everything. They glue the bundles together, and the digits come out smaller than D;
   - long work is drawn smaller than D, and D′ says so.
+- **The rule is `spec`'s eval protocol**, as written here: the device and `tutor`'s runner draw by it, and the runner converts the strokes to the crop's pixels with the same integers. The term "stroke bundle" is in `spec/docs/concepts.md`'s glossary. The protocol's `bundle_median` is h_med itself, and the crop's `exact.median` is H in tenths, min(h_med, 1000), the height the scale takes. The rule changes only in `spec`.
 - **Code** — the DOM-free part, with tests in Node:
-  - `crop.ts` — the constants `CROP`, the bundles `bundlesOf`, the median `medianOf` and the crop's numbers `cropOf`;
+  - `crop.ts` — the constants `CROP`, the bundles `bundlesOf`, the median `medianOf`, the crop's numbers `cropOf` and `sheetBoxOf`;
   - `raster.ts` — the pixels `rasterOf` and the crop's PNG `pictureOf`;
   - `png.ts` — the encoder `encodePNG`;
-  - `sets.ts` — the union-find of the bundles and of the groups, and `geometry.ts` — the conversion to tenths, shared with the groups.
+  - `sets.ts` — the union-find of the bundles and of the groups, and `geometry.ts` — the conversion to tenths, shared with the groups;
+  - `exportWork()` calls `groupsOf`, `cropOf` and `pictureOf` through `workForCheck`, and takes D from the module manifest, `canvas.digit_height` — from 1 to 256 px, 32 by default. Of `crop.ts`, `raster.ts` and `png.ts` the entry point `core` exports none of the rules: the eval protocol has them.
 
-  The synthetic sheets are `sheets.fixture.ts`, outside the build and the package, and the test vectors are `vectors/crops.json`. A test in Chromium checks that the browser reads the PNG into the same grays. On the page for probes — the crop at the chosen digit height and its size at the heights of eval.
+  The synthetic sheets are `sheets.fixture.ts`, outside the build and the package, and the crop test checks the code against `vectors/eval/v1/crops.json` of the package `@altnovatrail/contracts`. A test in Chromium checks that the browser reads the PNG into the same grays. On the demo page — the crop at the chosen digit height and its size at the heights of eval.
 
-— *Why:* the author's answers in the planning of T13, 2026-10-25. The bundles, the limit of the standard level with a lower limit of 200 px and the line D / 12 — by the recommendations. The author did not split the task — not by the recommendation. Before the work a separate agent checked the design. Its corrections:
+— *Why:* the author's answers: the bundles, the limit of the standard level with a lower limit of 200 px and the line D / 12 — by the recommendations. Before the work a separate agent checked the design. Its corrections:
 - a budget of tokens instead of one long side;
 - bars do not link bundles;
 - the boxes are by the ink, outward;
@@ -1168,10 +1158,10 @@ The design — [architecture.md](architecture.md).
 - LZ77 — with two candidates;
 - the module of the synthetic data — outside the build.
 
-The sources are [architecture.md](architecture.md), section 4.
-- **Nobody has the rule.** `tutor` says only «PNG рисуется с медианной высотой группы штрихов 16, 24, 32 и 48 px; основная — 32 px» (R08 tutor). `tutor` has no code of rendering, and `spec` puts «правила вырезки» into the eval protocol: «они одни у устройства и раннера».
-- **The median of the groups is fragile.** A group of R24 is the whole writing: a fraction, a column, lines in a row. On the "ladder" the ordinary median of the groups is 46 units at a digit of 36, and a drawing with a number gives the mean of the drawing and the digit, 168. Bundles take a sign on its own, and a drawing as one bundle.
-- **The sweep.** Twenty-six synthetic sheets — the eleven sheets of T12 and fifteen sheets of the crop. The median of each was written down before the run. "Breaks" means that the digits at D = 32 come out smaller than 31 px or larger than 48:
+The sources — sources 9.6.
+- **Nobody had the rule.** `tutor` says only «PNG рисуется с медианной высотой группы штрихов 16, 24, 32 и 48 px; основная — 32 px». `tutor` has no code of rendering, and `spec` puts «правила вырезки» into the eval protocol: «они одни у устройства и раннера».
+- **The median of the groups is fragile.** A stroke group is the whole writing: a fraction, a column, lines in a row. On the "ladder" the ordinary median of the groups is 46 units at a digit of 36, and a drawing with a number gives the mean of the drawing and the digit, 168. Bundles take a sign on its own, and a drawing as one bundle.
+- **The sweep.** Twenty-six synthetic sheets — the eleven sheets of the groups' sweep and fifteen sheets of the crop. The median of each was written down before the run. "Breaks" means that the digits at D = 32 come out smaller than 31 px or larger than 48:
 
   | Rule | What breaks |
   |---|---|
@@ -1181,28 +1171,28 @@ The sources are [architecture.md](architecture.md), section 4.
   | the same, without a ceiling or with a ceiling of 200 | a drawing alone shrinks to 32 or 48 px; lines — 11 px |
   | the same, the ordinary median | a drawing with a number and a house with a number — 12 px; fractions — 29 px |
   | the heights of strokes, the lower median | a house with a number — 14 px; at a "4" and a "+" of two strokes the digits are larger, up to 46 px |
-  | the groups of R24, the lower median | a fraction — 16, a column — 12, a circle around the answer — 21, words — 21 px |
-  | the groups of R24, the ordinary median, as in R06 | also the "ladder" — 25, fractions — 17, a drawing with a number — 12 px |
+  | the stroke groups, the lower median | a fraction — 16, a column — 12, a circle around the answer — 21, words — 21 px |
+  | the stroke groups, the ordinary median | also the "ladder" — 25, fractions — 17, a drawing with a number — 12 px |
 
   There is no rule without failures: bundles break on lines that touch, the heights of strokes on a drawing next to a number.
 - **The standard level.**
   - Claude has two levels: "Standard | All other models | 1,568 px | 1,568" and "High-resolution | Claude 4.7 and later models | 2,576 px | 4,784". A picture costs "⌈width / 28⌉ × ⌈height / 28⌉ visual tokens", and "Images larger than either limit are downscaled before processing".
-  - `tutor`'s Claude adapter tells the API to reject a picture that the API would downscale (the 2026-10-25 amendment to R19 tutor). A crop larger than the model's limit would fail the call.
+  - `tutor`'s Claude adapter tells the API to reject a picture that the API would downscale. A crop larger than the model's limit would fail the call.
   - The standard level is taken by any model of Claude, and by OpenAI at `high` — up to 2,500 patches of 32 px and 2048 px — too.
   - A sheet filled with digits of 36 units fits at D = 32: 913 × 1269 px, 1518 tokens.
 - **No smaller than 200 px.** "Claude might hallucinate or make mistakes when interpreting low-quality, rotated, or very small images under 200 pixels". An answer of one digit at 32 px is 16 × 32 px of work: the margin around it grows, and the scale does not.
 - **The line D / 12.** `tutor`'s board draws 3 px at one unit per pixel, and the digit of its synthetic samples is 36: that is 1/12. Crops at different D are one drawing at different scales. At canvas-api the line was 4 units at one pixel per unit.
-- **Boxes by the ink.** By Т-32 a box is valid only if «целые 0–1000 и min < max». For a group of a dot or of a bar a box by the points degenerates. The pixel of the edge was added to the box by the review: the raster paints pixels another half pixel beyond the edge of the line, and without it the light edge of the ink went outside the box.
-- **Integers and one division.** Go may fuse "x*y + z" into one operation, while a division of two integers is one operation, and IEEE 754 rounds it the same way. Computing `sheet_box` by the formulas of section 3.2 in floating-point numbers diverges from the exact result in the last bit in about a third of cases — 948.4499999999999 instead of 948.45 on a probe of 100,000 random sheets —, so the vectors carry integers.
-- **A raster and a PNG of its own** — R05: the HTML Standard does not set the bytes of a PNG, and the browser's drawing surface brings in noise. In ECMAScript `Math.sqrt` is "Return 𝔽(the square root of ℝ(n))", and `hypot` and trigonometry are "implementation-approximated". So perfect-freehand does not go into the crop.
+- **Boxes by the ink.** In `spec` a box of the observation is valid only if «целые 0–1000 и min < max», and the adapter checks it. For a group of a dot or of a bar a box by the points degenerates. The pixel of the edge was added to the box by the review: the raster paints pixels another half pixel beyond the edge of the line, and without it the light edge of the ink went outside the box.
+- **Integers and one division.** Go may fuse "x*y + z" into one operation (sources 9.5), while a division of two integers is one operation, and IEEE 754 rounds it the same way. Computing `sheet_box` by its formulas in floating-point numbers diverges from the exact result in the last bit in about a third of cases — 948.4499999999999 instead of 948.45 on a probe of 100,000 random sheets —, so the vectors carry integers.
+- **A raster and a PNG of its own**, in the DOM-free code: the HTML Standard does not set the bytes of a PNG (sources 3.1), and the browser's drawing surface brings in noise. In ECMAScript `Math.sqrt` is "Return 𝔽(the square root of ℝ(n))", and `hypot` and trigonometry are "implementation-approximated". So perfect-freehand does not go into the crop.
 
 — *Rejected:*
-- **the median of the groups of R24**, as in R06, — by the sweep: a fraction, a column and lines in a row are one tall group;
+- **the median of the stroke groups** — by the sweep: a fraction, a column and lines in a row are one tall group;
 - **the heights of strokes** — by the sweep: a drawing of many tall strokes next to one number throws the scale off;
 - **bundles by the touching of lines, not of boxes** — the sample's resampling would change the touching, and the median would jump;
 - **the ordinary median** — with two bundles, a drawing and a number, it is their mean;
 - **bars that link** — a fraction whose bar touches the digits becomes one bundle;
-- **perfect-freehand and the browser's drawing surface on the crop** (R05);
+- **perfect-freehand and the browser's drawing surface on the crop** — approximate functions and the browser's noise would change the bytes;
 - **deflate without compression** — 1.2 MB for the crop of the whole sheet;
 - **dynamic Huffman** — it would compress better, but it needs code trees of its own and their own recording, and the crop of a sheet of lines weighs a few KB anyway;
 - **LZ77 hash chains** — the repeats of strokes on white are runs of white and the row above;
@@ -1211,80 +1201,67 @@ The sources are [architecture.md](architecture.md), section 4.
 - **a crop without a lower limit** — it can be smaller than 200 px;
 - **a line as on the screen, 3 units × s,** — thin for large handwriting, bold for small;
 - **a constant line, 3 px,** — bold at 16 px and thin at 48;
-- **boxes by the points with the rounding of a half** — for a dot and a bar min = max, and Т-32 does not accept such a box;
+- **boxes by the points with the rounding of a half** — for a dot and a bar min = max, and the observation does not accept such a box;
 - **boxes by the edge of the line, without the pixel of the edge,** — the light edge of the ink goes outside the box;
-- **two tasks** — the crop's numbers (T13) and the picture (T40). The author kept one.
+- **the crop's numbers and its picture as two tasks** — the author kept them one.
 
 — *Revisit:*
-- by `tutor`'s measurement (R21 tutor): the median, the heights D and the line — when it shows at which heights the model reads better;
-- when the list of models is fixed (R07 spec): if they are all of the high level, the limit can be raised;
-- if lines that touch or crosses through the writing turn up in the samples — the rule of bundles;
-- on the move to `spec` v0.2.32 — the crop of a workbook's answer slot.
+- by `tutor`'s measurement of the AI's reading: the median, the heights D and the line — when it shows at which heights the model reads better;
+- when the list of admitted models is fixed: if they are all of the high level, the limit can be raised;
+- if lines that touch or crosses through the writing turn up in the samples — the rule of bundles.
 
 — *Consequence:*
-- **T14** — the model's box in fractions lands on the sheet by the `sheet_box` of its submission, with its margins;
-- **T15** — `exportWork()` calls `groupsOf`, `cropOf` and `pictureOf`, and takes D from the task. What the entry point `core` exports, it decides;
-- **T17** — the resampling keeps the extreme points of a stroke; `h_med` is by the recorded geometry, and the boxes by the groups;
-- **T18** — the synthetic samples are drawn by the same code;
-- **`tutor`** — the runner draws the states and the frames by this rule and converts the strokes to the crop's pixels with the same integers (R11 tutor);
-- amendments to R05, R06, R09 and R24;
-- **table 3 of RUN.md** — В36 «в реестр spec».
+- `src/core/crop.ts`, `raster.ts`, `png.ts`, `sets.ts` and `geometry.ts` — the bundles, the crop's numbers with `sheetBoxOf`, the raster and the PNG; `sheets.fixture.ts` and `contracts.fixture.ts` — the synthetic sheets and spec's vectors of the crop;
+- `src/core/marks.ts` — the model's box landing by `sheet_box`; `src/core/submission.ts` — `workForCheck`; `src/core/index.ts` — what the entry point `core` exports;
+- `src/element/` — `exportWork()`, `probe.ts` and `picture.test.ts`, the grays in Chromium;
+- `src/eval/` — the samples' crops, the resampling and the synthetic samples;
+- `scripts/package.ts` and `tsconfig.build.json` — the fixtures outside the build and the package;
+- `demo/` — the crop at the chosen digit height and its sizes;
+- [architecture.md](architecture.md) — the crop and its formulas, the work for checking and the DOM-free code;
+- [README.md](README.md) — the code by folders.
 
-— `src/core/`, `src/element/picture.test.ts`, `src/element/probe.ts`, `scripts/package.ts`, `tsconfig.build.json`, `demo/`, `vectors/crops.json`; [architecture.md](architecture.md), sections 3.1, 3.2, 3.5, 3.7 and 4; RUN.md, T13, T14, T15, E4, table 3; README.md.
-
-— *Amendment 2026-10-26:* the "Consequence" about T14 is decided (R26). The model's box lands on the sheet by the `sheet_box` of its submission, with its margins, — in integers, on the crop itself, with the same numbers as its raster. The formula of `sheet_box` is moved out into `sheetBoxOf`: by it the element checks the context that came back with the marks. — R26; [architecture.md](architecture.md), section 3.2; RUN.md, T14.
-
-— *Amendment 2026-10-26:* the "Consequence" about T15 is done (R27): `exportWork()` calls `groupsOf`, `cropOf` and `pictureOf` through `workForCheck`, and takes D from the task's temporary field `canvas.digit` — from 1 to 256 px, 32 by default. Of `crop.ts`, `raster.ts` and `png.ts` the entry point `core` exports nothing: the rules of the crop wait for the eval protocol (В36). — R27; RUN.md, T15.
-
-— *Amendment 2026-10-26:* Т-32 is closed by R53 spec (R30). The place in the observation and in the contract is fractions 0–1000 of the crop, `[ymin, xmin, ymax, xmax]`, integers, and the validity of a box — integers 0–1000 and min < max — is checked by the adapter. So "min < max for any group, a dot's too (Т-32)" above now rests on R53 spec. The digit height by R51 spec is in the module manifest, `canvas.digit_height` (an amendment to R27). — R30.
-
-— *Amendment 2026-10-26:* В36 is recorded in `spec` (R31). The eval protocol takes the rules of the crop and `vectors/crops.json` as they are: the scale is by the lower median of the bundles' heights, no higher than 100 units, and the numbers are in integers. The term "stroke bundle" is in concepts 15 spec, and Т-31 and «Вход» of T28 in RUN.md of `spec` speak of bundles. "The rules of the crop wait for the eval protocol (В36)" in the amendment about T15 above reads so: the protocol has accepted them, and the entry point `core` does not export them while it does not exist — epic E3 in RUN.md of `spec` has not begun. — R31.
-
-— *Amendment 2026-10-27:* the "Revisit" about the crop of a workbook's answer slot is decided (R34): on the workbook this rule draws the crop of each filled box by its strokes, at the manifest's digit height. — R34.
-
-— *Amendment 2026-10-27:* on the workbook this rule draws the crop of each filled box — by its strokes, as one group, at the manifest's digit height (R38). There are no crop numbers in the workbook's context: there is no snapping there. At the heights of eval the crop of a box is the lower limit, 200 × 200 px, that is, 64 tokens. — R38.
-
-— *Amendment 2026-11-08:* the crop rule is now the eval protocol, as written here (R94 spec), and the crop test checks the code against `vectors/eval/v1/crops.json` of the package `@altnovatrail/contracts`: `vectors/crops.json` is removed. The protocol's `bundle_median` is h_med itself, and the crop's `exact.median` is H, min(h_med, 1000), the height the scale takes. The rule changes only in `spec`. — R47.
-
-**R26. The tutor's marks hold on to the learner's strokes: a mark of the sheet is `{stroke_ids, snapped_box}`, and its box stands around those of its strokes that are visible now. The model's box in fractions of the crop is snapped to the strokes by a rule in integers: the box is wider by a quarter of the digit height, and a stroke is taken if no fewer than two thirds of its points are in it. The marks come by the property `marks` from T14, together with the context of their submission, and for now one kind is drawn — the frame.**
-- **The input is the property `marks`:** the marks of one submission together with its context. The types are its own, temporary, until the contract of epic E3 in RUN.md of `spec` (R36 spec):
-  - the context is the crop's numbers, as `cropOf` gives them, with `sheet_box` and the group boxes, and the groups of `groupsOf` — the table "label → strokes' IDs". The context returns only to the element that gave it out;
-  - a mark is the kind `frame`, a place and a name. The place is a group label, an answer slot or a box `[ymin, xmin, ymax, xmax]` in integer fractions 0–1000 of the crop, and the name is what a screen reader reads, in the consumer's words;
-  - `undefined` removes the marks. Each value is checked anew, even the same object, and marks of the same names on the same strokes write nothing.
+**R26. The tutor's marks hold on to the learner's strokes: a mark of the sheet is `{stroke_ids, snapped_box}`, and its box stands around those of its strokes that are visible now. The model's box in fractions of the crop is snapped to the strokes by a rule in integers: the box is wider by a quarter of the digit height, and a stroke is taken if no fewer than two thirds of its points are in it. The marks come by the property `marks`, together with the context of their submission, and for now one kind is drawn — the frame.**
+- **The input is the property `marks`:** the marks of one submission together with its context. The types are its own, temporary, until the contract `app` ↔ `api` holds the mark:
+  - the context is the crop's numbers, as `cropOf` gives them, with `sheet_box` and the group boxes, the groups of `groupsOf` — the table "label → strokes' IDs" —, and the digest of the table's strokes and of the crop's integers. The context goes to any sheet whose history holds its strokes: the element that gave it out, and the same sheet after a reload;
+  - a mark is the kind `frame`, a place and a name. The place is a group label, an answer slot or a box `[ymin, xmin, ymax, xmax]` in integer fractions 0–1000 of the crop, and the name is what a screen reader reads, in the consumer's words. The marks in `api`'s answer come in the same fractions, and `canvas` converts them into the sheet's units;
+  - `undefined` removes the marks. Each value is checked anew, even the same object, and marks of the same names on the same strokes write nothing;
+  - `task` and `history` are given before `marks`: marks before their history are a `TypeError`. A new history sets the marks anew, wholly: if they do not land, `marks` = `undefined`.
 - **The check** — a `TypeError` with the field's path:
-  - the kind is not `frame`, the name is empty, the place has not exactly one key, the box is invalid by Т-32, the label is not in the table, IDs repeat in the groups;
+  - the kind is not `frame`, the name is empty, the place has not exactly one key, the box is not four integers 0–1000 with min < max, the label is not in the table, IDs repeat in the groups;
   - the group boxes are not the right ones or not in the right order, or `sheet_box` is farther than a millionth of a unit from what the crop's integers yield. Snapping computes on integers, and a millionth can be lost by a store that keeps numbers shorter than JSON;
-  - the context is someone else's: a stroke of the table is unknown to the sheet or does not lie wholly in the box of its group. Its own context always passes this: a group box takes its points with the edge, outward (R25);
+  - the context is someone else's: a stroke of the table that the sheet did not know, or the digest of the strokes the sheet knows, erased ones too, with the given integers, if it is not the right one;
   - the fields the sheet does not read, it skips. A value assigned before registration goes through the shared helper, so the errors are only `TypeError`, and `null` is an error too, as with `task`.
 - **Where a mark is** is decided on assignment — by all the strokes the sheet has known, the erased ones too, but only from the submission's table:
   - a group label — the strokes of its row of the table;
   - a box — snapping, below;
-  - a slot — no strokes, while the task has no slots: their zones will come with format v0 («Вход» of T28 in RUN.md of `spec`).
+  - a slot, by place — `{ item, slot }`, from 1 — no strokes and no box: the sheet takes no zones.
 
-  `stroke_ids` are the strokes taken, and `snapped_box` is the rectangle of their points, what the model saw. What is written after the submission is not in the table, and no mark takes it. Not a single stroke — there is no mark, and the question sounds without it (R43 canvas-api; C1).
+  `stroke_ids` are the strokes taken, and `snapped_box` is the rectangle of their points, what the model saw. What is written after the submission is not in the table, and no mark takes it. Not a single stroke — there is no mark, and the question sounds without it (sources 1.4; sources 9.7).
+- **On a workbook** a mark stands only on an answer slot, by place, and a group label or a model's box is a `TypeError`. It holds on to the strokes of its slot's row of the submission's table, and its box stands around the slot's box and the visible ink of its strokes together, with a margin of 10 units. A slot not from the table has no box.
 - **Snapping** — on the crop, in integers:
-  - D′, the width w and the height h, the margins my and mx, B — the box of the points in tenths, H — the height by which the scale is taken, in tenths (R25);
+  - D′, the width w and the height h, the margins my and mx, B — the box of the points in tenths, H — the height by which the scale is taken, in tenths;
   - a point in tenths (px, py) stands on the crop at X = 1000 × ((px − B.xmin) × D′ + mx × H), and Y — the same way, with py, B.ymin and my: the place in px multiplied by 1000 × H;
   - a box holds a point if (xmin × w − μ × D′) × H ≤ X ≤ (xmax × w + μ × D′) × H, and the same by y, with h. The edges are inclusive, μ = 250 thousandths of D′;
   - a stroke is taken if k of its n points are in the box, k ≥ 1 and 3k ≥ 2n — no fewer than two thirds;
   - this is the same as laying the box on the sheet by `sheet_box` and widening it by H / 4. The box is first widened, then clipped by the sheet's bounds, and the clipping changes nothing: the points lie on the sheet;
-  - for the submission's strokes every number is smaller than 2^31. The margin and the threshold are parameters of eval (C2): the function takes the rule, as `groupsOf` does, and an invalid rule is a `RangeError`.
+  - for the submission's strokes every number is smaller than 2^31. The margin and the threshold are parameters of eval (sources 1.4): the function takes the rule, as `groupsOf` does, and an invalid rule is a `RangeError`.
+- **In `spec`:** the mark, its kind and its place are in the contract `app` ↔ `api`, with one kind so far, a box; what comes from `api` for the name, the contract decides. The snapping rule is the eval protocol, as written here, with the margin and the share as parameters of eval, and it changes only in `spec`. The term «пометка наставника — mark» is in spec's glossary, and the crop's integers and the digest in the submission context are spec's agreement of `canvas` and `app`.
 - **The box on the sheet:**
   - around the points of those strokes of the mark that are visible now and not under the eraser's press, 10 units from them, as in canvas-api, and within the sheet;
   - the corners are rounded, and the line is 2 CSS px at any zoom;
-  - the color is the variable `--novatrail-canvas-mark`, blue `#2563eb` by default, temporarily and not red (E4 in RUN.md, «Не входит»). In forced colors — `Highlight`;
+  - the color is the variable `--novatrail-canvas-mark`, blue `#2563eb` by default, temporarily and not red, until the first slice of `app` and `api`. In forced colors — `Highlight`;
   - new strokes do not move it. If all its strokes are erased, it is not seen, and undo brings it back.
 - **Over a mark.** While the new points of the stroke being written, with the ink's reach, enter a mark's box, the mark fades to a quarter, and so until the stroke has landed or has been undone. A box that has appeared or moved in the middle of a stroke is checked against the whole stroke. The other marks do not change, and there is no transition.
 - **Accessibility:**
   - the marks layer has a constant `role="none"`, and no `aria-hidden`;
   - a visible mark is `<rect role="img" aria-label="name">`, and a hidden one is `display="none"`;
-  - the layer takes no input: `pointer-events: none`, as on all the layers but the drawing surface (R23).
+  - the layer takes no input: `pointer-events: none`, as on all the layers but the drawing surface.
 - **Code:**
-  - the DOM-free part: `marks.ts` — the rule `SNAP_RULE`, the check `marksOf`, the snapping `snapOf`, the marks' places `placesOf` and the current box `shownOf`. The check's helper shared with the task is `fields.ts`, the box around boxes `around`, shared with the crop, is in `geometry.ts`, and the crop's private `Mark` and `marksOf` became `Extent` and `extentsOf`;
+  - the DOM-free part: `marks.ts` — the rule `SNAP_RULE`, the check `marksOf`, the snapping `snapOf`, the marks' places `placesOf`, the current box `shownOf` and the digest `digestOf`. The check's helper shared with the task is `fields.ts`, the box around boxes `around`, shared with the crop, is in `geometry.ts`, and the crop's private `Mark` and `marksOf` became `Extent` and `extentsOf`;
   - the element — the property `marks` and the marks layer; `probe.ts` gives the tests the marks and their boxes;
-  - the test vectors are `vectors/snaps.json`, and the generator of sheets with a seed is in `sheets.fixture.ts`, shared with the crop test. On the page for probes — the marks by a frozen submission.
+  - a test checks the code against `vectors/eval/v1/snaps.json` of the package `@altnovatrail/contracts`, and the generator of sheets with a seed is in `sheets.fixture.ts`, shared with the crop test. On the page for probes — the marks by a frozen submission.
 
-— *Why:* the author's answers in the planning of T14, 2026-10-26. Fading while one writes over a mark, `marks` in T14 and a slot that the type accepts but does not draw — by the recommendations. The margin and the threshold — too, but in two steps: first a quarter of a digit and half of the points, as in R43 canvas-api, and the sweep did not confirm the half, and the author took two thirds. Before the work a separate agent checked the design. Its corrections:
+— *Why:* the author's answers in the planning of the marks. Fading while one writes over a mark, the property `marks` with the marks themselves and a slot that the type accepts but does not draw — by the recommendations. The margin and the threshold — too, but in two steps: first a quarter of a digit and half of the points, as in canvas-api, and the sweep did not confirm the half, and the author took two thirds. Before the work a separate agent checked the design. Its corrections:
 - the margin is a parameter of the rule, and at a threshold of 0 a stroke is taken only if at least one point is inside;
 - the box is first widened, then clipped;
 - the reference in BigInt is derived from `sheet_box`, and does not repeat the formula;
@@ -1294,10 +1271,10 @@ The sources are [architecture.md](architecture.md), section 4.
 - fading — by the new points of the stroke;
 - the submission on the page for probes is frozen.
 
-The sources are [architecture.md](architecture.md), section 4.
-- **Nobody has the rule in code.** R43 canvas-api takes the strokes «у которых хотя бы половина точек лежит в рамке, расширенной на 10 единиц», but its T71 is not done. The study says «штрихи, точки которых в основном внутри (поля и порог — параметры eval)» (C2). `tutor` rejected snapping: the board draws the model's box as it is (the T45 amendment to R19 tutor), and the measurement credits it by the line — «в рамке с полем 8 px больше всего видимых точек именно этой строки» (R24 tutor).
+The sources — sources 9.7.
+- **Nobody has the rule in code.** canvas-api takes the strokes «у которых хотя бы половина точек лежит в рамке, расширенной на 10 единиц», but has no code of it. The study says «штрихи, точки которых в основном внутри (поля и порог — параметры eval)» (sources 1.4). `tutor` rejected snapping: the board draws the model's box as it is, and the measurement credits it by the line — «в рамке с полем 8 px больше всего видимых точек именно этой строки».
 - **The margin is from the digit height.** The model's error is measured in the pixels of the picture it saw, and the digits on the crop are D′ px at any handwriting. 10 units of the sheet on the crop are from 3 px for large handwriting to 21 px for small. A quarter of a digit at D = 32 is 8 px, as much as the margin of `tutor`'s measurement.
-- **The sweep.** Thirty-four synthetic sheets — the sheets of T12 and of the crop — at the heights 16, 32 and 48 px. The target is a group, a bundle or a bar, and the model's box is the ink box of the target with each edge shifted at random by up to ⅛, ¼ or ½ of the digit height, 40 boxes per target. The strokes' points go every 2 units, as with input. The shares — at shifts of up to ⅛, ¼ and ½ of a digit:
+- **The sweep.** Thirty-four synthetic sheets — the sheets of the stroke groups and of the crop — at the heights 16, 32 and 48 px. The target is a group, a bundle or a bar, and the model's box is the ink box of the target with each edge shifted at random by up to ⅛, ¼ or ½ of the digit height, 40 boxes per target. The strokes' points go every 2 units, as with input. The shares — at shifts of up to ⅛, ¼ and ½ of a digit:
 
   | Margin and threshold | Exact | Extra strokes | No box |
   |---|---|---|---|
@@ -1305,15 +1282,15 @@ The sources are [architecture.md](architecture.md), section 4.
   | a quarter of a digit, half — at first | 80, 74, 59 % | 21, 26, 31 % | 0, 0, 6 % |
   | an eighth of a digit, half | 88, 80, 55 % | 12, 14, 18 % | 0, 4, 19 % |
   | an eighth of a digit, two thirds | 89, 81, 49 % | 11, 12, 13 % | 0, 5, 28 % |
-  | 10 units, half — R43 canvas-api | 75, 70, 59 % | 25, 29, 34 % | 0, 0, 4 % |
+  | 10 units, half — canvas-api's | 75, 70, 59 % | 25, 29, 34 % | 0, 0, 4 % |
   | no margin, half | 76, 61, 38 % | 6, 6, 8 % | 17, 29, 45 % |
   | half a digit, half | 48, 49, 49 % | 52, 52, 51 % | 0, 0, 0 % |
 
-  Two thirds at the same margin are better than half at any shift and take a neighbor less often. An eighth of a digit is more exact at small shifts, but at large ones there is no box one time in five, and the models' boxes on handwriting are inexact: the best model's F1 on the answer boxes is no higher than 55 % (R08 tutor). On the polylines of the synthetic samples, where a stroke has from two to seven points, half took a neighbor with one end in the box, and exact came out 70, 65 and 50 %.
+  Two thirds at the same margin are better than half at any shift and take a neighbor less often. An eighth of a digit is more exact at small shifts, but at large ones there is no box one time in five, and the models' boxes on handwriting are inexact: the best model's F1 on the answer boxes is no higher than 55 %. On the polylines of the synthetic samples, where a stroke has from two to seven points, half took a neighbor with one end in the box, and exact came out 70, 65 and 50 %.
 - **By all the strokes the sheet has known.** A mark holds on to what the model saw. Were it decided by the visible ones only, the marks that came after a clearing would not come back with undo, and a stroke erased before the mark came would not come back into its box.
-- **Someone else's context.** Each element numbers the strokes from 1, and a new task is a new element (R20). Another element's context would land on foreign strokes with the same IDs. Its own context always passes the check, and a foreign one only if its strokes lie where the strokes of this sheet lie: that happens if the same thing was written in the same places on two sheets. The check would be made exact by a stamp of the submission that `exportWork()` issues and `marks` checks — this is T15.
-- **Fading over a mark.** A mark does not cover the learner's work (R05 spec), and the box's line over the ink would cover what the learner writes across it. Only the mark that is being written into fades, and only while the writing goes on.
-- **`role="none"`.** A root `<svg>` without `aria-hidden` the locators engine of Vitest counts as a picture: `SVG:()=>'img'`, and in Chromium it is a node of its own. A layer without a role would be read as an extra picture without a name, and `aria-hidden` would hide the marks too.
+- **Someone else's context.** Each element numbers the strokes from 1, and a new task is a new element. Another element's context would land on foreign strokes with the same IDs, and a check by place would let it through wherever the same thing was written in the same places on two sheets. The digest knows the strokes to a tenth and a millisecond, as the rules see them, and the crop's integers: another sheet's context or a changed one is a `TypeError`, and the same history after a reload gives the same digest.
+- **Fading over a mark.** A mark does not cover the learner's work, and the box's line over the ink would cover what the learner writes across it. Only the mark that is being written into fades, and only while the writing goes on.
+- **`role="none"`.** A root `<svg>` without `aria-hidden` the locators engine of Vitest counts as a picture: `SVG:()=>'img'` (sources 9.7), and in Chromium it is a node of its own. A layer without a role would be read as an extra picture without a name, and `aria-hidden` would hide the marks too.
 
 — *Rejected:*
 - **10 units of the sheet, as in canvas-api,** — the margin depends on the handwriting, and by the sweep there are fewer exact ones at any shift;
@@ -1321,51 +1298,28 @@ The sources are [architecture.md](architecture.md), section 4.
 - **no margin** — a model's box slightly narrower than the writing loses strokes: at a shift of up to ¼ of a digit there is no box almost every third time;
 - **clipping first, widening then** — a box in the crop's margin beyond the sheet's edge would not take the ink at the edge;
 - **deciding by the visible ones on assignment** — the marks after a clearing would not come back with undo;
-- **a limit on the box's area, as in spec 4.4 canvas-api,** — the validity of a box is checked by `tutor`'s adapter (Т-32), and the crop is cut to the work, and a large box on it is legitimate — for a column, for example;
-- **removing a mark when any of its strokes is erased,** as in canvas-api, — C2 and T14 remove it when all of them are erased;
-- **removing `aria-hidden` when there are marks,** as the "Consequence" of R23 told, — the layer would be read as a picture with no name;
+- **the check by place**, the table's strokes lying wholly in their group boxes, — it lets through another sheet with the same work in the same places;
+- **a limit on the box's area, as in canvas-api,** — the validity of a box is checked by `tutor`'s adapter, and the crop is cut to the work, and a large box on it is legitimate — for a column, for example;
+- **removing a mark when any of its strokes is erased,** as in canvas-api, — the study removes it when all of them are erased (sources 1.4), and so does the sheet;
+- **removing `aria-hidden` when there are marks** — the layer would be read as a picture with no name;
 - **a mark that does not fade** — the box's line would lie on what the learner writes across it; **all the marks fade for the time of any stroke** — they would blink on every stroke;
-- **`marks` in T15, as in R07,** — the tests and the page for probes would set the marks through `probe.ts`;
+- **`marks` only with the package's interface, later,** — the tests and the page for probes would set the marks through `probe.ts`;
 - **a slot is a `TypeError`** — one such mark would break the whole assignment; **slots in the task now** — format v0 may name them otherwise.
 
 — *Revisit:*
-- the margin and the threshold — by `tutor`'s measurement, if it measures the place on the device, and by the eval protocol (C2; В37);
-- if the eval-set samples and the child samples take the points by the length of the stroke, not as they came (T17): the share of points depends on how densely they stand;
+- the margin and the threshold — in `spec`'s eval protocol, by `tutor`'s measurement, if it measures the place on the device;
+- snapping on a sample's final geometry: eval-set samples and child samples take the points along the stroke's length, every 0.25 units, so the share of points is another for them than for the sheet that wrote them. A sample holds no snapping and `tutor`'s runner does none, so nothing drifts apart until someone snaps a box to the strokes of the geometry (В61 «в реестр spec»);
 - when the answer slots come — format v0;
-- the color and the look of the box — with the first slice of `app` and `api` (E4 in RUN.md, «Не входит»);
-- the check that the context is its own — with `exportWork()` (T15): the stamp of the submission that it issues and `marks` checks would make it exact.
+- the color and the look of the box — with the first slice of `app` and `api`.
 
 — *Consequence:*
-- **T15** — `exportWork()` gives out a context of the type `Submission`, and a new `history` decides anew where the marks are. The trial consumer gives marks with a context;
-- **T17** — snapping counts the points as they are, so the sample's resampling changes the share: the sample's rule with it goes to В37;
-- amendments to R06, R07, R09, R22, R23, R24 and R25;
-- **table 3 of RUN.md** — В37 «в реестр spec».
+- `src/core/marks.ts` — the rule, the check, the snapping, the places, the current box and the digest; `src/core/fields.ts` and `src/core/geometry.ts` — the shared check helper and `around`;
+- `src/core/marks.test.ts`, `src/core/sheets.fixture.ts` and `src/core/contracts.fixture.ts` — the tests, the sheets by seed and `spec`'s vectors;
+- `src/element/` — the property `marks`, the marks layer, `probe.ts`, `marks.test.ts` and the trial consumer, which gives marks with a context;
+- `demo/` — the marks by a frozen submission;
+- [architecture.md](architecture.md) — the layers, the marks' place and snapping, the docking with `app`, the sample file and the code and tools; README.md and [docs/README.md](README.md) — the marks.
 
-— `src/core/`, `src/element/`, `demo/`, `vectors/snaps.json`; [architecture.md](architecture.md), sections 3.1, 3.2, 3.3, 3.5, 3.7 and 4; RUN.md, T14, T15, E4, table 3; README.md.
-
-— *Amendment 2026-10-26:* the check by place was replaced by the submission's digest (R27), and the "Revisit" about the stamp of the submission is decided. The context carries the digest of the table's strokes and of the crop's integers. A stroke of the table that the sheet did not know is a `TypeError`, and so is the digest of the strokes the sheet knows with the given integers, if it is not the right one. The context now goes to any sheet whose history holds its strokes — and to the same sheet after a reload. A new `history` sets the marks anew, wholly: if they do not land, `marks` = `undefined`. Marks before their history are a `TypeError`, and the consumer gives `history` before `marks`. The "Consequence" about T15 is done. — R27; [architecture.md](architecture.md), section 3.3; RUN.md, T15.
-
-— *Amendment 2026-10-26:* a mark's place in the contract is fractions 0–1000 of the crop: Т-32 is closed by R53 spec the way R06 decided, and `canvas` converts them into the sheet's units (R30). The marks in `api`'s answer — a group label, an answer slot or a box — come in the same fractions. A box "invalid by Т-32" above is now invalid by R53 spec. Of В37 the place is so decided, and the submission's context, the snapping rule and the term wait for a record in `spec`. — R30; RUN.md, table 3.
-
-— *Amendment 2026-10-26:* В37 is recorded in `spec` (R31):
-- the mark, its kind and its place are in the contract `app` ↔ `api`, epic E3 in RUN.md of `spec`. There is one kind so far, a box, and `app` writes the name for the screen reader in its own words; what comes from `api` for the name, the contract decides;
-- the eval protocol takes the snapping rule and `vectors/snaps.json` as they are, and the margin and the threshold are parameters of eval;
-- the term «пометка наставника — mark» is in concepts 15 spec;
-- the crop's integers and the digest in the submission context are the second 2026-10-26 amendment to R36 spec (the amendment to R27).
-
-— R31.
-
-— *Amendment 2026-10-27:* on a workbook a mark comes only with an answer slot — the numbers of the item and of the box, from 1, not IDs — and holds on to the strokes of its box from the submission's table, by the rules of this entry. On a workbook a mark's place is only a slot: a group label and a model's box in fractions of the crop are a `TypeError` (R34). T49 puts a mark on a box. — R34.
-
-— *Amendment 2026-10-27:* T53 puts a mark on a box, not T49: the author split T49 while planning it. The box of a mark on a box goes around the box itself and the visible ink of its strokes together, with a margin of 10 units. This is the author's answer, and T53 will make the amendment to this entry. — R38.
-
-— *Amendment 2026-10-27:* on a workbook a mark comes with a slot by place — `{ item, slot }`, from 1 — and holds on to the strokes of the row of its submission's table, and its box stands around the box and the visible ink of its strokes together (R39). On a sheet too the slot is by place, not by ID, and gives no box there: the sheet takes no zones. A slot not from the table has no box. — R39.
-
-— *Amendment 2026-11-08:* the snapping rule is now the eval protocol, as written here, and the margin and the share are still parameters of eval (R94 spec). A test checks the code against `vectors/eval/v1/snaps.json` of the package `@altnovatrail/contracts`: `vectors/snaps.json` is removed. The rule changes only in `spec`. — R47.
-
-— *Amendment 2026-11-08, T17:* eval-set samples and child samples take the points along the length of the stroke, every 0.25 units (R48): the *Revisit* above has fired. The share of points that snapping counts is then another for them than for the sheet that wrote them. There is no snapping in a sample, and `tutor`'s runner does not do it (R24 tutor), so there is nothing to drift apart until someone snaps a box to the strokes of the geometry. This is В61 «в реестр spec» in table 3 of RUN.md. — R48.
-
-**R27. The package's interface: the writing history comes in by the property `history` and goes out by it and by the event `historychange`, and the work for checking by `exportWork()`: the PNG of the crop and the submission context with its digest. The same history changes nothing, and another one, once checked, replaces the sheet and places the marks anew. `exportPNG()` and `workchange` are removed, the entry point `core` gives the data types and `replay`, and the element's own buttons are T41.**
+**R27. The package's interface: the writing history comes in by the property `history` and goes out by it and by the event `historychange`, and the work for checking by `exportWork()`: the PNG of the crop, or on a workbook the crop of each filled box, and the submission context with its digest. The same history changes nothing, and another one, once checked, replaces the sheet and places the marks anew. `exportPNG()` and `workchange` are removed, the entry point `core` gives the data types and `replay`, and the element's own buttons are apart from this interface.**
 - **`history` in:**
   - the same history changes nothing. It is the sheet's own array, or a history equal to it event by event — by the fields the sheet keeps, with extra fields skipped. `undefined` is an empty history. The stroke under the pen still lands, the marks stay, there is no event. So `app` can give its history at every re-render, and an array already found equal is not walked again while its length and the sheet's history stay the same;
   - another history is checked, and an error is a `TypeError` with the field's path, for example `history[3].stroke.points[0].x`:
@@ -1377,7 +1331,7 @@ The sources are [architecture.md](architecture.md), section 4.
   - another history replaces the sheet:
     - the strokes, the undo stack — the same rules build it — and the history, in the sheet's own frozen objects;
     - the next ID is the largest in the history + 1, and 1 for an empty history;
-    - the clock runs from the last event + the groups' pause + 1 ms, 2001 ms (R24), and from 0 for an empty history. The sheet's time is its history's time;
+    - the clock runs from the last event + the groups' pause of 2 s + 1 ms, 2001 ms, and from 0 for an empty history. The sheet's time is its history's time;
     - the stroke and the eraser's press under the pen are reset: their IDs and time are from the previous sheet;
     - the marks are placed anew, below;
     - there is no event: the assignment is the consumer's own action;
@@ -1389,33 +1343,36 @@ The sources are [architecture.md](architecture.md), section 4.
   - `historychange` is a `CustomEvent` from the host, `bubbles` and `composed`, synchronous after every action, where `workchange` was;
   - `detail` is `{ events, from }`, frozen: the new events of the history and the number of the first of them. A store whose length `from` does not equal has missed events and reads `history` again;
   - a listener's action during the event is announced by the next event, once the current one has gone round all the listeners: each hears the events in the history's order. An assignment resets the count of what has been announced;
-  - a stroke that landed when the element had left the page is heard only by the element's own listeners (R20). So `app` listens to the element, not to an ancestor.
-- **`exportWork(): Promise<{ png, submission } | null>`:**
+  - a stroke that landed when the element had left the page is heard only by the element's own listeners. So `app` listens to the element, not to an ancestor.
+- **`filled`**, read-only beside `history`: which boxes of the workbook are filled, and `null` on a sheet. An action changes it before `historychange`, and an assignment of `task` or `history` changes it with no event.
+- **`exportWork(): Promise<{ png, submission } | { cells, submission } | null>`:**
   - the sheet at the moment of the call: the stroke under the pen is not on it, and the strokes under an eraser not yet lifted are;
-  - the groups by `groupsOf`, the crop by `cropOf` at the task's digit height and the PNG by `pictureOf` (R24, R25). The height is the temporary field `task.canvas.digit`: integer px from 1 to 256, 32 by default — a setting of the module's canvas, as «Вход» of T28 in RUN.md of `spec` calls it;
-  - the context is `{ crop, groups, digest }`, frozen: `crop` holds only the numbers by which the marks are placed (`CropNumbers`);
-  - for an empty sheet, `null` (H3);
+  - on a sheet, the groups by `groupsOf`, the crop by `cropOf` at the digit height and the PNG by `pictureOf`, and the context `{ crop, groups, digest }`, frozen: `crop` holds only the numbers by which the marks are placed (`CropNumbers`);
+  - on a workbook, `cells` is `{ item, slot, png }`, the crop of each filled box, and `submission` is `{ boxes, digest }`;
+  - the digit height is `canvas.digit_height` of the property `manifest`, integer px from 1 to 256, 32 without a manifest or the field, taken at the moment of the call: `task` and `manifest` do not depend on each other;
+  - for an empty sheet, and for a workbook with no box filled, `null`: an empty work is cut off before the AI call;
   - the DOM-free part, `workForCheck`, computes all of it, and the element only puts the bytes into a `Blob`.
 - **The submission digest** is CRC-32 and Adler-32 from the PNG encoder, 16 hexadecimal digits, of a text in UTF-8:
-  - the strokes of the table in ascending order of ID: the ID and the points in tenths of a unit and whole milliseconds, as the rules see them (R24, R25);
-  - the context's integers: D′, width, height, margins, `exact`, groups and boxes. `sheet_box` is not in the text: it is derived from these numbers and checked against them with a tolerance (R26).
+  - the strokes of the table in ascending order of ID: the ID and the points in tenths of a unit and whole milliseconds, as the rules of the groups and the crop see them;
+  - the context's integers: D′, width, height, margins, `exact`, groups and boxes. `sheet_box` is not in the text: it is derived from these numbers and checked against them with a tolerance.
 
-  The digest catches an accidental divergence, not a forgery: CRC-32 sees any change within 32 consecutive bits, and any other passes both sums with a chance no greater than about 2⁻³². `marksOf` checks the digest's form, and `placesOf` the digest itself: a stroke of the table that the sheet did not know is a `TypeError`, and so is a digest of strokes the sheet knows, erased ones too, with the integers given, if it is not the right one. The check by place of R26 goes, and the matching of the boxes' labels against the groups stays. The same history after a reload gives the same digest, and a sheet with other work or a changed context gives a `TypeError`. `app` keeps the history and the context as they are, through JSON: a store that rounds changes the digest.
-- **Marks under a new history** are placed anew, whole: the digest holds the whole table. If they fit, they stay, and what has not changed is not written to the DOM. If they do not, `marks` = `undefined`, and there are no boxes. Marks before their history are a `TypeError`, as in R26, so the consumer gives `history` before `marks`.
-- **Removed** are `exportPNG()` and `workchange`, and with them the path of the pen without pressure for the picture of the sheet. The package had not come out: there are no GitHub releases, and npm gives 404.
-- **`core`** gives `SHEET` and `replay`, and as types `Stroke`, `InkPoint`, `HistoryEvent`, `Task` with its parts and `GridKind`, `Marks`, `Mark`, `Anchor`, `Submission`, `CropNumbers`, `Crop`, `Frame`, `Group` and `Box`. `Media` stays with the element: it holds a `Blob`.
+  The digest catches an accidental divergence, not a forgery: CRC-32 sees any change within 32 consecutive bits, and any other passes both sums with a chance no greater than about 2⁻³². `marksOf` checks the digest's form, and `placesOf` the digest itself: a stroke of the table that the sheet did not know is a `TypeError`, and so is a digest of strokes the sheet knows, erased ones too, with the integers given, if it is not the right one. The marks are no longer checked by place, and the matching of the boxes' labels against the groups stays. The same history after a reload gives the same digest, and a sheet with other work or a changed context gives a `TypeError`. `app` keeps the history and the context as they are, through JSON: a store that rounds changes the digest.
+- **Marks under a new history or a new page** are placed anew, whole: the digest holds the whole table. If they fit, they stay, and what has not changed is not written to the DOM. If they do not, `marks` = `undefined`, there are no boxes and no event; the same page writes nothing. Marks before their history are a `TypeError`, and a workbook's context is checked against the page's boxes, so the consumer gives `task` and `history` before `marks`.
+- **The agreement** of `canvas` and `app` is in `spec`'s contract of the element: the property `history`, the event `historychange` with its frozen `detail` `{ events, from }`, and the asynchronous `exportWork()` with its work and its context, which carries the crop's integers and the digest; `app` keeps the history and the context as they are, without rounding.
+- **Removed** are `exportPNG()` and `workchange`, and with them the path of the pen without pressure for the picture of the sheet. The package had not come out then: it had no GitHub releases, and npm gave 404 (sources 9.8). The picture of the whole sheet is `exportPicture()`, the PNG of the strokes the sheet or the workbook's page shows, with no condition, for the stored work, which `app` sends to be stored, not checked; `exportWork()` stays the one picture for the check.
+- **`core`** gives `SHEET` and `replay`, and as types `Stroke`, `InkPoint`, `HistoryEvent`, `Task` with its parts and `GridKind`, `Marks`, `Mark`, `Anchor`, `SheetSubmission`, `WorkbookSubmission` and their union `Submission`, `CropNumbers`, `Crop`, `Frame`, `Group` and `Box`. `Media` stays with the element: it holds a `Blob`. The data types come from `spec`: the writing history, the submission context with its parts, `Filling` and `DemoState` from `@altnovatrail/spec/canvas`, and the task, the example and the manifest from `formatv0/open`. The code of `core` runs without the DOM, and `boundary.check.ts` holds it to that, but the file of `spec` the types come from names DOM types too — `Blob`, `CustomEvent` and `HTMLElement` —, and `core`'s declarations lead to it: a consumer of `/core` in Node without the DOM library and with `skipLibCheck: false` gets 6 errors TS2304, with `@types/node` one, on `HTMLElement`, and with `skipLibCheck` or the DOM none. No consumer is like that: `app`, the samples page, the tests and the synthetic samples have the DOM or `skipLibCheck`.
 - **In passing:**
   - the input recorder clamps pressure to 0–1: an event that a script makes may give more, and the sheet would write a history it would not itself accept;
   - a stroke whose points are far outside the visible part is not drawn until it comes into it: an assigned history can hold thousands of strokes;
   - a stroke's ID does not repeat within one history.
-- **The element's types** are `HistoryChange`, `HistoryChangeEvent` and `ExportedWork`, and `historychange` is in `GlobalEventHandlersEventMap`, with no code: the type holds on the element, on its ancestors and on `document`.
+- **The element's types** are `HistoryChange`, `HistoryChangeEvent`, and of the work `ExportedSheet`, `ExportedWorkbook` with `ExportedCell` and their union `ExportedWork`, and `historychange` is in `GlobalEventHandlersEventMap`, with no code: the type holds on the element, on its ancestors and on `document`.
 - **Code:**
-  - in the DOM-free part: `resume` of the clock, `restart` of the input recorder, the check of the history and its comparison (`history.ts`), the restoring of the work, `Work.restore`, with actions that take the event's time, `nextIdOf` and `resumeOf` (`work.ts`), the digest `digestOf` (`marks.ts`), the work for checking `workForCheck` (`submission.ts`) and `canvas.digit` (`task.ts`);
-  - in the element: `history`, `historychange`, `exportWork()` and the new placing of marks;
+  - in the DOM-free part: `resume` of the clock, `restart` of the input recorder, the check of the history and its comparison (`history.ts`), the restoring of the work, `Work.restore`, with actions that take the event's time, `nextIdOf` and `resumeOf` (`work.ts`), the digest `digestOf` (`marks.ts`), the work for checking `workForCheck` (`submission.ts`) and the manifest's digit height (`manifest.ts`);
+  - in the element: `history`, `historychange`, `filled`, `exportWork()` and the new placing of marks;
   - the type checks: `entry.check.ts` and `interface.check.ts`;
   - the trial consumer: `app`'s path; the page for trials: by `exportWork()` and with the button "Reopen".
 
-— *Why:* the author's answers in planning T15, 2026-10-26, all by the recommendations: split it into T15 and T41; remove `exportPNG()` and `workchange`; the submission's sign is a digest; a new history places the marks anew; `core` is the types and `replay`. Before the work a separate agent checked the design. Its corrections:
+— *Why:* the author's answers, all by the recommendations: the buttons apart; remove `exportPNG()` and `workchange`; the submission's sign is a digest; a new history places the marks anew; `core` is the types and `replay`. Before the work a separate agent checked the design. Its corrections:
 - the check of the history goes through the actions of the sheet's work with the event's time, without the clock;
 - there is no comparison with the last value assigned;
 - time only for order;
@@ -1424,115 +1381,89 @@ The sources are [architecture.md](architecture.md), section 4.
 - the digest holds the context's integers too;
 - pressure is clamped to 0–1, and only visible strokes are drawn.
 
-Sources: [architecture.md](architecture.md), section 4.
-- **The split.** The buttons need a shared scheme of translations for UI packages, and T07 of `app`, which has not started, will hand it over: `app` has no code. `app` and epic E5 need the interface of the history and of the check before the buttons.
+The sources — sources 9.8.
+- **The buttons apart.** The buttons needed a shared scheme of translations for UI packages, which `app` was to hand over and had no code for, and `app`, the samples page and the measurement needed the interface of the history and of the check before the buttons.
 - **One event.** `historychange` comes at the same moments as `workchange`: one history event per action. Two events per action would double the listeners, and `detail` gives `app` what it has to append on the device.
-- **One picture.** What goes to the check is the crop by A3 (R06). The PNG of the whole sheet was for the board (R20), the board did not take the element (В31), and beside `exportWork()` it would invite sending the wrong picture.
+- **One picture for the check.** What goes to the check is the crop by A3. The PNG of the whole sheet was for the board, the board did not take the element, and beside `exportWork()` it would invite sending the wrong picture: the picture of the whole sheet is `exportPicture()`, for the stored work alone.
 - **The same history, by content.** `app` keeps its copy — appended to, or read from the device — and gives it at every re-render. A comparison with the last array assigned would miss a copy appended to in place, and by identity alone the sheet would be rebuilt at every re-render.
-- **A strict check.** The sheet takes only a history it could have written itself. The undo stack is built by the same rules that built it in writing, and `undo()` after opening takes back the previous action (R19). Time only for order: the exact time of a record and growing IDs follow from a single pointer, and T35 may let several touches in at once (R22).
-- **The digest.** Every sheet numbers its strokes from 1 (R20), and the check by place of R26 let through another sheet with the same work in the same places. The digest knows the strokes to a tenth and a millisecond, as the rules see them, and the context's integers: changed numbers of the crop would otherwise place the marks by numbers that are not theirs. It is synchronous, since the setter of `marks` is synchronous. It catches no forgery, and there is no need to catch one: the context is `app`'s own data, and an error of `app` — another's context or a changed one — it does see, but for a case with a chance of about 2⁻³².
-- **A pause after the history.** Without it, the first stroke of a new session would become a neighbor of the previous session's strokes and join their group (R24).
+- **A strict check.** The sheet takes only a history it could have written itself. The undo stack is built by the same rules that built it in writing, and `undo()` after opening takes back the previous action. Time only for order: the input keeps one writer at a time, so IDs grow in the order the strokes begin and strokes do not overlap in time, but the check does not rest on that: several touches at once would break the exact time of a record and growing IDs.
+- **The digest.** Every sheet numbers its strokes from 1, and a check of the marks by place let through another sheet with the same work in the same places. The digest knows the strokes to a tenth and a millisecond, as the rules see them, and the context's integers: changed numbers of the crop would otherwise place the marks by numbers that are not theirs. It is synchronous, since the setter of `marks` is synchronous. It catches no forgery, and there is no need to catch one: the context is `app`'s own data, and an error of `app` — another's context or a changed one — it does see, but for a case with a chance of about 2⁻³².
+- **The digit height in the manifest.** It is a setting of the module's canvas, and `spec` puts it into the module manifest, not into each task.
+- **A pause after the history.** Without it, the first stroke of a new session would become a neighbor of the previous session's strokes and join their group.
 - **Reset what is under the pen.** The ID of the stroke under the pen may coincide with a stroke of the new history, and its time may turn out earlier than the history's last event. The IDs an eraser's press has taken are from the previous sheet too: keep it, and lifting it would erase the strokes of the new history with the same IDs.
-- **`core`.** A consumer without the DOM needs to read a saved history: the types and `replay`. The rules of the groups, of the crop and of snapping are proposals to the eval protocol (В35–В37), and in `core` their signatures would become the package's interface before the protocol.
+- **`core`.** A consumer without the DOM needs to read a saved history: the types and `replay`. The rules of the groups, of the crop and of snapping are proposals to the eval protocol, and in `core` their signatures would become the package's interface before the protocol.
 
 — *Rejected:*
-- **as one task**: split by the recommendation;
+- **the buttons with this interface**: they waited for the shared scheme of translations;
 - **`exportPNG()` and `workchange` beside the new interface**: two events per action and a picture that does not go to the check; **removing only `workchange`**: the PNG of the whole sheet would be left with no consumer;
-- **the check by place, as in R26**: it lets through another sheet with the same work;
+- **the check of the marks by place**: it lets through another sheet with the same work;
 - **marks that a new history always removes**: the same history after a reload would lose them; **marks that wait for their history**: another's context would then silently show nothing, without a `TypeError`;
 - **comparison with the last array assigned** and **by identity only**: for the reasons above;
-- **the exact time of a record and growing IDs**: several touches at once would break them (T35);
+- **the exact time of a record and growing IDs**: several touches at once would break them;
+- **a digit height for each task**, in the task's own field: it is the module canvas's setting;
 - **`core` with the rules**: before the eval protocol; **`core` with `SHEET` only**: a consumer without the DOM could not read the history;
+- **`core`'s own copies of the data types, with a check for identity**: the declarations would stay without the DOM, but the seam would again rest on copies, which the task's types from `spec` left behind; **a row «в реестр spec» about a DOM-free subpath at once**: a question to `spec` with no consumer;
 - **SHA-256**: in the browser it is asynchronous; **one CRC-32**: it alone would be enough, and Adler-32 is a second sum for free, from the same PNG code;
-- **an event on an assignment of `history`**: the assignment is the consumer's own action;
-- **the buttons and `lang` in T15**: that is T41.
+- **an event on an assignment of `history`**: the assignment is the consumer's own action.
 
 — *Revisit:*
-- the types, with the release of `spec` (T35 in RUN.md of `spec`), and the composition of the event and of the context, with the contract of epic E3 and the eval protocol (В38);
+- the composition of the event and of the context, with `spec`'s contract of the element and the eval protocol;
 - the check of the history, if other code starts to give one: the stack rules are then a format;
 - the warning about the beginning of a history, if a consumer rolls the sheet back that way on purpose;
-- the picture of the whole sheet, if the board takes the element (В31).
+- the data types of `core`, when a consumer of it without the DOM and without `skipLibCheck` appears: then a row «в реестр spec» about a subpath of `@altnovatrail/spec/canvas` with data types without the DOM.
 
 — *Consequence:*
-- **T41** — its own buttons, labels by `lang` and the task's tools;
-- **T16, T17** — the measurement sample takes the history from the element's `history` (R09);
-- **T19** — the samples page listens to `historychange` on the element itself;
-- amendments to R05, R06, R07, R17, R18, R19, R20, R22, R23, R24, R25 and R26;
-- **table 3 of RUN.md** — В38 «в реестр spec», and В37 is supplemented with the digest.
+- `src/core/` — the check and comparison of the history, the restoring of the work, the digest, the work for checking, the clock, the recorder, and the exports of `index.ts` with `entry.check.ts`;
+- `src/element/` — `history`, `historychange`, `filled`, `exportWork()`, the placing of marks anew, and `interface.check.ts`;
+- `scripts/package.ts` — the entry points as a consumer takes them;
+- `demo/` — the trials by `exportWork()` and "Reopen";
+- `page/` and `src/eval/` — `historychange` heard on the element itself, and the measurement sample's history from `history`;
+- [architecture.md](architecture.md) — the element's data, events and methods and the entry point `core`;
+- README.md.
 
-— `src/core/`, `src/element/`, `scripts/package.ts`, `demo/`; [architecture.md](architecture.md), sections 3.1, 3.3, 3.7 and 4; RUN.md, T15, T41, E4, table 3; README.md.
-
-— *Amendment 2026-10-26:* the *Consequence* about T41 is done (R28): its own buttons, labels by `lang` and the task's tools. — R28; RUN.md, T41.
-
-— *Amendment 2026-10-26:* T35 kept a single writer (R29): IDs grow in the order the strokes begin, and the strokes themselves do not overlap in time. The check of the time of an assigned history stays a check of order. — R29; RUN.md, T35.
-
-— *Amendment 2026-10-26:* R51 spec puts the digit height on the crop into the module manifest — `canvas.digit_height`, integer px from 1 to 256, 32 without the field — and rejected a height for each task, as the temporary type's `canvas.digit`. That answers В38 as to the digit height, and how the app gets it with the task, T34 in RUN.md of `spec` decides. The temporary field `canvas.digit` stays until the task type moves to the schema of R51 spec (Д5 in table 4 of RUN.md). — R30.
-
-— *Amendment 2026-10-26:* В38 is recorded in `spec` by the second 2026-10-26 amendment to R36 spec (R31). The property `history`, the event `historychange` with the frozen `detail` `{ events, from }` and the asynchronous `exportWork()` with `{ png, submission }` are the agreement of `canvas` and `app`, and the submission context carries the crop's integers and the digest. `app` keeps the history and the context as they are, without rounding, and T35 in RUN.md of `spec` releases the types of the event, the property and the method. — R31.
-
-— *Amendment 2026-10-27:* `exportWork()` takes the digit height from the module manifest — `canvas.digit_height` of the property `manifest` — and the temporary field `task.canvas.digit` is no more (R32). It still takes it at the moment of the call: `task` and `manifest` do not depend on each other, and without a manifest it is 32 px. — R32.
-
-— *Amendment 2026-10-27:* on a workbook `exportWork()` gives `{ cells, submission }` — the crop of each filled box and the context `{ boxes, digest }` — and, if no box is filled, `null`. The method's promise is now `{ png, submission }`, `{ cells, submission }` or `null`. Which boxes are filled, the new read-only property `filled` says (R34). The agreement of `canvas` and `app` is В46 «в реестр spec». — R34.
-
-— *Amendment 2026-10-27:* until T49, `exportWork()` on a workbook rejects the promise — `DOMException` `NotSupportedError`, for an empty workbook too: `null` would say that nothing is written (R36). — R36.
-
-— *Amendment 2026-10-27:* beside `history` is the read-only property `filled` (R37): which boxes of the workbook are filled, and `null` on a sheet. An action changes it before `historychange`, and an assignment of `task` and `history` changes it with no event. — R37.
-
-— *Amendment 2026-10-27:* on a workbook `exportWork()` gives `{ cells, submission }` (R38): `cells` is `{ item, slot, png }`, and `submission` is `{ boxes, digest }`. The types of the work are `ExportedSheet`, `ExportedWorkbook` with `ExportedCell` and their union `ExportedWork`, and those of the context `SheetSubmission`, `WorkbookSubmission` and their union `Submission`. Until T53 the marks take only a sheet's context. — R38.
-
-— *Amendment 2026-10-27:* `task` and `history` are given before `marks`: a workbook's context is checked against the page's boxes (R39). A new page, like a new history, places the marks anew, and if they do not fit, `marks` is `undefined`, with no event. The same page writes nothing. — R39.
-
-— *Amendment 2026-11-02:* the data types that `core` gives now come from `spec`. The writing history, the submission context with its parts, `Filling` and `DemoState` come from `@altnovatrail/spec/canvas`, and the task, the example and the manifest still from `formatv0/open` (R41; R74 spec; the amendment of the same day to R07). The code of `core` goes without the DOM, as it did, and `boundary.check.ts` holds it to that. But the file of `spec` that the types come from names DOM types too — `Blob`, `CustomEvent` and `HTMLElement` — and the declarations of `core` lead to it. A consumer of `/core` in Node without the DOM library and with `skipLibCheck: false` gets 6 errors TS2304, and with `@types/node` one, on `HTMLElement`; with `skipLibCheck` or with the DOM, none. There is no such consumer now: `app`, the samples page, the tests and the synthetic samples have the DOM or `skipLibCheck`. Rejected:
-- copies of the data types of `core`'s own, with a check for identity: the declarations would stay without the DOM, but the seam would again rest on copies, which R41 left behind for the task;
-- a row «в реестр spec» about a DOM-free subpath at once: a question to `spec` with no consumer.
-
-Revisit when a consumer of `core` without the DOM and without `skipLibCheck` appears: then a row «в реестр spec» about a subpath of `@altnovatrail/spec/canvas` with data types without the DOM. — RUN.md, T69.
-
-— *Amendment 2026-11-17 (T120):* the picture of the whole sheet comes back for another consumer than the board (R83): `exportPicture()` gives the PNG of the strokes the sheet or the workbook's page shows, with no condition, for `StoredWork.picture` of `PutWork`, and `app` sends it to be stored, not to be checked. `exportWork()` stays the one picture for the check, and «Revisit» about the picture of the whole sheet is decided by it. — R83; RUN.md, T120.
-
-**R28. The sheet's own buttons are a vertical toolbar by the APG on the bar of glass (R84): one Tab stop, the radio group «Инструмент» of the tools the task allows and the hand (R88), «Отменить» and «Очистить». The labels come from a table of the element's own in `en` and `ru`, by the element's own `lang`; the tools from the task's field `canvas.tools`, the element's own; and the element announces a change of tool by the learner, and only by the learner, with the event `toolchange`.**
-- **The bar** is `role="toolbar"`, `aria-orientation="vertical"`, first in the shadow tree, before the sheet's region (R33); its look, place and the band it stands in are R84's, and `tools-hidden` hides it (R84). Its buttons, top to bottom:
-  - on a task from paper only, the button atop the tools — "Hide the task" or "Show the task" — and a line (R87);
-  - the group `radiogroup` «Инструмент» of `<button role="radio" aria-checked>`: «Перо», «Ластик» if the task allows it, «Рука» (R88). The tool in use shows its icon filled;
-  - «Отменить» and «Очистить», `<button>` elements that call `undo()` and `clear()` (R19);
-  - on a task from paper only, a line and the grid's button (R88).
-  A worked example has no bar: the learner does not write on its sheet, and its Next and Demo stand in a row of their own (R42, R84).
-- **The keyboard**, by APG Toolbar:
+**R28. The sheet's own buttons are a vertical toolbar by the APG on the element's bar of glass: one Tab stop, the radio group «Инструмент» of the tools the task allows and the hand, «Отменить» and «Очистить». The labels come from a table of the element's own in `en` and `ru`, by the element's own `lang`; the tools from the task's field `canvas.tools`, the element's own; and the element announces a change of tool by the learner, and only by the learner, with the event `toolchange`.**
+- **The bar** is `role="toolbar"`, `aria-orientation="vertical"`, first in the shadow tree, before the sheet's region; the mockup's bar of glass, and `tools-hidden` hides it. Its buttons, top to bottom:
+  - on a task from paper only, the button atop the tools — "Hide the task" or "Show the task" — and a line;
+  - the group `radiogroup` «Инструмент» of `<button role="radio" aria-checked>`: «Перо», «Ластик» if the task allows it, «Рука». The tool in use shows its icon filled;
+  - «Отменить» and «Очистить», `<button>` elements that call `undo()` and `clear()`;
+  - on a task from paper only, a line and the button that turns the grid round.
+  A worked example has no bar: the learner does not write on its sheet, and its Next and Demo stand in a row of the same glass at the bottom.
+- **The keyboard**, by APG Toolbar (sources 9.9):
   - one Tab stop, a roving `tabindex`: the first entry is on the first button shown — «Перо», or a task from paper's button atop the tools —, later ones on the button that had the focus last;
   - ArrowDown and ArrowUp go to the next and the previous button shown, round the bar, and Home and End to the first and the last; the arrows move the focus and choose nothing; ArrowLeft and ArrowRight do nothing;
   - Space and Enter press the button; the bar takes no key with Alt, Ctrl or Meta;
   - a button that goes — «Ластик» with a task without the eraser, a task from paper's two — gives its stop of Tab, and the focus if it had it, to the first button shown;
   - the glass is no Tab stop, and a press on it between buttons takes the focus nowhere.
 - **Unavailable buttons:** «Отменить» while there is nothing to undo and «Очистить» on an empty sheet are `aria-disabled="true"`: paler, still focusable, and a press does nothing.
-- **The labels** are a table of the element's own, `src/element/labels.ts`, in the interface languages `en` and `ru` (R92 spec), by the shared rules of the UI packages' translations (R91 spec). The table holds the buttons, the group «Инструмент» (Tool), the bar's names, the kinds' names, a workbook's boxes (R36, R37), a demo's parts (R42) and the tracing paper's grip (R87):
-  - the language is the element's own attribute `lang` (R07), which it watches (`observedAttributes`); it does not read an ancestor's language;
-  - the tag is looked up as RFC 4647, 3.4 does: in lower case, the tail cut off subtag by subtag, a singleton subtag together with the next one; none found, English;
-  - the bar, its tooltip and each other labelled node have their own `lang`, the language of the labels they show: a screen reader reads English labels under `lang="de"` in English; for a `lang` outside the table the region too (R74);
+- **The labels** are a table of the element's own, `src/element/labels.ts`, in the platform's interface languages `en` and `ru`, by the rules of translations the UI packages share. The table holds the buttons, the group «Инструмент» (Tool), the bar's names, the kinds' names, a workbook's boxes, a demo's parts and the tracing paper's grip:
+  - the language is the element's own attribute `lang`, which it watches (`observedAttributes`); it does not read an ancestor's language;
+  - the tag is looked up as RFC 4647's lookup does (sources 9.9): in lower case, the tail cut off subtag by subtag, a singleton subtag together with the next one; none found, English;
+  - the bar, its tooltip and each other labelled node have their own `lang`, the language of the labels they show: a screen reader reads English labels under `lang="de"` in English; for a `lang` outside the table the region too;
   - the constructor labels in English and reads no attribute: one that was there before registration comes right after it;
   - a label with a number or a word inside is one string with placeholders by name — «Часть {n} из {total}.», «Окошко {slot}», «{name}, заполнено», «{name}: {value}» —, never pieces glued together; a place with no value is a `TypeError`, not braces on the screen;
   - no label counts things, so none has plural forms; the first that does takes the CLDR categories, `other` among them, by `Intl.PluralRules` of the label's language;
-  - the buttons' labels are the words of the table of architecture 6 spec; no label tells the learner's gender (R70 spec) or speaks as the AI in the first person (П-15). The phrases only `canvas` shows are [architecture.md](architecture.md), section 3.3.
-- **The names:** the bar is named by the kind's buttons — «Кнопки листа», «Кнопки тетради», «Кнопки задачи с бумаги»; "Sheet buttons", "Workbook buttons", "Task from paper buttons" —, and the kind's own name — «Лист», «Тетрадь», «Задача с бумаги», «Пример» — is the scroll container's region (R33), so that a screen reader does not show the toolbar and the region under one name.
-- **The task's tools** are the field `task.canvas.tools` of both canvas kinds, the element's own: format 0.4 has no field of tools — every task has the pen and the eraser, and a field for other tools is a minor version (the format's README, §14; R51 spec) —, and the element's strict check lets this one field through (R32). Its type is the element's `Task`, not `CanvasElement`'s (Д5 in [run/DEBT.md](../run/DEBT.md)):
-  - a list of strings, as in the illustration of concepts 16.3 spec; without the field the pen and the eraser. The sheet takes `"pen"` and `"eraser"` and skips unknown ones — a ruler, a calculator —: `app` shows some, others come with new versions of the element;
+  - the buttons' labels are the words of the packages' shared table in `spec/docs/architecture.md`; no label tells the learner's gender or speaks as the AI in the first person (П-15). The phrases only `canvas` shows are in [architecture.md](architecture.md), with the docking with the app.
+- **The names:** the bar is named by the kind's buttons — «Кнопки листа», «Кнопки тетради», «Кнопки задачи с бумаги»; "Sheet buttons", "Workbook buttons", "Task from paper buttons" —, and the kind's own name — «Лист», «Тетрадь», «Задача с бумаги», «Пример» — is the scroll container's region, so that a screen reader does not show the toolbar and the region under one name.
+- **The task's tools** are the field `task.canvas.tools` of both canvas kinds, the element's own: format 0.4 has no field of tools — every task has the pen and the eraser, and a field for other tools is a minor version of the format (`spec/format/README.md`) —, and the element's strict check of the task lets this one field through. Its type is the element's `Task`, not `CanvasElement`'s (Д5 in [run/DEBT.md](../run/DEBT.md)):
+  - a list of strings, as in spec's illustrations of a task; without the field the pen and the eraser. The sheet takes `"pen"` and `"eraser"` and skips unknown ones — a ruler, a calculator —: `app` shows some, others come with new versions of the element;
   - without `"pen"`, a `TypeError`: the sheet writes with the pen. Not a list, a hole or not a string: a `TypeError` with the field's path;
   - without `"eraser"` there is no eraser at all: no «Ластик»; the back end of the pen neither erases nor writes; `tool = "eraser"` is a `TypeError`;
-  - the hand is no tool of the format: every sheet the learner writes on has it, a worked example none (R88). A task from paper has the pen and the eraser;
-  - undo and clearing are not tools: concepts 8 spec does not name them, and they always have buttons.
+  - the hand is no tool of the format: every sheet the learner writes on has it, a worked example none. A task from paper has the pen and the eraser;
+  - undo and clearing are not tools: spec's list of the tools does not name them, and they always have buttons.
 - **`tool` and the buttons are one** (`Tool` = `"pen" | "eraser" | "hand"`, spec's contract):
   - a button chooses `tool`, and an assignment of `tool` checks its button; a tool the sheet shown has not — the eraser without the task's, the hand on a worked example — is a `TypeError`;
-  - a sheet shown anew without the tool in use puts the pen back, with no event; a press under way goes on as it began (R22);
+  - a sheet shown anew without the tool in use puts the pen back, with no event; a press under way goes on as it began;
   - `toolchange` is a `CustomEvent` from the host, `bubbles` and `composed`, with a frozen `detail` `{ tool }`, on the learner's choice of another tool by a button. An assignment of `tool`, a second press of the chosen one and the pen put back give none;
   - a consumer that gives `tool` itself listens to `toolchange`, or its re-render brings back the previous tool; after a new task it takes `tool` from the element.
-- **The theme:** the bar's text the ink; the chosen tool and the focus ring (`:focus-visible`, 2 px) the accent (R84); an unavailable button paler by colour, `color-mix` of 40 % ink on paper, not by opacity, which would pale the ring too (WCAG 2.4.7, 1.4.11) — by opacity only where `color-mix` is not supported. In forced colours: the bar Canvas and CanvasText; the buttons ButtonFace, ButtonText and ButtonBorder; the chosen one Highlight and HighlightText; an unavailable one GrayText; the ring Highlight.
-- **The pointer:** the rail is as wide as nothing and has no `pointer-events` of its own, so a consumer's `none` on the element (R20) stops the buttons' pointer too, but not their keys.
+- **The theme:** the bar's text the ink; the chosen tool and the focus ring (`:focus-visible`, 2 px) the accent; an unavailable button paler by colour, `color-mix` of 40 % ink on paper, not by opacity, which would pale the ring too (WCAG 2.4.7, 1.4.11; sources 9.19) — by opacity only where `color-mix` is not supported. In forced colours: the bar Canvas and CanvasText; the buttons ButtonFace, ButtonText and ButtonBorder; the chosen one Highlight and HighlightText; an unavailable one GrayText; the ring Highlight.
+- **The pointer:** the rail is as wide as nothing and has no `pointer-events` of its own, so a consumer's `pointer-events: none` on the element during a check stops the buttons' pointer too, but not their keys.
 
-— *Why:* the author's answers in planning T41, 2026-10-26 — unavailable buttons pale and keep the focus, labels of the element's own, «нет в списке — нет на листе» ("not in the list, not on the sheet"), `toolchange` from the learner —; in planning T91, 2026-11-11, no plural forms until a label counts; in planning T93, 2026-11-11, the bar named by its buttons and the region by the kind.
+— *Why:* the author's answers — unavailable buttons pale and keep the focus, labels of the element's own, «нет в списке — нет на листе» ("not in the list, not on the sheet"), `toolchange` from the learner, no plural forms until a label counts, the bar named by its buttons and the region by the kind. The sources — sources 9.9.
 - **`aria-disabled`, not `disabled`.** `disabled` takes a button out of the focus: the last undo from the keyboard would drop the focus off the bar. APG allows unavailable items of a toolbar to stay focusable, so that they are found.
 - **Radio buttons, not toggles.** The tools are a choice of one, as APG's toolbar example describes it. A toggle `aria-pressed` would switch the tool off with a second press, into nothing. Buttons, not `<input type="radio">`: with native radios the arrows choose, and in a toolbar they only move the focus.
-- **The element's own `lang`.** R07: `app` sets the language. `HTMLElement.lang` does not reflect an ancestor's, and the element cannot watch all its ancestors.
-- **A table of its own.** R91 spec gives the UI packages shared rules and each its own tables; two rows of a table are easier to change than translations in every consumer.
-- **The task allows.** "The tools are allowed by the task" (concepts 8 spec): an eraser the task did not give erases neither by the button nor by the pen. Unknown tools are skipped: the task names `app`'s tools too, and the element's new tools come with new versions of the package.
+- **The element's own `lang`.** `app` sets the language, on the element itself. `HTMLElement.lang` does not reflect an ancestor's, and the element cannot watch all its ancestors.
+- **A table of its own.** The UI packages share the rules of translations and each keeps its own tables; two rows of a table are easier to change than translations in every consumer.
+- **The task allows.** "The tools are allowed by the task", says spec's description of the canvas: an eraser the task did not give erases neither by the button nor by the pen. Unknown tools are skipped: the task names `app`'s tools too, and the element's new tools come with new versions of the package.
 - **`toolchange` only from the learner.** web.dev: "Do not dispatch events in response to the host setting a property (downward data flow)". The consumer made the assignment and knows of it.
 - **Placeholders by name.** Languages put their words in other orders; a glued label could not be translated.
 - **The bar named by its buttons.** In the screen reader's list of landmarks stands the sheet itself, under its kind's name.
@@ -1546,42 +1477,46 @@ Revisit when a consumer of `core` without the DOM and without `skipLibCheck` app
 - **an event on an assignment of `tool`** and **an element with no event**: for the reasons above;
 - **`delegatesFocus`**: a press on the drawing surface would give the focus to the pen's button;
 - **plural forms in code now**: code the package does not call;
-- **the bar named by the kind, the region «Лист с задачей»**: the pair «Лист» and «Лист с задачей» confuses; «Лист с условием» neither — «условие» in concepts 15 spec is a check's predicate, not the statement.
+- **the bar named by the kind, the region «Лист с задачей»**: the pair «Лист» and «Лист с задачей» confuses; «Лист с условием» neither — «условие» in spec's glossary is a check's predicate, not the statement.
 
-— *Revisit:* the field of tools, with the minor version of the format that has one (Д5 in [run/DEBT.md](../run/DEBT.md)); the keyboard during a check, by a property that stops it too, if `app` asks for one (R20).
+— *Revisit:* the field of tools, with the minor version of the format that has one (Д5 in [run/DEBT.md](../run/DEBT.md)); the keyboard during a check, by a property that stops it too, if `app` asks for one.
 
-— T41 in [plan/E4.md](plan/E4.md); T91 and T93 in [plan/E10.md](plan/E10.md); T121 in [plan/E13.md](plan/E13.md); T251 of spec's RUN.md; [architecture.md](architecture.md), sections 3.3, 3.7 and 3.10; R07, R19, R20, R22, R32, R33, R36, R42, R74, R84, R87, R88; R51 spec, R91 spec, R92 spec; `src/element/tools.ts`, `src/element/labels.ts`, `src/element/index.ts`, `src/core/task.ts`, `src/element/tools.test.ts`, `src/element/labels.test.ts`.
+— *Consequence:*
+- `src/element/tools.ts`, `src/element/labels.ts`, `src/element/index.ts` — the bar, the labels, `tool` and `lang`;
+- `src/core/task.ts` — the check of `canvas.tools`;
+- `src/element/tools.test.ts`, `src/element/labels.test.ts`;
+- [architecture.md](architecture.md) — the language and the labels, the code, accessibility.
 
 **R29. Input on tablets: pen mode is one for the whole page, from a pen's touch on any sheet till the page reloads, and nothing turns it off; in it a finger neither writes nor erases, one finger past the slop drags the sheet, and two fingers scroll it always. A palm is a touch wider or taller than 100 CSS px. One pointer writes at a time, and the pen removes a touch's stroke under way. Scrolling by fingers is code of its own, across as well as down.**
 - **Pen mode** is one for the whole page, in its memory (`PEN_MODE`):
-  - a pen's `pointerdown` on the drawing surface of any sheet the learner writes on turns it on, by either button — the tip or the pen's eraser. A hovering pen does not, nor a press under the hand (R88);
-  - nothing turns it off: the next task is a new element (R20), and the mode stays till the page reloads. Nothing is stored or sent;
+  - a pen's `pointerdown` on the drawing surface of any sheet the learner writes on turns it on, by either button — the tip or the pen's eraser. A hovering pen does not, nor a press under the hand, the tool that moves the sheet;
+  - nothing turns it off: the next task is a new element, and the mode stays till the page reloads. Nothing is stored or sent;
   - in pen mode a finger neither writes nor erases. The mouse does not touch the mode;
-  - a worked example's sheet neither turns it on nor off: its drawing surface takes no input and has the browser's `touch-action`, so a finger and a pen scroll it natively, as they scroll the statement (R42);
+  - a worked example's sheet neither turns it on nor off: its drawing surface takes no input and has the browser's `touch-action`, so a finger and a pen scroll it natively, as they scroll the statement;
   - the mode knows whether any sheet of the page is written on: each sheet enlists whether a pointer writes or erases on it (`enlist`, `writing`), and no single finger drags while one does.
 - **A palm** is a touch whose `width` or `height` is greater than 100 CSS px, on `pointerdown` or on any coalesced `pointermove`:
   - it neither writes nor scrolls until it lifts;
-  - the stroke it was already writing is removed, as on `pointercancel`: there is no history event, and its ID stays taken (R18);
+  - the stroke it was already writing is removed, as on `pointercancel`: there is no history event, and its ID stays taken;
   - the palm ends the scrolling it was in.
 - **Who writes:**
-  - one pointer at a time (R18). Several touches at once never write;
+  - one pointer at a time. Several touches at once never write;
   - the pen removes a touch's stroke that is under way — that was a palm —, ends a gesture under way, and writes itself. While a pen or a mouse writes, a touch does nothing, and a touch that was on the screen when the pen came does nothing until it lifts;
   - without pen mode the first touch writes or erases by `tool`. A second touch that came no later than 150 ms after the first, while that one has moved no more than 8 px, removes its stroke or eraser's press, and both fingers scroll. A later second touch does nothing, and the stroke goes on;
-  - in pen mode a touch waits. A second that comes within 150 ms of it makes the two a scroll; one that goes past 8 px with no second drags the sheet alone, by its own travel, and every other finger down then, and every one that comes while it drags, does nothing until it lifts (R84). No single finger drags while a sheet of the page is written on, and a pen never drags;
+  - in pen mode a touch waits. A second that comes within 150 ms of it makes the two a scroll; one that goes past 8 px with no second drags the sheet alone, by its own travel, and every other finger down then, and every one that comes while it drags, does nothing until it lifts. No single finger drags while a sheet of the page is written on, and a pen never drags;
   - a third touch does nothing. When one finger of a pair lifts, the gesture ends, and the other does nothing until it lifts;
   - a mouse and a pointer without a type write when nobody else writes;
-  - a finger's press that was under way on another sheet when the pen turned the mode on goes to its end as it began (R22);
-  - the drawing surface holds by capture every pointer that came down on it, until it lifts, whether it writes or not. A pointer that comes down again under the same ID has lost its `pointerup`, and the stroke it was writing lands where it was — as on a loss of capture (R18).
+  - a finger's press that was under way on another sheet when the pen turned the mode on goes to its end as it began;
+  - the drawing surface holds by capture every pointer that came down on it, until it lifts, whether it writes or not. A pointer that comes down again under the same ID has lost its `pointerup`, and the stroke it was writing lands where it was — as on a loss of capture.
 - **Scrolling by fingers** is code of its own, because `touch-action` acts on the pen too:
   - two fingers move the sheet with their midpoint, a dragging finger with itself. The threshold is that point's travel, 8 px; the first step has no jump: it is the share of the travel along each axis that lies beyond the threshold;
-  - across counts only while the sheet is wider than its container (`HandsSheet.across()`, the container's overflow across; R73); otherwise only the travel down counts. The rail: if, crossing the threshold, the point has gone twice as far along one axis as along the other, the gesture goes only along it until its end (`RAIL`): a scroll down does not wander sideways;
+  - across counts only while the sheet is wider than its container (`HandsSheet.across()`, the container's overflow across); otherwise only the travel down counts. The rail: if, crossing the threshold, the point has gone twice as far along one axis as along the other, the gesture goes only along it until its end (`RAIL`): a scroll down does not wander sideways;
   - a step is a whole pixel, the remainder goes into the next step, and it is `behavior: "instant"`;
   - what to scroll along each axis, the gesture's first step along it chooses, and the choice holds until the gesture's end (the latch). It is the sheet's container if it can move that way, otherwise the host's nearest scrollable ancestor — across shadow boundaries, up to an `overscroll-behavior` of `contain` or `none` —, otherwise the page. A page with hidden overflow, as under a modal window, is not scrolled: a finger would not scroll it either. The page's overflow is the root's, and if the root's is `visible`, then `body`'s (CSS Overflow 3). A container at its edge passes the scrolling on with the next gesture;
   - the shift is divided by the target's own scale: an ancestor with `transform` changes the fingers' path on the screen;
   - there is no inertia, and the sheet stops with the fingers;
-  - for the time of a check, with `pointer-events: none` (R20), a new gesture does not start, and one already started goes on until the lift;
-  - outside the drawing surface — the statement and the bar — a finger scrolls by native scrolling (R23);
-  - the hand (R88) moves the sheet through the same steps and latches, by its pointer's travel.
+  - for the time of a check, with `pointer-events: none` on the element, a new gesture does not start, and one already started goes on until the lift;
+  - outside the drawing surface — the statement and the bar — a finger scrolls by native scrolling;
+  - the hand moves the sheet through the same steps and latches, by its pointer's travel.
 - **The thresholds** are `PALM_PX` 100 CSS px, `PAIR_MS` 150 ms, `SLOP_PX` 8 CSS px and `RAIL` 2, in pixels of the screen, not of the sheet.
 - **What the canvas will not fix:**
   - WebKit 269535: on an iPad the Apple Pencil gives no pointer events while a finger or the edge of a palm touches the screen;
@@ -1589,10 +1524,10 @@ Revisit when a consumer of `core` without the DOM and without `skipLibCheck` app
   - a palm on the bar is not cut off.
 - **Code:** `src/core/hands.ts` — the rule `Hands`, the mode `PenMode`, the types `Contact` and `HandsSheet`, the thresholds; `src/element/session.ts` — the page's `PEN_MODE`; `src/element/index.ts` — the field `#hands`, `#scroll`, `#flush`, `#scrollerFor`, the latches `#latch` and `#latchAcross`, and `#lifted`, where a lift, a cancel and a lost capture release the latches. Tests: `src/core/hands.test.ts`, `src/element/hands.test.ts`.
 
-— *Why:* the author's answers in planning T35, 2026-10-26, all by the recommendations: build it without a tablet, devices check it later; pen mode for the whole page; a palm wider than 100 px; the second finger soon after the first; no inertia. Sources: sources 1.1 and 9.10.
-- **A mode for the whole page.** A new task is a new element (R20). A mode on the element would be reset at every task, and each task's first palm would write. canvas-api turns the mode on «в сессии» ("in the session").
-- **No way out but a reload.** The author's word for T251, 2026-11-22: «Непонял зачем инструмент draw with finger. Удали его». In pen mode the finger has a job — it moves the sheet —, and a learner whose pen is gone reloads the page.
-- **One finger drags in pen mode** (R84): it is the single pointer's way to scroll that 2.5.1 asks for (the second 2026-11-14 amendment to R90 spec), on the two fingers' code and slop. A palm does not move the sheet by it: a touch wider than 100 px does nothing, a smaller one drags only past the slop with no second finger, and the pen, when it touches, ends the gesture.
+— *Why:* the author's answers, all by the recommendations: build it without a tablet, devices check it later; pen mode for the whole page; a palm wider than 100 px; the second finger soon after the first; no inertia. The sources — sources 1.1 and 9.10.
+- **A mode for the whole page.** A new task is a new element. A mode on the element would be reset at every task, and each task's first palm would write. canvas-api turns the mode on «в сессии» ("in the session").
+- **No way out but a reload.** The author's word: «Непонял зачем инструмент draw with finger. Удали его». In pen mode the finger has a job — it moves the sheet —, and a learner whose pen is gone reloads the page.
+- **One finger drags in pen mode**: it is the single pointer's way to scroll that WCAG 2.2's 2.5.1 asks for (sources 9.10), on the two fingers' code and slop. A palm does not move the sheet by it: a touch wider than 100 px does nothing, a smaller one drags only past the slop with no second finger, and the pen, when it touches, ends the gesture.
 - **No drag by one finger while a sheet is written on.** A drag may scroll an ancestor or the page, which moves every sheet of it: nothing moves under the pen.
 - **100 px, not 30.** WebKit on iPadOS gives a touch a width of double the radius, and, by another project's report, at a fingertip that is 40–60 px. canvas-api's 30 px had no code behind it, and on the main device with a pen it would take drawing away from the finger. A high threshold lets a small touch of a palm through, but in pen mode a touch does not write anyway.
 - **A palm by `pointerdown` and `pointermove`.** On `pointerup` Chromium gives `width` and `height` 1, and a palm grows as it lands.
@@ -1607,7 +1542,7 @@ Revisit when a consumer of `core` without the DOM and without `skipLibCheck` app
 - **a switch to draw with the finger instead of pen mode**: an extra action for the learner on every device with a pen;
 - **the mode by the pen's hovering**: a pen brought near the screen would take drawing from the finger before it writes;
 - **the threshold of 30 px**: for the reason above;
-- **several writing touches at once**: a palm would write beside a finger, and the order of the strokes by ID would diverge from the order of writing (R22);
+- **several writing touches at once**: a palm would write beside a finger, and the order of the strokes by ID would diverge from the order of writing;
 - **`touch-action: pan-y` on the drawing surface in pen mode**: `touch-action` acts on the pen too, and by WebKit 238543 Safari scrolls with two fingers even where `touch-action` forbids zooming;
 - **handing the scrolling to the page in the middle of a gesture**: the container and the page would compete within one gesture;
 - **delaying a finger's stroke**, so that the pen has time to remove it: a finger would draw with a lag;
@@ -1619,7 +1554,10 @@ Revisit when a consumer of `core` without the DOM and without `skipLibCheck` app
 - the mode across a reload, by a property for `app`, if it asks;
 - a way out of pen mode without a reload, if learners on devices need one.
 
-— RUN.md, T35, T121; T251 of spec's RUN.md; [architecture.md](architecture.md), sections 2.6, 3.1, 3.2, 3.3 and 3.10; sources 9.10; R18, R20, R22, R42, R84, R88; `src/core/hands.ts`, `src/element/session.ts`, `src/element/index.ts`.
+— *Consequence:*
+- the files and tests of **Code** above;
+- [architecture.md](architecture.md) — scrolling with one pointer, the input and the palm rejection, scrolling on the drawing surface, the bar, what `app` does for pen mode, the table of accessibility;
+- [sources.md](sources.md) — the record of input on tablets.
 
 ## `spec` tag v0.2.35
 
