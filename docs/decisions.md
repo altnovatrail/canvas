@@ -1561,251 +1561,206 @@ The sources — sources 9.8.
 
 ## `spec` tag v0.2.35
 
-**R30. `canvas` is on `spec` v0.2.35: the submodule `spec/` is at this tag, and the links to `spec` pinned to a tag name it. `spec` has decided the rows «в реестр spec» В29, В30, В32, В34 and В39, and they are closed: the documents name its numbers instead of them. The second canvas kind of the first slice is the workbook, and `canvas` details it: epic E6. The temporary task type moves to the task schema of R51 spec by a task of its own.**
+**R30. `canvas` is on `spec` v0.2.35: the submodule `spec/` is at this tag, and the links to `spec` pinned to a tag name it. `spec` has decided the rows «в реестр spec» В29, В30, В32, В34 and В39, and they are closed: the documents name its decisions instead of them. The second canvas kind of the first slice is the workbook, and `canvas` details it: epic E6. The temporary task type moves to `spec`'s task schema of format v0 by a task of its own.**
 - **What the tag brings to `canvas`** (`git -C spec diff v0.2.18 v0.2.35`, read 2026-10-26). The releases v0.2.19–v0.2.35 answered five rows of `canvas` and the questions it was waiting for. What `canvas` gets with the tag, Д18–Д22, Д25, Д27–Д29 and Д32–Д34 in RUN.md of `spec` name:
-  - **R41 spec** (В32): the first slice is three modules of two subjects, and the slice's canvases are the handwriting sheet and the workbook; it has no text canvas.
+  - **the first slice** (В32): it is three modules of two subjects, and the slice's canvases are the handwriting sheet and the workbook; it has no text canvas.
     - The sheet serves olympiad mathematics and short essays in English, and the workbook the school mathematics of grade 3: the task's items stand on the non-erasable template layer, and the answer to each is a number or a fraction by hand in its answer slot.
     - В32 is closed otherwise than `canvas` advised: the second module is not Spanish A1, and the modules became three.
-    - The card architecture 3.2 spec gives `canvas` the detailing of the workbook: the page, the answer slots, the crop of a slot and the template layer.
-    - `speak` of R36 spec and architecture 3.1 spec is left until the text canvas, "later";
-  - **R51 spec**: the task of format v0, the schema `task.schema.json`:
+    - `spec`'s card of `canvas` gives `canvas` the detailing of the workbook: the page, the answer slots, the crop of a slot and the template layer.
+    - `speak`, of `spec`'s decision that UI packages enter their consumer as web components and of `app`'s card, is left until the text canvas, "later";
+  - **the task** of format v0, the schema `task.schema.json`:
     - the canvas kind is `handwriting_sheet` or `workbook`. For a sheet the task gives the grid `grid` and its step `grid_step`, from 20 to 500 units, 50 without the field;
-    - **the task statement** (В34): paragraphs and pictures with a description and a size. It is part of the author's template, and whether it is above the canvas or on it, the canvas kind decides: a sheet shows it above the sheet. So В34 is closed, by `canvas`'s recommendation, and concepts 6 and 8 spec are amended;
-    - **each task has a pen and an eraser** (В39), and there is no field of tools in v0: it will come with a minor version, with the first module that needs a ruler or a calculator. So В39 is closed, not by `canvas`'s recommendation: R51 spec rejected "a field of tools of the pen and the eraser";
-    - **the digit height on the crop** is `canvas.digit_height` in the module manifest: integer px from 1 to 256, 32 without the field. R51 spec rejected a height for each task, as the temporary type's `canvas.digit`. That answers В38 as to the digit height, and how the app gets it with the task, T34 in RUN.md of `spec` decides;
+    - **the task statement** (В34): paragraphs and pictures with a description and a size. It is part of the author's template, and whether it is above the canvas or on it, the canvas kind decides: a sheet shows it above the sheet. So В34 is closed, by `canvas`'s recommendation, and `spec`'s glossary is amended on the task and on the canvas;
+    - **each task has a pen and an eraser** (В39), and there is no field of tools in v0: it will come with a minor version, with the first module that needs a ruler or a calculator. So В39 is closed, not by `canvas`'s recommendation: `spec`'s decision on the task rejected "a field of tools of the pen and the eraser";
+    - **the digit height on the crop** is `canvas.digit_height` in the module manifest: integer px from 1 to 256, 32 without the field. The same decision rejected a height for each task, as the temporary type's `canvas.digit`. That answers В38 as to the digit height, and how the app gets it with the task, a task of `spec`'s plan decides;
     - the task's items with answer slots and the slot bindings of v0: on a sheet `anywhere`, `sheet`, `zone` and `choice`, on a workbook the line's box, `box`. A zone is `left`, `top`, `width` and `height` in units of the sheet;
-  - **the 2026-10-22 amendment to R43 spec and repositories 6 spec, item 5** (В29): the first code of `canvas` is the sheet, the element `<novatrail-canvas>`. The samples page, the synthetic samples and the build from a file wait until the measurement needs volunteers' or children's samples: that is epic E5;
-  - **the 2026-10-22 addition to П-10** (В30): where the page offers to put a sample file on an iPad, the planning of E5 chooses, and whether that is enough, a lawyer decides in epic E4 of RUN.md of `spec`;
-  - **R53 spec**: the place on the canvas in an observation and in the contract `app` ↔ `api`: fractions 0–1000 of the crop, `[ymin, xmin, ymax, xmax]`, integers. `canvas` converts it into units of the sheet, and `sheet_box` does not leave the device. So Т-32 is closed — by what `canvas` decided for itself in R06 — and with it the mark's place from В37;
-  - **R52 spec**: nothing goes from the writing history to the AI, and П-21 is closed. R09 does not change: the writing history does not go to the check anyway;
-  - **R44, R45 and R46 spec**:
-    - the module format has a version of its own, MAJOR.MINOR, and a window of versions. `canvas` releases a new canvas kind before the module that takes it (repositories 4 spec);
+  - **the first code of stage 2 and `spec`'s order of the first code by repositories** (В29): the first code of `canvas` is the sheet, the element `<novatrail-canvas>`. The samples page, the synthetic samples and the build from a file wait until the measurement needs volunteers' or children's samples: that is epic E5;
+  - **the addition to П-10** (В30): where the page offers to put a sample file on an iPad, the planning of E5 chooses, and whether that is enough, a lawyer decides in epic E4 of RUN.md of `spec`;
+  - **the place on the canvas**: in an observation and in the contract `app` ↔ `api` it is fractions 0–1000 of the crop, `[ymin, xmin, ymax, xmax]`, integers. `canvas` converts it into units of the sheet, and `sheet_box` does not leave the device. So Т-32 is closed — by what `canvas` decided for itself on the sheet's units and the place from the model — and with it the mark's place from В37;
+  - **the writing history and the AI**: nothing goes from the writing history to the AI, and П-21 is closed. This log's decision on the sample file does not change: the writing history does not go to the check anyway;
+  - **the module format, its conventions and the module's folder**:
+    - the module format has a version of its own, MAJOR.MINOR, and a window of versions. `canvas` releases a new canvas kind before the module that takes it, by `spec`'s flows between repositories;
     - the names of fields and the values are in snake_case;
     - a picture is named by its path from `media/`, and a task by its full ID;
-  - **the 2026-10-22 and 2026-10-26 amendments to R25 spec and R38 spec:**
+  - **`spec`'s decisions on the samples page and on the synthetic samples in `tutor`'s CI:**
     - the measurement of the course of writing is done on the sheets of `tutor`'s board and on synthetic samples, without `canvas`'s page;
     - `tutor`'s release with the measurement's tasks and the check of `canvas`'s synthetic samples in `tutor`'s CI wait for epic E3 of `tutor`;
     - `canvas`'s page writes the volunteers' and the children's samples, when it comes to them;
-    - `tutor`'s temporary file of the measurement's tasks moves to the task schema of R51 spec.
+    - `tutor`'s temporary file of the measurement's tasks moves to `spec`'s task schema.
 
     This goes to E5 and Д4;
-  - **the 2026-10-22 amendment to R31 spec**: the template of `paths` of the calling `release.yml` lists what the release is built from, by the kind of repository. `.github` writes the list for the kind `typescript` with the first release in TypeScript, `canvas`'s. This goes to T24;
-  - **the rest** `canvas` waits for, as it waited for the rows:
-    - the eval protocol and the contract `app` ↔ `api`: epic E3 in RUN.md of `spec` (В33, В35–В37);
-    - the types for TypeScript: T35 there too (В38, В40);
-    - the standard of accessibility of UI packages: from T07 of `app` (В41);
+  - **the calling `release.yml`**: the template of its `paths` lists what the release is built from, by the kind of repository. `.github` writes the list for the kind `typescript` with the first release in TypeScript, `canvas`'s. This goes to the task of `canvas`'s first release;
+  - **the rest** `canvas` waited for, as it waited for the rows; `spec` recorded those rows in v0.2.36 and v0.2.37, which the move to v0.2.37 took:
+    - the eval protocol and the contract `app` ↔ `api`: they still wait for epic E3 in RUN.md of `spec` (В33, В35–В37);
+    - the types for TypeScript: a task of the same plan (В38, В40);
+    - the standard of accessibility of UI packages: a task of `app`'s plan (В41, О-24);
     - the group boxes at the check: Т-31.
 - **The rules for all repositories** that `canvas` gets with the same tag:
-  - **RULES.md, How we work:** code comes with its tests, and where coverage goes to Codecov, a merge waits for `codecov/patch` (R48 spec). `canvas`'s tests have come with every change of code since T08, and it has no coverage in Codecov: that waits for the upload in `.github`'s wrapper (Д29 in RUN.md of `spec`);
-  - **RULES.md, Language:** the normative texts for authors are in English (R42 spec). Rule 10 of RUN.md names them, as the template does;
-  - **R48 spec and repositories 2.3 spec**: the status badges at the beginning of README:
+  - **the shared rules of work** (`spec/RULES.md`): code comes with its tests, and where coverage goes to Codecov, a merge waits for `codecov/patch`, as `spec`'s decision on README's badges and coverage sets. `canvas`'s tests have come with every change of code since the task that built the package's frame, and it has no coverage in Codecov: that waits for the upload in `.github`'s wrapper (Д29 in RUN.md of `spec`);
+  - **the shared rule of language:** the normative texts for authors are in English, as `spec`'s decision on the module format's folder says. Rule 10 of RUN.md names them, as the template does;
+  - **`spec`'s rule of README's badges**: the status badges at the beginning of README:
     - from day one: CI, CodeQL, Scorecard, the license and five measures of SonarCloud;
     - with the first code: the TypeScript version;
-    - Release and the release number will come with the first release (T24), coverage with Codecov, and OpenSSF Best Practices with the project that the author will set up (Д34 in RUN.md of `spec`);
-  - **the 2026-10-22 amendment to R12 spec:** npm is a tool of development and CI under Artistic-2.0, and this exception is named. `canvas`'s license check does not see it: npm is not in the lock file;
-  - **the 2026-10-26 amendment to R32 spec:** the documents check reads only the files that git tracks or does not ignore, and does not go into `samples/` (the amendment to R15).
+    - Release and the release number will come with the first release, coverage with Codecov, and OpenSSF Best Practices with the project that the author will set up (Д34 in RUN.md of `spec`);
+  - **`spec`'s decision on licenses:** npm is a tool of development and CI under Artistic-2.0, and this exception is named. `canvas`'s license check does not see it: npm is not in the lock file;
+  - **`spec`'s documents check:** it reads only the files that git tracks or does not ignore, and does not go into `samples/`, as the entry of this log that closes `samples/` to agents says.
 - **Devcontainer.** `spec`'s `.devcontainer/` did not change between the tags, and in `tools/new-repo/` only the tests changed. The template changed in two places: the badges in README and rule 10 of RUN.md.
 - **What is changed here:**
-  - `spec/` is at v0.2.35, commit 15459d4; the tag is in README.md, CLAUDE.md and at the beginning of RUN.md. CLAUDE.md also names the order of the first code by repositories 6 spec, item 5;
-  - README.md: the badges by repositories 2.3 spec;
+  - `spec/` is at v0.2.35, commit 15459d4; the tag is in README.md, CLAUDE.md and at the beginning of RUN.md. CLAUDE.md also names the order of the first code by `spec`'s order of the first code of the repositories;
+  - README.md: the badges by `spec`'s rule of README's badges;
   - RUN.md:
     - rule 10, as in the template;
-    - table 1: T42;
+    - table 1: the task of this move;
     - table 2: epic E6 «Рабочая тетрадь», first;
-    - table 3: the rows В29, В30, В32, В34 and В39 are removed, and its opening names where each went. В37 and В38 are without what R53 and R51 spec decided;
+    - table 3: the rows В29, В30, В32, В34 and В39 are removed, and its opening names where each went. В37 and В38 are without what `spec` decided on the place on the canvas and on the task;
     - table 4: Д5;
-  - [architecture.md](architecture.md): sections 1, 3.1, 3.2, 3.3 and 3.6, `spec`'s numbers instead of the rows of table 3 and instead of Т-32;
-  - the comments in `src/core/marks.ts` and `demo/main.ts`: R53 spec instead of Т-32;
-  - amendments to R07, R15, R17, R21, R23, R25, R26, R27 and R28.
+  - [architecture.md](architecture.md): the purpose and bounds, the drawing engine and its layers, the sheet's logical coordinates, the docking with the app and the samples page's steps — `spec`'s decisions instead of the rows of table 3 and instead of Т-32;
+  - the comments in `src/core/marks.ts` and `demo/main.ts`: `spec`'s decision on the place on the canvas instead of Т-32;
+  - the entries of this log on the element, on `samples/` closed to agents, on E2 for the MVP, on the text canvas, on the sheet's layers, on the crop, on the marks, on the package's interface and on the toolbar.
 
   The entries of the history name the rows as they were. The numbers «В» of the rows are not reused.
 
-— *Why now:* the author's decision of 2026-10-26, once E4 was done: to make the move in task T42, in one branch with E4's archive and the review of tables 3 and 4. `spec`'s answers to five rows would hang open, and the next epic would be chosen by v0.2.18, whose card has no workbook. v0.2.35 is `spec`'s latest release as of 2026-10-26 (`gh release list -R altnovatrail/spec`), and `gh release verify v0.2.35 -R altnovatrail/spec` confirmed it by its attestation; the tag is on commit 15459d4.
+— *Why now:* the author's word, once E4 was done: to make the move in one branch with E4's archive and the review of tables 3 and 4. `spec`'s answers to five rows would hang open, and the next epic would be chosen by v0.2.18, whose card has no workbook. v0.2.35 is `spec`'s latest release as of 2026-10-26 (`gh release list -R altnovatrail/spec`), and `gh release verify v0.2.35 -R altnovatrail/spec` confirmed it by its attestation; the tag is on commit 15459d4.
 
 — *Rejected:*
-- making the move in the first task of the next epic, or with `spec`'s types (T35 in `spec`'s RUN.md): the rows would hang, and the epic would be chosen by a card without the workbook;
-- moving the temporary task type to the schema of R51 spec in this same task — the author's decision: the move is here, and the type is a task of its own (Д5);
-- leaving the rows in table 3 with the mark «записано» ("recorded") — by the argument of R16.
+- making the move in the first task of the next epic, or with `spec`'s types, a task of `spec`'s plan: the rows would hang, and the epic would be chosen by a card without the workbook;
+- moving the temporary task type to `spec`'s task schema in this same task: the author kept the move here and the type a task of its own (Д5);
+- leaving the rows in table 3 with the mark «записано» ("recorded"): a row «в реестр spec» goes, by the rules of the plan, once the question is recorded in `spec`.
 
 — *Consequence:*
-- **the workbook** is epic E6 of table 2 of RUN.md, first by the author's decision: detailing by the card, then the code. The canvas kind that is built is still one, the sheet (the amendment to R21);
-- **the temporary task type against the schema of R51 spec** is Д5:
-  - the kind `handwriting-sheet` instead of `handwriting_sheet`;
-  - the step `step` instead of `grid_step`;
-  - the digit height `canvas.digit` on the task instead of `canvas.digit_height` in the manifest;
-  - the field `canvas.tools`, which v0 does not have;
-  - no fields `id` and `items`, which the task's open view carries by the schema;
+- **the workbook** is epic E6 of table 2 of RUN.md, first by the author's decision: detailing by the card, then the code. The canvas kind that is built is still one, the sheet, as the entry that removes the text canvas says;
+- **the temporary task type against `spec`'s task schema** is Д5: `canvas`'s own temporary types instead of `spec`'s types, and the temporary field `canvas.tools`, which v0 does not have. The canvas kind, the grid step, `id` and `items` follow the format's draft, and the digit height and the language come from the module manifest, the property `manifest`;
 - the badges Release, the release number, coverage and Best Practices, with what they tell of;
-- В33, В35–В38, В40 and В41 wait to be recorded in `spec`, and the author's answers of 2026-10-26 are in the rows themselves.
-
-— RUN.md, T42, tables 1–4; CLAUDE.md; README.md; [architecture.md](architecture.md), sections 1, 3.1, 3.2, 3.3, 3.6; `src/core/marks.ts`, `demo/main.ts`.
-
-— *Amendment 2026-10-26:* "the rest `canvas` waits for, as it waited for the rows" and "В33, В35–В38, В40 and В41 wait to be recorded in `spec`" were settled the same day: `spec` recorded the rows in v0.2.36 and v0.2.37, and `canvas` moved to v0.2.37 (R31). The eval protocol and the contract still wait for epic E3 in `spec`'s RUN.md, the types for T35 there, and the standard of accessibility for T07 of `app` (О-24). — R31.
-
-— *Amendment 2026-10-27:* T44 narrowed Д5 (R32). The canvas kind, the grid step, `id` and `items` follow the format's draft, and the digit height and the language come from the module manifest, the property `manifest`. What remains is canvas's own temporary types instead of `spec`'s types, and the temporary field `canvas.tools`. — R32.
+- В33, В35–В38, В40 and В41 were recorded by `spec` in v0.2.36 and v0.2.37, and the move to v0.2.37 closed them.
 
 ## `spec` tag v0.2.37
 
 **R31. `canvas` is on `spec` v0.2.37: the submodule `spec/` is at this tag. `spec` has recorded the «в реестр spec» rows В33, В35–В38, В40 and В41, and table 3 of RUN.md is empty: instead of the rows, the documents name spec's entries.**
-- **What the tag brings `canvas`** (`git -C spec diff v0.2.35 v0.2.37`, read 2026-10-26). v0.2.36 and v0.2.37 recorded the author's answers of 2026-10-26 to `canvas`'s rows: all by `canvas`'s recommendations, and В41 as an open question. What `canvas` gets with the tag is named by Д35 and Д36 in `spec`'s RUN.md:
-  - **the eval protocol** — epic E3 there, «Правила `canvas` в протоколе eval». The protocol takes as they are the writing history of R22 (В33), the rule of groups of R24 and `vectors/groups.json` (В35), the rules of the crop of R25 and `vectors/crops.json` (В36) and the rule of snapping of R26 and `vectors/snaps.json` (В37). An erased stroke belongs to the groups of those visible strokes that would have been its neighbors. `canvas`'s test vectors will come out in `spec`'s releases by T35 there, and `canvas` will then take them from there;
+- **What the tag brings `canvas`** (`git -C spec diff v0.2.35 v0.2.37`, read 2026-10-26). v0.2.36 and v0.2.37 recorded the author's answers to `canvas`'s rows: all by `canvas`'s recommendations, and В41 as an open question. What `canvas` gets with the tag is named by Д35 and Д36 in `spec`'s RUN.md:
+  - **the eval protocol** — epic E3 there, «Правила `canvas` в протоколе eval». The protocol takes as they are the writing history of this log's entry on the eraser (В33), its rule of groups and `vectors/groups.json` (В35), its rules of the crop and `vectors/crops.json` (В36) and its rule of snapping and `vectors/snaps.json` (В37). An erased stroke belongs to the groups of those visible strokes that would have been its neighbors. `canvas`'s test vectors come out in `spec`'s releases, by a task of that plan, and `canvas` takes them from there;
   - **the contract `app` ↔ `api`** — the same epic: the tutor's mark, its kind and its place. There is one kind so far, the box, and `app` writes the name for the screen reader in its own words (В37);
-  - **concepts 8 and 15 spec** — the terms «пометка наставника» (tutor's mark, mark) and «связка штрихов» (stroke bundle); the writing history names the events of erasing, clearing and undo with their IDs, and the tutor's layer names the tutor's marks: boxes, numbers and short captions;
-  - **the first 2026-10-26 amendment to R36 spec** (В40): `toolchange` and `lang` are an agreement between `canvas` and `app`, the labels are the package's own table, and the row's accessibility is as in R28. T07 of `app` takes the table of labels and the row's accessibility as an input to the shared schema of translations and standard of accessibility;
-  - **the second 2026-10-26 amendment to R36 spec** (В38 and the context from В37): `history`, `historychange` with `{ events, from }` and `exportWork()` with `{ png, submission }` are an agreement between `canvas` and `app`. The submission's context carries the crop's integers and the digest, and `app` keeps it as it is, without rounding. T35 in `spec`'s RUN.md releases the types;
-  - **О-24** (В41) — the level of the interface's accessibility and the sheet's scrolling with one pointer, together with the standard of T07 of `app`. The options and the recommendation come from subsection 2.6 of [architecture.md](architecture.md). `spec`'s addition: the element's own scrolling with two fingers falls under 2.5.1 of level A too, and for an element with a set height on a narrow tablet, the sheet without a replacement no longer meets it;
-  - **the 2026-10-26 amendment to R51 spec** — on В39, which `canvas` closed with R30: the row's composition is an input to the minor version with the field of tools, and `canvas.tools` lives until the move to `spec`'s types (Д5);
-  - architecture 3.1 and 3.2 spec name the element's interface, privacy 4 spec the crop's integers and the digest in the submission's context, and Т-31 the bundles.
+  - **`spec`'s glossary** — the terms «пометка наставника» (tutor's mark, mark) and «связка штрихов» (stroke bundle); the writing history names the events of erasing, clearing and undo with their IDs, and the tutor's layer names the tutor's marks: boxes, numbers and short captions;
+  - **`spec`'s decision that UI packages enter their consumer as web components, on the tools and the language** (В40): `toolchange` and `lang` are an agreement between `canvas` and `app`, the labels are the package's own table, and the row's accessibility is as this log's entry on the toolbar sets it. A task of `app`'s plan takes the table of labels and the row's accessibility as an input to the shared schema of translations and standard of accessibility;
+  - **the same decision, on the writing history and the work** (В38 and the context from В37): `history`, `historychange` with `{ events, from }` and `exportWork()` with `{ png, submission }` are an agreement between `canvas` and `app`. The submission's context carries the crop's integers and the digest, and `app` keeps it as it is, without rounding. A task of `spec`'s plan releases the types;
+  - **О-24** (В41) — the level of the interface's accessibility and the sheet's scrolling with one pointer, together with the accessibility standard that a task of `app`'s plan writes. The options and the recommendation come from [architecture.md](architecture.md), its question of scrolling the sheet with one pointer. `spec`'s addition: the element's own scrolling with two fingers falls under 2.5.1 of level A too, and for an element with a set height on a narrow tablet, the sheet without a replacement no longer meets it;
+  - **`spec`'s decision on the task** — on В39, which the move to v0.2.35 closed: the row's composition is an input to the minor version with the field of tools, and `canvas.tools` lives until the move to `spec`'s types (Д5);
+  - `spec`'s cards of `app` and `canvas` name the element's interface, `spec`'s account of the kinds of data the crop's integers and the digest in the submission's context, and Т-31 the bundles.
 - **RULES.md, the devcontainer and the template** did not change between the tags: `git -C spec diff --stat v0.2.35 v0.2.37 -- RULES.md .devcontainer repo-template tools` is empty.
 - **What is changed here:**
   - `spec/` is at v0.2.37, commit 591979b; the tag is in README.md, CLAUDE.md and at the start of RUN.md;
-  - RUN.md: table 3 is empty, and its opening names the decisions that closed the rows. In table 4, Д5 names the format's draft by R44 spec, and Д6 the badges of README that T42 waited for. T42 and this task, T43, are in E4's archive, [plan/E4.md](plan/E4.md);
-  - [architecture.md](architecture.md): the opening of section 2, subsection 2.6 and sections 3.5 and 3.7 — `spec`'s entries instead of the rows, and in 2.6 also the addition to О-24;
+  - RUN.md: table 3 is empty, and its opening names the decisions that closed the rows. In table 4, Д5 names the format's draft, by `spec`'s decision on the format's version, and Д6 the badges of README that the move to v0.2.35 waited for. The tasks of that move and of this one are in E4's archive, [plan/E4.md](plan/E4.md);
+  - [architecture.md](architecture.md): the opening of what is still to decide, the scrolling of the sheet with one pointer, the sample file and the code and tools — `spec`'s entries instead of the rows, and in the scrolling also the addition to О-24;
   - the comment of `src/core/index.ts` — the eval protocol instead of the rows;
-  - amendments to R22, R24, R25, R26, R27, R28, R29 and R30.
+  - the entries of this log on the eraser, on the stroke groups, on the crop, on the marks, on the package's interface, on the toolbar, on input on tablets and on the move to v0.2.35.
 
   The entries of history name the rows as they were.
 
-— *Why now:* the author's instruction of 2026-10-26 — to decide all that can be decided in tables 3 and 4. Only a move closes the rows of table 3 (RULES.md, Across repositories). v0.2.37 is `spec`'s latest release as of 2026-10-26 (`gh release list -R altnovatrail/spec`), and `gh release verify v0.2.37 -R altnovatrail/spec` confirmed it by its attestation; the tag is on commit 591979b.
+— *Why now:* the author's word — to decide all that can be decided in tables 3 and 4. Only a move closes the rows of table 3: a row «в реестр spec» goes once the repository stands on a tag of `spec` that records it. v0.2.37 is `spec`'s latest release as of 2026-10-26 (`gh release list -R altnovatrail/spec`), and `gh release verify v0.2.37 -R altnovatrail/spec` confirmed it by its attestation; the tag is on commit 591979b.
 
 — *Rejected:*
 - making the move in the first task of E6: the rows would hang, though the answers are recorded;
-- leaving the rows in table 3 with the mark «записано» ("recorded") — by the argument of R16.
+- leaving the rows in table 3 with the mark «записано» ("recorded"): a row «в реестр spec» goes, by the rules of the plan, once the question is recorded in `spec`.
 
 — *Consequence:*
-- the rules of groups, of the crop and of snapping stay inside `core`, and the vectors are canvas's own: there is no eval protocol yet, and the vectors will come out by T35 in `spec`'s RUN.md. The move to that tag will take them;
-- subsection 2.6 is open — О-24, with the standard of T07 of `app`;
-- Д5 stays: the temporary task type moves to the schema of R51 spec in the first task of E6. `canvas` will take the schema and the types from the release of T35 in `spec`'s RUN.md, because the code of other repositories does not take the format's draft (R44 spec).
-
-— RUN.md, T43, tables 3 and 4; CLAUDE.md; README.md; [architecture.md](architecture.md), sections 2, 2.6, 3.5 and 3.7; `src/core/index.ts`.
-
-— *Amendment 2026-10-27:* subsection 2.6 is decided as to scrolling: the sheet scrolls with one pointer, by the buttons «Выше» and «Ниже». The level of accessibility still waits for the standard of T07 of `app` (О-24), and `canvas`'s answer to О-24 is row В44 «в реестр spec» in table 3 of RUN.md. — R33.
-
-— *Amendment 2026-11-08:* the eval protocol came out, and `canvas`'s vectors went to `spec` (R94 spec): the rules of groups, of the crop, of snapping and of boxes are held by `spec`'s vectors from the package `@altnovatrail/contracts`, and `canvas` kept only the vectors of the layout, `vectors/pages.json`. — R47.
+- the rules of groups, of the crop, of snapping and of boxes stay inside `core`, and since the eval protocol came out, `spec`'s vectors from the package `@altnovatrail/contracts` hold them; `canvas` keeps only the vectors of the layout, `vectors/pages.json`;
+- the sheet scrolls with one pointer, by the buttons «Выше» and «Ниже». The level of accessibility still waits for the accessibility standard that a task of `app`'s plan writes (О-24), and `canvas`'s answer to О-24 is row В44 «в реестр spec» in table 3 of RUN.md;
+- Д5 stays: the temporary task type moves to `spec`'s task schema in the first task of E6. `canvas` will take the schema and the types from the release of `spec`'s types, because the code of other repositories does not take the format's draft, by `spec`'s decision on the format's version.
 
 ## E6. The workbook
 
-**R32. The element takes the task in the names of the format's draft 0.1 (R51 spec), by its own temporary types, and checks it strictly, as the schema does: a field the open view does not have is a `TypeError`, but for the temporary `canvas.tools`. It takes the module manifest by the property `manifest` and reads from it the module format version, the digit height and the explanation language. It checks the workbook, but does not show it until T47. On the sheet `zone` is a `TypeError`, and `app` shows the options of `choice` and the item's text.**
-- **The task is the property `task`:** the task's open view by `task.schema.json` of draft 0.1 (the format's README, §14).
-  - Fields: `id`, the task's local ID; `statement`, the statement's parts; `canvas`, the canvas kind; and `items`, the items. The canvas kind is `handwriting_sheet` with the grid `grid` and the step `grid_step`, or `workbook`.
+**R32. The element takes the task's open view in the names of the module format, by `spec`'s types, and checks it strictly, as the schema does: a field the open view does not have is a `TypeError`, but for the element's own temporary `canvas.tools`. It takes the module manifest by the property `manifest` and reads from it the module format version — 0.3, and only it —, the digit height and the explanation language. It shows both canvas kinds: on the sheet `zone` is a `TypeError`, and `app` shows the options of `choice` and the item's text; on the workbook the item line is a part of the template, and the element shows it.**
+- **The task is the property `task`:** the task's open view by the format's `task.schema.json`.
+  - Fields: `id`, the task's local ID; `statement`, the statement's parts; `givens` and `unknown`, the givens and the unknown, where the task has them; `canvas`, the canvas kind; and `items`, the items. The canvas kind is `handwriting_sheet` with the grid `grid` and the step `grid_step`, or `workbook`.
   - A sheet's item is the answer slots `answer_slots` and, where needed, `text`. The slot bindings are `anywhere`, `sheet`, `zone` and `choice`.
   - A workbook's item is a line `line` of pieces of text and boxes `binding: box`.
-  - The types are canvas's own, of the same composition. `Task` is `SheetTask` or `WorkbookTask`; there are also `SheetCanvas`, `WorkbookCanvas`, `SheetItem`, `WorkbookItem`, `AnswerSlot`, `Zone`, `LinePart`, `StatementPart`, `TextPart` and `PicturePart`. Both entry points export them, and at run time `core` still exports only `SHEET` and `replay`.
-  - `canvas.tools` is a temporary field of both kinds, by the rules of R28, until the minor version with the field of tools (the 2026-10-26 amendment to R51 spec).
+  - The types of the task and of the manifest are `spec`'s, from the package `@altnovatrail/spec`, and `Task` adds to `spec`'s only the element's own `canvas.tools`. canvas's own types are only the narrowed ones, for the check: `SheetTask` or `WorkbookTask` and their parts. Both entry points export the types, and at run time `core` still exports only `SHEET` and `replay`.
+  - `canvas.tools` is a temporary field of both kinds, by the rules of the sheet's buttons, until the minor version of the format with a field of tools: in v0 every task has a pen and an eraser.
 - **The check is as the schema's**, in the DOM-free part:
   - `id`, `statement`, `canvas` and `items` are required;
   - as in `task.schema.json`, the check covers the types, the enumerations, the integers and their bounds, the lengths of lists, the distinctness of options and the patterns — of the task's ID (`local_id`) and of the picture's path (`picture_path`);
   - the rules between fields are checked the same way: a workbook's item is only a line, a line has at least one box, a workbook has no grid, and an answer slot `anywhere` or `sheet` is the only one in its task;
-  - every object is closed: a field the schema does not name is a `TypeError` with the field's path. So is an old name of the temporary type — `step`, `digit`, `lang` — and a closed field: `skills`, `band`, `difficulty`, `age_categories` and an item's `skills`. There is no open view with them (R05 spec; R51 spec);
-  - only `undefined` omits a field, and `null` is a wrong value, as before (R23);
+  - `givens` is a list of texts, from one, non-empty and distinct, and `unknown` is a non-empty text. The check only checks them: `app` shows the chips, and they do not go into the author's template;
+  - every object is closed: a field the schema does not name is a `TypeError` with the field's path. So is an old name of the temporary type — `step`, `digit`, `lang` — and a closed field: `skills`, `band`, `difficulty`, `age_categories` and an item's `skills`. There is no open view with them: the open view that `spec` builds for the learner's device leaves them out;
+  - only `undefined` omits a field, and `null` is a wrong value, as the sheet's property `task` had it before;
   - the path names the field as a place in the format examples does: `#/items/0/answer_slots/0` is `task.items[0].answer_slots[0]`;
   - the format rules beyond the schema — `task.zones`, `task.known-pictures` and others — are checked by `module-kit`.
-- **What the sheet shows** — still the grid, the statement above the sheet and the tools (R23, R28):
-  - a workbook is a `TypeError` on `task.canvas.kind`, until T47: the element checks a workbook's task whole, but does not undertake to show it;
+- **What the sheet shows** — still the grid, the statement above the sheet and the tools, as the sheet's layers and its buttons have them:
   - `zone` is a `TypeError` on its `binding`, until its own epic;
   - the sheet skips `choice`: `app` shows the options;
   - the sheet skips the item's text too, and `app` shows it, together with the options. For `zone` the text's place is by the zone, and for `anywhere` and `sheet` the answer slot is the whole sheet, and the question stands in the statement.
+- **What the workbook shows** — the lines of its items on the page, by the decisions on the workbook, on the layout of its page and on its template layer: the item line is a part of the template, and `templateOf` gives the layout of the lines on the page. A task whose lines do not fit is a `TypeError` on `task.items[i]`.
 - **The manifest is the property `manifest`:** the open view of the module manifest, as `app` has it. The element reads three fields of it and skips the rest:
-  - `module_format_version` is `"0.1"`, otherwise a `TypeError`: while the format is v0, the platform reads only its current version (R44 spec);
-  - `canvas.digit_height` is the digit height on the crop: whole px from 1 to 256, and 32 without the field. `exportWork()` takes it at the moment of the call (R27);
+  - `module_format_version` is `"0.3"`, otherwise a `TypeError`, and the previous version, `"0.2"`, too: while the format is v0, "the platform reads only the current version", and a module of a version the reader does not read it "MUST refuse, with a reason" (sources 6.7);
+  - `canvas.digit_height` is the digit height on the crop: whole px from 1 to 256, and 24 without the field, as `spec` sets it from format 0.2. `exportWork()` takes it at the moment of the call, as the package's interface has it;
   - `languages.explanation` is the statement's language, a tag by the pattern `language_tag`. A new language changes only the statement's attribute, and its pictures stay.
 
   The canvas settings in the manifest are the canvas's own: a setting the element does not know is a `TypeError`, as a task's field is, since without it the element would draw the module's canvas wrong. The element reads the same object of the manifest again: the consumer could have changed it in place.
 
-  Without a manifest the digits are 32 px, and the statement is in the element's own language, as before without `task.lang`. There is no manifest only with `undefined`, and `null` is a `TypeError`. `task` and `manifest` do not depend on each other, and a value assigned before registration goes through the shared helper (R23).
-- **The tests** run on copies of the format examples of the tag v0.2.37 and of its open-view vectors, as rows of tables: the code and the tests do not read `spec/`.
-  - The open view of every valid example is a task. With its closed fields, an example is a `TypeError` on `task.skills`.
-  - Every invalid example with an error in the open view is a `TypeError` at the place from its first line or deeper. Four have their error in a closed field, and their open view is valid.
-  - Of the manifest's examples, four fail at their place — their error is in one of the element's three fields — and sixteen pass.
+  Without a manifest the digits are 24 px too: the default is one for both cases, `CROP.digit`, since `app` does not have two defaults, and without a manifest the element draws the crop as for a module without the field. That is how `spec` expects it: «`canvas` — 24 px без паспорта, с форматом 0.2» (Д47 in `spec`'s RUN.md). Without a manifest the statement is in the element's own language, as before without `task.lang`. There is no manifest only with `undefined`, and `null` is a `TypeError`. `task` and `manifest` do not depend on each other, and a value assigned before registration goes through the shared helper, as `task`'s does.
+- **The rest of the format** the element does not need:
+  - the rules of version comparison are held by `module-kit` and `api`: the element compares no module versions and takes nothing from them. Nor does it need Starlark, the module index and the places of the package that each version holds;
+  - the SHOULD on a picture's opaque light background is in the decision on the worked example, and the guideline on a workbook's page in the decision on its layout. "An opaque picture hides the grid under its area" the element already carries out: the demo layer stands above the template with the grid;
+  - the type `ModuleFormatVersion` of the package `@altnovatrail/spec` is `string`, and the check `FORMAT` holds the version.
+- **The tests** run on copies of the format examples of the tag v0.9.8 and of its open-view vectors, as rows of tables: the code and the tests do not read `spec/`.
+  - **valid examples of a task** — 16, and with them 7 open-view vectors. The open view of each is a task, and of a task template too: the placeholders stand in it as written. With its closed fields, an example is a `TypeError` on `task.skills`;
+  - **invalid** — 55. 19 have their error in the open view, and they are a `TypeError` at their place or deeper. 36 have a closed error, and their open view is a task: the place lies under a closed field — `check`, `skills`, `template` and others —, or a closed field is missing, a box's `check` or `solution`, or `check` stands on a piece of text of a line;
+  - **the manifest** — 4 valid examples and the open-view vector `every-field-open`, and 22 invalid, of which 4 fail at their place: their error is in one of the element's three fields. The version is `"0.3"`, `format-version-as-number` has `0.3` as a number, and three valid examples without `canvas` give 24. The vectors of the rule `manifest.format-version` are three, `next-minor` with `"0.4"`, `previous-minor` with `"0.2"` and `unknown-version`, and all three fail;
+  - the refused version in the test of assignment before registration is `"0.2"`, the previous one;
+  - the copies of tasks and lessons, `workbook-page.yaml` and `tables-page.yaml` among them, carry the tag in their comments, and `vectors/pages.json` in the text of `about`. Since v0.4.1 the format changed on their paths only in what the tests do not touch: in `workbook-page.yaml` `trap_values`, a closed field the open view does not carry, and in `essays-for-adults.yaml` `skills`, of which the test takes only the name;
+  - the test of the submission's digest holds the crop at 32 px explicitly, since it holds the digest's record, not the height's default. The manifest of the tests of `app`'s path sets 16 px: at 24 it would not differ from the default, and at 32 the crop of its sheet no longer fits within the crop's limit.
 - **The code:**
-  - in the DOM-free part, `task.ts`: the types, the check `taskOf` and the template `templateOf`; `manifest.ts`: the settings `settingsOf`; the check's helpers are in `fields.ts`;
+  - in the DOM-free part, `task.ts`: the types, the check `taskOf` and the template `templateOf`; `manifest.ts`: the settings `settingsOf` and the version `FORMAT`; the check's helpers are in `fields.ts`;
   - the helper of tasks and manifests for the tests and the trial page is `tasks.fixture.ts`;
   - in the element, the property `manifest`, and the statement's language is set apart from its parts (`statement.ts`).
 
-— *Why:* the author's answers in the planning of T44, 2026-10-27, all by the recommendations:
-- the digit height and the language from the manifest, by the property `manifest`. R51 spec puts them in the manifest, and `app` has the manifest: by it `app` asks for the learner's grade (architecture 3.1 spec). How `app` gets the manifest with the task is for T34 in `spec`'s RUN.md to decide, and this is В42;
-- the workbook is a `TypeError` until T47;
-- the check is strict, by the schema. Every object of the format is closed (the format's README, §5). Without strictness the old `step` would silently give a cell of 50, and `digit` a crop at 32 px. The window of R44 spec names `canvas` among the readers of modules;
-- in one task, though it is more than one check (rule 11);
-- `app` shows the item's text, since `app`'s task screen is "the canvas, answer slots, the choice of an option" (architecture 3.1 spec). This is В43.
+— *Why:* the author's answers, all by the recommendations:
+- the digit height and the language from the manifest, by the property `manifest`. `spec`'s decision on the task file puts them in the manifest, and `app` has the manifest: by it `app` asks for the learner's grade. How `app` gets the manifest with the task is `spec`'s to decide, and this is В42;
+- the check is strict, by the schema. Every object of the format is closed. Without strictness the old `step` would silently give a cell of 50, and `digit` a crop at the default height. `spec`'s window of the format versions names `canvas` among the readers of modules;
+- in one task, though it is more than one check: the author kept the task whole;
+- `app` shows the item's text on the sheet, since `app`'s task screen is, as `spec` describes `app`, "the canvas, answer slots, the choice of an option". This is В43;
+- a manifest of any version but the current one is a `TypeError`, the previous one too: the element reads the versions the format text and `module-kit` read.
 
-  Decided in the epic's planning: `zone` on the sheet is a `TypeError`, and the sheet skips `choice`.
+  Decided in the epic's planning: `zone` on the sheet is a `TypeError`, and the sheet skips `choice`. Decided with the format's versions, by the documents: the element does not read the previous version beside the current one.
 
 — *Rejected:*
 - the element's own properties, the digit height and the statement's language: the names are not the format's, and `app` would parse the manifest itself;
-- fields in the task, `canvas.digit_height` and `lang`, like `canvas.tools`: R51 spec rejected a height on each task, and the strict check would have two more exceptions;
-- skipping extra fields, as R23 had it: a typo and an old name would silently give the default;
+- fields in the task, `canvas.digit_height` and `lang`, like `canvas.tools`: `spec`'s decision on the task file rejected a height on each task, and the strict check would have two more exceptions;
+- skipping extra fields, as the sheet's first property `task` did: a typo and an old name would silently give the default;
 - checking only what the element reads: the TypeScript type and the check would part from the schema;
 - checking the manifest whole: that is the work of `module-kit`, and the element needs three fields;
-- `spec`'s schemas through a JSON Schema validator: the code of other repositories does not take the draft (R44 spec), and the schemas for code will come out with T35 in `spec`'s RUN.md;
+- `spec`'s schemas through a JSON Schema validator: by `spec`'s rule of the format versions the code of other repositories did not take the draft, and the types for code are `spec`'s to give;
 - a blank sheet for a workbook's task: what is written on it would not be the workbook's history, and `app` could start to rely on it;
 - the items' texts as paragraphs under the statement: the text of an item with a choice would stand apart from the options, which `app` shows;
-- splitting the task into the task type and the property `manifest` — the author's answer.
+- splitting the task into the task type and the property `manifest` — the author's answer;
+- reading the previous version of the format beside the current one — 0.1 beside 0.2, with 32 px for 0.1 without the field, or 0.2 beside 0.3: the element would part from the format text and from `module-kit`, which rejects a module of the previous version (Д59 in `spec`'s RUN.md), and the rule "only the current version" would have to be changed by a new decision. Nor would it gain anything: a module 0.2 moved to 0.3 has the same open view and numbers, and the three modules of `modules` v0.1.0 all have `module_format_version: "0.3"` (sources 6.7);
+- reading 0.1 as 0.2: a module 0.1 without the field would silently get another height than the one its author wrote it with, and the format text calls moving a module to 0.2 a new version of the module.
 
 — *Revisit:*
-- with the types and schemas of T35 in `spec`'s RUN.md: canvas's own types will give way to them, and the check will stay;
 - with the epic of zones — `zone` on the sheet;
 - by `spec`'s answers to В42 and В43.
 
 — *Consequence:*
-- **T47** lifts the workbook's refusal and shows its lines;
-- **T19**: the samples page gives the element the module manifest of the task too;
-- **Д5** is narrowed, and **В42** and **В43** are rows «в реестр spec» in table 3 of RUN.md;
+- `src/core/task.ts`, `manifest.ts` and `fields.ts` — the task's types, its check and its template, a workbook's being the layout of its lines; the manifest's settings and the format version; the check's helpers;
+- `src/core/tasks.fixture.ts`, `src/core/pages.fixture.ts` and `vectors/pages.json` — the copies of the format examples and vectors, and the helper of tasks and manifests;
+- `src/element/` — the property `manifest`, the statement's language in `statement.ts`, and the workbook shown;
+- `src/eval/tasks.ts` — the file of tasks of the version of the format the element reads;
+- `page/` — the samples page gives the element the module manifest of the task too;
+- `demo/` — the trial page with a manifest;
+- RUN.md — **Д5** is narrowed, and **В42** and **В43** are rows «в реестр spec» in table 3 of RUN.md;
 - a move to a new tag of `spec` compares the copies of the examples: `git -C spec diff <old> <new> -- format/`;
-- amendments to R07, R23, R27, R28 and R30.
+- the entries of this log on the element as a web component, on the sheet's layers, on the package's interface, on the sheet's buttons and on the move to `spec` v0.2.35 — the property `manifest`, the strict check of the task and the digit height from the manifest;
+- [architecture.md](architecture.md) — the status, the purpose and bounds, the docking with the app, the code and tools and the task's fields; [sources.md](sources.md) — the module format 0.3; README.md.
 
-— RUN.md, T44, tables 3 and 4; [architecture.md](architecture.md), sections 1, 3.2, 3.3 and 3.7; README.md; `src/core/`, `src/element/`, `demo/`.
+**R33. The keyboard goes into the sheet and out of it: the element's scroll container, while its content overflows it, down or across, is a region — `role="region"`, `tabindex="0"` and the name of the canvas kind (the platform's standard of accessibility for UI packages; WCAG 2.1.1, 2.1.2, 2.4.7). Tab enters it after the bar and leaves it for what follows the element, the browser's own keys scroll it, a ring inside its edge shows the keyboard's focus, and every scroll of the element is instant.**
+- **When.** The three attributes come together, and only while the container's content overflows it by more than 0.5 px: down, `scrollHeight` over `clientHeight`, or across, `scrollWidth` over `clientWidth`. A sheet the learner writes on reaches one view of the container past the task's page, so it overflows across whatever the element's height, and the element without a height of its own has a region too, which the arrows left and right scroll; down, such an element does not overflow — the page scrolls it. A worked example's sheet is the page alone: a region only while it overflows. The check, `#region()`, runs on a new layout — a new size of the container, of the statement, of the list of parts, of the screen's density —, of the page, of the bar and of the window, not on scrolling, which changes no overflow. A container that holds the focus keeps the attributes until the focus leaves it (`blur`), not when the window loses it.
+- **The keys.** The arrows, Page Up and Page Down, Home, End and Space scroll the focused container as the browser scrolls one: the element has no `keydown` of its own for them. No button scrolls the sheet; a pointer drags it — the hand with any pointer, one finger in pen mode, two fingers always.
+- **The name** is by the kind — «Лист», «Тетрадь» or «Пример», "Sheet", "Workbook", "Worked example" — in the labels' language, as the bar's name is, from `labels.ts`. The languages of the container and of the column, its only node, are set with the name, as the declared nonconformance of 3.1.2 for the region's name describes.
+- **The focus ring** is 2 px of the ink's colour inside the edge of the visible part, Highlight in forced colours, as for the bar's buttons. It is the container's empty sibling `.ring` in the wrapper `.frame`, which does not scroll: the `outline` of the container itself is drawn under its positioned descendants, the paper `.sheet` and the scene, and a probe in Chromium showed it only above the statement. The bar of glass stands over it, `z-index: 1`. A pointer's press focuses the container without the ring and scrolls neither it nor the page, and `-webkit-tap-highlight-color: transparent` keeps a touch from flashing the whole sheet.
+- **Motion (WCAG 2.3.3, which the platform's standard of UI packages takes beyond level AA).** Nothing moves but the scrolling itself, and it jumps, `behavior: "instant"`, even when the page asks for `scroll-behavior: smooth`: two fingers, the hand, a finger in pen mode, a part of a worked example and a picture on a sheet's area brought into sight. The style has no animation but the wait of the tracing paper's reading, its band and spinner, which move only under `prefers-reduced-motion: no-preference`.
+- **The check.** `pointer-events: none`, which the consumer sets for the time of the check, stops the pointer, not the keys: the region scrolls from the keyboard, and scrolling changes neither the work, nor the history, nor the crop.
 
-— *Amendment 2026-10-27:* "`app` shows the item's text" is about the sheet. On a workbook the item line is a part of the template, and the element shows it (R34). — R34.
-
-— *Amendment 2026-10-27:* `templateOf` no longer rejects a workbook: its template is the layout of the lines on the page (R35). For now the element rejects it, by the same `TypeError` on `task.canvas.kind`, until the template layer of T51, and a task whose lines did not fit is a `TypeError` on `task.items[i]` before that. "T47 lifts the workbook's refusal and shows its lines" of the "Consequence" is shared by T47 and T51. — R35.
-
-— *Amendment 2026-10-27:* since T51 the element shows the workbook (R36): there is no refusal on `task.canvas.kind` any more. A task whose lines did not fit is still a `TypeError` on `task.items[i]`. — R36.
-
-— *Amendment 2026-10-27:* since `spec` v0.2.42 the task's open view has two more fields, `givens` and `unknown`, the givens and the unknown (R57 spec). For now the strict check rejects them: a task with them is a `TypeError` "task.givens: no field of a task's open view". Epic E7 will take them, and until it the copies of the format examples in the tests stay copies of v0.2.37 (Д5). — R40.
-
-— *Amendment 2026-11-01:* the element takes the fields `givens` and `unknown` (T55). `givens` is a list of texts, from one, non-empty and distinct, and `unknown` is a non-empty text. The check only checks them, and `app` shows the chips (architecture 3.1 spec); they do not go into the author's template. The copies of the format examples in the tests are of the tag v0.4.1, not v0.2.42 as T55 named it: its branch ended with the move to v0.4.1 (R41), and the author chose the branch's tag. There are now this many copies:
-- **valid examples of a task** — 16, and with them 7 open-view vectors. The open view of each is a task, and of a task template too: the placeholders stand in it as written;
-- **invalid** — 55. 19 have their error in the open view, and they are a `TypeError` at their place or deeper. 36 have a closed error, and their open view is a task: the place lies under a closed field — `check`, `skills`, `template` and others —, or a closed field is missing, a box's `check` or `solution`, or `check` stands on a piece of text of a line;
-- **the manifest** — 4 valid and 22 invalid, and 4 of them fail.
-
-  The types of the task and of the manifest are `spec`'s, and canvas's own are only the narrowed ones, for the check (R41). — R41; RUN.md, T55.
-
-— *Amendment 2026-11-02:* the element reads format 0.2, which came out with `spec` v0.6.0 (the 2026-11-01 amendment to R44 spec; the format's README, §2 and §11) — T68. The author's answers in the planning of T68:
-- **a manifest of any version but 0.2 is a `TypeError`, and a manifest 0.1 too**, by the recommendation. While the format is v0, the platform reads only its current version, and a module of a version the reader does not read it "MUST refuse, with a reason" (the format's README, §2; the vector `manifest.format-version/previous-minor`). The rule above is the same, and only the version changes: `module_format_version` is `"0.2"`. Rejected:
-  - reading 0.1 and 0.2, with 32 px for 0.1 without the field: the element would part from the format and from `module-kit`, which rejects a module 0.1 (Д59 in `spec`'s RUN.md), and the rule "only the current version" would have to be changed by a new decision;
-  - reading 0.1 as 0.2: a module 0.1 without the field would silently get another height than the one its author wrote it with, and the format's README, §2, calls moving a module to 0.2 a new version of the module.
-
-Also decided in the execution:
-- **without `canvas.digit_height` and without a manifest, the digits are 24 px**, not 32 (the 2026-10-28 amendment to R51 spec). The default, as before, is one for both cases, `CROP.digit`: `app` does not have two defaults, and without a manifest the element draws the crop as for a module without the field. That is how `spec` expects it: «`canvas` — 24 px без паспорта, с форматом 0.2» (Д47 in `spec`'s RUN.md);
-- **the copies in the tests are of the tag v0.6.2.** Only the manifest's copies changed: the version is `"0.2"`, `format-version-as-number` has `0.2` as a number, and three valid examples without `canvas` give 24. The copies of tasks and lessons, `workbook-page.yaml` and `tables-page.yaml` have not changed since v0.4.1 — `git -C spec diff --stat v0.4.1 v0.6.2` on their paths is empty —, and only the tag in their comments changed, and in `vectors/pages.json` the tag in the text of `about`. There are now this many copies of the manifest:
-  - valid — 4 examples and the open-view vector `every-field-open`;
-  - invalid — 22, and 4 of them still fail;
-  - vectors of the rule `manifest.format-version` — three, `next-minor`, `previous-minor` and `unknown-version`, and all three fail. The open-view vector, `next-minor` and `unknown-version` were there at v0.4.1 too, but there were no copies of them: the test of versions took their values without the names;
-- **the rest that format 0.2 gave** the code does not need. The SHOULD on a picture's opaque light background is the 2026-11-02 amendment to R42, the guideline on a workbook's page is the 2026-11-02 amendment to R35, and "An opaque picture hides the grid under its area" (the format's README, §21) the element already carries out: the demo layer stands above the template with the grid (R23, R42);
-- the test of the submission's digest holds the crop at 32 px explicitly, since it holds the digest's record, not the height's default. The manifest of the tests of `app`'s path sets 16 px: at 24 it would not differ from the default, and at 32 the crop of its sheet no longer fits within the limit (R25).
-
-— RUN.md, T68; [architecture.md](architecture.md), the status and sections 1, 3.2, 3.3 and 3.9; README.md; `src/core/`, `src/element/`, `demo/`, `vectors/pages.json`.
-
-— *Amendment 2026-11-08:* the element reads format 0.3, which came out with `spec` v0.9.0 (the format's README, §2; R89 spec, R101 spec) — T77. A manifest of any other version is a `TypeError`, and 0.2 too. Decided in the planning of T77, by the documents:
-- **The element does not read 0.2 beside 0.3.** While the format is v0, "the platform reads only the current version", and a module of a version the reader does not read it "MUST refuse, with a reason" (the format's README, §2). The vector `manifest.format-version/previous-minor` at v0.9.8 is already `"0.2"`. There are no modules 0.2 in a release: all three modules of `modules` v0.1.0 have `module_format_version: "0.3"` ([architecture.md](architecture.md), section 4). Rejected — reading 0.2 and 0.3: the element would part from the format text and from `module-kit`, and a module 0.2 moved to 0.3 has the same open view and numbers (the format's README, §2), so there would be no gain either.
-- **The rules of version comparison** — the format's README, §27, the rules `module-version.*` (R89 spec) — are held by `module-kit` and `api`. The element compares no module versions and takes nothing from these rules. The rest that format 0.3 gave — Starlark, the module index and the places of the package that each version holds — the element does not need either.
-- **The types** did not change: `ModuleFormatVersion` of the package `@altnovatrail/spec` 0.9.8 is `string`, and the check `FORMAT` still holds the version.
-- **The copies in the tests are of the tag v0.9.8.** Only the manifest's copies changed: the version is `"0.3"`, `format-version-as-number` has `0.3` as a number, the versions' vector `next-minor` has `"0.4"`, and `previous-minor` has `"0.2"`. The count of copies is the same: 4 valid examples and the vector `every-field-open`, 22 invalid, of which 4 fail, and three vectors of versions. On the paths of the copies of tasks and lessons, `git -C spec diff --stat v0.6.2 v0.9.8` gives two edits: in `workbook-page.yaml`, `trap_values`, a closed field the open view does not carry, and in `essays-for-adults.yaml`, `skills`, and the test takes only its name. The tests are not touched by them, and in them, in `pages.fixture.ts` and in `vectors/pages.json` only the tag changed.
-- The refused version in the test of assignment before registration is now `"0.2"`, the previous one.
-
-— RUN.md, T77, table 4 (Д5); [architecture.md](architecture.md), the status and sections 3.3, 3.9 and 4; README.md; `src/core/`, `src/element/`, `src/eval/tasks.ts`, `demo/`, `vectors/pages.json`.
-
-**R33. The keyboard goes into the sheet and out of it: the element's scroll container, while its content overflows it, down or across, is a region — `role="region"`, `tabindex="0"` and the name of the canvas kind (R90 spec; WCAG 2.1.1, 2.1.2, 2.4.7). Tab enters it after the bar and leaves it for what follows the element, the browser's own keys scroll it, a ring inside its edge shows the keyboard's focus, and every scroll of the element is instant.**
-- **When.** The three attributes come together, and only while the container's content overflows it by more than 0.5 px: down, `scrollHeight` over `clientHeight`, or across, `scrollWidth` over `clientWidth`. A sheet the learner writes on reaches one view of the container past the task's page (R73), so it overflows across whatever the element's height, and the element without a height of its own has a region too, which the arrows left and right scroll; down, such an element does not overflow — the page scrolls it. A worked example's sheet is the page alone (R73): a region only while it overflows. The check, `#region()`, runs on a new layout — a new size of the container, of the statement, of the list of parts, of the screen's density —, of the page, of the bar and of the window, not on scrolling, which changes no overflow. A container that holds the focus keeps the attributes until the focus leaves it (`blur`), not when the window loses it.
-- **The keys.** The arrows, Page Up and Page Down, Home, End and Space scroll the focused container as the browser scrolls one: the element has no `keydown` of its own for them. No button scrolls the sheet; a pointer drags it (R84, R88).
-- **The name** is by the kind — «Лист», «Тетрадь» or «Пример», "Sheet", "Workbook", "Worked example" — in the labels' language, as the bar's name is (R28), from `labels.ts`. The languages of the container and of the column, its only node, are R74's.
-- **The focus ring** is 2 px of the ink's colour inside the edge of the visible part, Highlight in forced colours, as for the bar's buttons (R84). It is the container's empty sibling `.ring` in the wrapper `.frame`, which does not scroll: the `outline` of the container itself is drawn under its positioned descendants, the paper `.sheet` and the scene, and a probe in Chromium showed it only above the statement. The bar of glass stands over it, `z-index: 1`. A pointer's press focuses the container without the ring and scrolls neither it nor the page, and `-webkit-tap-highlight-color: transparent` keeps a touch from flashing the whole sheet.
-- **Motion (WCAG 2.3.3; R90 spec).** Nothing moves but the scrolling itself, and it jumps, `behavior: "instant"`, even when the page asks for `scroll-behavior: smooth`: two fingers, the hand, a finger in pen mode, a part of a worked example and a picture on a sheet's area brought into sight. The style has no animation but the wait of the tracing paper's reading, its band and spinner, which move only under `prefers-reduced-motion: no-preference` (R89).
-- **The check.** `pointer-events: none` for the time of the check (R20) stops the pointer, not the keys: the region scrolls from the keyboard, and scrolling changes neither the work, nor the history, nor the crop.
-
-— *Why:* the author's answers in planning T93, 2026-11-11, by the recommendations:
-- R90 spec bids every package "an own scroll container — only with `tabindex="0"`, the role `region` and a name": in Safari a scroll container without focusable content scrolls by no key — WebKit bug 277290, open since 2024-07-29 —, and the sheet's container holds only the statement, the demo's parts and the drawing surface (sources 9.11). 2.1.2 bids the keyboard be let out;
+— *Why:* the author's answers, by the recommendations:
+- the platform's standard of UI packages bids every package "an own scroll container — only with `tabindex="0"`, the role `region` and a name": in Safari a scroll container without focusable content scrolls by no key — WebKit bug 277290, open since 2024-07-29 —, and the sheet's container holds only the statement, the demo's parts and the drawing surface (sources 9.11). 2.1.2 bids the keyboard be let out;
 - the overflow, not the element's height: the consumer's height cannot be read from the style — `getComputedStyle` gives px already computed —, and without overflow there is nothing to scroll. Chrome's "Keyboard focusable scrollers" and axe's rule `scrollable-region-focusable` decide it so too (sources 9.11);
 - instant scrolling: a smooth one would need `prefers-reduced-motion` and a rule for a scroll begun in the middle of a run, and two fingers scroll instantly anyway; scrolling is the one motion Understanding 2.3.3 counts essential (sources 9.19).
 
@@ -1816,77 +1771,80 @@ Also decided in the execution:
 - **`:has()` or a class set on `focus`** — the sibling selector `+` does the same without them;
 - **smooth scrolling** — for the reason above.
 
-— *Revisit:* the keyboard in Safari, on a device: the image has no Safari, and that the region scrolls from the keyboard there rests on bug 277290 and R90 spec, not on a probe ([architecture.md](architecture.md), section 3.10, "Not checked").
+— *Revisit:* the keyboard in Safari, on a device: the image has no Safari, and that the region scrolls from the keyboard there rests on bug 277290 and the platform's standard of UI packages, not on a probe; [architecture.md](architecture.md) lists it among what is not checked.
 
-— [architecture.md](architecture.md), sections 2.6, 3.1, 3.3 and 3.10; `src/element/index.ts` (`#region`, `#nameRegion`, `.ring`), `src/element/labels.ts`; `src/element/keyboard.test.ts`, `src/element/wide.test.ts`, `src/element/motion.test.ts`, `src/element/a11y.test.ts`, `src/element/forced-colors.test.ts`.
+— *Consequence:*
+- `src/element/index.ts` — the region `#region`, its name and languages `#nameRegion`, the ring `.ring` and the instant scrolling; `src/element/labels.ts` — the names of the canvas kinds;
+- `src/element/keyboard.test.ts`, `src/element/wide.test.ts`, `src/element/motion.test.ts`, `src/element/a11y.test.ts` and `src/element/forced-colors.test.ts` — the keys, the region across, the motion, axe and the ring in forced colours;
+- [architecture.md](architecture.md) — scrolling the sheet with one pointer, the layers and the ring, the docking with `app`, and accessibility, with Safari's keyboard among what is not checked.
 
 **R34. The workbook is the task's page of 1000 × 1400 units at the sheet's left, as on the sheet, with the statement above it; the sheet goes on past the page, and the learner writes there too. The layout in the DOM-free part puts the items' lines on the template layer by `spec`'s page rule and its table of widths, not by the device's font; a task that does not fit is a `TypeError`. The box is one and the same for the whole task, each stroke is in one box or in none, and the rest is scratch work. A crop of each filled box goes to the check, on the workbook the boxes replace the groups, and the property `filled` tells which boxes are filled.**
-- **The page** is the sheet's page, `SHEET`, 1000 × 1400 units, a constant of the kind (R06), at the sheet's top left corner, without a grid:
-  - the statement is above it, HTML, as wide as the page and in the same scrolling, as on the sheet (R23, R73);
+- **The page** is the sheet's page, `SHEET`, 1000 × 1400 units, a constant of the kind, at the sheet's top left corner, without a grid:
+  - the statement is above it, HTML, as wide as the page and in the same scrolling, as on the sheet;
   - the items go as lines in order, each with its number on the left. Short lines stand in two columns, a long one wraps by words, and a word longer than the line by characters;
-  - what the lines do not take is scratch work, and so is the sheet past the page, to its right and below it, which goes on as on a sheet (R73) and has no grid either. A stroke there is in no box;
-  - the tools are the pen, the eraser if the task allows it, and the hand (R88); pen mode is R29.
-- **The layout** is `pageOf`, a function of one task, in the DOM-free part and in integers. Its numbers, its rule of lines and its table of widths are the format's, `format/page.yaml` and its test vectors `format/vectors/pages/` of `spec`, and the tests hold the layout to them (R35):
+  - what the lines do not take is scratch work, and so is the sheet past the page, to its right and below it, which goes on as on a sheet and has no grid either. A stroke there is in no box;
+  - the tools are the pen, the eraser if the task allows it, and the hand; pen mode is the one of input on tablets, one for the whole page.
+- **The layout** is `pageOf`, a function of one task, in the DOM-free part and in integers. Its numbers, its rule of lines and its table of widths are the format's, `format/page.yaml` and its test vectors `format/vectors/pages/` of `spec`, and the tests hold the layout to them:
   - the characters' widths are a table in hundredths of the font size: a class for the digits and one for the operation and comparison signs, a width of its own for each letter and punctuation mark;
   - a piece of text is the part of a piece on one line of the page: one `<text>` at one point, without `tspan`, fitted to its computed width by `textLength` with `lengthAdjust="spacingAndGlyphs"` in any font, by less than ⅛ in the image's fonts. The code does not read the SVG's text sizes;
   - the boxes and the numbers stand where the layout put them, on any device;
   - the entry point `core` does not export the layout.
-- **A task that does not fit** is a `TypeError` on `task.items[i]`, the item from 0 in the path and from 1 in the text, at the first item that did not fit, as for a zone (R32). The font size and the boxes do not shrink. The format refuses such a task by the rule `task.workbook-page`, so a valid module never meets the error.
+- **A task that does not fit** is a `TypeError` on `task.items[i]`, the item from 0 in the path and from 1 in the text, at the first item that did not fit, as for a zone on the sheet. The font size and the boxes do not shrink. The format refuses such a task by the rule `task.workbook-page`, so a valid module never meets the error.
 - **The box** is one and the same for the whole task:
   - it holds a two-level fraction, a three-digit number and a comparison sign;
-  - its frame is thin and solid, of one thickness at any scale, with a contrast of at least 3:1 (R36);
+  - its frame is thin and solid, of one thickness at any scale, with a contrast of at least 3:1;
   - the line's characters stand at the middle of its height;
   - the frame does not clip the ink.
-- **The boxes' strokes** — each visible stroke is in one box or in none, by the box rule of R37:
+- **The boxes' strokes** — each visible stroke is in one box or in none, by the box rule:
   - the rule is in integers, without the DOM and without time, for each stroke separately: other strokes do not change it;
-  - it decides a contested case itself: more points, then the earlier by (item, box) in the task's order, from 1, which on any page of R35 is also top to bottom, left to right;
+  - it decides a contested case itself: more points, then the earlier by (item, box) in the task's order, from 1, which on any page of the layout is also top to bottom, left to right;
   - its parameters are in thousandths of the box: of its width across and of its height down;
-  - it takes the same strokes as `exportWork()`: the stroke under the pen is not there, and the strokes under an eraser not yet lifted are (R27);
+  - it takes the same strokes as `exportWork()`: the stroke under the pen is not there, and the strokes under an eraser not yet lifted are, as on the sheet;
   - what is in no box is scratch work. It is the learner's work: it is on the sheet and in the writing history, but does not go to the check.
 - **There are no groups on the workbook** — the boxes take their place:
-  - the submission's context is `{ boxes, digest }`: the table "box → stroke IDs", a box named by the numbers of its item and its slot, from 1, and the digest of its strokes, of the rectangles of all the page's boxes and of the table's rows (R38). A context given under another layout is a `TypeError`. It has no crop numbers: there is no snapping on the workbook;
-  - a tutor's mark comes with an answer slot by place, `{ item, slot }`, since answer slots have no IDs (R51 spec), and holds to the strokes of its row of the table by the rules of R26: when all of them are erased it is not seen, and an undo brings it back. A group label and the model's box in fractions of the crop are a `TypeError` on the workbook (R39).
-- **`filled`** is a read-only property (R37; R36 spec):
+  - the submission's context is `{ boxes, digest }`: the table "box → stroke IDs", a box named by the numbers of its item and its slot, from 1, and the digest of its strokes, of the rectangles of all the page's boxes and of the table's rows. A context given under another layout is a `TypeError`. It has no crop numbers: there is no snapping on the workbook;
+  - a tutor's mark comes with an answer slot by place, `{ item, slot }`, since the format gives answer slots no IDs, and holds to the strokes of its row of the table by the rules of the sheet's marks: when all of them are erased it is not seen, and an undo brings it back. A group label and the model's box in fractions of the crop are a `TypeError` on the workbook.
+- **`filled`** is a read-only property, a member of the element's agreement with `app` in `spec`:
   - per item, per box, whether it is filled, in the task's order. The value is frozen and stays the same object until it changes;
   - a box is filled if it holds at least one of the strokes that would go into `exportWork()`: exactly such boxes have a crop;
-  - the value changes with an action on the sheet, before `historychange`, and on an assignment of `task` or `history` without an event: an assignment is the consumer's own action (R28);
-  - being filled shows on the box itself too, not only by color, and sounds in its name (R37).
-- **To the check** the whole page goes at once (R38):
-  - `exportWork()` gives `{ cells, submission }`. `cells` are the crops of the filled boxes, `{ item, slot, png }` in the task's order: the crop rule of R25 over the box's strokes, at the manifest's digit height, only the ink, without the frame and the text. `submission` is one submission context. Its key names the kind of the work: `png` for the sheet, `cells` for the workbook;
-  - an empty box gives no crop and is not read: its verdict is "unreadable" with the reason `blank` (R56 spec), and `filled` names it. If no box is filled, `null`, even with scratch work;
+  - the value changes with an action on the sheet, before `historychange`, and on an assignment of `task` or `history` without an event: an assignment is the consumer's own action;
+  - being filled shows on the box itself too, not only by color, and sounds in its name.
+- **To the check** the whole page goes at once:
+  - `exportWork()` gives `{ cells, submission }`. `cells` are the crops of the filled boxes, `{ item, slot, png }` in the task's order: the sheet's crop rule by stroke bundles over the box's strokes, at the manifest's digit height, only the ink, without the frame and the text. `submission` is one submission context. Its key names the kind of the work: `png` for the sheet, `cells` for the workbook;
+  - an empty box gives no crop and is not read: the format's check gives it the verdict "unreadable" with the reason `blank`, and `filled` names it. If no box is filled, `null`, even with scratch work;
   - the place in an observation on the workbook is the answer slot by place.
-- **Accessibility** (R36): a screen reader reads the lines, in the task's order:
+- **Accessibility:** a screen reader reads the lines, in the task's order:
   - the SVG of the template has no `aria-hidden`, its root is `role="none"`, the lines are a list `<g role="list">` of items `<svg role="listitem">`, the text is `<text>`. A box is `<rect role="img">` with a name from the table of labels and with whether it is filled;
-  - the lines' language is the manifest's `languages.explanation`, as for the statement (R32), and a box's name has its own `lang`, as the bar of buttons has (R28);
+  - the lines' language is the manifest's `languages.explanation`, as for the statement, and a box's name has its own `lang`, as the bar of buttons has;
   - the text and the frames are in the ink's color on the paper, and CanvasText in forced colors; a filled box there is Highlight;
-  - the scroll container is named «Тетрадь», and the bar «Кнопки тетради» (R28).
-- **1.4.4 of the lines' print.** The print is SVG on the page and scales with it, by k = min(A / 1000, 1) × z (R73): Zoom in on the bar takes it to twice its fit, which 1.4.4 asks (R74; [architecture.md](architecture.md), section 3.10). The statement, the demo's parts and the bar's labels are HTML and grow and reflow with the browser's zoom. The page is not laid out anew at any zoom: a new layout would move the boxes under the ink, and 1.4.10 allows the page a layout in two dimensions, which the sheet scrolls in both.
-- **The workbook's sample** ([architecture.md](architecture.md), section 3.5):
+  - the scroll container is named «Тетрадь», and the bar «Кнопки тетради».
+- **1.4.4 of the lines' print.** The print is SVG on the page and scales with it, by k = min(A / 1000, 1) × z, the page's zoom: Zoom in on the bar takes it to twice its fit, which 1.4.4 asks, so the element meets it and does not declare it. The statement, the demo's parts and the bar's labels are HTML and grow and reflow with the browser's zoom. The page is not laid out anew at any zoom: a new layout would move the boxes under the ink, and 1.4.10 allows the page a layout in two dimensions, which the sheet scrolls in both.
+- **The workbook's sample**, in the sample file:
   - the crops of the filled boxes at eval's heights, by the same `cellsForCheck`, with the item and the box;
   - the table "box → stroke IDs" that the device built from the raw strokes: the runner does not recompute it, as it does not recompute the groups. In eval-set samples and child samples it moves to the new numbers of the strokes, as the table of groups does;
   - the rectangles of all the page's boxes in page units, so that the runner does not need the layout;
-  - no groups and no group boxes; eval-set samples and child samples hold only the boxes' strokes, and a measurement sample from an adult the whole writing history (R09);
+  - no groups and no group boxes; eval-set samples and child samples hold only the boxes' strokes, and a measurement sample from an adult the whole writing history;
   - the eval protocol takes the box rule and its test vectors as they are.
 
-— *Why:* the author's answers in the planning of T46, 2026-10-27, all by the recommendations: the page 1000 × 1400 and a `TypeError` for a task that does not fit, a table of widths of its own, a crop of each box, boxes instead of groups, the property `filled`, a sample with the device's table. The page at the sheet's left with the sheet past it, and no zoom, are the author's choice of 2026-11-22 (R73). The sources are in [architecture.md](architecture.md), section 4.
-- **A page like the sheet.** A constant page keeps the check of an assigned history, the crop, the marks and the screen apart from the task: `task` and `history` are assigned in any order (R27). Ten short items — the example of concepts 8 spec — stand in two columns and leave room for scratch work.
-- **The statement above the page**, by the arguments of R23: HTML grows with the browser's zoom and wraps, its place does not depend on fonts, and the sizes of its pictures are CSS px (R51 spec).
+— *Why:* the author's answers, all by the recommendations: the page 1000 × 1400 and a `TypeError` for a task that does not fit, a table of widths of its own, a crop of each box, boxes instead of groups, the property `filled`, a sample with the device's table. The page at the sheet's left with the sheet past it, and no zoom, are the author's later choice for every sheet. The sources — sources 9.12.
+- **A page like the sheet.** A constant page keeps the check of an assigned history, the crop, the marks and the screen apart from the task: `task` and `history` are assigned in any order. Ten short items — the workbook's example in `spec`'s glossary, ten examples on fractions — stand in two columns and leave room for scratch work.
+- **The statement above the page**, by the same arguments as on the sheet: HTML grows with the browser's zoom and wraps, its place does not depend on fonts, and the format sets the sizes of its pictures in CSS px.
 - **A `TypeError`, not shrinking:**
   - a child does not write smaller because the box is smaller: the answer would go past the frame, and the box would count as empty and not be read;
-  - the box rule was chosen at one scale (R37).
+  - the box rule was chosen at one scale.
 - **A table of widths, not a font:**
-  - a box stands where the task's layout put it, and strokes in page units fall into it on any device — the argument of R23. The synthetic samples and `module-kit` repeat the layout without a browser; the runner does not need it, the boxes' rectangles lie in the sample;
+  - a box stands where the task's layout put it, and strokes in page units fall into it on any device — as on the sheet, where a place by the device's fonts would end up under the ink on another device. The synthetic samples and `module-kit` repeat the layout without a browser; the runner does not need it, the boxes' rectangles lie in the sample;
   - the SVG itself fits the text to the width. A font in the package would have to be waited for, and its license and weight are one more dependency;
   - in WebKit only the simple case is reliable — one `<text>`, one point.
 - **The box's crop:**
-  - the card gives `canvas` «вырезку ячейки» (the crop of an answer slot), and the crop rule of R25 makes it;
+  - the card gives `canvas` «вырезку ячейки» (the crop of an answer slot), and the sheet's crop rule makes it;
   - `tutor` reads answer slots so, and the reading of digits on the device takes the same picture;
-  - the model need not search for what is in which box, and the crop rule is the one the eval protocol has taken (R31);
+  - the model need not search for what is in which box, and the crop rule is the one the eval protocol has taken;
   - the crop has no fonts on it, and its bytes are the same in any browser engine;
-  - the scratch work does not go: of the forms that give the same use, this is the poorest in data, as the rule of recommendation of П-21, by which R52 spec was decided, requires.
-- **Boxes instead of groups.** A group of R24 joins strokes closer than 50 units and 2 s to each other, and "47 ÷ 6 = [ ] r [ ]" is written in a row: one group would take both boxes. A mark on the workbook is about the answer in a box, and the table of boxes names exactly that. The digest holds all the page's boxes, so that a context of another layout differs even where the filled boxes stayed in place.
-- **A property, not an event:** R27 rejected two events for one action.
-- **A sample with the device's table:** the share of points depends on how densely they stand (R26), and the points of eval-set samples and child samples are resampled (R09). The device's table and the boxes' rectangles spare the runner the layout and the recount, and neither the check nor eval reads the scratch work.
+  - the scratch work does not go: of the forms that give the same use, this is the poorest in data, as the rule of recommendation of П-21 requires, by which `spec` decided that nothing of the writing history goes to AI.
+- **Boxes instead of groups.** A stroke group joins strokes closer than 50 units and 2 s to each other, and "47 ÷ 6 = [ ] r [ ]" is written in a row: one group would take both boxes. A mark on the workbook is about the answer in a box, and the table of boxes names exactly that. The digest holds all the page's boxes, so that a context of another layout differs even where the filled boxes stayed in place.
+- **A property, not an event:** the package's interface rejected two events for one action.
+- **A sample with the device's table:** the share of points that snapping counts depends on how densely they stand, and the points of eval-set samples and child samples are resampled. The device's table and the boxes' rectangles spare the runner the layout and the recount, and neither the check nor eval reads the scratch work.
 
 — *Rejected:*
 - **a width of 1000 and a height by the lines** — `SHEET` would become a function of the task, and a history given before the task would be checked against a page not its own;
@@ -1895,22 +1853,27 @@ Also decided in the execution:
 - **shrinking, down to a limit or without one** — for the reasons above;
 - **a font of its own in the package** and **a layout by the device's font** — for the reasons above;
 - **a box sized by the answer** — the key is closed, and the open view does not know it; **a box that grows** — the lines under it would shift under the pen;
-- **a stroke by its bundle** — a fraction bar does not join bundles (R25); **clipping the ink by the frame** — a digit beyond the edge would be lost;
+- **a stroke by its bundle** — a fraction bar does not join bundles in the crop's rule; **clipping the ink by the frame** — a digit beyond the edge would be lost;
 - **forbidding writing outside the boxes** — working in the margins is usual for a school workbook;
 - **one crop of the strokes of all the boxes** — the model would search for what is in which box; **a crop of the whole page** — the scratch work would go to the provider;
-- **the groups of R24 over the whole page** and **inside the boxes** — for the reasons above;
+- **the stroke groups over the whole page** and **inside the boxes** — for the reasons above;
 - **an event of its own** and **the filled state in `detail`** — for the reasons above;
 - **a hidden copy of the lines in HTML** — two sources of one text, and the screen reader would show the wrong place;
 - **a sample as for the sheet** — the child sample would hold the scratch work.
 
 — *Revisit:*
-- the layout's numbers: a change is a change of `format/page.yaml` by the format's versions, which `canvas` asks for by a row «в реестр spec». The histories know neither the task nor the layout: under new numbers old answers would fall into other boxes or into the scratch work, and `filled` and the crops would change with them, so the change names how `app` opens the histories written before it. An edit of a task's text is another task and a new version of the module (R44 spec), and the history of another task under this one is the consumer's error (R27);
+- the layout's numbers: a change is a change of `format/page.yaml` by the format's versions, which `canvas` asks for by a row «в реестр spec». The histories know neither the task nor the layout: under new numbers old answers would fall into other boxes or into the scratch work, and `filled` and the crops would change with them, so the change names how `app` opens the histories written before it. An edit of a task's text is another task and a new version of the module, and a history does not know its own task: the history of another task under this one is the consumer's error;
 - on devices, the debt Д7: the lines' font size and fonts on children's tablets, the text and the frames in Safari, VoiceOver and TalkBack by lines and by touch, and a copy of the lines in HTML if VoiceOver on the iPad does not read the SVG.
 
-— [architecture.md](architecture.md), sections 2.7, 3.5, 3.8 and 3.10; `src/core/page.ts`, `src/core/boxes.ts`, `src/core/submission.ts`, `src/element/index.ts`; R35–R39.
+— *Consequence:*
+- `src/core/page.ts` — the layout `pageOf` by `spec`'s page rule and its table of widths;
+- `src/core/boxes.ts` — the boxes' strokes and `filled`; `src/core/submission.ts` — the crops of the filled boxes, `cellsForCheck`, and the workbook's context;
+- `src/element/index.ts` — the workbook's template layer, `filled` and `exportWork()` on the workbook;
+- [architecture.md](architecture.md) — the workbook, the sample file and accessibility;
+- the layout, the template layer, the box rule, the work for checking and the marks on boxes are decided in detail by the entries that follow this one.
 
-**R35. The layout of a workbook's page: font size 30 units, box 100 × 100, rows 32 apart, margins 40 and two columns of 440: up to 10 rows, that is up to 20 short items or up to 10 long ones of one line. Short items stand two in a row, row by row, and a long one takes the whole width and wraps. The characters' widths are canvas's own numbers in hundredths of the font size, by a measurement of the image's fonts, and characters are told apart only by explicit code ranges. For now the element rejects the workbook: its template layer is T51.**
-- **The numbers** are in page units, 1000 × 1400 (R34):
+**R35. The layout of a workbook's page: font size 30 units, box 100 × 100, rows 32 apart, margins 40 and two columns of 440: up to 10 rows, that is up to 20 short items or up to 10 long ones of one line. Short items stand two in a row, row by row, and a long one takes the whole width and wraps. The characters' widths are canvas's own numbers in hundredths of the font size, by a measurement of the image's fonts, and characters are told apart only by explicit code ranges. These numbers, the table of widths and the rules of lines are the format's — `format/page.yaml` and its test vectors in `spec` —, and the tests hold the element's layout to them.**
+- **The numbers** are in page units, 1000 × 1400, the sheet's page:
   - font size 30, box 100 × 100;
   - a line without a box is 46. Between a line with a box and a line without one, 12, and between two lines with boxes and between boxes side by side, 32;
   - between a box and a word and between a number and a line, 16; between rows, 32;
@@ -1924,9 +1887,9 @@ Also decided in the execution:
   - without a width — control characters, the soft hyphen, combining marks, the zero-width space and joiners, direction marks, variation selectors, skin tone modifiers and tags: each attaches to the character before it;
   - wide — 100: Hangul, CJK, fullwidth forms and emoji. An unknown character is 60, and Greek, Hebrew and Latin with diacritics are among them;
   - a number is the mean of Liberation Sans and Liberation Serif, rounded to a hundredth: canvas's own numbers, not a font's table.
-- **Only explicit code ranges.** Neither `\p{…}`, nor `\s`, nor `trim()`, nor `Intl.Segmenter`, nor `normalize()`: they follow their engine's Unicode tables, and the layout is one in any engine and in Node, as the crop is (R25). Words are what lies between runs of the whitespace U+0009–000D, 0020, 0085, 2028 and 2029; a run is one space, and at the edges of a piece none. A cluster is the walk of `for…of`: a character without a width, a character after the joiner U+200D and the second regional indicator of a flag go to the character before them.
+- **Only explicit code ranges.** Neither `\p{…}`, nor `\s`, nor `trim()`, nor `Intl.Segmenter`, nor `normalize()`: they follow their engine's Unicode tables, and the layout is one in any engine and in Node, as the crop's raster is. Words are what lies between runs of the whitespace U+0009–000D, 0020, 0085, 2028 and 2029; a run is one space, and at the edges of a piece none. A cluster is the walk of `for…of`: a character without a width, a character after the joiner U+200D and the second regional indicator of a flag go to the character before them.
 - **The lines:**
-  - the words of one piece that stand side by side in a line are one text, one `<text>` (R34), of the width ⌈30 × (Σ hundredths + 26 × (words − 1)) / 100⌉. The places are sums of integers in order;
+  - the words of one piece that stand side by side in a line are one text, one `<text>`, of the width ⌈30 × (Σ hundredths + 26 × (words − 1)) / 100⌉. The places are sums of integers in order;
   - a box holds to the word after it, and a line may wrap between two boxes. A line does not start with a character of `.,:;!?)]}»…` and does not end with one of `([{«„`. Two pieces of text in a row are joined with a space, and before a closing character and after an opening one, without a gap;
   - an item is short if its line, laid in one line, is no wider than 384 — a column without the number's indent. Two short ones in a row stand in one row — at 40 and at 520 —, and a short one before a long one stands alone, on the left;
   - a long item takes the whole width, 864, greedily: by pieces inside which the line cannot wrap; a piece wider than the line, by one word or box; and a word wider than the line, by clusters. Wrapped lines start under the first;
@@ -1935,19 +1898,20 @@ Also decided in the execution:
 - **Did not fit**: a row that would go lower than 1360 is a `TypeError` on `task.items[i]`, the first item of this row. The number in the path is from 0, as in the format's path `#/items/0`, and in the error's text from 1. The layout stops on it, and a huge task costs no more than its check. There are no more than 99 items on a page, whatever numbers the sweep gave: the number column is two digits.
 - **The layout** is `pageOf` in `src/core/page.ts`:
   - `Page` is the items in order, each with its number, its line in reading order and its boxes by place, from 1, and the bottom of the last row. All in integers and frozen;
-  - `templateOf` gives it as the workbook's template together with the statement and the tools (R32), and `sameLayer` compares templates: the same grid or the same lines;
+  - `templateOf` gives it as the workbook's template together with the statement and the tools of the task the element takes, and `sameLayer` compares templates: the same grid or the same lines;
   - the entry point `core` does not export the layout, and `entry.check.ts` holds this;
-  - [vectors/pages.json](../vectors/pages.json) holds the numbers: the set's pages, the table of widths and the rules of lines, and for each page the layout or the error.
-- **The element** rejects the workbook for now by the former `TypeError` on `task.canvas.kind`: the template layer, accessibility, the theme and the trial page are T51. A task whose lines did not fit is a `TypeError` earlier, on its item.
+  - the numbers, the table of widths and the rules of lines are the format's: `format/page.yaml` and the test vectors `format/vectors/pages/` of `spec`, which the package `@altnovatrail/spec` carries as JSON, and the format's rule `task.workbook-page` holds every task on a workbook to them. They are this entry's numbers and the cases of its set, and the element's layout gives each of the 19 vectors of `spec` with no changes. The tests hold the layout to the package's vectors, and the table of widths and the numbers to the package's `page.json`. A change of them is a version of the format, and `canvas` brings one to `spec` as a row «в реестр spec»;
+  - [vectors/pages.json](../vectors/pages.json) is the record of what this entry chose — the set's pages, the table of widths and the rules of lines, and for each page the layout or the error —, which the archive of E6 names too. No test reads or writes it, and it stays as it was.
+- **The element** lays the workbook's template layer out by this layout, a decision of its own: the start and the end of each text are where the layout puts them, in the three fonts of the image, under an ancestor's hostile styles. A task whose lines do not fit is a `TypeError` on its item.
 
-— *Why:* the author's answers in the planning of T47, 2026-10-27, all by the recommendation:
-- split T47 into the layout and the template layer, T51;
+— *Why:* the author's answers, all by the recommendation:
+- the layout and the template layer as two tasks;
 - the box 100 × 100;
 - two columns — row by row;
-- `exportWork()` on the workbook until T49 — a refusal with `DOMException` "NotSupportedError" (this is T51).
+- `exportWork()` on the workbook — a refusal with `DOMException` "NotSupportedError" until the workbook's work for checking had a decision of its own.
 
-Before the questions, two separate agents checked the design — from the side of the layout and from the side of the element. The sources are in [architecture.md](architecture.md), section 4.
-- **The box 100 × 100** is two cells of the sheet (R06). A synthetic two-level fraction with digits of 36 units each (`src/core/sheets.fixture.ts`) is 86 high, and in the box it has 7 above and below. Three digits are 72 wide, 14 on each side. With a box of 104 there are already only 9 rows, and 125 and 150 give 8 and 7.
+Before the questions, two separate agents checked the design — from the side of the layout and from the side of the element. The sources are sources 9.12 and 9.13.
+- **The box 100 × 100** is two cells of the sheet's default grid, 50 units each: the author's answer, not a consequence of the fraction. The set's synthetic two-level fraction — `fraction()` in `src/core/sheets.fixture.ts`, its digits at 300→336 and 338→374 — is 74 high, and in the box it has 13 above and below. Three digits are 72 wide, 14 on each side. With a box of 104 there are already only 9 rows, and 125 and 150 give 8 and 7.
 - **The sweep** — the numbers around the box, on the set of pages `src/core/pages.fixture.ts`: ten exercises in multiplication and in fractions, Russian lines with units and a remainder, tasks of 1–3 lines, capacity and edges. The measures:
   - how many rows fit;
   - whether the short lines of a school page fit in a column, from "7 × [ ] = 56" to "347 ÷ 6 = [ ] r [ ]";
@@ -1965,13 +1929,13 @@ Before the questions, two separate agents checked the design — from the side o
   | font size 36 | also "47 ÷ 6 = [ ] r [ ]" and «2 ч 15 мин = [ ] мин» |
   | font size 26 or 28 | everything fits, but the text is 18.5–21 CSS px at k 0.71–0.75 |
   | box 104 or rows 40 apart | 9 rows |
-  | box 96 | a fraction in the box has 5 to spare on each side |
+  | box 96 | nothing: a fraction in the box has 11 above and below |
   | gap 20, margins 50 or 60 between columns | "347 ÷ 6 = [ ] r [ ]" goes to the whole width |
   | rows 24 apart | the boxes of neighboring rows are closer than 32 |
 
   Font size 30 is 24.6 CSS px on a tablet at k 0.82, 21.3 at 0.71, and on a phone at 0.39, 11.7. «47 : 6 = [ ] (ост. [ ])» with a box of 100 is long at any font size: this is the row for authors, В49.
 - **A width per character for letters, not classes.** Coarse classes would stretch "r" by 41 % and squeeze "mm" by 44 %. The hundredths are canvas's own rounded numbers, and the rounding error is under 0.5 % against ±10 % between fonts.
-- **The distortion** on the set — 252 parts of text in the image's Chromium. The fitting to the table stretches or squeezes text in Liberation Sans by a factor of 0.975–1.085 (median 1.043), and in Liberation Serif by 0.910–1.000 (median 0.938). Liberation Mono it squeezes: the median is 1.42, and a lone "." 2.25. T22 measures the devices' fonts.
+- **The distortion** on the set — 252 parts of text in the image's Chromium. The fitting to the table stretches or squeezes text in Liberation Sans by a factor of 0.975–1.085 (median 1.043), and in Liberation Serif by 0.910–1.000 (median 0.938). Liberation Mono it squeezes: the median is 1.42, and a lone "." 2.25. The devices' own fonts are not measured here: they are for children's tablets, the debt Д7.
 - **Canvas's own numbers, not a font's metrics.** The fonts' license is SIL OFL 1.1: it allows to "use, study" the font and requires the font itself and its parts to be distributed only under it. What goes into the package is not the fonts' files or tables, but the means of the two fonts, rounded to a hundredth. This is an argument of the decision, not a legal opinion.
 - **Row by row** — the author's answer: on a tablet the page goes only down, and the order for the eye, for the DOM and for the task is one.
 - **A box holds to the word after it** — as a number to its unit: «[ ] рублей», not "[ ]" at the end of a line and «рублей» at the start of the next.
@@ -1983,57 +1947,50 @@ Before the questions, two separate agents checked the design — from the side o
 - **by columns** — the author's answer: back up to the top for the sixth item, and a long item breaks the columns;
 - **a short item pulled up beside another,** so that no cell is left empty, — the task's order would change;
 - **one height for all lines** — a task of three lines would take three times as much;
-- **`dominant-baseline` and `text-anchor: end`** — in WebKit only the simple case is reliable (R34);
+- **`dominant-baseline` and `text-anchor: end`** — in WebKit only the simple case of SVG text is reliable, one `<text>` at one point;
 - **a number column sized by the count of items** — the indent would change with the tenth item;
 - **a place set aside for scratch work,** — scratch work keeps what the lines did not take, and the task does not need it;
 - **a line break after a box** — the box would be torn from the word after it;
-- **one task** — the author's answer: T47 and T51.
+- **one task** — the author's answer: the layout and the template layer are two.
 
 — *Revisit:*
-- the font size and the fonts — by T22, on children's tablets. After the first release only a decision of their own changes the numbers (R34);
-- the box and the gap between boxes — by T48's sweep of the box rule and by T22, if a fraction written with a finger does not fit. Before the first release — by an amendment, with new vectors;
+- the font size and the fonts — on children's tablets, by the debt Д7. A change of the numbers is a version of the format, in `spec`;
+- the box and the gap between boxes — on children's tablets, if a fraction written with a finger does not fit. With a box of 100 and a gap of 32 the box rule loses not one answer of its set;
 - right-to-left writing — with the first module in such a language: the line runs left to right, and a piece as the browser lays it out;
 - Greek and Latin with diacritics — with widths of their own, if they come into the modules of the first slice.
 
 — *Consequence:*
-- **T51** — the workbook's template layer in the element: SVG, accessibility, the theme, the trial page and the refusal of `exportWork()` until T49;
-- **T48** depends on T51: whether a box is filled is seen on the box itself;
-- amendments to R32 and R34;
-- **table 3 of RUN.md** — В49 «в реестр spec»: a limit of lines for authors, for T38 in RUN.md of `spec`.
+- `src/core/page.ts` — `pageOf`; `src/core/widths.ts` — the table of widths; `src/core/pages.fixture.ts` — the set of pages; `src/core/entry.check.ts` — `core` does not export the layout; `src/core/page.test.ts` — the layout against `spec`'s page and vectors;
+- `src/element/fonts.test.ts` — the fitting in the image's fonts;
+- [vectors/pages.json](../vectors/pages.json) — the record of the numbers and the cases this entry chose;
+- `src/element/` — the workbook's template layer, a decision of its own, and the box rule after it: whether a box is filled is seen on the box itself;
+- the entries on the task the element takes and on the workbook — the workbook is checked and shown by this layout;
+- table 3 of RUN.md — В49 «в реестр spec»: a limit of lines for authors, which `spec` answered with the format's rule that a task on a workbook fits its page;
+- [architecture.md](architecture.md) — the workbook, the sheet's coordinates, the docking with the app, and the code and tools.
 
-— RUN.md, T47, T51, E6, table 3; [architecture.md](architecture.md), sections 2.7, 3.2, 3.3, 3.7 and 4; `src/core/`, `src/element/fonts.test.ts`, `vectors/pages.json`.
-
-— *Amendment 2026-10-27:* the element no longer rejects a workbook: T51 made its template layer (R36). It checked the fitting of the text under an ancestor's hostile styles: the start and the end of each text are where the layout puts them, in the three fonts of the image. — R36.
-
-— *Amendment 2026-10-27:* the set's synthetic fraction — `fraction()` in `src/core/sheets.fixture.ts` — is 74 high, not 86: its digits stand at 300→336 and 338→374. In a box of 100 it has 13 above and below, not 7, and in a box of 96, 11, not 5. So the row "box 96" of the sweep's table breaks nothing: the box of 100 is the author's answer, two cells of the sheet, not a consequence of the fraction. "Revisit: the box and the gap — by T48's sweep of the box rule": T48's sweep did not touch them. With a box of 100 and a gap of 32 the accepted rule loses not one answer of the set (R37). — R37.
-
-— *Amendment 2026-11-02:* the layout's numbers will become a format rule. `spec` answered В49 with the first 2026-11-01 amendment to R51 spec: the lines of a task on a workbook MUST fit on the page the way the layout of `canvas` lays them out, and the rule comes in with the version 0.y that the modules' requests bring after their first content (T38 in RUN.md of `spec`, put off to the epic E6 there). In 0.2 there is only a guide for authors, the README of the format, §14: up to 10 rows, a short item a line of up to 384 units, a long one in one line up to 864. Until the rule, the numbers and the table of widths are `canvas`'s, but it brings a change to them as a row «в реестр spec»: the guide is corrected by it (Д57 in RUN.md of `spec`). With the rule, the numbers, the table of widths, the rules of lines and the cases of `vectors/pages.json` move into `format/`, a test of `canvas` checks the layout against the vectors of `spec`, and a change of the numbers becomes a version of the format. The result of T22 — the font size and the fonts on children's tablets — had better be ready by that version. — R44.
-
-— *Amendment 2026-11-09 (T85):* **the numbers and the rule of the layout are now the format's: `format/page.yaml` and the test vectors `format/vectors/pages/` of `spec`, which the package `@altnovatrail/spec` carries as JSON (the format text of `spec`, §§9 and 14; R108 spec). These are the numbers and the vectors of `canvas`, and the element's layout gives each of the 19 vectors of `spec` with no changes. The tests hold it by the package's vectors, and the table of widths and the numbers by the package's `page.json`; no test writes `vectors/pages.json` any more, and it stays as it was, a record that this entry and the archive of E6 refer to (R60).**
-
-**R36. The workbook's template layer: the element shows the lines of its items on the page — the numbers and the pieces of text as SVG, fitted to the layout of R35, and the boxes with a frame of 1 CSS px on whole device pixels. The printing is in the ink's color and the consumer's font, and it takes nothing else inherited. A screen reader reads the lines as a list, and the boxes by the names from the table of labels. The element is horizontal whatever the page's writing mode.**
-- **The layer by canvas kind** — the same SVG of the template layer, with the same `viewBox` as the other layers (R23):
-  - a sheet has the grid, over the whole sheet as far as it goes (R73), and the layer is `aria-hidden`;
+**R36. The workbook's template layer: the element shows the lines of its items on the page — the numbers and the pieces of text as SVG, fitted to the layout of the workbook's page, and the boxes with a frame of 1 CSS px on whole device pixels. The printing is in the ink's color and the consumer's font, and it takes nothing else inherited. A screen reader reads the lines as a list, and the boxes by the names from the table of labels. The element is horizontal whatever the page's writing mode.**
+- **The layer by canvas kind** — the same SVG of the template layer, with the same `viewBox` as the other layers:
+  - a sheet has the grid, over the whole sheet as far as it goes past the page, and the layer is `aria-hidden`;
   - a workbook has the lines and no grid, on the page and past it; its root is `role="none"`, without `aria-hidden`;
-  - a task of another kind rebuilds the layer, a task with the same lines (`sameLayer`) writes nothing, and the work stays (R20);
-  - a workbook that does not fit is a `TypeError` at `task.items[i]` (R35).
+  - a task of another kind rebuilds the layer, a task with the same lines (`sameLayer`) writes nothing, and the work stays: only a new element or another writing history replaces it;
+  - a workbook that does not fit is a `TypeError` at `task.items[i]`, by the layout.
 - **The lines:**
   - `<g class="print">`, in it `<g role="list">`, and in that an item per line of the task, in its order: an `<svg role="listitem" x y width height overflow="visible">` of the place and size `PageItem` gives — its column's left edge, its row's top, its column's width or the page's within its margins, and the height of its lines;
-  - in the item, the number and each part of a piece on a line of the page are a `<text x y textLength lengthAdjust="spacingAndGlyphs">` by `PageText`, without `tspan`, and a box is a `<rect role="img">` by `PageBox`, each with its `x` and `y` from the item's origin. The code reads no sizes of the text (R34);
-  - a value a worked example's demo writes in a box is a print node of its own right after the box (R61).
+  - in the item, the number and each part of a piece on a line of the page are a `<text x y textLength lengthAdjust="spacingAndGlyphs">` by `PageText`, without `tspan`, and a box is a `<rect role="img">` by `PageBox`, each with its `x` and `y` from the item's origin. The code reads no sizes of the text;
+  - a value a worked example's demo writes in a box is a print node of its own right after the box.
 - **The printing takes nothing inherited.** The printing group has `all: initial`, and after it `font-family: inherit`, `visibility: inherit`, `pointer-events: none`, `direction: ltr`, `font-variant-numeric: tabular-nums`, font size 30 and `color: var(--novatrail-canvas-ink, #111)`. The text is `fill: currentColor`, the frame `stroke: currentColor`.
-- **The box's frame** is 1 CSS px, `vector-effect: non-scaling-stroke` and `shape-rendering: crispEdges`; a filled box's is 3 CSS px, and its name «Окошко, заполнено» (R37).
+- **The box's frame** is 1 CSS px, `vector-effect: non-scaling-stroke` and `shape-rendering: crispEdges`; a filled box's is 3 CSS px, and its name «Окошко, заполнено», by the box rule.
 - **Color:**
   - the printing and the frames are in the ink's color, and they have no theme variable of their own;
   - an invalid value of the variable gives them, as it gives the ink of the drawing surface, the color of the page's text, not the black of `all: initial`;
-  - in forced colors, an explicit `fill` and `stroke` of CanvasText, and Highlight for a filled box's frame: SVG keeps the parent's color there ([architecture.md](architecture.md), section 4), and the theme's ink would stay.
+  - in forced colors, an explicit `fill` and `stroke` of CanvasText, and Highlight for a filled box's frame: SVG keeps the parent's color there (measurements 1.4), and the theme's ink would stay.
 - **Accessibility:**
   - the numbers are text, and a screen reader reads them, like the markers of an `<ol>`;
-  - a box's name is «Окошко», and among several in a line «Окошко 1», «Окошко 2», by place, with whether it is filled (R37);
-  - the language of the lines is the manifest's `languages.explanation`, as an attribute `lang` on `<g role="list">`. Without a manifest there is no attribute, and the lines are in the element's language, like the statement (R32);
-  - a box has a `lang` of its own, the language of the labels, by the element's `lang`, like the bar of buttons (R28). A new `lang` of the element changes the boxes' names together with the buttons' labels;
-  - the labels of R28 name the scroll container by the canvas kind, Workbook or «Тетрадь», and the bar Workbook buttons or «Кнопки тетради»; a box is Box or «Окошко».
-- **1.4.4 of the printing.** The printing scales with the page, its font size on the screen 30 × k CSS px, k = min(A / 1000, 1) × z (R73), 9.6 at 320 CSS px and 100 %: Zoom in on the bar takes it to twice that (R34, R74; [architecture.md](architecture.md), section 3.10).
+  - a box's name is «Окошко», and among several in a line «Окошко 1», «Окошко 2», by place, with whether it is filled, by the box rule;
+  - the language of the lines is the manifest's `languages.explanation`, as an attribute `lang` on `<g role="list">`. Without a manifest there is no attribute, and the lines are in the element's language, like the statement the element shows;
+  - a box has a `lang` of its own, the language of the labels, by the element's `lang`, like the bar of buttons. A new `lang` of the element changes the boxes' names together with the buttons' labels;
+  - the element's table of labels names the scroll container by the canvas kind, Workbook or «Тетрадь», and the bar Workbook buttons or «Кнопки тетради»; a box is Box or «Окошко».
+- **1.4.4 of the printing.** The printing scales with the page, its font size on the screen 30 × k CSS px, k = min(A / 1000, 1) × z, z the page's zoom, 9.6 at 320 CSS px and 100 %: Zoom in on the bar takes it to twice that, which 1.4.4 asks, by the technique G178 (sources 9.18).
 - **The page's writing mode.** `:host { writing-mode: horizontal-tb }`: the element — sheet, workbook and task from paper — is horizontal under an ancestor's vertical writing. A `writing-mode` on the element itself is stronger: that is the consumer's choice.
 - **Scrolling to an item.** `scrollIntoView` of an item that is not seen scrolls the container at once. The item comes into the visible part when the layout sets a new `viewBox`, after two animation frames.
 - **Tests:**
@@ -2047,12 +2004,12 @@ Before the questions, two separate agents checked the design — from the side o
     - the parts are read in the print's units, through the matrix from the part to the print, the frames' pixels through the print's matrix, and an item on the screen by its parts: Firefox's `getBoundingClientRect()` of an inner `<svg>` is not its item's box;
   - forced colors, in `forced-colors.test.ts`.
 
-— *Why:* the author's answer in the planning of T51, 2026-10-27, by the recommendation — fix the page's vertical writing —, R34 and R35, and the probes in the planning of T51 (measurements 1.4). The sources are in [architecture.md](architecture.md), section 4.
+— *Why:* the author's answer, by the recommendation — fix the page's vertical writing —, the decision on the workbook and the layout of its page, and the probes of the template layer (measurements 1.4). The sources are sources 9.4, 9.12 and 9.13.
 - **A frame on whole pixels.** With `crispEdges` each edge is the full ink color, 18.9:1 for `#111`, at densities 1, 1.25, 1.5 and 2, and its width is 1–2 device pixels. An antialiased frame at density 1 falls to 3.59:1, and with `#555` to 2.41:1, below 3:1 (WCAG 2.2, 1.4.11).
-- **The reset** was checked under an ancestor's hostile styles in three fonts: the start of the first character and the end of the last are where the layout puts them, to 0.05 of a unit or closer. `all: initial` alone is not enough: it does not reset `direction`, and it resets `visibility` and `pointer-events` the wrong way (R35).
+- **The reset** was checked under an ancestor's hostile styles in three fonts: the start of the first character and the end of the last are where the layout puts them, to 0.05 of a unit or closer. `all: initial` alone is not enough: it does not reset `direction`, and it resets `visibility` and `pointer-events` the wrong way.
 - **Color through `color`** — this way an invalid value of the variable behaves for the printing as for the ink: CSS computes it as `unset`.
 - **The numbers are read**, as in a numbered list of HTML: the tutor and `app` name an item by its number.
-- **An item as an `<svg>` with a size**, the author's answer to В80, 2026-11-16, by the recommendation: Firefox brings an SVG group into view as a point at its origin — a `<g>` of no transform not at all, one placed by `transform` only to the edge of the visible part —, while a nested `<svg>` with a size it brings whole, as Chromium and WebKit bring all three (measurements 1.5 and 1.6).
+- **An item as an `<svg>` with a size**, the author's answer to В80, by the recommendation: Firefox brings an SVG group into view as a point at its origin — a `<g>` of no transform not at all, one placed by `transform` only to the edge of the visible part —, while a nested `<svg>` with a size it brings whole, as Chromium and WebKit bring all three (measurements 1.5 and 1.6).
 - **`:host`, not the printing:** vertical writing lays the whole scene on its side, and scrolling to an item scrolls nothing. `:host` overrides an inherited writing mode, but not the consumer's own.
 - **The tree through the test's `cdp()`:** the Playwright provider gives a session of the page, and the tree of the test's iframe is taken by its `frameId`. The CDP tree has no `lang`, and `:lang()` checks the language.
 
@@ -2062,19 +2019,23 @@ Before the questions, two separate agents checked the design — from the side o
 - **the grid's color for the frame** — 1.4:1 on white;
 - **`aria-hidden` on the numbers** — an item without a number cannot be found by the tutor's words;
 - **text on the drawing surface** — a screen reader does not read it;
-- **HTML text in `foreignObject`** — the browser's layout lays it out, not R35;
+- **HTML text in `foreignObject`** — the browser's layout lays it out, not the layout of the page;
 - **an item as a `<g>` placed by `transform`** — Firefox shows 0.5 px of the item; **a `<g>` without a place, waiting for Firefox's own fix** — Firefox does not bring it into view at all;
 - **a Vitest command of its own for the tree** — the test's `cdp()` already gives a session;
 - **resetting the writing mode only on the printing** — vertical writing breaks the whole element.
 
 — *Revisit:*
-- on devices, the debt Д7: the reset in WebKit, `-webkit-text-size-adjust`, the frame and the text in Safari; VoiceOver on the iPad, and a copy of the lines in HTML if it does not read the SVG (R34); exploring by touch with VoiceOver and TalkBack — over the lines lies the drawing surface, which takes input (R23), and a finger may land on it rather than on an item: only reading in order is checked, the tree and the roles.
+- on devices, the debt Д7: the reset in WebKit, `-webkit-text-size-adjust`, the frame and the text in Safari; VoiceOver on the iPad, and a copy of the lines in HTML if it does not read the SVG; exploring by touch with VoiceOver and TalkBack — over the lines lies the drawing surface, which takes input, and a finger may land on it rather than on an item: only reading in order is checked, the tree and the roles.
 
-— [architecture.md](architecture.md), sections 3.1, 3.3, 3.7, 3.8, 3.10 and 4; measurements 1.4, 1.5 and 1.6; `src/element/index.ts`, `src/element/labels.ts`, `src/element/workbook.test.ts`; R37, R61.
+— *Consequence:*
+- `src/element/index.ts` — the template layer: the lines, the reset of the printing, its colors and the writing mode of `:host`;
+- `src/element/labels.ts` — the names of a box, of the workbook's scroll container and of its bar;
+- `src/element/workbook.test.ts` and `src/element/forced-colors.test.ts` — the tests;
+- [architecture.md](architecture.md) — the layers, the docking with the app, the code and tools, the workbook and accessibility.
 
-**R37. The box rule: a stroke belongs to a box if the middle of the frame of its points lies in the box widened by 120 thousandths of its size, and the frame itself is no wider and no taller than 1600 thousandths of the box. Otherwise the stroke is scratch work. Of two boxes the rule takes the one with more of the stroke's points, then the earlier by (item, box). Which boxes are filled, the property `filled` says. A filled box's frame is 3 CSS px, and its name says «заполнено».**
+**R37. The box rule: a stroke belongs to a box if the middle of the frame of its points lies in the box widened by 120 thousandths of its size, and the frame itself is no wider and no taller than 1600 thousandths of the box. Otherwise the stroke is scratch work. Of two boxes the rule takes the one with more of the stroke's points, then the earlier by (item, box). The rule is `spec`'s eval protocol, as written here. Which boxes are filled, the property `filled` says. A filled box's frame is 3 CSS px, and its name says «заполнено».**
 - **The rule** is `cellOf` in `src/core/boxes.ts`, in integers:
-  - the points are in tenths of a unit, `round(10 × v)`, half up, as for groups (R24). The box is in tenths: L, T, W and H;
+  - the points are in tenths of a unit, `round(10 × v)`, half up, as for the stroke groups. The box is in tenths: L, T, W and H;
   - x0, x1, y0 and y1 are the least and the greatest coordinates of the stroke's points;
   - the size: 1000 × (x1 − x0) ≤ 1600 × W and 1000 × (y1 − y0) ≤ 1600 × H;
   - the middle: 1000 × (x0 + x1) ≥ 2 × (1000 × L − 120 × W) and 1000 × (x0 + x1) ≤ 2 × (1000 × (L + W) + 120 × W), and the same vertically;
@@ -2082,13 +2043,14 @@ Before the questions, two separate agents checked the design — from the side o
   - all the integers are below 2^31;
   - a stroke without points is a `TypeError`, and a point outside the page a `RangeError`, as for the crop. The rule and the crop take the stroke's frame in tenths from one function, `extentOf` in `src/core/geometry.ts`.
 
-  With a box of 100 the margin is 12 units, and the limit 160: the box and 30 on each side. Boxes stand 32 apart (R35), so the widened ones do not overlap, and a workbook's page has no disputed case. It is needed for rectangles that others will give.
+  With a box of 100 the margin is 12 units, and the limit 160: the box and 30 on each side. Boxes stand 32 apart on the workbook's page, so the widened ones do not overlap, and a workbook's page has no disputed case. It is needed for rectangles that others will give.
 - **The module** gives:
   - `cellsOf(page)` — the boxes in the task's order;
-  - `cellOf`, and with it `tableOf` — the table "box → stroke IDs", for T49 — and `filledOf`.
+  - `cellOf`, and with it `tableOf` — the table "box → stroke IDs", for the workbook's work for checking — and `filledOf`.
 
   The `core` entry point does not give the rule, and `entry.check.ts` holds that.
-- **Test vectors** — [vectors/boxes.json](https://github.com/altnovatrail/canvas/blob/602945b/vectors/boxes.json), 20 cases:
+- **The rule is `spec`'s eval protocol**, as written here (В47): the device and `tutor`'s runner take a stroke into a box by it, and the rule changes only in `spec`.
+- **Test vectors** — `vectors/eval/v1/boxes.json` of the package `@altnovatrail/contracts`, and a test checks the code against them. `canvas` wrote them first as [vectors/boxes.json](https://github.com/altnovatrail/canvas/blob/602945b/vectors/boxes.json), at the commit where the file still was, 20 cases:
   - 13 sheets of the set with points at the corners, and 4 of them also with points every 2 units;
   - the rule's edges;
   - 2 pages by seed.
@@ -2101,16 +2063,17 @@ Before the questions, two separate agents checked the design — from the side o
     - after a new layout;
     - after an assigned history, without an event;
   - each stroke's verdict is computed once and kept in a `WeakMap`, a new one at a new layout. The value stays the same frozen one until a box changes;
-  - the stroke under the pen is not in it, and a stroke under the eraser before lift-off is, as for `exportWork()`.
+  - the stroke under the pen is not in it, and a stroke under the eraser before lift-off is, as for `exportWork()`;
+  - on a sheet, `filled` for a slot `anywhere` or `sheet` is `[[has a stroke]]`, by the same rule "the stroke that `exportWork()` would take", and a sheet with only `choice`, a sheet without a task and an example are `null`. The type and the time of change are the same.
 - **Look and name:**
   - a filled box's frame is 3 CSS px of the same ink color, on whole device pixels, and in forced colors Highlight. An empty one's frame is 1 CSS px;
-  - a filled one's name is «Окошко, заполнено», «Окошко 1, заполнено» / "Box, filled". An empty one's name is «Окошко». The label `filled` is in the table of R28.
+  - a filled one's name is «Окошко, заполнено», «Окошко 1, заполнено» / "Box, filled". An empty one's name is «Окошко». The label `filled` is in the element's table of labels.
 - **The trial page** shows in the counter's row how many boxes are filled.
 
 — *Why:*
 
-The author's answers in the planning of T48, 2026-10-27:
-- as one task — not by the recommendation. The executor advised splitting it into the rule and `filled`, T52;
+The author's answers:
+- the rule and `filled` as one task — not by the recommendation, which was to split them;
 - the 3 px frame — by the recommendation;
 - «заполнено» only on a filled box — by the recommendation.
 
@@ -2156,49 +2119,44 @@ The design was checked by three reading agents and an architect agent. From the 
 
   The accepted rule takes two strokes of scratch work:
   - a dot 8 from a box — on the border of what the set counts as scratch work;
-  - the top bar of a scratch digit 10 below a box. The rule takes a stroke alone, without its sign (R34).
+  - the top bar of a scratch digit 10 below a box. The rule takes a stroke alone, without its sign, as the workbook puts each stroke in one box or in none.
 
   There are 113 "any" strokes, and the rule takes 112 of them into boxes, a circle around a box among them.
-- **The middle of the frame, not the share of points.** A stroke's frame changes with density by less than the step of the points, and the share of points changes a lot (R26). A runner that takes a sample's points by the stroke's length will get the same verdict, unless the stroke stands at the very edge.
+- **The middle of the frame, not the share of points.** A stroke's frame changes with density by less than the step of the points, and the share of points changes a lot, as it does for the snapping of the tutor's marks. A runner that takes a sample's points by the stroke's length will get the same verdict, unless the stroke stands at the very edge.
 - **The margin 120** is the middle of the window 100–140 where nothing is lost. At 100 one dot changes its verdict with density, and 12 is less than 16, half the gap between boxes.
 - **The limit 1600, not 1400.** On the set they are equal, but 1400 is exactly the length of the set's longest bar. 160 is the box and 30 on each side, and 32 further on is already the next box.
-- **Split signs.** The rule takes a stroke alone (R34), and a sign at the edge could come apart: one bar into the box, the other into scratch work. The accepted rule has none such on the set, and at a margin of 80 and less there are some.
-- **The 3 px frame.** It is seen not only by color but by its width. The contrast is that of ink on paper, 18.9:1 for `#111`. It is on whole pixels, like the frame of R36, and does not look like a verdict.
+- **Split signs.** The rule takes a stroke alone, as the workbook does, and a sign at the edge could come apart: one bar into the box, the other into scratch work. The accepted rule has none such on the set, and at a margin of 80 and less there are some.
+- **The 3 px frame.** It is seen not only by color but by its width. The contrast is that of ink on paper, 18.9:1 for `#111`. It is on whole pixels, like the empty box's frame on the template layer, and does not look like a verdict.
 - **«Заполнено» only on a filled one.** «Пусто» on each line of a new page is noise, and without «заполнено» a box is empty.
-- **The set's fraction** is 74 high, not 86 (the amendment to R35).
+- **The set's fraction** — `fraction()` in `src/core/sheets.fixture.ts` — is 74 high, not 86.
 
 — *Rejected:*
-- **the share of points, as for snapping (R26),** — by the table: at any margin it loses a bar with points at the corners or takes scratch work, and the verdict depends on density;
+- **the share of points, as for snapping the tutor's marks,** — by the table: at any margin it loses a bar with points at the corners or takes scratch work, and the verdict depends on density;
 - **the frame of the points wholly in the box** — it loses a bar wider than the box and a sign at the edge;
 - **a margin wider than 160** — the widened boxes overlap, and scratch work goes into a box;
 - **«пусто» in an empty box's name**, **a 2 px frame with a tint** and **a mark in the corner** — the author's answers;
-- **splitting the task into T48 and T52** — the author's answer.
+- **splitting the task into the rule and `filled`** — the author's answer.
 
 — *Revisit:*
-- the margin and the limit — by T22, by T78–T80 of `tutor` and by children's samples: the set is synthetic. Before the first release — by an amendment, with new vectors;
-- if a fraction written with a finger does not fit into a box — together with the numbers of R35.
+- the margin and the limit — in `spec`'s eval protocol, with new vectors, by the check of the pen on tablets, by `tutor`'s measurement of the AI's reading and by children's samples: the set is synthetic;
+- if a fraction written with a finger does not fit into a box — together with the numbers of the workbook's page layout.
 
 — *Consequence:*
-- **T49** takes `tableOf` for the context `{ boxes, digest }` and for the boxes' crops, and "no box is filled" is an empty table;
-- amendments to R27, R28, R34, R35 and R36;
-- **В47** — the rule and `vectors/boxes.json` are already there.
+- `src/core/boxes.ts` — the rule, `cellsOf`, `tableOf` and `filledOf`; `src/core/geometry.ts` — `extentOf`, shared with the crop; `src/core/workbooks.fixture.ts` — the sweep's set;
+- `src/core/submission.ts` — `cellsForCheck`, the workbook's work for checking, takes `tableOf` for the boxes' crops and for the context `{ boxes, digest }`, and "no box is filled" is an empty table and `null`;
+- `src/element/` — `filled`, the frame and the name of a filled box;
+- the entries of this log on the package's interface, the sheet's buttons and their table of labels, the workbook, the layout of its page and its template layer;
+- **В47** — the rule and its vectors, which `spec`'s eval protocol took as written here;
+- [architecture.md](architecture.md) — the workbook, the layers, the sheet's coordinates, the docking with the app and the code and tools.
 
-— RUN.md, T48; [architecture.md](architecture.md), sections 2.7, 3.1, 3.2, 3.3 and 3.7; `src/core/boxes.ts`, `src/core/workbooks.fixture.ts`, `src/element/`, `vectors/boxes.json`.
-
-— *Amendment 2026-10-27:* the "Consequence" on T49 is done: `cellsForCheck` takes `tableOf` for the crops and the context, and "no box is filled" is an empty table and `null` (R38). — R38.
-
-— *Amendment 2026-11-01:* on a sheet `filled` for a slot `anywhere` or `sheet` is `[[has a stroke]]` by the same rule "the stroke that `exportWork()` would take", and a sheet with only `choice`, a sheet without a task and an example are `null`. The type and the time of change are as before. T57 builds it. — R42.
-
-— *Amendment 2026-11-08:* the box rule is now the eval protocol, as written here (R94 spec; В47), and a test checks the code against `vectors/eval/v1/boxes.json` of the package `@altnovatrail/contracts`: `vectors/boxes.json` is removed. The link to it in "Test vectors" above now leads to the commit 602945b, where it still was. The rule changes only in `spec`. — R47.
-
-**R38. A workbook's work for checking is a crop of each filled box by its strokes, with the numbers of the item and the box, and the context `{ boxes, digest }`: the table "box → stroke IDs" and the digest of its strokes, of all the page's boxes and of the table's rows. If no box is filled, `null`. The work's kind is named by its key — `png` for a sheet, `cells` for a workbook —, and only the crops with their places leave the device. Marks on boxes are T53.**
+**R38. A workbook's work for checking is a crop of each filled box by its strokes, with the numbers of the item and the box, and the context `{ boxes, digest }`: the table "box → stroke IDs" and the digest of its strokes, of all the page's boxes and of the table's rows. If no box is filled, `null`. The work's kind is named by its key — `png` for a sheet, `cells` for a workbook —, and only the crops with their places leave the device. Marks on boxes are a decision of their own.**
 - **The work** is `cellsForCheck` in `src/core/submission.ts`, beside the sheet's `workForCheck`:
-  - the table is `tableOf` by the box rule (R37), on the same strokes as `filled`: the stroke under the pen is not there, and strokes under the eraser before lift-off are;
-  - `cells` is the `{ item, slot, png }` of each filled box, in the task's order. The PNG is a crop of R25 by the strokes of one box, as one group, at the manifest's digit height at the moment of the call. The scratch work goes nowhere;
+  - the table is `tableOf` by the box rule, on the same strokes as `filled`: the stroke under the pen is not there, and strokes under the eraser before lift-off are;
+  - `cells` is the `{ item, slot, png }` of each filled box, in the task's order. The PNG is the sheet's crop by stroke bundles, by the strokes of one box, as one group, at the manifest's digit height at the moment of the call. The scratch work goes nowhere;
   - `submission` is `{ boxes, digest }`, where `boxes` are the table's rows `{ item, slot, ids }`, the IDs ascending;
   - not one filled box — `null`, even with scratch work;
   - the crops are frozen on the outside — the bytes of a PNG cannot be frozen —, and the context deeply.
-- **The digest** is `workbookDigestOf` in `src/core/marks.ts`: the same CRC-32 and Adler-32 as the sheet's (R27), of the text in UTF-8. The lines of the text:
+- **The digest** is `workbookDigestOf` in `src/core/marks.ts`: the same CRC-32 and Adler-32 as the sheet's, from the PNG encoder, of the text in UTF-8. The lines of the text:
   - the table's strokes by ascending ID — as for the sheet: the ID and the points in tenths of a unit and whole milliseconds;
   - `cell item slot left top width height` — for each box of the page, in the task's order, in whole units of the page;
   - `box item slot ID,…` — for each row of the table.
@@ -2207,10 +2165,10 @@ The design was checked by three reading agents and an architect agent. From the 
 - **Types:**
   - in the DOM-free part, `SheetSubmission`, the former `Submission`, and `WorkbookSubmission`, and `Submission` is their union. Also the table's row `Filling`. The `core` entry point gives these types, but not the rules;
   - in the element, `ExportedSheet { png, submission }` and `ExportedWorkbook { cells, submission }` with `ExportedCell { item, slot, png }`, and `ExportedWork` is their union. The work's kind is by its key: `"png" in work` or `"cells" in work`;
-  - `Marks.submission` until T53 is `SheetSubmission`: marks cannot be given a workbook's context yet, and `interface.check.ts` holds that.
-- **Leaving the device** are only the crops with their places, the item and the box. The table and the digest stay with `app`, like the sheet's context (R09 spec).
-- **Size** — a measurement on T48's synthetic samples, `seeded()`, 540 boxes:
-  - **a box's crop:** at D = 16, 32 and 48 each is the lower limit of R25, 200 × 200 px, that is 64 tokens;
+  - `Marks.submission` takes a workbook's context with marks on boxes, which a decision of their own makes.
+- **Leaving the device** are only the crops with their places, the item and the box. The table and the digest stay with `app`, like the sheet's context: the platform keeps data to a minimum.
+- **Size** — a measurement on the box rule's synthetic pages, `seeded()` in `src/core/workbooks.fixture.ts`, 540 boxes:
+  - **a box's crop:** at D = 16, 32 and 48 each is the crop's lower limit, 200 × 200 px, that is 64 tokens;
   - **PNG at 32 px:** 0.6–1.9 KB, median 1.1 KB;
   - **at 256 px:** the largest is 726 × 664 px, 624 tokens.
 
@@ -2220,10 +2178,8 @@ The design was checked by three reading agents and an architect agent. From the 
   | 10 | 10 | 640 | 10.9 KB (9.1–14.2) | 14.5 KB |
   | 15 | 15 | 960 | 16.1 KB (14.0–20.5) | 21.4 KB |
 
-  A crop of the whole sheet is no more than 1568 tokens (R25).
-- **An empty box** gives no crop (R34):
-  - in `spec` v0.2.39, T29 of its RUN.md decided: «пусто — «не прочитать» по причине `blank`» (read 2026-10-27). An empty box's value is `null`, it need not be read, and which boxes are empty, `filled` says;
-  - the tag is newer than the pinned v0.2.37, so the number of its entry does not stand here. The move to a new tag will name it.
+  A crop of the whole sheet is no more than 1568 tokens, by the crop's limit.
+- **An empty box** gives no crop: in `spec`'s format an empty slot's verdict is "unreadable" with the reason `blank`. An empty box's value is `null`, it need not be read, and which boxes are empty, `filled` says.
 - **One crop of all the boxes** (В45) is the same private helper `croppedOf` in `src/core/submission.ts`, only with the strokes of the whole table and with its rows instead of groups. The context does not change by that.
 - **Tests:**
   - `submission.test.ts` — the composition on the set's 13 sheets at all the eval heights, the task's order, `null`, freezing, JSON and the digest, pinned both by a literal and by the text of this entry;
@@ -2242,24 +2198,24 @@ The design was checked by three reading agents and an architect agent. From the 
 
 — *Why:*
 
-The author's answers in the planning of T49, 2026-10-27, by the recommendations:
-- split the task into T49 — the work for checking — and T53 — marks on boxes. A reason beyond the length: В45 and В46 with the sizes go to `spec` without waiting for the marks;
-- the frame of a mark on a box goes around the box and its ink together. T53 makes it.
+The author's answers, by the recommendations:
+- the work for checking and marks on boxes as two tasks. A reason beyond the length: В45 and В46 with the sizes go to `spec` without waiting for the marks;
+- the frame of a mark on a box goes around the box and its ink together. The decision on marks on boxes makes it.
 
 The design was checked by an architect agent. Its corrections:
 - the digest holds all the page's boxes;
 - the crops are frozen only on the outside;
 - the table is computed anew;
 - the work is narrowed by a helper, not by a copy;
-- for T53, the order "`task` and `history` before `marks`", one shared re-placing of the marks at a new history and a new layout, and a slot not from the table gets no frame.
+- for marks on boxes, the order "`task` and `history` before `marks`", one shared re-placing of the marks at a new history and a new layout, and a slot not from the table gets no frame.
 
 More reasons:
-- **A crop per box** — R34: the model need not look for what is in which box, and T79 of `tutor` reads the slots the same way.
-- **A digest over all the boxes.** R34 says: "A context given at another layout is a `TypeError`". If the digest held only the filled boxes, a context of another layout would pass whenever those boxes stayed in place: items added at the end, an empty box moved.
-- **No numbers of the crop** — there is no snapping on a workbook, a mark comes with a slot (R34). So the digit height does not change the digest either.
+- **A crop per box**, as the workbook decides: the model need not look for what is in which box, and `tutor`'s measurement of the AI's reading reads the slots the same way.
+- **A digest over all the boxes.** A workbook's context given at another layout is a `TypeError`. If the digest held only the filled boxes, a context of another layout would pass whenever those boxes stayed in place: items added at the end, an empty box moved.
+- **No numbers of the crop** — there is no snapping on a workbook, a mark comes with a slot. So the digit height does not change the digest either.
 - **The table anew, not from the cache of `filled`.** `cellOf` is a pure function, so `cells` and `filled` agree anyway. Pulling the element's cache into the DOM-free part is an interface for the sake of one call per «Проверить». A test holds the agreement.
 - **`Submission` is a union,** like `Task = SheetTask | WorkbookTask`. A sheet-only type under the shared name would read as shared, and a union in the promise of `exportWork()` breaks the same places whatever the names.
-- **Size.** 64 tokens per box at the usual heights is the lower limit of R25, "no less than 200 px", for which the crop is wider than its work. A page of 10 items, one box each, is 640 tokens, less than the limit of a crop of the whole sheet.
+- **Size.** 64 tokens per box at the usual heights is the crop's lower limit, "no less than 200 px", for which the crop is wider than its work. A page of 10 items, one box each, is 640 tokens, less than the limit of a crop of the whole sheet.
 
 — *Rejected:*
 - **a digest of only the filled boxes** — for the reason above;
@@ -2268,32 +2224,22 @@ More reasons:
 - **as one task** — the author's answer.
 
 — *Revisit:*
-- the form and the types — by the answer of `spec` to В45 and В46 and with the types of T35 in RUN.md of `spec`;
-- how many crops per call and whether the item's text is needed — by T79 and T80 of `tutor`. T79 of `tutor` in its measurement sends empty slots too, asking "is it empty" (`tutor` at f55b3b8, read 2026-10-27). If the product needs it, empty boxes will go into `cells`;
-- one crop — if `spec` chooses it in В45;
-- the entry on the empty box — by its number, with the move to the tag `spec` v0.2.39 or newer.
+- the form and the types — by the answer of `spec` to В45 and В46 and with the types that `spec`'s releases carry;
+- how many crops per call and whether the item's text is needed — by `tutor`'s measurement of the AI's reading. That measurement sends empty slots too, asking "is it empty" (`tutor` at f55b3b8, read 2026-10-27). If the product needs it, empty boxes will go into `cells`;
+- one crop — if `spec` chooses it in В45.
 
 — *Consequence:*
-- **T53** — marks on boxes:
-  - `Anchor.cell` by place;
-  - the workbook's context in `marks`;
-  - `task` and `history` before `marks`;
-  - the frame around the box and its ink;
-- **T50** — sections 1 and 3;
-- **the workbook's sample (E5)** — the boxes' crops by the same `cellsForCheck` at the eval heights, the table and the boxes' rectangles (R34; [architecture.md](architecture.md), section 3.5);
-- amendments to R25, R26, R27, R34, R36 and R37;
-- **table 3 of RUN.md** — В45 and В46 made more precise.
+- `src/core/submission.ts` and `src/core/marks.ts` — `cellsForCheck`, the types of the submission and `workbookDigestOf`;
+- `src/element/` — `exportWork()` with `cells`, the element's types of the work, and the tests;
+- marks on boxes — `Anchor.cell` by place, the workbook's context in `marks`, `task` and `history` before `marks`, and the frame around the box and its ink: the decision on marks on boxes, a later entry of this log, makes them;
+- `src/eval/` — the workbook's sample (E5): the boxes' crops by the same `cellsForCheck` at the eval heights, the table and the boxes' rectangles;
+- `demo/` — the crop of each box at «Проверить»;
+- the entries of this log on the crop, the tutor's marks, the package's interface, the workbook, its template layer and the box rule;
+- **table 3 of RUN.md** — В45 and В46 made more precise;
+- [architecture.md](architecture.md) — the workbook in the component's purpose and bounds and in how it is built, its whole design in a section of its own; the layers, the sheet's coordinates, the docking with the app, the sample file and the code and tools.
 
-— RUN.md, T49, T53; [architecture.md](architecture.md), sections 2.7, 3.2, 3.3, 3.5 and 3.7; `src/core/`, `src/element/`, `demo/`.
-
-— *Amendment 2026-10-27:* the "Consequence" on T53 is done: marks on boxes, the order "`task` and `history` before `marks`" and the frame around the box and its ink are R39. — R39.
-
-— *Amendment 2026-10-27:* the "Consequence" on T50 is done: the workbook is in [architecture.md](architecture.md), sections 1 and 3, and its whole design is section 3.8. The workbook's sample is not built yet: the epic E5 builds it, and what this means for T17 and its other tasks, the 2026-10-27 amendment to R34 says. — RUN.md, T50.
-
-— *Amendment 2026-10-27:* "Revisit: the entry on the empty box — by its number, with the move to the tag" is done: it is R56 spec, at `spec` v0.2.42. — R40.
-
-**R39. Marks on boxes: on a workbook a mark comes with an answer slot by place — `{ item, slot }`, from 1 — and holds to the strokes of its submission's table row, and its frame stands around the box and the visible ink of its strokes together. The context's kind is named by its keys, and `task` and `history` are given before `marks`. A new page places the marks anew or takes them off, without an event.**
-- **The place** — `Anchor.cell` is now `{ item, slot }` (`CellPlace`), not an ID string, for both canvas kinds: slots have no ID (R51 spec). On a sheet a slot still gives no frame: a sheet takes no zones (R32).
+**R39. Marks on boxes: on a workbook a mark comes with an answer slot by place — `{ item, slot }`, from 1 — and holds to the strokes of its submission's table row, and its frame stands around the box and the visible ink of its strokes together; a mark of an empty box circles the box itself. The context's kind is named by its keys, and `task` and `history` are given before `marks`. A new page places the marks anew or takes them off, without an event.**
+- **The place** — `Anchor.cell` is `{ item, slot }` (`CellPlace`), not an ID string, for both canvas kinds: slots have no ID in `spec`'s task format. On a sheet a slot still gives no frame: a sheet takes no zones, by the element's check of the task.
 - **The check is `marksOf`** in `src/core/marks.ts`:
   - the context's kind is by its keys: `crop` and `groups` for a sheet, `boxes` for a workbook. Both at once is a `TypeError`, and a key with the value `null` is the same as one left out: some storages write so;
   - the table's rows are checked like groups: a place (item, box) and a stroke ID once each, the IDs whole numbers from 1. The digest holds the order of the rows and of the IDs in them;
@@ -2302,15 +2248,15 @@ More reasons:
   - `cells` are the boxes of the workbook's page in the task's order, and `null` on a sheet;
   - a context of another canvas kind is a `TypeError`, and it says that the task is given before the marks;
   - an ID of the table that the sheet did not know is a `TypeError`;
-  - the digest is computed anew, over the known strokes, the erased ones too, and over the boxes of the current page (R38). A page of another layout is a `TypeError`;
-  - a slot is the strokes of its row and the page's box. A slot not from the table — an empty box or a box that is not on the page — gets no frame, not a `TypeError`.
-- **The frame** — by the author's answer: around the box and the visible ink of its strokes together, `shownOf` with the box. The margin is 10 units, the line 2 CSS px, it pales under a stroke, and in forced colors it is Highlight, as on a sheet (R26). When all its strokes are erased it is not seen, and undo brings it back. The next box stands 32 units away, and a frame with a margin of 10 does not touch it.
+  - the digest is computed anew, over the known strokes, the erased ones too, and over the boxes of the current page, as for the workbook's work for checking. A page of another layout is a `TypeError`;
+  - a slot is the strokes of its row and the page's box. An empty box, which is not in the table, gets its rectangle without stroke IDs. A box that is not on the page gets no frame, not a `TypeError`.
+- **The frame** — by the author's answer: around the box and the visible ink of its strokes together, `shownOf` with the box. The margin is 10 units, the line 2 CSS px, it pales under a stroke, and in forced colors it is Highlight, as on a sheet. When all its strokes are erased it is not seen, and undo brings it back. A mark of an empty box circles the box itself, without strokes, however one writes in it later: `shownOf` gives the rectangle itself. The next box stands 32 units away, and a frame with a margin of 10 does not touch it.
 - **The order of assignment:** `task` and `history` before `marks`. Before a task the element has a sheet's template, and a workbook's context would be of another kind. At registration the element takes the properties in this order anyway.
 - **A new page:**
   - there is one re-placing of the marks, `#replace()`, for the setters `history` and `task`;
   - for `task`, only when the layer changes: the same page writes nothing;
   - marks that did not take their place on the new page or in the new history are taken off: `marks` is `undefined`, without an event.
-- **Types:** `CellPlace` is in both entry points, and `Marks.submission` is the union `Submission`, a sheet or a workbook (R38).
+- **Types:** `CellPlace` is in both entry points, and `Marks.submission` is the union `Submission`, a sheet or a workbook, as the workbook's work for checking gives it.
 - **Tests:**
   - `marks.test.ts` — four new ones:
     - the check of a workbook's context and its errors;
@@ -2327,7 +2273,7 @@ More reasons:
 
 — *Why:*
 
-The frame is the author's answer in the planning of T49, 2026-10-27, by the recommendation:
+The frame is the author's answer in the planning of the workbook's work for checking, by the recommendation:
 - it does not cross the box's frame;
 - it does not jump with the handwriting;
 - it takes the ink that went past the edge;
@@ -2335,145 +2281,136 @@ The frame is the author's answer in the planning of T49, 2026-10-27, by the reco
 
 So it is in the prototype too — a circle around the box. The author asked, in one phrase, for the task to be done and brought to its merge into `main`.
 
-The rest are the architect agent's corrections in the planning of T49 (R38):
-- **A slot not from the table gets no frame.** A `TypeError` of one mark would break the whole assignment — R26 rejected it for a slot for the same reason. And an empty box gives no answer, and the frame has nothing to hold to.
-- **`task` before `marks`.** A workbook's context is checked by the page's boxes, and before a task the element has a sheet's template. The history is before the marks anyway (R27).
+The rest are the architect agent's corrections in the same planning, as for the work for checking:
+- **A box not from the page gets no frame.** A `TypeError` of one mark would break the whole assignment — the sheet's marks reject it for a slot for the same reason.
+- **An empty box is circled by itself.** The verdict "unreadable" for the reason `blank` calls for a frame around the box, and `spec`'s types of the marks and its contract of `app` and `api` give such a mark.
+- **`task` before `marks`.** A workbook's context is checked by the page's boxes, and before a task the element has a sheet's template. The history is before the marks anyway, by the package's interface.
 - **Re-placing only at a new layer.** `app` gives the task at every redraw, and the same page does not change the marks.
 - **Rows like groups.** A place and an ID once each. The digest checks the order, as for groups.
 
 — *Rejected:*
 - **a frame only around the ink**, as on a sheet, and **only around the box** — the author's answer;
 - **a slot not from the table is a `TypeError`** and **re-placing at every task** — for the reasons above;
-- **a slot as a string, as in R26,** — slots have no ID (R51 spec).
+- **an empty box without a frame**, since it gives no answer and the frame has nothing to hold to — the verdict "unreadable" for the reason `blank` calls for a frame around the box;
+- **a slot as a string ID** — slots have no ID in `spec`'s task format.
 
 — *Revisit:*
-- the place and the kind of a slot's field — with the contract of the epic E3 in RUN.md of `spec`. There too, the mark of an empty box: the verdict "unreadable" for the reason `blank` in the tag `spec` v0.2.39 may call for a frame around the box alone, without strokes;
-- the color and the look of the frame — with the first slice of `app` and `api`, as in R26.
+- the place and the kind of a slot's field — with the contract of the epic E3 in RUN.md of `spec`;
+- the color and the look of the frame — with the first slice of `app` and `api`, as for the sheet's marks.
 
 — *Consequence:*
-- **T50** — sections 1 and 3;
-- amendments to R26, R27, R34 and R38;
+- `src/core/marks.ts` — the check of a workbook's context, the place of a mark on a box, of an empty box without strokes, and the frame;
+- `src/element/` — the marks on the workbook, the order of assignment, the re-placing at a new page and the tests;
+- `demo/` — a mark button at each row of the table;
+- [architecture.md](architecture.md) — the workbook, what is still to decide on it and its design, the marks' place, the docking with `app` and the code and tools;
+- the entries on the sheet's marks, the package's interface, the workbook and its work for checking — the mark on a box;
 - **table 3 of RUN.md** — В46 made more precise.
-
-— RUN.md, T53; [architecture.md](architecture.md), sections 2.7, 3.2, 3.3 and 3.7; `src/core/marks.ts`, `src/element/`, `demo/`.
-
-— *Amendment 2026-10-27:* the "Consequence" on T50 is done: the workbook is in [architecture.md](architecture.md), sections 1 and 3, and its whole design is section 3.8. — RUN.md, T50.
-
-— *Amendment 2026-11-08:* a mark of an empty box circles the box itself, without strokes, — however one writes in it later (the second 2026-11-03 amendment to R74 spec; R97 spec). The reason "an empty box gives no answer, and the frame has nothing to hold to" is withdrawn: the verdict "unreadable" for the reason `blank` calls for a frame around the box. Without a frame stay the mark of a box not from the page and a slot on a sheet. `placesOf` gives an empty box its rectangle without stroke IDs, and `shownOf` the rectangle itself. — R47.
 
 ## `spec` tag v0.2.42
 
-**R40. `canvas` is on `spec` v0.2.42: the submodule `spec/` is at this tag. `spec` has not yet recorded the rows «в реестр spec» В42–В49, and they stay. The tag brings `canvas` new open fields of the task, the exit condition "something in each slot" and the demo of a lesson's worked example — that is the epic E7, and until it the temporary types and the copies of the format examples in the tests stay at v0.2.37.**
-- **What the tag brings `canvas`** (`git -C spec diff v0.2.37 v0.2.42`, read 2026-10-27). The tags v0.2.39–v0.2.42 recorded the format of the epic E2 of `spec`: slot checks, traps, techniques and solving steps, lessons and the generator (R56–R59 spec). v0.2.38 is the OpenSSF Best Practices badge of `spec` itself:
-  - **the slot check** — each answer slot has its own, `check`, closed whole (R56 spec). It does not go into the open view, and the element does not get it. An empty slot is "unreadable" for the reason `blank`. This is the answer to the "Revisit" of R34 and R38 on the empty box: it needs no crop, `filled` names the empty boxes;
-  - **"givens" and "unknown"** — the open fields of the task `givens` and `unknown` (R57 spec). The element's strict check rejects them for now (R32): a task with them is a `TypeError` "task.givens: no field of a task's open view". The rest of the task's open view is as before: the parts of the statement, the canvas, the items and the slots. The new fields `check`, `simpler_case`, `techniques`, `traps`, `solution` and `leak_phrases` are closed;
-  - **the step's exit condition** `answer_slots_filled` — each answer slot has something in it: a stroke in its zone or box, a chosen option, and for `anywhere` and `sheet` a stroke on the sheet (the README of the format, §18; R57 spec). What it is for `anywhere` and `sheet`, the card of `app` leaves to `app` and `canvas` to decide (architecture 3.1 spec). On a workbook it is `filled` (R37), and on a sheet `filled` is `null`;
-  - **the example's demo** — a lesson carries worked examples, and the demo layer shows the example's parts one at a time and images on sheet areas at their size. The whole demo can be hidden, and the learner does not write on an example's sheet (R58 spec; concepts 8 spec). The element will take the lesson's open view with temporary types of its own (architecture 3.2 spec);
-  - **the manifest** — a new open field `rung_templates`. The element reads three fields of the manifest and skips the others (R32), so it takes the tag's manifest;
-  - **the randomness generator** (R59 spec) the element does not need now: the numbers of a templated task come in its open view. A widget's seed is its own, not the attempt's seed, and how the widget gets it, the widget protocol decides (architecture 3.4 spec). The app's side of the protocol is the widget host of `canvas`, from stage 4.
+**R40. `canvas` is on `spec` v0.2.42: the submodule `spec/` is at this tag. `spec` has not yet recorded the rows «в реестр spec» В42–В49, and they stay. The tag brings `canvas` new open fields of the task, the exit condition "something in each slot" and the demo of a lesson's worked example — that is the epic E7, and this move leaves the temporary types and the copies of the format examples in the tests at v0.2.37.**
+- **What the tag brings `canvas`** (`git -C spec diff v0.2.37 v0.2.42`, read 2026-10-27). The tags v0.2.39–v0.2.42 recorded the format of the epic E2 of `spec`: slot checks, traps, techniques and solving steps, lessons and the generator. v0.2.38 is the OpenSSF Best Practices badge of `spec` itself:
+  - **the slot check** — each answer slot has its own, `check`, closed whole. It does not go into the open view, and the element does not get it. An empty slot is "unreadable" for the reason `blank`. This answers what the entries on the workbook and on its work for checking left to revisit on the empty box: it needs no crop, `filled` names the empty boxes;
+  - **"givens" and "unknown"** — the open fields of the task `givens` and `unknown`. At this tag the element's strict check of the task rejects them: a task with them is a `TypeError` "task.givens: no field of a task's open view". The rest of the task's open view is as before: the parts of the statement, the canvas, the items and the slots. The new fields `check`, `simpler_case`, `techniques`, `traps`, `solution` and `leak_phrases` are closed;
+  - **the step's exit condition** `answer_slots_filled` — each answer slot has something in it: a stroke in its zone or box, a chosen option, and for `anywhere` and `sheet` a stroke on the sheet, by the format's text in `spec/format/README.md`. What it is for `anywhere` and `sheet`, `spec`'s card of `app` leaves to `app` and `canvas` to decide. On a workbook it is `filled`, by the box rule, and on a sheet `filled` is `null` at this tag, until a later entry of this log decides it;
+  - **the example's demo** — a lesson carries worked examples, and the demo layer shows the example's parts one at a time and images on sheet areas at their size. The whole demo can be hidden, and the learner does not write on an example's sheet. By `spec`'s card of `canvas`, the element will take the lesson's open view with temporary types of its own;
+  - **the manifest** — a new open field `rung_templates`. The element reads three fields of the manifest and skips the others, so it takes the tag's manifest;
+  - **the randomness generator** the element does not need now: the numbers of a templated task come in its open view. A widget's seed is its own, not the attempt's seed, and how the widget gets it, the widget protocol decides, by `spec`'s architecture. The app's side of the protocol is the widget host of `canvas`, from stage 4.
 - **RULES.md, the devcontainer, the template and the documents check** did not change between the tags: `git -C spec diff --stat v0.2.37 v0.2.42 -- RULES.md .devcontainer repo-template` is empty, and in `tools/` only the format check `format-check` and the test `new-repo` changed. The recipe `licenses-check-repo` is as before.
-- **The rows of table 3:** `spec` recorded none of В42–В49 — not in the log, not in RUN.md, not in the card. В45 now names R56 spec, and В50 is closed by the author's answer of 2026-10-27: the next epic is E7.
-- **What the move does not do** — as in T43:
+- **The rows of table 3:** `spec` recorded none of В42–В49 — not in the log, not in RUN.md, not in the card. В45 now names `spec`'s decision on the slot check, and В50 is closed by the author's answer: the next epic is E7.
+- **What the move does not do** — as in the move to v0.2.37:
   - the temporary task type and its check stay as before, and the copies of the format examples in the tests stay copies of v0.2.37 (Д5). The new fields, the exit condition and the example's demo are the epic E7;
   - the `core` entry point and the vectors — as they were.
 - **What is changed here:**
   - `spec/` is at v0.2.42, commit 69b5b3c; the tag is in README.md, CLAUDE.md and at the top of RUN.md;
-  - RUN.md: E6 is in the archive [plan/E6.md](plan/E6.md), and this task, T54, is there too. Table 1 has no rows, E7 in table 2 names the entries of `spec`, В45 names R56 spec, В50 is closed, and Д4–Д6 are checked;
-  - [architecture.md](architecture.md): the status and sections 1, 3.3 and 3.8 name R56 spec and the task's new fields, and a new subsection 2.8 what the tag left `canvas` to decide;
-  - amendments to R32, R34 and R38.
+  - RUN.md: E6 is in the archive [plan/E6.md](plan/E6.md), and the task of this move is there too. Table 1 has no rows, E7 in table 2 names the decisions of `spec`, В45 names `spec`'s decision on the slot check, В50 is closed, and Д4–Д6 are checked;
+  - [architecture.md](architecture.md): the status, the purpose and bounds, the docking with `app` and the workbook name `spec`'s slot check and the task's new fields, and a new subsection of what is still to decide names what the tag left `canvas` to decide. A later entry of this log decided it: `filled` on a sheet, the property `workedExample` and the example mode, the demo's buttons with `demoState` and `demochange`, the parts above the sheet and their accessibility, with the rows «в реестр spec» В52–В54;
+  - the entries on the task's check, on the workbook and on its work for checking.
 
-— *Why now:* the author's instruction of 2026-10-27 — move to the new `spec` in one branch with the archive of E6 and a review of tables 3 and 4. What the move holds is the author's answer, by the recommendation: the submodule and the documents, and the task's new fields are E7. v0.2.42 is the latest release of `spec` on 2026-10-27 (`gh release list -R altnovatrail/spec`), and `gh release verify v0.2.42 -R altnovatrail/spec` confirmed it by its attestation.
+— *Why now:* the author's instruction — move to the new `spec` in one branch with the archive of E6 and a review of tables 3 and 4. What the move holds is the author's answer, by the recommendation: the submodule and the documents, and the task's new fields are E7. v0.2.42 is the latest release of `spec` on 2026-10-27 (`gh release list -R altnovatrail/spec`), and `gh release verify v0.2.42 -R altnovatrail/spec` confirmed it by its attestation.
 
 — *Rejected:*
 - **the move together with the fields `givens` and `unknown`** — that is code, tests and a code review, more than one check. Their place is E7, together with the exit condition and the example's demo, which are decided by one agreement with `app`;
 - **v0.2.41** — v0.2.42 came out before the move began.
 
-— *Revisit:* which copies of the format examples move to the new tag — in the planning of E7.
-
 — *Consequence:*
-- **E7** in table 2 of RUN.md names R56–R58 spec, and its first tasks take the task's fields and the exit condition;
-- amendments to R32, R34 and R38;
-- **В45** names R56 spec, **В50** is closed;
-- **Д5** — the copies at v0.2.37, the new fields are E7.
-
-— RUN.md, T54, tables 1–4; [plan/E6.md](plan/E6.md); [architecture.md](architecture.md), sections 1, 2, 2.8, 3.3 and 3.8; README.md; CLAUDE.md.
-
-— *Amendment 2026-10-27:* E7 is taken — the author's answer to В50 — and planned: the tasks T55–T62 in table 1 of RUN.md. "Revisit: which copies of the format examples move to the new tag" was decided in the planning: the copies of the task, of the manifest and of the vectors of the open view are T55, and the copies of the lessons T58. — RUN.md, E7.
-
-— *Amendment 2026-11-01:* T55 took the task's fields, and the copies of the format examples in the tests are at v0.4.1 (the amendment to R32). "Д5 — the copies at v0.2.37" from the "Consequence" is out of date: `canvas` moved to v0.4.1, and its task and manifest types are now those of `spec` (R41). — R41.
-
-— *Amendment 2026-11-01:* [architecture.md](architecture.md), subsection 2.8, is decided — R42: `filled` on a sheet, the property `workedExample` and the example mode, the demo's buttons with `demoState` and `demochange`, the parts above the sheet and their accessibility. The rows «в реестр spec» are В52–В54. — R42.
+- **E7** names `spec`'s decisions on the slot check, on the task's new fields and on lessons. It is taken, by the author's answer to В50, and planned in table 1 of RUN.md: its first task takes the task's fields and the copies of the format examples of the task, of the manifest and of the vectors of the open view, and a later one the copies of the lessons;
+- the entries on the task's check, on the workbook and on its work for checking;
+- **В45** names `spec`'s decision on the slot check, **В50** is closed;
+- **Д5** — the copies at v0.2.37, the new fields are E7. The move to v0.4.1 takes the copies to that tag, and the task's and the manifest's types from `spec`;
+- RUN.md, tables 1–4, and [plan/E6.md](plan/E6.md) — the archive of E6 and the task of this move;
+- [architecture.md](architecture.md) — the status, the purpose and bounds, what is still to decide on the task's fields and the demo, the docking with `app` and the workbook;
+- README.md and CLAUDE.md — the tag.
 
 ## `spec` tag v0.4.1
 
-**R41. `canvas` is on `spec` v0.4.1: the submodule `spec/` is at this tag, and the types of the task and the manifest come from the npm package `@altnovatrail/spec` of the same version, in `dependencies`. `spec` has recorded the rows «в реестр spec» В42–В49, and table 3 of RUN.md names its entries in their place. The element's own task types are only narrowed ones, for the check, and outward it gives the types of `spec` and the temporary field `canvas.tools`.**
-- **What the tag brings `canvas`** (`git -C spec diff v0.2.42 v0.4.1`, read 2026-11-01). Between the tags are v0.2.43–v0.2.46, the line 0.3 (v0.3.0–v0.3.4) and the line 0.4 (v0.4.0, v0.4.1), and in the log R60–R73 spec:
-  - **the answers to В42–В49** were recorded 2026-10-27, all by the recommendations of `canvas`. What went where, Д41 in RUN.md of `spec` names:
-    - В42 and В46 — the 2026-10-27 amendment to R36 spec;
-    - В43 — architecture 3.1 and 3.2 spec and the README of the format, §14;
+**R41. `canvas` is on `spec` v0.4.1: the submodule `spec/` is at this tag, and the types of the task and the manifest come from the npm package `@altnovatrail/spec` of the same version, in `dependencies`. `spec` has recorded the rows «в реестр spec» В42–В49, and table 3 of RUN.md names its decisions in their place. The element's own task types are only narrowed ones, for the check, and outward it gives the types of `spec` and the temporary field `canvas.tools`.**
+- **What the tag brings `canvas`** (`git -C spec diff v0.2.42 v0.4.1`, read 2026-11-01). Between the tags are v0.2.43–v0.2.46, the line 0.3 (v0.3.0–v0.3.4) and the line 0.4 (v0.4.0, v0.4.1), and fourteen new decisions in `spec`'s log:
+  - **the answers to В42–В49** were recorded, all by the recommendations of `canvas`. What went where, Д41 in RUN.md of `spec` names:
+    - В42 and В46 — `spec`'s decision on UI packages as web components, whose members are the agreement of `canvas` and `app`;
+    - В43 — `spec`'s cards of `app` and `canvas` and the format's text;
     - В44 — an addition to О-24;
-    - В45 — the 2026-10-27 amendment to R53 spec and the epic E3 in RUN.md of `spec`;
+    - В45 — `spec`'s decision on a place on the canvas in fractions of the crop, and the epic E3 in RUN.md of `spec`;
     - В47 — the eval protocol of the same epic;
-    - В48 — architecture 3.2, concepts 8 and 15 spec and the README of the format, §11;
-    - В49 — «Вход» of T38 in RUN.md of `spec`: its planning will decide the rule.
+    - В48 — `spec`'s card of `canvas`, its glossary and the format's text;
+    - В49 — «Вход» of `spec`'s task on a workbook's page in its RUN.md: its planning will decide the rule.
 
-    The part of В42 on how `app` gets the manifest was decided by T34 there. `api` gives the manifest's open view by the package digest of the attempt, once per package, and `app` caches it and gives it to the element through the property `manifest` (the 2026-10-28 amendment to R36 spec; R62 spec). The element is ready for this: it reads the same object again (R32);
-  - **the format is version 0.1, not a draft.** It came out with v0.3.0, and code takes the format from the signed release file `format-0.1.tar.gz`, not from the submodule (R64 spec; the README of the format, §2 and §3). Any change to the format is now version 0.2 in a new line of `spec`. `module_format_version` is still `"0.1"`, and the manifest's check (R32) takes it;
-  - **TypeScript types** — the npm package `@altnovatrail/spec`: declarations only, flat, like the Go types, with `exports` `./formatv0` and `./formatv0/open`, under Apache-2.0. A release of `spec` from the line 0.4 carries it as the file `altnovatrail-spec-<version>.tgz`, with a signature and an attestation. `canvas` takes it in `dependencies` at an exact version, the same as the submodule's tag, moves them together and excludes the package from Dependabot's `npm` (R73 spec; Д46 and Д49 in RUN.md of `spec`). The types of the element itself — events, `exportWork()`, `filled`, marks — `spec` has not released yet: that is T46 in its RUN.md;
-  - **task templates** — the closed field `template` (R60 spec). `app` and the element get the open view of an instance: numbers in place of the placeholders, without `template`. The instances of one template share one ID (Д42 there), and the element keeps nothing by a task's ID: it compares the author's template by content (`sameTemplate`). Only `module-kit` runs the templates' solvers (R61 spec);
-  - **the size of the statement's image** is an integer no greater than 2^53 − 1 (`common.schema.json`). The element's check already knew this: `whole` takes no integers beyond `Number.MAX_SAFE_INTEGER` (R32);
-  - **the module package and the index** (R62 spec, R63 spec) — for the epic E5. The samples page's build takes the open views and the media from the packages of a release of `modules` through the CLI of `module-kit`. Before the build CI reads the withdrawal marks in the index of the newest release of `modules` and does not build a withdrawn version of a module, and a child sample session is run by the build of the latest release of `canvas`. So Т-30 is closed (the 2026-10-28 amendments to R25 spec; Д44 and Д45 in RUN.md of `spec`);
-  - **the digit height without a manifest is 24 px with the format 0.2** (the 2026-10-28 amendment to R51 spec; Д47 in RUN.md of `spec`). There is no format 0.2 yet: T48 there will give it, in the line 0.5. Until then the element without a manifest draws a digit at 32 px;
-  - **concepts 15 spec** — the term «шаблон задачи», task template: «не шаблон ступени и не шаблон автора на канве». In the documents of `canvas` "template" is the author's template and its layer (R23), and the type `Template` in the code is it too;
-  - the decisions of `tutor` R65–R71 spec — on the reading of work and on hints — do not touch `canvas`. Who will run the reading model on the device, `app` or `canvas`, R66 spec leaves for later;
+    The part of В42 on how `app` gets the manifest was decided by a task there. `api` gives the manifest's open view by the package digest of the attempt, once per package, and `app` caches it and gives it to the element through the property `manifest`. The element is ready for this: it reads the same object again;
+  - **the format is version 0.1, not a draft.** It came out with v0.3.0, and code takes the format from the signed release file `format-0.1.tar.gz`, not from the submodule. Any change to the format is now version 0.2 in a new line of `spec`. `module_format_version` is still `"0.1"`, and the element's check of the manifest takes it;
+  - **TypeScript types** — the npm package `@altnovatrail/spec`: declarations only, flat, like the Go types, with `exports` `./formatv0` and `./formatv0/open`, under Apache-2.0. A release of `spec` from the line 0.4 carries it as the file `altnovatrail-spec-<version>.tgz`, with a signature and an attestation. `canvas` takes it in `dependencies` at an exact version, the same as the submodule's tag, moves them together and excludes the package from Dependabot's `npm` (Д46 and Д49 in RUN.md of `spec`). The types of the element itself — events, `exportWork()`, `filled`, marks — `spec` has not released at this tag: it releases them later, and a later move takes them;
+  - **task templates** — the closed field `template`. `app` and the element get the open view of an instance: numbers in place of the placeholders, without `template`. The instances of one template share one ID (Д42 there), and the element keeps nothing by a task's ID: it compares the author's template by content (`sameTemplate`). Only `module-kit` runs the templates' solvers;
+  - **the size of the statement's image** is an integer no greater than 2^53 − 1 (`common.schema.json`). The element's check already knew this: `whole` takes no integers beyond `Number.MAX_SAFE_INTEGER`;
+  - **the module package and the index** — for the epic E5. The samples page's build takes the open views and the media from the packages of a release of `modules` through the CLI of `module-kit`. Before the build CI reads the withdrawal marks in the index of the newest release of `modules` and does not build a withdrawn version of a module, and a child sample session is run by the build of the latest release of `canvas`. So Т-30 is closed, by `spec`'s decision on the samples page (Д44 and Д45 in RUN.md of `spec`);
+  - **the digit height without a manifest is 24 px with the format 0.2** (Д47 in RUN.md of `spec`). There is no format 0.2 at this tag: `spec` gives it in a later line, and a later move of `canvas` takes it. Until then the element without a manifest draws a digit at 32 px;
+  - **`spec`'s glossary** — the term «шаблон задачи», task template: «не шаблон ступени и не шаблон автора на канве». In the documents of `canvas` "template" is the author's template and its layer, and the type `Template` in the code is it too;
+  - `spec`'s decisions for `tutor` — on the reading of work and on hints — do not touch `canvas`. Who will run the reading model on the device, `app` or `canvas`, `spec` leaves for later;
   - the rest — the release files, the Go module and the checks of `spec` — does not concern `canvas`.
-- **RULES.md** did not change between the tags. **The template** — one change, in CLAUDE.md: "The container is spec's: Node.js, Go and just". **The devcontainer** — Go 1.27.3 in the stage `toolchain`, with sums per architecture and `GOTOOLCHAIN=local` (R64 spec). Go comes with the Dockerfile into the copy of any repository (repositories 2.2 spec), so the move carries it over by hand, though the code of `canvas` takes no Go. The sums were checked against the list of go.dev 2026-11-01. The recipes `docs-check-repo` and `licenses-check-repo` in the `justfile` of `spec` are as before, and `_tools` now installs TypeScript 7.0.2 too.
-- **What is changed here** — in one branch with T55, at the author's instruction:
+- **RULES.md** did not change between the tags. **The template** — one change, in CLAUDE.md: "The container is spec's: Node.js, Go and just". **The devcontainer** — Go 1.27.3 in the stage `toolchain`, with sums per architecture and `GOTOOLCHAIN=local`. Go comes with the Dockerfile into the copy of any repository, by `spec`'s template, so the move carries it over by hand, though the code of `canvas` takes no Go. The sums were checked against the list of go.dev 2026-11-01. The recipes `docs-check-repo` and `licenses-check-repo` in the `justfile` of `spec` are as before, and `_tools` now installs TypeScript 7.0.2 too.
+- **What is changed here** — in one branch with the task that took the task's new fields, at the author's instruction:
   - `spec/` is at v0.4.1, commit 23000f3. `gh release verify v0.4.1 -R altnovatrail/spec` — "Release v0.4.1 verified!", and the release is the latest;
   - **the package of types** — `@altnovatrail/spec` 0.4.1 in `dependencies`:
     - the archive from npm is the same as the release file: the sha256 `5ea7321e…` matches;
-    - `gh release verify-asset v0.4.1 altnovatrail-spec-0.4.1.tgz -R altnovatrail/spec` — "Verification succeeded!";
+    - at the move `gh release verify-asset v0.4.1 altnovatrail-spec-0.4.1.tgz -R altnovatrail/spec` — "Verification succeeded!". The archive is checked since then not once at the move but in CI, in the step `ci-licenses`, by `spec`'s recipe `release-verify-npm` on the lock file, against the release of its own version; the link of the package's version to the submodule's tag is still held by the move;
     - `integrity` in the lock file is the sha512 of this archive;
     - in `.github/dependabot.yml` the package is excluded from the updates of `npm`;
   - **types** (Д5; Д49 in RUN.md of `spec`):
-    - `Task`, which the element takes through the property `task`, is the type `Task` from `@altnovatrail/spec/formatv0/open`, and its canvas is `Canvas` from there too with a temporary `tools` (R28). `Manifest` is the type of `spec` whole. `app`'s task and manifest of these types go into the element as they are;
+    - `Task`, which the element takes through the property `task`, is the type `Task` from `@altnovatrail/spec/formatv0/open`, and its canvas is `Canvas` from there too with the temporary `tools` of the element's toolbar. `Manifest` is the type of `spec` whole. `app`'s task and manifest of these types go into the element as they are;
     - the narrowed types `SheetTask`, `WorkbookTask` and their parts stay our own: the check `taskOf` gives them, and the rest of the element reads by them. The types of `spec` are flat, and only the check tells the canvas kinds apart. The entry points no longer give them: outward go `Task`, `Canvas` and `Manifest`;
     - `src/core/task.check.ts` holds that a checked task is a task by the type of `spec`. If `spec` changes the form and the check does not, the type error will be here, not at the seam of `app` and the element;
-    - the line of `interface.check.ts` "an item line on a sheet is a type error" went: flat types do not catch it, and only the check refuses (R32);
+    - the line of `interface.check.ts` "an item line on a sheet is a type error" went: flat types do not catch it, and only the check refuses;
     - the trial consumer gives a task and a manifest of the types of `spec`, like `app`;
   - Go in `.devcontainer/Dockerfile`, Go in CLAUDE.md; the tag is in README.md, CLAUDE.md and at the top of RUN.md;
-  - RUN.md: table 3 — В42–В49 closed, В51 opened; table 4 — Д4–Д6 checked, Д5 narrowed; the body of T58 — the lesson's types from the package, and for E7 — «Нужно» and the risks;
-  - [architecture.md](architecture.md): the status and sections 1, 2.8, 3.1, 3.3, 3.4, 3.7 and 4;
-  - amendments to R12, R32 and R40.
+  - RUN.md: table 3 — В42–В49 closed, В51 opened; table 4 — Д4–Д6 checked, Д5 narrowed; the body of the task of the worked example's type — the lesson's types from the package, and for E7 — «Нужно» and the risks;
+  - [architecture.md](architecture.md): the status, the purpose and bounds, what is still to decide on the task's fields and the demo, the layers, the docking with `app`, the publication, the code and tools and the sources;
+  - the entries on the first code, on the task's check and on the move to v0.2.42.
 
   The entries of the history name the rows as they were.
 
-— *Why now:* the author's instruction of 2026-11-01 — «выполни задачу T55 и в том же бранче перейди на spec новой версии». v0.4.1 is the latest release of `spec` on 2026-11-01 (`gh release list -R altnovatrail/spec`). The types are in the move, not in a separate task: the author's answer, not by the recommendation. Д49 in RUN.md of `spec` indeed names, for `canvas`, «своей задачей перехода на тег линии 0.4».
+— *Why now:* the author's instruction — to do the task that takes the task's new fields and, in the same branch, move to the new `spec`. v0.4.1 is the latest release of `spec` on 2026-11-01 (`gh release list -R altnovatrail/spec`). The types are in the move, not in a separate task: the author's answer, not by the recommendation. Д49 in RUN.md of `spec` indeed names, for `canvas`, «своей задачей перехода на тег линии 0.4».
 
 — *Rejected:*
 - **the types as a separate task after the move** — the executor's recommendation: the decisions on the narrowed types would go through plan mode. The author took the types into the move;
 - **flat types inside the element too**: each place where the element reads an item of a sheet or a line of a workbook would narrow the type itself, by a field — `slot.zone !== undefined` —, though the check has already told the kind;
 - **narrowed types in the entry points further on**: a consumer would take the task types of `canvas` instead of the types of `spec`, and the seam with `app` would again rest on copies (Д49 in RUN.md of `spec`);
-- **`peerDependencies`** — rejected by R73 spec;
-- **not carrying Go over**: the changes of the container of `spec` come here by hand (CLAUDE.md, Environment), and repositories 2.2 spec carries Go into the copy of any repository;
+- **`peerDependencies`** — `spec`'s decision on the TypeScript types has a package take them as a copy of its own by exact version;
+- **not carrying Go over**: the changes of the container of `spec` come here by hand, and `spec`'s template carries Go into the copy of any repository;
 - **v0.4.0** — its version in npm has no provenance, and v0.4.1 came out before the move.
 
 — *Revisit:*
-- with T46 in RUN.md of `spec` — the element's types and its vectors;
-- with the format 0.2 (T48 there) — the version the manifest's check takes, and the digit height without a manifest, 24 px;
-- with a minor version of the format with a field of tools — `canvas.tools` (the 2026-10-26 amendment to R51 spec);
-- the copies of the format examples in the tests — by reading the release file `format-0.1.tar.gz` (R64 spec), if the copies become dearer.
+- with a minor version of the format with a field of tools — `canvas.tools`;
+- the copies of the format examples in the tests — by reading the release file `format-0.1.tar.gz`, if the copies become dearer.
 
 — *Consequence:*
-- **T55** — the copies of the examples at v0.4.1 (the amendment to R32);
-- **T58** — the types of the lesson, the segment, the worked example and the demo's part from the package of `spec`, and our own only narrowed ones, for the check;
-- **E5** — the samples page's build from the packages of `modules` and without withdrawn versions (R62 spec, R63 spec);
-- **Д5** is narrowed: our own are only the check's narrowed types, `canvas.tools` and the copies of the examples. **В51** — «в реестр spec»: the card architecture 3.2 spec still says that `canvas` has temporary types of its own;
-- amendments to R12, R32 and R40.
-
-— RUN.md, T55, T63, tables 1, 3 and 4; [architecture.md](architecture.md), the status, sections 1, 2.8, 3.1, 3.3, 3.4, 3.7 and 4; README.md; CLAUDE.md; `.devcontainer/Dockerfile`; `.github/dependabot.yml`; `package.json`; `src/core/`, `src/element/`.
-
-— *Amendment 2026-11-02:* the archive of the package of `spec` from npm is checked not by `gh release verify-asset` but by the recipe of `spec` `release-verify-npm` on the lock file — and not once at the move but in CI, in the step `ci-licenses` (the 2026-11-01 amendment to R73 spec; R77 spec). The link of the package's version to the submodule's tag is still held by the move: the recipe checks the archive against the release of its own version. The package is now 0.6.2, and the "Revisit" on T46 and the format 0.2 is carried out by T69 and T68. — R44.
+- **the task that takes the task's new fields** — the copies of the format examples in the tests at v0.4.1, in the entry on the task's check;
+- **the task of the worked example's type** — the types of the lesson, the segment, the worked example and the demo's part from the package of `spec`, and our own only narrowed ones, for the check;
+- **E5** — the samples page's build from the packages of `modules` and without withdrawn versions;
+- **Д5** is narrowed: our own are only the check's narrowed types, `canvas.tools` and the copies of the examples. **В51** — «в реестр spec»: `spec`'s card of `canvas` still says that `canvas` has temporary types of its own;
+- the entries on the first code, on the task's check and on the move to v0.2.42;
+- RUN.md, tables 1, 3 and 4 — this move and the task it shares a branch with;
+- [architecture.md](architecture.md) — the status, the purpose and bounds, what is still to decide on the task's fields and the demo, the layers, the docking with `app`, the publication, the code and tools and the sources;
+- README.md and CLAUDE.md — the tag; `.devcontainer/Dockerfile` — Go;
+- `.github/dependabot.yml` and `package.json` — the package of `spec`'s types;
+- `src/core/` and `src/element/` — the types of `spec` outward and the narrowed types of the check.
 
 ## E7. The new `spec`: the task's fields and the example's demo
 
