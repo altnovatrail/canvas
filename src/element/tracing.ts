@@ -31,6 +31,7 @@ import {
 import { SVG, write } from "./attributes.js";
 import { ICONS, type IconName, ROW } from "./icons.js";
 import { type Labels, say } from "./labels.js";
+import { lineOf } from "./notation.js";
 import { draw, plainButton } from "./tools.js";
 
 /**
@@ -694,8 +695,9 @@ export class TracingPaper {
   }
 
   /**
-   * The statements in place of the crop, a line each, "□" a dashed box: their letters as large as
-   * the paper's height shares out among them, and smaller where the longest line would not fit.
+   * The statements in place of the crop, a line each, "□" a dashed box and a fraction built up
+   * (./notation.ts): their letters as large as the paper's height shares out among them, and
+   * smaller where the longest line, or the lines with their fractions, would not fit.
    */
   #drawText(): void {
     const { width, height } = this.#box;
@@ -708,23 +710,25 @@ export class TracingPaper {
       ...statements.map((statement) => {
         const line = document.createElement("div");
         line.className = "line";
-        for (const [n, piece] of statement.split("□").entries()) {
-          if (n > 0) {
-            const box = document.createElement("span");
-            box.className = "slot";
-            line.append(box);
-          }
-          if (piece !== "") line.append(piece);
-        }
+        line.append(...lineOf(statement));
         return line;
       }),
     );
-    const lines = Math.max(1, statements.length);
-    let size = Math.min(height / (lines * 1.5), height * 0.55);
+    const count = Math.max(1, statements.length);
+    let size = Math.min(height / (count * 1.5), height * 0.55);
     this.#text.style.fontSize = `${size}px`;
-    const wide = this.#text.scrollWidth;
-    if (wide > width && wide > 0) {
-      size *= (width * 0.92) / wide;
+    // The lines as laid out, not the box's scroll: centred, they spill over both its edges.
+    const lines = [...this.#text.children] as HTMLElement[];
+    const wide = Math.max(0, ...lines.map((line) => line.offsetWidth));
+    const first = lines[0];
+    const last = lines.at(-1);
+    const tall =
+      first === undefined || last === undefined
+        ? 0
+        : last.offsetTop + last.offsetHeight - first.offsetTop;
+    const k = Math.min(1, (width * 0.92) / wide, (height * 0.92) / tall);
+    if (wide > 0 && tall > 0 && k < 1) {
+      size *= k;
       this.#text.style.fontSize = `${size}px`;
     }
   }

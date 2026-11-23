@@ -531,10 +531,14 @@ canvas {
   color: var(--novatrail-canvas-ink, ${INK});
 }
 .statements .slot {
-  display: inline-block; box-sizing: border-box; width: 1.08em; height: 1.08em;
-  margin: 0 0.18em; vertical-align: -0.22em; border-radius: 0.2em;
+  box-sizing: border-box; border-radius: 0.2em;
   border: max(2px, 0.04em) dashed var(--novatrail-canvas-accent, ${ACCENT});
 }
+.statements span.slot {
+  display: inline-block; width: 1.08em; height: 1.08em; margin: 0 0.18em; vertical-align: -0.22em;
+}
+.statements mspace.slot { margin: 0 0.1em; }
+.statements math { font-family: inherit; font-size: inherit; color: inherit; }
 .scan {
   position: absolute; inset: 0; overflow: hidden;
   background: color-mix(in srgb, var(--novatrail-canvas-accent, ${ACCENT}) 4%, transparent);
@@ -2852,7 +2856,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     if (this.#tracing?.hidden === false) this.#leaveTracing(true);
     const state = this.#tracing;
     if (this.#paper === undefined || state === undefined) return;
-    this.#tracing = Object.freeze({ at: state.at, hidden: !state.hidden });
+    this.#tracing = Object.freeze({ ...state, hidden: !state.hidden });
     this.#refresh();
     this.#request();
     this.#tracingChanged();

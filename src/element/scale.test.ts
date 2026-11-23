@@ -111,6 +111,21 @@ test("Larger, Smaller and the percentage scale it about its centre, each telling
   expect(element.tracing?.scale).toBe(0.4);
 });
 
+test("hiding the paper and showing it again keeps its scale and its place", async () => {
+  const { element, grip, changes } = await paper();
+  choose(grip);
+  await settle();
+  buttonOf(element, "Larger").click();
+  const scaled = element.tracing;
+  buttonOf(element, "Hide the task").click();
+  await settle();
+  expect(element.tracing).toEqual({ ...scaled, hidden: true });
+  buttonOf(element, "Show the task").click();
+  await settle();
+  expect(element.tracing).toEqual(scaled);
+  expect(changes.at(-1)).toEqual(scaled);
+});
+
 test("a corner's drag scales it from the corner across, and tells once it is let go", async () => {
   const { element, grip, frame, changes, view } = await paper();
   element.tracing = { at: [600, 400], hidden: false };
@@ -291,6 +306,60 @@ test("Recognise asks for the reading, waits, shows the statements in place of th
     element.reading = { state: "done" } as never;
   }).toThrow(TypeError);
   expect(Object.isFrozen(element.reading)).toBe(true);
+});
+
+test("the statements read draw a fraction built up, nested as printed, a power raised and the unknowns in italics, within the paper", async () => {
+  const { element, root, grip } = await paper();
+  choose(grip);
+  element.reading = { state: "ready" };
+  root.querySelector<HTMLButtonElement>(".tracing-scale .mode")?.click();
+  element.reading = {
+    state: "done",
+    statements: [
+      "\\frac{3}{17} + \\frac{1 + \\frac{1}{2}}{□} =",
+      "x^{2} = 49",
+      "Ann has 3 apples.",
+    ],
+  };
+  await settle();
+  const text = root.querySelector<HTMLElement>(".statements");
+  if (text === null) throw new Error("no statements");
+  const [first, second, third] = [...text.querySelectorAll<HTMLElement>(".line")];
+  if (!first || !second || !third) throw new Error("not three lines");
+  const fractions = [...first.querySelectorAll("mfrac")];
+  expect(fractions.length).toBe(3);
+  for (const fraction of fractions) {
+    const [over, under] = [...fraction.children];
+    if (!over || !under) throw new Error("a fraction without its two rows");
+    const middle = (e: Element) => {
+      const box = e.getBoundingClientRect();
+      return { x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 };
+    };
+    expect(middle(over).y).toBeLessThan(middle(under).y - 4);
+    expect(Math.abs(middle(over).x - middle(under).x)).toBeLessThan(2);
+  }
+  // The fraction within a fraction is set smaller than the one on the line.
+  const size = (e: Element | undefined) =>
+    Number.parseFloat(getComputedStyle(e as Element).fontSize);
+  expect(size(fractions[2]?.firstElementChild ?? undefined)).toBeLessThan(
+    size(fractions[0]?.firstElementChild ?? undefined),
+  );
+  expect(first.querySelectorAll("mspace.slot").length).toBe(1);
+  expect(second.querySelector("msup")?.textContent).toBe("x2");
+  expect(second.querySelectorAll("i").length).toBe(0);
+  expect(third.textContent).toBe("Ann has 3 apples.");
+  expect(third.querySelector("i")).toBe(null);
+  // Every line within the paper, the fractions too.
+  const paperBox = text.getBoundingClientRect();
+  for (const line of [first, second, third]) {
+    const box = line.getBoundingClientRect();
+    expect(box.top).toBeGreaterThanOrEqual(paperBox.top - 1);
+    expect(box.bottom).toBeLessThanOrEqual(paperBox.bottom + 1);
+    expect(box.width).toBeLessThanOrEqual(paperBox.width + 1);
+  }
+  element.reading = { state: "done", statements: ["3x + 5 = 20"] };
+  await settle();
+  expect([...text.querySelectorAll("i")].map((i) => i.textContent)).toEqual(["x"]);
 });
 
 test("a reading given without a task from paper is a TypeError", () => {
