@@ -1,4 +1,4 @@
-// The boxes of a workbook's page and the strokes in them (R37). Each visible stroke is in one
+// The boxes of a workbook's page and the strokes in them. Each visible stroke is in one
 // box or in none: the rule takes it alone, in whole numbers, with no DOM and no time, and what is
 // in no box is the draft. A stroke is a box's if the middle of the box of its points lies in the
 // box widened by 120 thousandths of its size — 12 units of a box of 100, short of the 16 to halfway

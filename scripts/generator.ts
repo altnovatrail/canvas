@@ -4,7 +4,7 @@
 //
 //   node scripts/generator.ts <folder> <version>
 //
-// writes <folder>/synthetic-module_v<version>.mjs and prints its path (R68). The file has two
+// writes <folder>/synthetic-module_v<version>.mjs and prints its path. The file has two
 // modes: --module writes samples, and --digest prints the digests of the tasks' open views. Vite's
 // API bundles scripts/synthetic-module.main.ts for Node, as the page's builder bundles the page:
 // every package inside, Node's own modules outside, the code as it is written and not minified, so

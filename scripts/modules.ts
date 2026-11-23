@@ -1,6 +1,6 @@
 // The tasks of modules the samples page carries: the open views module-kit open writes of a
 // release of modules, as a copy in tasks/modules-<tag>/, since the build of a
-// release runs with no network, token or spec/ and so cannot run module-kit itself (R71).
+// release runs with no network, token or spec/ and so cannot run module-kit itself.
 // just modules-open fetches module-kit's binary and the packages the index names, has spec's
 // release-verify accept each, runs module-kit open with the seeds of the justfile, and gives this
 // script what it wrote:

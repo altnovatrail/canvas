@@ -20,7 +20,7 @@ const approved: PageTexts = {
   child: legal("child-sample-1"),
 };
 
-test("a purpose with no set is closed, with why: the measurement too, now that the author's draft is gone (T102)", () => {
+test("a purpose with no set is closed, with why: the measurement too, now that the author's draft is gone", () => {
   expect(purposes({}, true)).toEqual([
     { key: "measurement", open: false, note: PURPOSE_NOTES.measurementNoSet },
     { key: "evalSet", open: false, note: PURPOSE_NOTES.evalSetNoSet },

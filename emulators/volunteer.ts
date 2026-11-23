@@ -6,7 +6,7 @@
 // are the device's, which earn the run one more pass when they fail; the steps here are the
 // page's, which fail it.
 //
-// Two builds, two ways (R65). The release's goes an adult's measurement with the moves of the
+// Two builds, two ways. The release's goes an adult's measurement with the moves of the
 // emulators' checklist on the sheet — a stroke the browser cancels, the eraser and undo, two
 // fingers that scroll — and the workbook written as an adult imitating a child; then the page is
 // opened anew and the sheet's file opened in it. The test build's goes its start, the eval

@@ -146,7 +146,7 @@ test.runIf(devtools)(
 );
 
 test.runIf(devtools)(
-  "pen mode stays on till the page goes: no button of the bar comes with it or turns it off, in the element's language too, and a finger writes nothing after the pen (R29)",
+  "pen mode stays on till the page goes: no button of the bar comes with it or turns it off, in the element's language too, and a finger writes nothing after the pen",
   {
     timeout: budget(775),
   },
@@ -226,7 +226,7 @@ test.runIf(devtools)(
 );
 
 test.runIf(devtools)(
-  "in pen mode one finger that drags up the sheet scrolls its container down by the drag past the slop, writing nothing and telling no historychange; a pen's drag writes and scrolls nothing, and without pen mode a finger writes (R84)",
+  "in pen mode one finger that drags up the sheet scrolls its container down by the drag past the slop, writing nothing and telling no historychange; a pen's drag writes and scrolls nothing, and without pen mode a finger writes",
   {
     timeout: budget(1_000),
   },

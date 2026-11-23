@@ -8,7 +8,8 @@ Table 3 of [RUN.md](../RUN.md): the author's open questions that tasks leave (R1
 
 ## Table 3. Questions to the author
 
-Numbers are not reused: next — В87.
+Numbers are not reused: next — В88.
 
 | ID | Question | From | Options | Recommendation |
 |---|---|---|---|---|
+| В87 | «Решено исполнителем по рекомендации, до проверки автора». T150 takes the decision numbers out of `.devcontainer/`'s comments too, while R86 took a change of the template only when it was more than a comment, since a change of the Dockerfile misses CI's cache of the image `toolchain` once | T150 | (a) `.devcontainer/`'s comments are the template's, whole, now: R86 takes a comment that breaks the rule of citations, and row Д16 is closed; (b) they wait for the next change of the template beyond its comments, and `"citations": true` in T148 waits for an exception of its own | (a): the author's word is «отовсюду», the key cannot go on without it, and the miss of the cache is one round of CI |

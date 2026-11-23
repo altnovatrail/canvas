@@ -929,7 +929,7 @@ test("the names of the provisional type are no fields of the format's: a TypeErr
   for (const [value, message] of wrong) expect(() => taskOf(value)).toThrow(message);
 });
 
-test("a task's one answer anywhere on the sheet or the whole sheet is the sheet's to fill; choices, zones and a workbook's lines are not (R42)", () => {
+test("a task's one answer anywhere on the sheet or the whole sheet is the sheet's to fill; choices, zones and a workbook's lines are not", () => {
   const whole = EVERY.filter(([, task]) => wholeSheet(taskOf(task))).map(([name]) => name);
   expect(whole).toEqual([
     "anchor-among-supporting-skills",
@@ -977,7 +977,7 @@ test("what the sheet shows of a task: its grid, its statement and its tools; a c
   expect(templateOf(taskOf(asked)).statement).toEqual([{ text: "How many posts are there?" }]);
 });
 
-test("a workbook's template is the layout of its lines on the page, its statement and its tools (R35)", () => {
+test("a workbook's template is the layout of its lines on the page, its statement and its tools", () => {
   for (const name of ["workbook-page", "workbook-lines"]) {
     const task = taskOf({ ...VALID, ...OPEN_VIEWS }[name]);
     if (isSheet(task)) throw new Error(`${name} is a workbook's task`);

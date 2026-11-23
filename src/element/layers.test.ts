@@ -66,7 +66,7 @@ function rgbaAt(canvas: HTMLCanvasElement, view: View, x: number, y: number): nu
   return [...(pixel?.data ?? [])];
 }
 
-test("the sheet is a stack of layers in the order of concepts 8 spec, and of them the canvas alone takes pointer events, as the element does, and so do the buttons of the bar, while the rail it stands in covers nothing of the sheet", async () => {
+test("the sheet is a stack of layers in the order spec's glossary gives them, and of them the canvas alone takes pointer events, as the element does, and so do the buttons of the bar, while the rail it stands in covers nothing of the sheet", async () => {
   const { element, root, canvas, stage, viewport } = await sheet(400);
   // Over the tracing paper, under the ink, its cover of the statements read; over the layers its
   // frame, its sign, its grip and tooltip and its bar of scale: they and the paper's layer show on
@@ -172,7 +172,7 @@ test("a worked example's canvas alone takes no pointer, the stage keeps the menu
   expect(getComputedStyle(canvas).pointerEvents).toBe("none");
 });
 
-test("every layer shows the sheet by one view, whatever the width and the scroll, and the page is at most 1000 CSS pixels wide, at the sheet's left (R73)", async () => {
+test("every layer shows the sheet by one view, whatever the width and the scroll, and the page is at most 1000 CSS pixels wide, at the sheet's left", async () => {
   for (const width of [400, 1000, 1400]) {
     const { element, root, canvas, viewport, view } = await sheet(width, 300);
     // The template, the author's demo, the tutor's sketch and the marks; the tracing paper's

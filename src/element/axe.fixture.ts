@@ -1,5 +1,5 @@
 // axe-core over the element's shadow tree, in the tests in a browser: app's CI does not look
-// into the canvas's element, so canvas's own does (R70). The rules are those of WCAG 2.0, 2.1
+// into the canvas's element, so canvas's own does. The rules are those of WCAG 2.0, 2.1
 // and 2.2 at levels A and AA (wcag.fixture.ts). Its target-size measures WCAG 2.5.8,
 // 24 × 24 CSS px; the 44 × 44 of WCAG 2.5.5, which spec's standard of UI packages asks of canvas
 // too, is the bar's own test. What axe cannot tell it leaves incomplete: a test names those it

@@ -151,7 +151,7 @@ test("hides and shows the tracing paper by its button, which tells", async () =>
   expect(told).toHaveLength(2);
 });
 
-test("rules its sheet by the grid the consumer gives, dots as it comes, lines, squares or none, as far as the sheet goes, and tells nothing of it (R88)", async () => {
+test("rules its sheet by the grid the consumer gives, dots as it comes, lines, squares or none, as far as the sheet goes, and tells nothing of it", async () => {
   const { element, root } = await paper();
   const grid = root.querySelector(".grid");
   const told: unknown[] = [];
@@ -205,7 +205,7 @@ test("rules its sheet by the grid the consumer gives, dots as it comes, lines, s
   expect(grid?.getAttribute("d")).toBe(gridPath({ kind: "lines", step: 40 }, extent()));
 });
 
-test("lays the sheet out past a tracing paper the consumer gives beyond it, by one view more, and back as it is given back (R73)", async () => {
+test("lays the sheet out past a tracing paper the consumer gives beyond it, by one view more, and back as it is given back", async () => {
   const { element, root } = await paper();
   const width = () => {
     const box = root.querySelector(".sheet")?.getBoundingClientRect();
@@ -332,7 +332,7 @@ test("moves the tracing paper by its grip's keys, kept to the sheet", async () =
   expect(told).toHaveLength(2);
 });
 
-test("moves the tracing paper past the page by its grip's keys, and the sheet goes on past it by one view more (R73)", async () => {
+test("moves the tracing paper past the page by its grip's keys, and the sheet goes on past it by one view more", async () => {
   const { element, root, grip } = await paper();
   const width = () => {
     const box = root.querySelector(".sheet")?.getBoundingClientRect();

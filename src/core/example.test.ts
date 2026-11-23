@@ -356,7 +356,7 @@ test("the sheet makes a template of a worked example as of a task: its grid, its
   });
 });
 
-test("the workbook makes a template of a worked example as of a task: its lines on the page, their boxes empty, and the pen alone (T85)", () => {
+test("the workbook makes a template of a worked example as of a task: its lines on the page, their boxes empty, and the pen alone", () => {
   const example = exampleOf(REMAINDERS);
   const task = pageOf([
     { line: [{ text: "23 ÷ 4 =" }, { binding: "box" }, { text: "r" }, { binding: "box" }] },

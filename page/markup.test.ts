@@ -191,7 +191,7 @@ describe("a workbook", () => {
   });
 });
 
-describe("an essay's markup (T21)", () => {
+describe("an essay's markup", () => {
   test("is its text as written, trimmed, with no mark of a criterion", () => {
     expect(
       markupOf(essayMarkup(true, { illegible: false, text: " The Bread Robot\nIt bakes. " })),
@@ -293,7 +293,7 @@ describe("the examples of the page", () => {
     await expect(text).toMatchFileSnapshot("../examples/page-sheet-measurement.json");
   });
 
-  test("examples/page-essay-measurement.json is an essay marked up by its text (T21)", async () => {
+  test("examples/page-essay-measurement.json is an essay marked up by its text", async () => {
     // The strokes are the staircase's: the example shows the markup of an essay, not a hand.
     const sheet = staircase();
     const sample = sampleOf({

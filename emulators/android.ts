@@ -1,5 +1,5 @@
 // An Android emulator and the Chrome on it, as the drivers of the probe and of the samples page use
-// them (R54). They run in the toolchain stage's container on the runner's network, once
+// them. They run in the toolchain stage's container on the runner's network, once
 // android-emulator-runner has the emulator up, with the runner's adb mounted in
 // (emulators/android.sh). A driver taps what a person would tap, by the bounds uiautomator gives
 // each node on the screen, and reads the page through Chrome's DevTools socket, which adb forwards

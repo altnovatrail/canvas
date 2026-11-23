@@ -244,7 +244,7 @@ function corpus(density: (typeof DENSITIES)[number]): Workbook[] {
   ];
 }
 
-describe("the rule on the corpus of the sweep (R37)", () => {
+describe("the rule on the corpus of the sweep", () => {
   const books = DENSITIES.map(corpus);
 
   test("at every density of points it loses no answer, cuts no character and takes two strokes of draft, the same two", {
@@ -281,9 +281,10 @@ describe("the rule on the corpus of the sweep (R37)", () => {
 });
 
 /**
- * The rule again, from its words in R37, in BigInt and by brute force: the middle of the box of a
- * stroke's points, doubled, against the widened box, doubled too, in a common unit of a
- * ten-thousandth; every cell scored, then the most points, then the earliest.
+ * The rule again, written from its statement and not from the code, in BigInt and by brute
+ * force: the middle of the box of a stroke's points, doubled, against the widened box, doubled
+ * too, in a common unit of a ten-thousandth; every cell scored, then the most points, then the
+ * earliest.
  */
 function reference(s: Stroke, cells: readonly Cell[], { margin, limit }: BoxRule): number {
   const xs = s.points.map((p) => BigInt(Math.round(p.x * 10)));
@@ -356,7 +357,7 @@ interface BoxCase {
   }[];
 }
 
-describe("spec's test vectors of the boxes (R94 spec)", () => {
+describe("spec's test vectors of the boxes", () => {
   const { rule, cases } = vectorsOf<BoxCase>("boxes");
 
   test("are of the sheet's rule", () => {

@@ -37,7 +37,7 @@ async function container(element: HTMLElement): Promise<HTMLElement> {
 }
 
 test.each(KINDS)(
-  "$name, of a height its content overflows, has none either: its container is a region with a stop of Tab, which axe's scrollable-region-focusable asks of it (T93)",
+  "$name, of a height its content overflows, has none either: its container is a region with a stop of Tab, which axe's scrollable-region-focusable asks of it",
   async ({ put, incomplete, clear = incomplete }) => {
     const element = await put(made);
     element.style.height = "300px";
@@ -48,7 +48,7 @@ test.each(KINDS)(
 );
 
 test.each(KINDS)(
-  "$name, of that height, in a lang its labels are not in, has none either: the container is in English, which it is named in, and the column in German (T106)",
+  "$name, of that height, in a lang its labels are not in, has none either: the container is in English, which it is named in, and the column in German",
   async ({ put, incomplete, clear = incomplete }) => {
     const element = await put(made);
     element.style.height = "300px";
@@ -172,7 +172,7 @@ test.each([
     accent: "rgb(143, 180, 255)",
   },
 ])(
-  "in $theme a button in focus shows a solid ring two pixels wide at its edge, in the accent, at least 3:1 to the glass over the paper and to the button's own fill, on the tool in use and on an unavailable Clear alike (T92)",
+  "in $theme a button in focus shows a solid ring two pixels wide at its edge, in the accent, at least 3:1 to the glass over the paper and to the button's own fill, on the tool in use and on an unavailable Clear alike",
   async ({ colours, accent }) => {
     const { element } = await placed(made, 400, undefined, { task: sheetTask() });
     for (const [name, value] of Object.entries(colours)) {

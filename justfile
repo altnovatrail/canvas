@@ -1,7 +1,7 @@
 # canvas's own recipes: the package's build, and the five checks .github's typescript.yml runs in
 # CI, one job each, in a new container of a stage of .devcontainer/Dockerfile — toolchain-core for
 # ci-lint, ci-vuln and ci-licenses, which start no browser, toolchain for the tests — as the
-# runner's user, with HOME=/tmp and with CI from the step's environment (R12). Only
+# runner's user, with HOME=/tmp and with CI from the step's environment. Only
 # ci-licenses reads spec/: it runs spec's recipes licenses-check-repo, release-verify-npm,
 # release-verify and sample-check, and the licenses job alone gets the submodule. The code and its
 # tests read nothing of spec/, and the documents are checked by spec's own recipe, just -f
@@ -22,7 +22,7 @@ tutor_tag := "v0.1.22"
 # The release of spec whose file of the legal texts, in tasks/spec-<tag>/, the samples page takes
 # its sets of texts from: the tag spec/ stands on, and LEGAL_FILE's in scripts/legal.ts, which
 # scripts/legal.test.ts holds this to. ci-licenses verifies the file.
-spec_tag := "v0.19.11"
+spec_tag := "v0.19.12"
 legal_file := "legal-3.tar.gz"
 
 # The release of modules whose package of grade-3-math, in tasks/modules-<tag>/, ci-licenses writes
@@ -81,8 +81,8 @@ ci-vuln:
     npm audit --omit=dev --audit-level=high
 
 # The checks of package-lock.json. First, fail if a package of it, the tools of development too,
-# carries a license that spec's list does not allow and is no exception that licenses.json names
-# (R14). The list, the reading of SPDX expressions and the rule of an exception are spec's, at
+# carries a license that spec's list does not allow and is no exception that licenses.json names.
+# The list, the reading of SPDX expressions and the rule of an exception are spec's, at
 # the tag spec/ is on: an exception off the list holds only for a package the lock file marks dev,
 # and covers the builds for each platform it names in optionalDependencies while they are dev too
 # and under the same license. That reads the lock file, licenses.json and spec/ at its

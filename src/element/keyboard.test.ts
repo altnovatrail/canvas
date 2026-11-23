@@ -21,7 +21,7 @@ import { probe } from "./probe.js";
 // The sheet from the keyboard: the element's own scroll container, while its content
 // overflows it, is a region named by the canvas kind, with a stop of Tab of its own, so that the
 // keyboard scrolls it in Safari too, where a container that nothing in it can take the focus in
-// scrolls by no key (WebKit's bug 277290; R33). Tab goes into it from the bar and out of it to
+// scrolls by no key (WebKit's bug 277290). Tab goes into it from the bar and out of it to
 // what follows the element (WCAG 2.1.2), and the keys scroll it as the browser scrolls a
 // container. A sheet goes past its page, wider than its container, which so is a region
 // with or without a height of its own; a worked example's sheet is its page alone, and an element
@@ -183,7 +183,7 @@ test.each([
   { which: "an element without a height of its own", height: undefined },
   { which: "an element of a height its worked example fits in", height: 1200 },
 ])(
-  "$which has no container of its own on a worked example, whose sheet is its page alone: no stop of Tab, role or name, and Tab goes from its row to what follows; a sheet's, which goes past its page, is a region (R73)",
+  "$which has no container of its own on a worked example, whose sheet is its page alone: no stop of Tab, role or name, and Tab goes from its row to what follows; a sheet's, which goes past its page, is a region",
   async ({ height }) => {
     const { element, root, viewport, next } = await put((each) => {
       each.workedExample = workedExample();
@@ -256,7 +256,7 @@ test("the region and the row are named in the element's language, by the kind it
   expect(viewport.matches(":lang(en)")).toBe(true);
 });
 
-test("for a lang the labels are not in, the container is in theirs and the column, the statement, a workbook's lines and a demo's parts in the element's, of every kind and through every change; a lang they are in gives both the element's, and none neither a lang of its own (T106, T111)", async () => {
+test("for a lang the labels are not in, the container is in theirs and the column, the statement, a workbook's lines and a demo's parts in the element's, of every kind and through every change; a lang they are in gives both the element's, and none neither a lang of its own", async () => {
   const { element, root, viewport } = await put((each) => {
     each.task = sheetTask();
   }, 300);

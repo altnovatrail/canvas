@@ -212,7 +212,7 @@ describe("the builder", () => {
     expect(notices("own", [], "icons")).toContain("NovaTrail canvas — Apache-2.0");
   });
 
-  test("offers every task of the file, an essay by its one slot, and refuses a picture (T21)", () => {
+  test("offers every task of the file, an essay by its one slot, and refuses a picture", () => {
     const view = (canvas: object) => ({ reference: {}, canvas }) as never;
     const file = (
       statement: { text?: string; picture?: string }[],
@@ -257,7 +257,7 @@ describe("the builder", () => {
     }
   });
 
-  test("offers a module's sheets, essays and pages of a workbook with the media they name, and leaves a tapped choice out (T101)", () => {
+  test("offers a module's sheets, essays and pages of a workbook with the media they name, and leaves a tapped choice out", () => {
     const reference = { reference: {}, canvas: { sheet: true } } as never;
     const task = (id: string, binding: string, picture?: string) => ({
       view: {
@@ -332,7 +332,7 @@ describe("the builder", () => {
     ).toBe("workbook");
   });
 
-  test("names the modules whose tasks it carries by the license their manifests name, with their notices, and a license text once (T101)", () => {
+  test("names the modules whose tasks it carries by the license their manifests name, with their notices, and a license text once", () => {
     const own = readFileSync("LICENSE", "utf8");
     const copy = modulesFolder(MODULES_FILE.tag);
     const carried = Object.fromEntries(
@@ -361,7 +361,7 @@ describe("the builder", () => {
     ).toThrow("novatrail/grade-3-math 0.3.0 names no license");
   });
 
-  test("takes the release file's sets in force, and the part for tests into no version but 0.0.0 (T89, T102)", {
+  test("takes the release file's sets in force, and the part for tests into no version but 0.0.0", {
     timeout: budget(1_726),
   }, () => {
     // The release's measurement and eval set have sets in force, and a child's is a draft.
@@ -378,7 +378,7 @@ describe("the builder", () => {
     expect(() => textsFor("1.0.0", TEST_PART)).toThrow("go into no page but 0.0.0");
   });
 
-  test("are read on the day of SOURCE_DATE_EPOCH, which repeats a build of another day, or else today (T111)", {
+  test("are read on the day of SOURCE_DATE_EPOCH, which repeats a build of another day, or else today", {
     timeout: budget(1_726),
   }, () => {
     // 2026-11-10 00:00:00 and 23:59:59 UTC: the day measure-1 applied, before measure-2's.
@@ -412,7 +412,7 @@ describe("the file", () => {
     expect(page.match(/<script/g)).toHaveLength(1);
   });
 
-  test("of a release's version is the same bytes on every build, by its name, with the sets in force (T75, T102)", {
+  test("of a release's version is the same bytes on every build, by its name, with the sets in force", {
     timeout: budget(6_106),
   }, async () => {
     const once = await buildPage(join(folder, "release"), "1.2.3");
@@ -615,7 +615,7 @@ describe("opened from a file", () => {
     }
   });
 
-  test("marks an essay up by its text as written, and saves it with no mark of a criterion (T21)", {
+  test("marks an essay up by its text as written, and saves it with no mark of a criterion", {
     timeout: budget(1_198),
   }, async () => {
     const context = await browser.newContext({ acceptDownloads: true });
@@ -652,7 +652,7 @@ describe("opened from a file", () => {
     }
   });
 
-  test("has no violation that axe finds: the start of both builds, a notice of each, writing and the markup (T90)", {
+  test("has no violation that axe finds: the start of both builds, a notice of each, writing and the markup", {
     timeout: budget(2_988),
   }, async () => {
     const context = await browser.newContext();
@@ -686,7 +686,7 @@ describe("opened from a file", () => {
     }
   });
 
-  test("remembers nothing of the start when opened anew: no purpose, no code, no statement, and no storage used (R11)", {
+  test("remembers nothing of the start when opened anew: no purpose, no code, no statement, and no storage used", {
     timeout: budget(981),
   }, async () => {
     const context = await browser.newContext();
@@ -720,7 +720,7 @@ describe("opened from a file", () => {
     }
   });
 
-  test("with the part for tests shows the set's gist and English text, and asks the form of its version (T20, T89)", {
+  test("with the part for tests shows the set's gist and English text, and asks the form of its version", {
     timeout: budget(1_054),
   }, async () => {
     const context = await browser.newContext({ acceptDownloads: true });
@@ -777,7 +777,7 @@ describe("opened from a file", () => {
     }
   });
 
-  test("with the part for tests opens the eval set: the modules' tasks alone, a picture of a statement, a template's instance by its seed, a sample named by its ID, and a sheet of the board module (T101, T112)", {
+  test("with the part for tests opens the eval set: the modules' tasks alone, a picture of a statement, a template's instance by its seed, a sample named by its ID, and a sheet of the board module", {
     timeout: budget(1_448),
   }, async () => {
     const context = await browser.newContext({ acceptDownloads: true });
@@ -878,7 +878,7 @@ describe("opened from a file", () => {
     }
   });
 
-  test("with the part for tests leads a child's session: the code of the form typed, the child writing, a sample of measurement by a child (T84)", {
+  test("with the part for tests leads a child's session: the code of the form typed, the child writing, a sample of measurement by a child", {
     timeout: budget(1_335),
   }, async () => {
     const context = await browser.newContext({ acceptDownloads: true });
@@ -938,7 +938,7 @@ function cropsOf({ surface }: Sample): number {
   return surface.value.filledBoxes.reduce((sum, box) => sum + (box.crops?.crops.length ?? 0), 0);
 }
 
-describe("a sample file opened on the page (T87)", () => {
+describe("a sample file opened on the page", () => {
   test("shows each composition's strokes, crops and markup from the file alone, the erased apart, and keeps and sends nothing", {
     timeout: budget(3_124),
   }, async () => {

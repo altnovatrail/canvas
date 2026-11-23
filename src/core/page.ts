@@ -1,5 +1,5 @@
 // The layout of a workbook's page: where the template puts each item's number, the
-// pieces of its line and its boxes, in whole page units, from the task's items alone (R35). The
+// pieces of its line and its boxes, in whole page units, from the task's items alone. The
 // page is the sheet's, 1000 × 1400 units, and the boxes stay where the layout puts them on any
 // device: the widths of the text come from the canvas's own table (widths.ts), and SVG fits the
 // text to them. Short lines stand two to a row, in the task's order; a long line takes the page's

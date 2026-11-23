@@ -17,7 +17,7 @@ test("the sheet goes on past the page by one view, and past the ink by one view,
   expect(REACH).toEqual({ width: 10000, height: 14000 });
 });
 
-test("the picture of a work is the page at a pixel a unit, the ink past it too, and scaled down past the page's bytes, to the reach (R83)", () => {
+test("the picture of a work is the page at a pixel a unit, the ink past it too, and scaled down past the page's bytes, to the reach", () => {
   expect(pictureOf(undefined)).toEqual({ ...SHEET, scale: 1 });
   expect(pictureOf({ maxX: 400, maxY: 900 })).toEqual({ ...SHEET, scale: 1 });
   for (const ink of [

@@ -9,7 +9,7 @@ import { REACH } from "./sheet.js";
 
 /**
  * Where the tracing paper of a task from paper lies on the sheet, and whether it is hidden:
- * spec's type, of the contract of canvas and app (R87).
+ * spec's type, of the contract of canvas and app.
  */
 export type { TracingState };
 
@@ -31,7 +31,7 @@ export const TRACING = Object.freeze({
 /**
  * The tracing paper's scale: from `min` to `max` times its own size, as the mockup's
  * `Zadacha-masshtab` has it; a button's press multiplies it by `button`, a notch of the wheel by
- * `wheel`, and a scale is kept in hundredths, as the percentage shows it (R89).
+ * `wheel`, and a scale is kept in hundredths, as the percentage shows it.
  */
 export const SCALE = Object.freeze({ min: 0.4, max: 4, button: 1.2, wheel: 1.08 });
 

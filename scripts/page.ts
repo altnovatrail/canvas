@@ -7,7 +7,7 @@
 // writes <folder>/samples-page_v<version>.html, with the current sets of texts of spec's release
 // file of the legal texts in tasks/, held to its sum (scripts/legal.ts), on the day of the
 // build, or of SOURCE_DATE_EPOCH to repeat a build of another day: a purpose with no current
-// set is closed (R55). --texts names a part of the legal texts for tests instead, whose sets begin
+// set is closed. --texts names a part of the legal texts for tests instead, whose sets begin
 // with test-, and only into a page of version 0.0.0, which no release has. It builds from the tree
 // alone — no spec/, no git, no token, no network — in the stage toolchain-core, as release-files
 // takes it. Vite's API bundles page/main.ts into one script; the page's own style stays as it is.

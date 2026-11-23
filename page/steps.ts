@@ -1,7 +1,7 @@
 // The steps before writing on the samples page: which purposes the build's
 // sets of texts and its tasks open — a child's session among them — and why the others are
 // closed, the statements each asks for, the writer's code the person types, and what the start
-// still lacks (R11). No DOM: page/main.ts shows what this decides, and every word is
+// still lacks. No DOM: page/main.ts shows what this decides, and every word is
 // page/texts.ts's or a set's.
 
 import type { LegalSet, PageTexts } from "./sets.js";

@@ -4,7 +4,7 @@
 //   node probe/build.ts <folder>
 //
 // t29-probe-csp.html carries the policy the samples page's build would carry, in a <meta> element:
-// no network, and the page's own style and script by their hashes (R52). t29-probe-open.html
+// no network, and the page's own style and script by their hashes. t29-probe-open.html
 // carries none, so that a request it makes shows whether the network or the policy stopped it. One
 // source keeps the two from drifting apart, and the hashes are worked out rather than typed.
 // Nothing of the probe is in the package or in a release's paths: a probe goes out as a pre-release

@@ -33,7 +33,7 @@ interface Entry extends Box {
  * Clearing and erasing are actions too, so undo brings their strokes back. Nothing is
  * redone. The times its methods take are the page's, and the sheet's clock turns one into the
  * sheet's time only when the action lands: an undo that has nothing to take back is no event. A
- * history given to the sheet is replayed by the same rules, each action at its own time (R27).
+ * history given to the sheet is replayed by the same rules, each action at its own time.
  */
 export class Work {
   readonly #clock: Clock;

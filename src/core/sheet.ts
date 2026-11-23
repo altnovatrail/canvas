@@ -1,6 +1,6 @@
 /**
  * The task's page on the handwriting sheet in logical units: 1000 wide and 1400 tall, at the
- * sheet's top left corner, the origin, with y pointing down, one scale on both axes (R06). Every
+ * sheet's top left corner, the origin, with y pointing down, one scale on both axes. Every
  * layer of the sheet counts in these units, whatever the device's screen; the task's zones, the
  * workbook's lines and the areas of a worked example lie on the page.
  */
@@ -39,7 +39,7 @@ export function extentOf(
 
 /**
  * The bytes of a work's picture at most, before its encoding: the page's rows at a pixel a unit,
- * each with its filter byte, which keep its PNG within the page's bound of bytes (R83).
+ * each with its filter byte, which keep its PNG within the page's bound of bytes.
  */
 export const PICTURE_BYTES = (SHEET.width + 1) * SHEET.height;
 

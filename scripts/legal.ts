@@ -1,7 +1,7 @@
 // The legal texts of the samples page: spec's release file legal-<n>.tar.gz, which
 // ci-licenses verifies by release-verify and the build holds to its sum, read as the
 // README of spec's legal part gives — the passport's schema first, then the rules in the order of
-// its table (R69). The archive is git archive's of spec's legal/ at the tag, so it carries
+// its table. The archive is git archive's of spec's legal/ at the tag, so it carries
 // the schema and the vectors of reading too: the build reads the part against that schema, and the
 // tests read the vectors through this same reader. A third reader, beside spec's own check and
 // api's; spec's text, not its code, is what it follows, for canvas's code reads nothing of spec/.
@@ -44,9 +44,9 @@ import type { Block, Inline, LegalSet } from "../page/sets.ts";
  * the file together.
  */
 export const LEGAL_FILE = Object.freeze({
-  tag: "v0.19.11",
+  tag: "v0.19.12",
   name: "legal-3.tar.gz",
-  sha256: "a5bd3a6494edfc8d2d1d566dd0a14f458beba7d423e9c79a230921946a86e8c6",
+  sha256: "5c9d4bb074d7b9f872f812f7470942352b8cd3add7a9d9c9c1985132b0c9db1e",
 });
 
 /** Where the file lies in the tree: a folder of its tag, for release-verify knows a file of spec by

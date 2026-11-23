@@ -1,5 +1,5 @@
 // The package's entry point @altnovatrail/canvas: the canvas as a custom element, one for every
-// canvas kind, with its markup in an open shadow root (R07). Importing it registers the element,
+// canvas kind, with its markup in an open shadow root. Importing it registers the element,
 // once: a page has one element of this name. The types of its contract with app are spec's, of
 // @altnovatrail/spec/canvas: the element implements its CanvasElement, and the package puts the
 // element and its events in the DOM's maps.
@@ -12,7 +12,7 @@
 // over the work. The history of writing comes in and goes out, an event tells of every
 // action, and the work for checking is the crop with the context of its submission. Over it
 // all stand the element's own buttons — the tools the task allows, undo and clearing —, labelled
-// in the element's `lang`, on a vertical bar of glass at its left edge (R84). On a tablet a
+// in the element's `lang`, on a vertical bar of glass at its left edge. On a tablet a
 // pen's touch puts the page in pen mode, where a finger writes nothing, a palm writes nothing, and
 // two fingers scroll, one finger too.
 // The task comes in the names of the module format 0.4, checked as its schema checks it, and the
@@ -601,7 +601,7 @@ canvas {
   border: 2px solid color-mix(in srgb, currentColor 25%, transparent); border-top-color: currentColor;
 }
 .tracing-scale .mode.back { background: #f2f2f7; color: var(--novatrail-canvas-ink, ${INK}); }
-/* The one motion: a wait for the reading the learner asked for, and only to whom it is no harm (R89). */
+/* The one motion: a wait for the reading the learner asked for, and only to whom it is no harm. */
 @media (prefers-reduced-motion: no-preference) {
   .scan i { animation: novatrail-scan 1s ease-in-out infinite; }
   .spinner, .tracing-scale .mode.busy::before { animation: novatrail-spin 0.8s linear infinite; }
@@ -674,7 +674,7 @@ const sheets = new WeakMap<Document, CSSStyleSheet>();
  * Gives the element's shadow root its style, as a sheet the root adopts, and not a `<style>` in
  * its tree: a consumer's content security policy that allows no inline style, as app's
  * `style-src 'self'`, blocks the one and not the other, and the element asks of the policy only
- * `img-src blob:` (R51). A root adopts only a sheet made for its own document, by that
+ * `img-src blob:`. A root adopts only a sheet made for its own document, by that
  * document's window, and an element moved into another document comes there without its sheets:
  * it adopts that document's sheet then. A document without a window, which can make no sheet,
  * leaves the element unstyled till it comes into one that can.

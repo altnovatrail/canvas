@@ -26,7 +26,7 @@ export interface PointerSample {
 /**
  * How close two recorded points of a stroke may come, in sheet units: 0.1, the precision of a
  * sample file. A point nearer than that to the last one recorded adds nothing the file would
- * keep (R18).
+ * keep.
  */
 export const MIN_STEP = 0.1;
 

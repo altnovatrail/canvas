@@ -133,7 +133,7 @@ export const PAGES: readonly CorpusPage[] = [
   {
     name: "fractions-ten",
     about:
-      "«Ten examples on fractions», the workbook's example in concepts 8 spec, two of them comparisons: five rows of two, and half the page left for the draft.",
+      "«Ten examples on fractions», the workbook's example in spec's glossary, two of them comparisons: five rows of two, and half the page left for the draft.",
     items: FRACTIONS,
     fonts: true,
   },

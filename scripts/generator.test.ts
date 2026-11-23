@@ -132,7 +132,7 @@ test("writes a module's samples as writeModuleSamples does, byte for byte, and p
   }
 });
 
-test("prints the digests of the tasks' open views as moduleDigests does, and exits 1 naming a task without one (T97)", () => {
+test("prints the digests of the tasks' open views as moduleDigests does, and exits 1 naming a task without one", () => {
   const tasks = ["times-tables-d5", "comparing-fractions-d1"];
   expect(run(["--digest", PACKAGE, ...tasks])).toEqual({
     out: `${moduleDigests(PACKAGE, tasks).lines.join("\n")}\n`,

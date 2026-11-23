@@ -50,7 +50,7 @@ test("a place with no value is a TypeError, never a brace on the screen", () => 
   expect(() => say("{constructor}", {})).toThrow(TypeError);
 });
 
-test("a label cut at the place of a value fills the rest, in every language, which names the value once (T107)", () => {
+test("a label cut at the place of a value fills the rest, in every language, which names the value once", () => {
   for (const tag of LANGUAGES) {
     const { labels } = labelsFor(tag);
     expect(
@@ -79,7 +79,7 @@ test("a label that names the place to cut at not once, or a place with no value,
   );
 });
 
-test("the buttons say the words of the table of architecture 6 spec", () => {
+test("the buttons say the words of spec's table of the bar's buttons", () => {
   const words = (tag: string) => {
     const { labels } = labelsFor(tag);
     const { pen, eraser, hand, undo, clear, zoomIn, zoomOut, next, demo } = labels;

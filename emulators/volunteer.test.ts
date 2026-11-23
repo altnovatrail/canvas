@@ -243,7 +243,7 @@ test("a page that does what it should passes each step, and its files are kept w
   expect(JSON.parse(readFileSync(join(folder, "watch.json"), "utf8")).requests).toEqual([]);
 });
 
-test("a device that renders no frame before the stroke, or stops answering while a file is handed, fails, not the page (T21)", async () => {
+test("a device that renders no frame before the stroke, or stops answering while a file is handed, fails, not the page", async () => {
   await volunteer(run, device(run, { paint: true }), { keep: false }, clock());
   expect(run.verdict()).toBe("device");
   expect(run.steps.at(-1)?.step).toBe("the page renders the sheet before the stroke");
@@ -314,7 +314,7 @@ test.each([
     "the file opened shows its strokes, those the history did not show apart, and its crops",
   ],
 ] as const)(
-  "a page whose %s does not do as T22's checklist says fails, as the page (R65)",
+  "a page whose %s does not do as the emulators' checklist says fails, as the page",
   async (fail, step) => {
     await volunteer(run, device(run, { [fail]: true }), { keep: false }, clock());
     expect(run.verdict()).toBe("page");
@@ -354,7 +354,7 @@ test("a build's run closes its journal whatever came, and the job fails naming e
   expect(() => checkAll([run, fine, other])).toThrow(/run.*went to its end.*other-.*a step/s);
 });
 
-test("the test build's way: its start, a child's session begun with the form's code, a child's sheet and workbook (T22)", async () => {
+test("the test build's way: its start, a child's session begun with the form's code, a child's sheet and workbook", async () => {
   const child = device(run);
   await volunteer(run, child, { keep: true, way: "test" }, clock());
   expect(run.verdict()).toBe("ok");

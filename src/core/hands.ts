@@ -1,6 +1,6 @@
 /**
  * A pointer as the hands on the sheet see it: where it is on the screen, how big its contact
- * is, and when (R29). The DOM-free part sees no DOM, so the element hands it this much of each
+ * is, and when. The DOM-free part sees no DOM, so the element hands it this much of each
  * pointer event. The contact's size decides only what the pointer may do: it goes into no stroke,
  * no history and no sample.
  */

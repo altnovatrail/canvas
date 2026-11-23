@@ -100,7 +100,7 @@ describe("neighbours", () => {
 });
 
 describe("groups", () => {
-  test("give a stroke written later next to old writing a group of its own (R06)", () => {
+  test("give a stroke written later next to old writing a group of its own", () => {
     const strokes = [
       stroke(1, [100, 100, 0], [100, 136, 200]),
       stroke(2, [120, 100, 450], [120, 136, 650]),
@@ -364,7 +364,7 @@ interface GroupCase {
   readonly group_boxes: readonly TenthsBox[];
 }
 
-describe("spec's test vectors of the groups (R94 spec)", () => {
+describe("spec's test vectors of the groups", () => {
   const { rule, cases } = vectorsOf<GroupCase>("groups");
 
   test("are of the sheet's rule", () => {

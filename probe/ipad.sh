@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The iPad's run of the probe on a runner of macOS: an iPad simulator of the iOS runtime IOS
 # names, WebDriverAgent started on it — its build for testing from the workflow's cache, or built
-# from its tag by the runner's Xcode on a miss (R80) —, then probe/ipad.ts. What the run ran on goes
+# from its tag by the runner's Xcode on a miss —, then probe/ipad.ts. What the run ran on goes
 # into build/probe-ipad beside what it found.
 set -euo pipefail
 

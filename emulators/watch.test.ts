@@ -103,7 +103,7 @@ describe("the pure parts", () => {
     ]);
   });
 
-  test("two fingers stand side by side in the part the window shows, and move up together (T22)", () => {
+  test("two fingers stand side by side in the part the window shows, and move up together", () => {
     expect(fingersIn({ x: 0, y: 0, width: 1000, height: 2000, view: 800 })).toEqual([
       [
         [400, 600],
@@ -321,7 +321,7 @@ describe("in the page's build", () => {
     }
   });
 
-  test("goes T22's moves on the sheet, the page opened anew and the file opened in it (R65)", {
+  test("goes the checklist's moves on the sheet, the page opened anew and the file opened in it", {
     timeout: budget(922),
   }, async () => {
     const page = await opened(file);
@@ -401,7 +401,7 @@ describe("in the page's build", () => {
     }
   });
 
-  test("in the test build: the eval set open, and a child's session begun with the form's code (T22, T101)", {
+  test("in the test build: the eval set open, and a child's session begun with the form's code", {
     timeout: budget(736),
   }, async () => {
     const page = await opened(tested);

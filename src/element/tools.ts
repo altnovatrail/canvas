@@ -1,6 +1,6 @@
 // The element's own buttons: the tools the task allows — the pen and the eraser — and
 // the hand, which moves the sheet, undo and clearing, on a vertical bar of glass at the left
-// edge of the element, as the interface mockup draws it (R28). It is a toolbar as WAI-ARIA's
+// edge of the element, as the interface mockup draws it. It is a toolbar as WAI-ARIA's
 // Authoring Practices have one: one stop of Tab, the arrow keys up and down from button to button,
 // and the tools a group of radio buttons that the arrows go through without choosing one. Undo and
 // Clear with nothing to take back or to clear stay where the focus can reach them, marked

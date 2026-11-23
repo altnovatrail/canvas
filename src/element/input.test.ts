@@ -86,7 +86,7 @@ test("pointer events on the canvas, with their coalesced points, make a stroke i
 });
 
 test.runIf(devtools)(
-  "a real mouse drag, captured beyond the canvas, writes on past the sheet as laid out, and stops at the sheet's reach (R73)",
+  "a real mouse drag, captured beyond the canvas, writes on past the sheet as laid out, and stops at the sheet's reach",
   async () => {
     const { element, canvas, view } = await sheet(400);
     // A mouse of the protocol presses with the force it is given, 0 unless told; a real one with
@@ -350,7 +350,7 @@ test.runIf(devtools)(
   },
 );
 
-test("the work for checking outlines no stroke: its crop is a raster of its own (R25)", async () => {
+test("the work for checking outlines no stroke: its crop is a raster of its own", async () => {
   const { element, canvas, view } = await sheet(400);
   level(canvas, view(), 100, 100, 300);
   await settle();

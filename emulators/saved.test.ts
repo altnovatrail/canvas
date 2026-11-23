@@ -51,7 +51,7 @@ test("a sample of the page's own is right, and one of another origin, version or
   expect(problemsOf(empty, "0.0.0")).toEqual(["no strokes in its history"]);
 });
 
-test("a device's samples are a sheet's and a workbook's, of one writer's code, in the adult's own hand and imitating a child's (T22)", () => {
+test("a device's samples are a sheet's and a workbook's, of one writer's code, in the adult's own hand and imitating a child's", () => {
   const sheet = asPage(example("sheet"));
   expect(problemsOfAll([sheet])).toEqual([
     "no sample of the workbook",
@@ -66,7 +66,7 @@ test("a device's samples are a sheet's and a workbook's, of one writer's code, i
   expect(problemsOfAll([sheet, imitated()])).toEqual([]);
 });
 
-test("a test build's folder holds a child's session: by a child, its final geometry, the test set and the code typed (T22)", () => {
+test("a test build's folder holds a child's session: by a child, its final geometry, the test set and the code typed", () => {
   expect([builtOf("build/page-android-test"), builtOf("build/page-ipad-26.5")]).toEqual([
     "test",
     "release",
