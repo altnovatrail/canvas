@@ -522,7 +522,7 @@ describe("one finger in pen mode", () => {
     expect(bench.steps).toEqual([{ dx: 0, dy: 40 - SLOP_PX, fresh: true }]);
   });
 
-  test(`a finger that goes past ${SLOP_PX} px with no second drags the sheet alone, from where it came down by its travel past the slop, then in step with it, writing nothing (R84)`, () => {
+  test(`a finger that goes past ${SLOP_PX} px with no second drags the sheet alone, from where it came down by its travel past the slop, then in step with it, writing nothing`, () => {
     const bench = dragged();
     // To the slop's edge: it waits on, and nothing moves.
     expect(bench.move(A, 10, { x: 1100, y: 100 + SLOP_PX })).toBe(false);

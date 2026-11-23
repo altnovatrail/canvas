@@ -100,7 +100,7 @@ export function later(): Sheet {
   return {
     name: "later",
     about:
-      "«12 + 5 =», and 8 s later «17» right after it: what is written later next to old writing is a group of its own (R06).",
+      "«12 + 5 =», and 8 s later «17» right after it: what is written later next to old writing is a group of its own.",
     work: hand.work,
     median: 36,
     groups: [expression, answer],

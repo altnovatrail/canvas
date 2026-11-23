@@ -24,7 +24,7 @@ import { tracingFieldsOf } from "./tracing.js";
 /**
  * The rule that snaps a model's box to the learner's strokes: the box widens on every side by
  * `margin` thousandths of the height its crop draws digits at, D′, and a stroke is taken if its
- * share of points in it, its edges too, is `share` at least, and one point at least (R26). Both are
+ * share of points in it, its edges too, is `share` at least, and one point at least. Both are
  * parameters of eval (C2). The rule counts in whole numbers, places on the crop as the crop's
  * raster has them, so that whoever snaps by it takes the same strokes.
  */
@@ -41,7 +41,7 @@ export interface SnapRule {
 /**
  * The rule the sheet snaps by: a quarter of a digit — 6 px at 24, a quarter of H on the
  * sheet, H the height the crop scales by — and two thirds of the points. A sweep over the
- * synthetic sheets chose two thirds over the half R43 canvas-api took: as many strokes taken
+ * synthetic sheets chose two thirds over the half canvas-api took: as many strokes taken
  * whole, and fewer of their neighbours.
  */
 export const SNAP_RULE: SnapRule = Object.freeze({

@@ -132,7 +132,7 @@ describe("the release file", () => {
     expect(todayInUtc(new Date("2026-11-27T00:00:00Z"))).toBe("2026-11-27");
   });
 
-  test("shows every text it holds, a translation too, and gives the measurement and the eval set their sets in force, the child's session none (T102)", {
+  test("shows every text it holds, a translation too, and gives the measurement and the eval set their sets in force, the child's session none", {
     timeout: budget(4_804),
   }, () => {
     withLegalFile((folder, schema) => {

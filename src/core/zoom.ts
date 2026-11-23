@@ -1,4 +1,4 @@
-/** The smallest and the largest zoom of the sheet: half its fit, and twice it (R73). */
+/** The smallest and the largest zoom of the sheet: half its fit, and twice it. */
 export const ZOOM_MIN = 0.5;
 export const ZOOM_MAX = 2;
 

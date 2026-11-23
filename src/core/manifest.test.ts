@@ -259,7 +259,7 @@ test("without a manifest the digits are 24 px, as without the field, and the sta
   expect(NO_MANIFEST).toEqual({ digit: 24, lang: undefined });
 });
 
-test("a manifest of a format version the element does not read is a TypeError, as R44 spec's window has it", () => {
+test("a manifest of a format version the element does not read is a TypeError, as the format's window of versions has it", () => {
   // Each with the version as the reason names it: a string in quotes, so that the number 0.4 reads
   // apart from the version the element takes.
   const cases: readonly (readonly [string, unknown, string])[] = [

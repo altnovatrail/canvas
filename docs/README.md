@@ -1,8 +1,8 @@
 # docs — the documents of canvas
 
-What [README.md](../README.md) leaves out: the documents, the code and its recipes, and the release files with the commands that take and check them. README.md holds only what the component is and its place in NovaTrail, with no commands (repositories 2.3 spec).
+What [README.md](../README.md) leaves out: the documents, the code and its recipes, and the release files with the commands that take and check them. README.md holds only what the component is and its place in NovaTrail, with no commands.
 
-The repository is cloned with `git clone --recurse-submodules`: `spec/` is a git submodule, and the checks need it ([CLAUDE.md](../CLAUDE.md), Environment).
+The repository is cloned with `git clone --recurse-submodules`: `spec/` is a git submodule, and the checks need it: [CLAUDE.md](../CLAUDE.md) says how to open the repository with it.
 
 - [architecture.md](architecture.md) — the component: what it does and does not do, its data and links, and what is still to decide.
 - [decisions.md](decisions.md) — the decision log: what was decided, why, and what was rejected.
@@ -26,15 +26,15 @@ The repository is cloned with `git clone --recurse-submodules`: `spec/` is a git
 
 `just build` builds the package into `lib/`, and `just release-files v0.1.0` writes the files of that release into `dist/` — the package's archive, with NOTICE in it, the synthetic samples' archive and the list of what each shows, the samples page, the generator of a module's eval set, LICENSE and SHA256SUMS — and prints the sums, which a build of the same commit gives again. `just synthetic <folder>` writes the synthetic samples into a folder, one file each, and prints what each shows: no tree holds them. `just synthetic-module <package> <tag> <folder> <task>:<seed>...` writes synthetic samples of a module's eval set, by the same file a release carries, built from the tree: to write what a release's file writes in a module's CI, run that file, or the recipe in a clone of canvas at its tag, with the package that `module-kit build` wrote of the module at the commit the samples go into, the tag of the newest release of modules, and the module's `eval/` folder; it writes `synthetic-<seed>.json` for each task and seed named, writes a seed's file anew only when it is a sample of the same task, and refuses a template, a choice, an essay or a zone, writing nothing then.
 
-`just ci` runs the checks CI runs: format, lint and types; the tests in Node and in Chromium; the tests in WebKit and Firefox; advisories; licenses. They run in the devcontainer, whose toolchain stage holds the browsers the tests run in. The license check is spec's recipe, run from the `spec/` submodule with the exceptions in `licenses.json`, so it needs `spec/` checked out: see [CLAUDE.md](../CLAUDE.md), Environment.
+`just ci` runs the checks CI runs: format, lint and types; the tests in Node and in Chromium; the tests in WebKit and Firefox; advisories; licenses. They run in the devcontainer, whose toolchain stage holds the browsers the tests run in. The license check is spec's recipe, run from the `spec/` submodule with the exceptions in `licenses.json`, so it needs `spec/` checked out, as [CLAUDE.md](../CLAUDE.md) says.
 
 ## Releases
 
-A release of canvas carries six files and `SHA256SUMS`: the package's archive, which npm publishes at the same version, the synthetic samples' archive and the list of what each shows, the samples page, the generator of a module's eval set, and LICENSE (architecture 3.4).
+A release of canvas carries six files and `SHA256SUMS`: the package's archive, which npm publishes at the same version, the synthetic samples' archive and the list of what each shows, the samples page, the generator of a module's eval set, and LICENSE.
 
 ### The package
 
-The app takes the package from npm at an exact version, and spec's npm package, whose types the element's contract is in, at the version of the tag its own `spec` submodule stands on, not the one in canvas's `dependencies`: the types of the contract are structural, so `tsc` finds a difference of shape where the two meet (R73 spec; R12):
+The app takes the package from npm at an exact version, and spec's npm package, whose types the element's contract is in, at the version of the tag its own `spec` submodule stands on, not the one in canvas's `dependencies`: the types of the contract are structural, so `tsc` finds a difference of shape where the two meet:
 
 ```sh
 npm install --save-exact @altnovatrail/canvas@<version>

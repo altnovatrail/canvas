@@ -191,7 +191,7 @@ test("a task the generator draws none of has a digest, but a template or a task 
   });
 });
 
-test("an essay has its digest, which the generator draws no sample of (T98)", () => {
+test("an essay has its digest, which the generator draws no sample of", () => {
   const essays = fileURLToPath(ESSAYS);
   const { lines, wrong } = moduleDigests(essays, ["weather-shop-1", "a-day-you-remember-1"]);
   expect(wrong).toEqual([]);

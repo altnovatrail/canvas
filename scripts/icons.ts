@@ -1,6 +1,6 @@
 // The icons of the row's buttons: Material Symbols, in the style Rounded, from the
 // npm package of the set at the version package-lock.json pins, and of it only the icons the row
-// shows (R46). It writes the module the element draws them from and NOTICE, which names the set the
+// shows. It writes the module the element draws them from and NOTICE, which names the set the
 // package embeds:
 //
 //   node scripts/icons.ts           write src/element/icons.ts and NOTICE
@@ -116,7 +116,7 @@ export function module(set: IconSet, version: string, table = TABLE): string {
     ([name, icon]) => `${JSON.stringify(name)}: ${JSON.stringify(icon)},`,
   );
   return `// Written by scripts/icons.ts — \`just icons\` — from ${SET} ${version}:
-// Material Symbols by Google, under the Apache License 2.0 (R46; R78 spec).
+// Material Symbols by Google, under the Apache License 2.0.
 // ci-lint fails unless it is what the script writes, so it is never edited by hand. This module is
 // no entry point of the package.
 
@@ -131,7 +131,7 @@ export type IconName = keyof typeof ICONS;
 /**
  * Each value of the row, by its button's key: the icon in outline, the one the button shows while
  * chosen — the same for a value without a fill — and whether the icon is mirrored in a row that
- * runs right to left (R78 spec).
+ * runs right to left.
  */
 export const ROW = {
 ${row.join("\n")}

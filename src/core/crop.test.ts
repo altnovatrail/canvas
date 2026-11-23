@@ -476,7 +476,7 @@ interface CropCase {
   readonly crops: ProtocolCropSet;
 }
 
-describe("spec's test vectors of the crop (R94 spec)", () => {
+describe("spec's test vectors of the crop", () => {
   const { rule, cases } = vectorsOf<CropCase>("crops");
 
   test("are of the sheet's rule", () => {

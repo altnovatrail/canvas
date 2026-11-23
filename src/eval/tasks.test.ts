@@ -216,7 +216,7 @@ const MODULE_KIT_ESSAYS: Record<string, string> = {
   "weather-shop-1": "bbfeb4aee2a6514472f1ee9535e2242a18d37f487e32798217b5cff74edcf10d",
 };
 
-test("the essays and choices of english-essays 0.2.0 are refused with the digests module-kit gives their open views (T98)", () => {
+test("the essays and choices of english-essays 0.2.0 are refused with the digests module-kit gives their open views", () => {
   const index = JSON.parse(readFileSync(new URL("module-index.json", RELEASE), "utf8"));
   const inventory = readFileSync(new URL("inventory.json", ESSAYS), "utf8");
   const server = readFileSync(new URL("server.json", ESSAYS), "utf8");
@@ -323,7 +323,7 @@ const views = readFileSync(
   new URL(`../../tasks/modules-${MODULES_FILE.tag}/open-views.json`, import.meta.url),
 );
 
-test("the copy of the open views is the one module-kit wrote: its sum, its modules, and every task's digest its open view's (T101, T112)", () => {
+test("the copy of the open views is the one module-kit wrote: its sum, its modules, and every task's digest its open view's", () => {
   expect(createHash("sha256").update(views).digest("hex")).toBe(MODULES_FILE.sha256);
   const modules = openViewsOf(views.toString("utf8"), sha256);
   expect(modules.map(({ module, version, tasks }) => [module, version, tasks.length])).toEqual([
@@ -379,7 +379,7 @@ test("the copy of the open views is the one module-kit wrote: its sum, its modul
   expect(olympiad?.manifest.module_format_version).toBe("0.4");
 });
 
-test("open views of another format, a closed field, another digest or a seed out of shape are refused (T101)", () => {
+test("open views of another format, a closed field, another digest or a seed out of shape are refused", () => {
   const file = JSON.parse(views.toString("utf8")) as {
     format: string;
     module_format_version: string;

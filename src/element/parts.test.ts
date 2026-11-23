@@ -710,7 +710,7 @@ test("Next brings a picture on an area into sight by its area, not by its item: 
   expect(still?.top).toBeCloseTo(box?.top ?? Number.NaN, 0);
 });
 
-test("Next brings a picture's area on the right of the page into sight with no scroll across, for a worked example's sheet is its page alone, and the open part stays at the container's left (R73)", async () => {
+test("Next brings a picture's area on the right of the page into sight with no scroll across, for a worked example's sheet is its page alone, and the open part stays at the container's left", async () => {
   // Tall enough for the whole area in sight.
   const { element, root, list, next, viewport } = await demo(400);
   element.workedExample = onArea({ left: 700, top: 1100, width: 250, height: 200 });
@@ -768,7 +768,7 @@ test("Next brings a picture on an area taller than what is in sight into sight b
   expect(top()).toBeCloseTo(viewport.getBoundingClientRect().top, 0);
 });
 
-test("on a workbook the demo fills the example's boxes with their values as its parts open: a value in the middle of its box, at the width of its text, after its box, which keeps its name; the item of the list the box and its value; hidden with a hidden demo, gone when the consumer gives fewer (T85, T107)", async () => {
+test("on a workbook the demo fills the example's boxes with their values as its parts open: a value in the middle of its box, at the width of its text, after its box, which keeps its name; the item of the list the box and its value; hidden with a hidden demo, gone when the consumer gives fewer", async () => {
   const { element, root } = await placed(made, 400);
   element.lang = "ru";
   element.workedExample = REMAINDERS;
@@ -810,7 +810,7 @@ test("on a workbook the demo fills the example's boxes with their values as its 
   expect(values()).toEqual([]);
 });
 
-test("a box the demo fills is told in the labels' language, English without lang, and anew when lang changes; another example of the same lines starts with its boxes empty (T85)", async () => {
+test("a box the demo fills is told in the labels' language, English without lang, and anew when lang changes; another example of the same lines starts with its boxes empty", async () => {
   const { element, root } = await placed(made, 400);
   element.manifest = moduleManifest({ explanation: "en" });
   const remainders = (quotient: string) => ({
@@ -892,7 +892,7 @@ async function heardInChromium(): Promise<void> {
   ).toEqual([]);
 }
 
-test("a value the demo writes in a box is a node of its own in the lines' language — in the box, in the item of the list and in the region — while the box and the words around it are in the labels'; in Chromium's own tree too, and with no violation axe finds (T107; 3.1.2)", async () => {
+test("a value the demo writes in a box is a node of its own in the lines' language — in the box, in the item of the list and in the region — while the box and the words around it are in the labels'; in Chromium's own tree too, and with no violation axe finds (WCAG 3.1.2)", async () => {
   const { element, root } = await placed(made, 400);
   element.lang = "ru";
   element.manifest = moduleManifest({ explanation: "en" });

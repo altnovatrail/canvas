@@ -7,7 +7,7 @@ import { REACH } from "./sheet.js";
  * An event of the history of writing: spec's type, of the contract of canvas and app.
  * What an action on the sheet did, at the sheet's time `t` when it landed, in the
  * order the actions landed; each event says which strokes it put on the sheet or took off, so
- * whoever reads the history replays it without the rules of the stack of undo (R19). Those the
+ * whoever reads the history replays it without the rules of the stack of undo. Those the
  * sheet hands out are frozen through.
  */
 export type { HistoryEvent };

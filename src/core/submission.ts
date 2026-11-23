@@ -31,7 +31,7 @@ export interface PaperForCheck {
   readonly submission: PaperSubmission;
 }
 
-/** The crop of one filled box of a workbook: its item and its slot, from 1, and its PNG (R38). */
+/** The crop of one filled box of a workbook: its item and its slot, from 1, and its PNG. */
 export interface CellForCheck {
   readonly item: number;
   readonly slot: number;

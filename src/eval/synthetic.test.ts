@@ -213,7 +213,7 @@ test("a scenario of the other surface, or a bank with no task, is refused", () =
   expect(() => syntheticSample(entry({ bank: "eval/none.json" }), tasks)).toThrow(RangeError);
 });
 
-test("a module's sample is one of its eval set by an adult, of the task given, its scenario the seed's (T86)", {
+test("a module's sample is one of its eval set by an adult, of the task given, its scenario the seed's", {
   timeout: budget(4_190),
 }, () => {
   const folder = new URL(

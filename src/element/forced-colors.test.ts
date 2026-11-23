@@ -187,7 +187,7 @@ test("with forced colours the bar takes the system's colours, its glass the canv
   }
 });
 
-test("with forced colours the ring of a button in focus is the system's highlight, on the tool in use and on an unavailable button alike (T92), and its tooltip the canvas's, with the text's colour and border", async () => {
+test("with forced colours the ring of a button in focus is the system's highlight, on the tool in use and on an unavailable button alike, and its tooltip the canvas's, with the text's colour and border", async () => {
   const element = document.createElement("novatrail-canvas");
   element.style.width = "400px";
   element.style.setProperty("--novatrail-canvas-ink", "rgb(0, 0, 255)");
@@ -218,7 +218,7 @@ test("with forced colours the ring of a button in focus is the system's highligh
   }
 });
 
-test("with forced colours the ring of the sheet's container in focus is the system's highlight (T93)", async () => {
+test("with forced colours the ring of the sheet's container in focus is the system's highlight", async () => {
   const element = document.createElement("novatrail-canvas");
   element.style.width = "400px";
   element.style.height = "300px";
@@ -323,7 +323,7 @@ test("with forced colours a worked example's row is of the same glass, its line 
   expect(getComputedStyle(icon).fill).toBe(system("ButtonText"));
 });
 
-test("with forced colours a picture on an area of the sheet keeps the colours of its file, as a picture does (T61)", async () => {
+test("with forced colours a picture on an area of the sheet keeps the colours of its file, as a picture does", async () => {
   const element = document.createElement("novatrail-canvas");
   element.style.width = "400px";
   element.workedExample = workedExample({
@@ -375,7 +375,7 @@ function highlight(): Pair[] {
 }
 
 test.each(KINDS)(
-  "$name has no violation that axe finds in forced colours either (T90)",
+  "$name has no violation that axe finds in forced colours either",
   async ({ put, incomplete, clear = incomplete }) => {
     // The selected tool is in the system's Highlight and HighlightText, whose contrast is the
     // system's, in every engine: Firefox's own palette has them 2.94 to 1, white on #3399ff.

@@ -442,7 +442,7 @@ test("the hand is a tool of every sheet the learner writes on, and of no worked 
   }
 });
 
-test("a task from paper's bar ends in its grid's button, after a line, named by the grid shown in the element's language: a press turns it to the next, round, and gridchange tells of each, out of a consumer's shadow tree; the consumer's grid shows and tells nothing (R88)", async () => {
+test("a task from paper's bar ends in its grid's button, after a line, named by the grid shown in the element's language: a press turns it to the next, round, and gridchange tells of each, out of a consumer's shadow tree; the consumer's grid shows and tells nothing", async () => {
   const host = document.createElement("div");
   const shadow = host.attachShadow({ mode: "open" });
   const place = document.createElement("div");

@@ -1,7 +1,7 @@
 # canvas's own recipes: the package's build, and the five checks .github's typescript.yml runs in
 # CI, one job each, in a new container of a stage of .devcontainer/Dockerfile — toolchain-core for
 # ci-lint, ci-vuln and ci-licenses, which start no browser, toolchain for the tests — as the
-# runner's user, with HOME=/tmp and with CI from the step's environment (R12). Only
+# runner's user, with HOME=/tmp and with CI from the step's environment. Only
 # ci-licenses reads spec/: it runs spec's recipes licenses-check-repo, release-verify-npm,
 # release-verify and sample-check, and the licenses job alone gets the submodule. The code and its
 # tests read nothing of spec/, and the documents are checked by spec's own recipe, just -f
@@ -82,7 +82,7 @@ ci-vuln:
 
 # The checks of package-lock.json. First, fail if a package of it, the tools of development too,
 # carries a license that spec's list does not allow and is no exception that licenses.json names
-# (R14). The list, the reading of SPDX expressions and the rule of an exception are spec's, at
+#. The list, the reading of SPDX expressions and the rule of an exception are spec's, at
 # the tag spec/ is on: an exception off the list holds only for a package the lock file marks dev,
 # and covers the builds for each platform it names in optionalDependencies while they are dev too
 # and under the same license. That reads the lock file, licenses.json and spec/ at its

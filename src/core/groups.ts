@@ -7,7 +7,7 @@ import { Sets } from "./sets.js";
 /**
  * The rule of the groups of strokes: two strokes are neighbours if no more than `pause`
  * milliseconds lie between them and their boxes come within `across` sheet units of each other
- * across the sheet and within `down` units down it (R24). A group is the strokes a chain of
+ * across the sheet and within `down` units down it. A group is the strokes a chain of
  * neighbours joins. The rule counts in whole numbers — tenths of a unit and milliseconds, the
  * precision of a sample file, rounded half up as `Math.round` rounds: 1000.5 tenths are 1001 — and
  * only subtracts and compares them, so that tutor's runner, which groups by the same rule, gets the

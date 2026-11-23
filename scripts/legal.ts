@@ -1,7 +1,7 @@
 // The legal texts of the samples page: spec's release file legal-<n>.tar.gz, which
 // ci-licenses verifies by release-verify and the build holds to its sum, read as the
 // README of spec's legal part gives — the passport's schema first, then the rules in the order of
-// its table (R69). The archive is git archive's of spec's legal/ at the tag, so it carries
+// its table. The archive is git archive's of spec's legal/ at the tag, so it carries
 // the schema and the vectors of reading too: the build reads the part against that schema, and the
 // tests read the vectors through this same reader. A third reader, beside spec's own check and
 // api's; spec's text, not its code, is what it follows, for canvas's code reads nothing of spec/.

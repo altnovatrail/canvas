@@ -682,7 +682,7 @@ describe("the marks given", () => {
   });
 });
 
-describe("a workbook's marks (R39)", () => {
+describe("a workbook's marks", () => {
   // «erased»: writing, an erasing and writing again, three boxes of ten filled.
   const { cells, work } = erased();
   const known = knownOf(work.history);
@@ -933,7 +933,7 @@ interface SnapCase {
   }[];
 }
 
-describe("spec's test vectors of the snapping (R94 spec)", () => {
+describe("spec's test vectors of the snapping", () => {
   const { rule, cases } = vectorsOf<SnapCase>("snaps");
 
   test("are of the sheet's rule", () => {

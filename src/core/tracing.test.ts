@@ -47,7 +47,7 @@ function plain(width: number, height: number, value: number) {
   return { gray: new Uint8Array(width * height).fill(value), width, height };
 }
 
-describe("the grid of a task from paper (R88)", () => {
+describe("the grid of a task from paper", () => {
   test("it turns dots, lines, blank, squares, and round to dots again", () => {
     expect(PAPER_GRIDS).toEqual(["dots", "lines", "blank", "squares"]);
     expect(nextGrid("dots")).toBe("lines");
@@ -120,7 +120,7 @@ describe("the tracing paper's size and place", () => {
     }
   });
 
-  test("takes a scale from 0.4 to 4, and tells a place wholly off by the paper's size at it (R89)", () => {
+  test("takes a scale from 0.4 to 4, and tells a place wholly off by the paper's size at it", () => {
     const size = { width: 400, height: 100 };
     expect(tracingStateOf({ at: [0, 0], hidden: false, scale: 2.5 }, size).scale).toBe(2.5);
     // At twice its size, a paper 800 wide reaches the sheet from 800 to its left.
@@ -132,7 +132,7 @@ describe("the tracing paper's size and place", () => {
     expect(scaled(size, 2)).toEqual({ width: 800, height: 200 });
   });
 
-  test("holds a point by its corner at its scale, and puts its strokes back on the sheet at it (R89)", () => {
+  test("holds a point by its corner at its scale, and puts its strokes back on the sheet at it", () => {
     const size = { width: 400, height: 100 };
     expect(toTracing({ x: 300, y: 70 }, [100, 50], size, 2)).toEqual({ x: 100, y: 10 });
     expect(toTracing({ x: 1300, y: 70 }, [100, 50], size, 2)).toEqual({ x: 400, y: 10 });

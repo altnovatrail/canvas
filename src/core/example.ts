@@ -1,7 +1,7 @@
 // A lesson's worked example: the open view of a segment `worked_example`, of spec's
 // type WorkedExample — its statement, the handwriting sheet or the workbook the
 // author's demo is shown on, and the demo's parts in order: paragraphs, pictures beside the sheet,
-// pictures on areas of a sheet, and on a workbook the boxes it fills (R42). The
+// pictures on areas of a sheet, and on a workbook the boxes it fills. The
 // element checks it as the schema does, every object closed, and by the format's rules
 // lesson.areas, lesson.example-fills and lesson.workbook-page too: an area lies on the sheet, the
 // demo fills each box of the lines once, and the lines fit the page, each value its box. What the

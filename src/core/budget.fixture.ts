@@ -8,7 +8,7 @@
 // file's tests. Twenty times is what a loaded host takes of it: in the container at a load average
 // of 42 to 85 on 20 cores, app's path in consumer.test.ts went past 15 s, eighteen times its
 // runner's time. The timeout is the test's own, not the project's, so that a test slowed by
-// mistake twentyfold still fails (R75). A module of the tests alone: the build leaves it out
+// mistake twentyfold still fails. A module of the tests alone: the build leaves it out
 // (tsconfig.build.json).
 
 /** The timeout of a test that takes `runner` milliseconds on a free CI runner: twenty times that,

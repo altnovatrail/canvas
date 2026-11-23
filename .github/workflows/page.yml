@@ -11,7 +11,7 @@
 #
 # The workflow runs on every pull request, with Android alone, and with the iPad too on a push to
 # main, of the same paths, and by hand: main holds the cache of the toolchain stage every pull
-# request reads, and its run checks the iPad before a release (R57). Its first job decides whether
+# request reads, and its run checks the iPad before a release. Its first job decides whether
 # the emulators have anything to check: a skipped job counts as a success, so the one check main
 # requires, the last job, stands on every pull request, and one of the documents alone waits for
 # no emulator.

@@ -3,7 +3,7 @@
 // in Node: the probe's test drives Chrome Headless Shell itself, by file:// addresses, which a
 // browser project never opens. The element runs in the three engines CI checks — Chrome Headless
 // Shell, WebKit and Firefox from the toolchain stage of .devcontainer/Dockerfile, through
-// Playwright (R13) — and once more with forced colours, a mode of the browser's context
+// Playwright — and once more with forced colours, a mode of the browser's context
 // that only its own file runs in, in Chromium and Firefox: WebKit has none to emulate. Each
 // instance's name ends in its engine, which ci-test and ci-engines pick the runs by: Vitest's v8
 // coverage works in Chromium alone, so WebKit and Firefox run apart, without it. Each project
@@ -17,7 +17,7 @@ export default defineConfig({
   test: {
     // The coverage of the tests, which ci-test asks for by --coverage and .github's TypeScript
     // wrapper sends to Codecov: one lcov report of all three projects, coverage/lcov.info,
-    // as the wrapper takes it (R43). V8 counts it, in Node and in Chromium alike. What it covers is
+    // as the wrapper takes it. V8 counts it, in Node and in Chromium alike. What it covers is
     // the code of src/: the package's, every module of it, those no test loads too, at zero, and
     // the sample file of src/eval/, which is no part of the package. The scripts check the package
     // after the tests, and the demo page is tried by hand. WebKit and Firefox run without coverage,
