@@ -134,6 +134,13 @@ export class TracingPaper {
   #asked = false;
   /** The statements drawn, and the size they were fitted to: drawn again only when either changes. */
   #drawn = "";
+  /** The letters' size the paper's height gives the statements, before they are fitted. */
+  #full = 0;
+  /**
+   * The lines' sizes, which change when they are first laid out — the paper hidden when they were
+   * drawn, or the font not yet loaded — and when they are fitted: each time they are fitted again.
+   */
+  readonly #lines = new ResizeObserver(() => this.#fitText());
   /** The paper on the stage, CSS pixels, as last placed. */
   #box = { width: 0, height: 0 };
   /** A corner's drag under way: its pointer, where it began, the paper then and the corner. */
@@ -462,6 +469,8 @@ export class TracingPaper {
   /** The element left the page: the crop's address goes, and a drag or a tooltip with it. */
   disconnect(): void {
     this.#connected = false;
+    this.#lines.disconnect();
+    this.#drawn = "";
     this.#release();
     this.#drag = undefined;
     this.grip.classList.remove("dragging");
@@ -715,8 +724,20 @@ export class TracingPaper {
       }),
     );
     const count = Math.max(1, statements.length);
-    let size = Math.min(height / (count * 1.5), height * 0.55);
-    this.#text.style.fontSize = `${size}px`;
+    this.#full = Math.min(height / (count * 1.5), height * 0.55);
+    this.#text.style.fontSize = `${this.#full}px`;
+    this.#lines.disconnect();
+    for (const line of this.#text.children) this.#lines.observe(line);
+    this.#fitText();
+  }
+
+  /**
+   * The statements' letters at the paper's full size, or smaller by as much as the widest line, or
+   * the lines together, exceed the paper. Measured at the size they have, so that once fitted they
+   * fit and their size stays: the observer of the lines, which calls this again, then stops.
+   */
+  #fitText(): void {
+    const { width, height } = this.#box;
     // The lines as laid out, not the box's scroll: centred, they spill over both its edges.
     const lines = [...this.#text.children] as HTMLElement[];
     const wide = Math.max(0, ...lines.map((line) => line.offsetWidth));
@@ -726,11 +747,13 @@ export class TracingPaper {
       first === undefined || last === undefined
         ? 0
         : last.offsetTop + last.offsetHeight - first.offsetTop;
-    const k = Math.min(1, (width * 0.92) / wide, (height * 0.92) / tall);
-    if (wide > 0 && tall > 0 && k < 1) {
-      size *= k;
-      this.#text.style.fontSize = `${size}px`;
-    }
+    // Not laid out: hidden, or out of the page. The observer calls again once they are.
+    if (wide === 0 || tall === 0) return;
+    const size = Number.parseFloat(this.#text.style.fontSize) || this.#full;
+    const k = Math.min((width * 0.92) / wide, (height * 0.92) / tall);
+    const fitted = Math.min(this.#full, size * k);
+    // Within half a percent it stays: a size that moves by a rounding feeds the observer again.
+    if (Math.abs(fitted - size) > size * 0.005) this.#text.style.fontSize = `${fitted}px`;
   }
 
   /** The tooltip on hover or the keyboard's focus, unless Escape or a drag dismissed it. */

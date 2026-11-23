@@ -362,6 +362,36 @@ test("the statements read draw a fraction built up, nested as printed, a power r
   expect([...text.querySelectorAll("i")].map((i) => i.textContent)).toEqual(["x"]);
 });
 
+test("statements read while the paper was hidden fit it once it is shown", async () => {
+  const { element, root, grip } = await paper();
+  choose(grip);
+  element.reading = { state: "ready" };
+  root.querySelector<HTMLButtonElement>(".tracing-scale .mode")?.click();
+  await settle();
+  buttonOf(element, "Hide the task").click();
+  await settle();
+  // A line far wider than the paper, read while nothing of it is laid out.
+  const long =
+    "\\frac{48}{5} : \\frac{27}{4} \\cdot \\frac{5}{12} - \\frac{17}{6} + \\frac{169}{94} \\cdot (1 - 13 : 26) =";
+  element.reading = { state: "done", statements: [long.repeat(2)] };
+  await settle();
+  buttonOf(element, "Show the task").click();
+  const text = root.querySelector<HTMLElement>(".statements");
+  if (text === null) throw new Error("no statements");
+  await expect
+    .poll(() => {
+      // Hidden, a line is 0 wide, and that is no fit.
+      const width = text.querySelector(".line")?.getBoundingClientRect().width ?? 0;
+      return width === 0 ? Number.POSITIVE_INFINITY : width / text.getBoundingClientRect().width;
+    })
+    .toBeLessThanOrEqual(1);
+  // Fitted, it stays within the paper, its letters not shrunk past reading.
+  await settle();
+  const line = text.querySelector(".line")?.getBoundingClientRect().width ?? 0;
+  expect(line).toBeLessThanOrEqual(text.getBoundingClientRect().width);
+  expect(Number.parseFloat(text.style.fontSize)).toBeGreaterThan(8);
+});
+
 test("a reading given without a task from paper is a TypeError", () => {
   const element = new NovatrailCanvas();
   expect(() => {
