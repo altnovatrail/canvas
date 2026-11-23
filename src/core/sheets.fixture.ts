@@ -1,5 +1,5 @@
 // The synthetic sheets of the tests, drawn by code as every test's strokes are: no hand wrote them.
-//Each sheet comes with what a teacher sees on it, set down before any run of the code: its
+// Each sheet comes with what a teacher sees on it, set down before any run of the code: its
 // groups and the median height its crop scales by. The tests of the groups, of the crop
 // and of the marks take them; the test vectors are spec's. A module of the tests alone:
 // the build leaves it out, as it leaves out the tests (tsconfig.build.json), and the package check
@@ -10,7 +10,7 @@ import type { Stroke } from "./ink.js";
 import { Work } from "./work.js";
 
 // The hand that writes these sheets is src/eval/hand.ts, which the synthetic samples draw with too;
-//the tests that wrote their own sheets with it, or took a seed's numbers, take it from here.
+// the tests that wrote their own sheets with it, or took a seed's numbers, take it from here.
 export { Hand, random };
 
 /** A stroke of these points, each [x, y, t]: sheet units and the sheet's milliseconds. */

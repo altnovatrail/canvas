@@ -37,7 +37,7 @@
 //
 // The keyboard goes into the sheet and out: a container that scrolls is a region named by the
 // canvas kind, with a stop of Tab of its own and a ring when the keyboard brings the focus there;
-//for a `lang` the labels are not in, the container is in theirs and the column in the
+// for a `lang` the labels are not in, the container is in theirs and the column in the
 // element's. The sheet goes on past the task's page, which stands at its left, right and
 // down as far as the ink and one view more, and nothing zooms it: the hand, two fingers, the wheel
 // and the keys move it across as well as down.
@@ -320,7 +320,7 @@ const ERASER_RADIUS_PX = 10;
 // writing and the buttons' pointer, though not their keys. A worked example's canvas
 // takes no pointer at all: a finger or a pen on its sheet scrolls, and zooms, as the browser does
 // on the statement, and a long press or a right click opens no menu over the sheet all the same.
-//The theme is the consumer's, by custom properties that the shadow tree inherits; with
+// The theme is the consumer's, by custom properties that the shadow tree inherits; with
 // forced colours the system's colours stand in for them. The element is horizontal whatever writing
 // mode the page is in: a sheet has no other.
 //
@@ -1237,7 +1237,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * What a press of the primary button does: "pen" writes, as the element starts, "eraser" erases,
-   *and "hand" moves the sheet, under any pointer. The learner switches it with the
+   * and "hand" moves the sheet, under any pointer. The learner switches it with the
    * element's own buttons, which say a choice of theirs with a `toolchange`, and the consumer may
    * set it too, which says nothing. A press under way goes on as it began. A pen's eraser
    * erases whatever the tool but the hand. A task without the eraser has none of it: "eraser" is a
@@ -1781,7 +1781,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /**
    * Takes back the last action on the sheet — the last stroke written, the last erasing, or the
    * clearing — and says whether there was one, with a `historychange` if there was.
-   *The element's Undo button calls it, and so may the consumer. A stroke under way
+   * The element's Undo button calls it, and so may the consumer. A stroke under way
    * stays: it lands when it ends. So does an erasing: what it came near leaves the sheet when it
    * lifts, if it is on the sheet then.
    */
@@ -2513,7 +2513,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * Two fingers, or the hand, moved right on the screen by `dx` CSS pixels and down it by `dy`,
-   *and what they scroll goes with them. The gesture's first step down chooses what it
+   * and what they scroll goes with them. The gesture's first step down chooses what it
    * scrolls down, for the whole gesture, and its first step across what it scrolls across: the
    * sheet's own container if it can go that way, or else the nearest ancestor of the element that
    * scrolls and can, or else the page. A container at its end hands the scroll on at the next
@@ -3265,7 +3265,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const tracing = this.#tracing;
     const work = this.#work;
     // A stroke of the tracing paper is where the paper lies, and out of sight while it is hidden.
-    //Its box moves with the paper, and the stroke is not copied for each place of a drag.
+    // Its box moves with the paper, and the stroke is not copied for each place of a drag.
     const onScreen = (id: number): Box | undefined => {
       const stroke = pending.has(id) ? undefined : byId.get(id);
       if (stroke === undefined) return undefined;

@@ -16,12 +16,12 @@ const FORCED_COLOURS = "src/element/forced-colors.test.ts";
 export default defineConfig({
   test: {
     // The coverage of the tests, which ci-test asks for by --coverage and .github's TypeScript
-    // wrapper sends to Codecov (R43): one lcov report of all three projects, coverage/lcov.info,
-    // as the wrapper takes it. V8 counts it, in Node and in Chromium alike. What it covers is the
-    // code of src/: the package's, every module of it, those no test loads too, at zero, and the
-    // sample file of src/eval/, which is no part of the package. The scripts check the
-    // package after the tests, and the demo page is tried by hand. WebKit and Firefox run without
-    // coverage, in a run of their own.
+    // wrapper sends to Codecov: one lcov report of all three projects, coverage/lcov.info,
+    // as the wrapper takes it (R43). V8 counts it, in Node and in Chromium alike. What it covers is
+    // the code of src/: the package's, every module of it, those no test loads too, at zero, and
+    // the sample file of src/eval/, which is no part of the package. The scripts check the package
+    // after the tests, and the demo page is tried by hand. WebKit and Firefox run without coverage,
+    // in a run of their own.
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],

@@ -1,4 +1,4 @@
-// The build of the samples page (R55): one HTML file that opens from a file on the device and goes
+// The build of the samples page: one HTML file that opens from a file on the device and goes
 // to no network, of page/index.html and page/main.ts with the element and all
 // they take inline:
 //
@@ -7,23 +7,23 @@
 // writes <folder>/samples-page_v<version>.html, with the current sets of texts of spec's release
 // file of the legal texts in tasks/, held to its sum (scripts/legal.ts), on the day of the
 // build, or of SOURCE_DATE_EPOCH to repeat a build of another day: a purpose with no current
-// set is closed. --texts names a part of the legal texts for tests instead, whose sets begin with
-// test-, and only into a page of version 0.0.0, which no release has. It builds from the tree
+// set is closed (R55). --texts names a part of the legal texts for tests instead, whose sets begin
+// with test-, and only into a page of version 0.0.0, which no release has. It builds from the tree
 // alone — no spec/, no git, no token, no network — in the stage toolchain-core, as release-files
 // takes it. Vite's API bundles page/main.ts into one script; the page's own style stays as it is.
 // The policy of scripts/csp.ts goes into a <meta> element with the hashes of both. The tasks are
-// worked out here, from tutor's file of open tasks in tasks/, checked against its sum, and
-// put into the bundle: a page has no synchronous hash for openTasksOf. Every task of the file goes
-// in, bank by bank: openTasksOf refuses a task with a field outside the open view, so no key,
-// solution or trap reaches the file a release carries, and a task that names a picture stops the
-// build, since tutor's file carries no media for it. So do the tasks of modules, for an eval set,
-// of the copy of what module-kit open wrote in tasks/modules-<tag>/, held to its sum
-// (scripts/modules.ts): each module's sheets of one answer slot anywhere or on the whole sheet and
-// its pages of a workbook, with the files of media/ their statements name, inline, and its
-// manifest; a choice the learner taps, which app shows, the page leaves out. The license notices
-// of all the code the file carries — its own, every package bundled, the icons' set — go into the
-// file itself, and the notices of the modules whose tasks it carries; a package under a license
-// off the list stops the build (scripts/notices.ts).
+// worked out here, from tutor's file of open tasks in tasks/, checked against its sum, and put into
+// the bundle: a page has no synchronous hash for openTasksOf. Every task of the file goes in, bank
+// by bank: openTasksOf refuses a task with a field outside the open view, so no key, solution or
+// trap reaches the file a release carries, and a task that names a picture stops the build, since
+// tutor's file carries no media for it. So do the tasks of modules, for an eval set, of the copy of
+// what module-kit open wrote in tasks/modules-<tag>/, held to its sum (scripts/modules.ts): each
+// module's sheets of one answer slot anywhere or on the whole sheet and its pages of a workbook,
+// with the files of media/ their statements name, inline, and its manifest; a choice the learner
+// taps, which app shows, the page leaves out. The license notices of all the code the file carries
+// — its own, every package bundled, the icons' set — go into the file itself, and the notices of
+// the modules whose tasks it carries; a package under a license off the list stops the build
+// (scripts/notices.ts).
 
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";

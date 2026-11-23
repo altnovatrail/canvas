@@ -1,6 +1,6 @@
-// The icons of the row's buttons (R46): Material Symbols, in the style Rounded, from the
+// The icons of the row's buttons: Material Symbols, in the style Rounded, from the
 // npm package of the set at the version package-lock.json pins, and of it only the icons the row
-// shows. It writes the module the element draws them from and NOTICE, which names the set the
+// shows (R46). It writes the module the element draws them from and NOTICE, which names the set the
 // package embeds:
 //
 //   node scripts/icons.ts           write src/element/icons.ts and NOTICE

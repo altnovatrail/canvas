@@ -1,7 +1,7 @@
 // What the samples page shows of a sample file it opens: the strokes the file holds, its
 // crops and the texts of its markup, for the organizer of an eval set, the author of a module or
 // of a measurement to look for a name, a signature or a contact before the file goes on.
-//It is drawn from the file alone — the sheet, a workbook's boxes, the strokes
+// It is drawn from the file alone — the sheet, a workbook's boxes, the strokes
 // — for a module's task is none of the build's. A history of writing shows what the sheet
 // showed at the end, and apart what was written and erased: the file holds that too. Nothing here
 // checks the file beyond reading it: spec's sample-check holds the rules. This module

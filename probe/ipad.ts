@@ -114,7 +114,7 @@ export function reportOf(all: readonly Element[]): Record<string, unknown> | und
 /** The settings of WebDriverAgent's session that name the app in front. Without them a read of the
  * tree asks the accessibility service which app is active, and on a cold simulator the question
  * hung up to three minutes before WebDriverAgent fell back to "the system's recently active one".
- *With them it asks that app's state alone, while the app is in front. */
+ * With them it asks that app's state alone, while the app is in front. */
 export function inFront(bundleId: string): { settings: { defaultActiveApplication: string } } {
   return { settings: { defaultActiveApplication: bundleId } };
 }

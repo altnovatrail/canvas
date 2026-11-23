@@ -1,15 +1,14 @@
-// The two files of the probe of a page opened from a file (R52), from one source, probe/page.html
+// The two files of the probe of a page opened from a file, from one source, probe/page.html
 // with probe/probe.js inline:
 //
 //   node probe/build.ts <folder>
 //
 // t29-probe-csp.html carries the policy the samples page's build would carry, in a <meta> element:
-// no network, and the page's own style and script by their hashes. t29-probe-open.html carries
-// none, so that a request it makes shows whether the network or the policy stopped it. One source
-// keeps the two from drifting apart, and the hashes are worked out rather than typed. Nothing of
-// the probe is in the package or in a release's paths: a probe goes out as a pre-release of its
-// own.
-//Run from the repository's root, as the recipes run their scripts.
+// no network, and the page's own style and script by their hashes (R52). t29-probe-open.html
+// carries none, so that a request it makes shows whether the network or the policy stopped it. One
+// source keeps the two from drifting apart, and the hashes are worked out rather than typed.
+// Nothing of the probe is in the package or in a release's paths: a probe goes out as a pre-release
+// of its own. Run from the repository's root, as the recipes run their scripts.
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";

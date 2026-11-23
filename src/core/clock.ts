@@ -4,7 +4,7 @@
  * both count from the page's time origin (DOM Standard; High Resolution Time), so one clock serves
  * the strokes, the eraser and the actions of the sheet alike. A new sheet's time starts at
  * its first event; a sheet given a history of writing goes on from where that history leaves off:
- *the sheet's time is its history's.
+ * the sheet's time is its history's.
  */
 export class Clock {
   #origin: number | undefined;

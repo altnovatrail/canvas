@@ -30,7 +30,7 @@ function sheetOf(template: Template): SheetTemplate {
 // Copies of the task examples and the open-view vectors of the module format at spec v0.14.0
 // (spec/format/examples/task/ and spec/format/vectors/open-view/task/): code and tests read nothing
 // of spec/, so a move to a new tag compares them with `git -C spec diff <old> <new> -- format/`.
-//The format is version 0.4, and no draft. Each is written as a change to what
+// The format is version 0.4, and no draft. Each is written as a change to what
 // the examples share, with its keys in their order: a valid example as its open view, as app gets
 // it, and an invalid one with its open fields and the closed field at fault, its other closed
 // fields left as those the examples share.
@@ -114,7 +114,7 @@ const FACTOR_LINE = {
  * The open views of the valid examples: their closed fields left out, as app gets them. A
  * template's placeholders stand in them as written: app gets an instance's open view, numbers in
  * their place,
- *and an open view of either is a task.
+ * and an open view of either is a task.
  */
 const VALID: Readonly<Record<string, Task>> = {
   "anchor-among-supporting-skills": oneSlot(

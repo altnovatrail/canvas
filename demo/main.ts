@@ -310,7 +310,7 @@ function shape(name: string, attributes: Record<string, string | number>): SVGEl
  * The groups of the strokes the sheet's history leaves, drawn under it in sheet units: each stroke
  * a line through its points, each group a box with its label, and the table of labels and stroke
  * IDs.
- *Then the crop of the strokes, with the frames of these groups.
+ * Then the crop of the strokes, with the frames of these groups.
  */
 function showGroups(): void {
   const strokes = replay(sheet.history);

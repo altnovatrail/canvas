@@ -6,7 +6,7 @@ import type { Stroke } from "./ink.js";
 import { Sets } from "./sets.js";
 
 /**
- * The crop's rule in its numbers (R25): sizes on the crop in pixels, heights on the sheet in units.
+ * The crop's rule in its numbers: sizes on the crop in pixels, heights on the sheet in units (R25).
  * The rule counts in whole numbers — places in tenths of a unit, as the groups do — and each
  * number it hands out that is not whole is one division of two whole numbers, so that tutor's
  * runner, which crops by the same rule, gets the same numbers to the bit.

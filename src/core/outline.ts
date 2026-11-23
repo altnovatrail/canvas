@@ -19,7 +19,7 @@ export const INK_REACH = INK_WIDTH * (0.5 + PEN_THINNING / 2);
 
 /**
  * Every option of perfect-freehand 1.2.3 is given: its code's defaults are not its README's.
- *The pressure is the pointer's own, the third number of each point, never simulated, and
+ * The pressure is the pointer's own, the third number of each point, never simulated, and
  * the ends are round, without a taper.
  */
 const OPTIONS = {

@@ -39,7 +39,7 @@ essays_package := "tasks/modules-" + modules_tag + "/novatrail-english-essays-0.
 # The release of modules whose tasks the samples page carries for an eval set, the release of
 # module-kit whose open writes their open views, and the seeds of the templates' instances it
 # writes:
-#the copy in tasks/modules-<tag>/ is what that module-kit wrote of that release with
+# the copy in tasks/modules-<tag>/ is what that module-kit wrote of that release with
 # those seeds, which just modules-open writes and ci-licenses holds it to. MODULES_FILE in
 # src/eval/tasks.ts has the tag and the seeds too, and scripts/modules.test.ts holds them to these.
 page_modules_tag := "v0.2.7"
@@ -105,7 +105,7 @@ ci-vuln:
 # whose package of grade-3-math the tree holds is verified, a sample is written of each of its
 # tasks into build/synthetic-module by the generator's file, built as a release carries it, and
 # sample-check holds them, and the example of a module's sheet, as an eval set of their module.
-#sample-check runs buf from the stage toolchain-core, which CI runs ci-licenses in, on
+# sample-check runs buf from the stage toolchain-core, which CI runs ci-licenses in, on
 # the contracts of spec/. spec's recipes run under this same just.
 ci-licenses:
     {{ quote(just_executable()) }} -f spec/justfile licenses-check-repo package-lock.json licenses.json
@@ -136,7 +136,7 @@ build: _install
 # makes it, with the version without its v, NOTICE in it too; the synthetic samples, as just
 # synthetic writes them, in one flat archive, synthetic-samples_<version>.tar.gz, and what each
 # shows, one line to a sample under a line of the columns' names, synthetic-samples_<version>.tsv;
-#the samples page, as scripts/page.ts builds it with the draft of texts,
+# the samples page, as scripts/page.ts builds it with the draft of texts,
 # samples-page_<version>.html, whose own version is the number without its v: the set of
 # texts for tests goes into no page but 0.0.0, so into no release; the generator of a module's eval
 # set, as scripts/generator.ts builds it, synthetic-module_<version>.mjs; LICENSE; and

@@ -1,7 +1,7 @@
 /**
  * The PNG of a grey image, a byte to a pixel, row by row from the top: own code, so that the
  * same pixels give the same bytes in every browser and in Node, as no browser's canvas promises.
- *The file is the least PNG holds: its signature, the header, one chunk of data and the end,
+ * The file is the least PNG holds: its signature, the header, one chunk of data and the end,
  * no ancillary chunk, for a decoder may ignore them (PNG Third Edition, 11.3). The data is a zlib
  * stream of one deflate block with the fixed Huffman codes (RFC 1950, RFC 1951): every row
  * unfiltered, and a repeat looked for in two places only — the byte before, which takes the runs of

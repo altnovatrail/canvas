@@ -1,5 +1,5 @@
 // Type-checked by ci-lint and never built: the element's interface as a consumer's types see it.
-//What a consumer may do type-checks; each line under a
+// What a consumer may do type-checks; each line under a
 // directive must be an error, and were it not, the directive would go unused, and that would be the
 // error instead. The types of the contract are spec's: the element is its
 // CanvasElement, and the entry point gives the same types as spec's package.

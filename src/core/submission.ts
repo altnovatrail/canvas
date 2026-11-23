@@ -31,7 +31,7 @@ export interface PaperForCheck {
   readonly submission: PaperSubmission;
 }
 
-/** The crop of one filled box of a workbook (R38): its item and its slot, from 1, and its PNG. */
+/** The crop of one filled box of a workbook: its item and its slot, from 1, and its PNG (R38). */
 export interface CellForCheck {
   readonly item: number;
   readonly slot: number;
@@ -96,7 +96,7 @@ export function cellsForCheck(
 
 /**
  * The work of a task from paper for checking, as `exportWork()` gives it with the task's crop:
- *of the strokes the sheet and the tracing paper hold, where they lie on the sheet, their
+ * of the strokes the sheet and the tracing paper hold, where they lie on the sheet, their
  * groups by the sheet's rule, and their crop by the crop's rule with its digits `digit` px high,
  * taking in the tracing paper's rectangle `rect`, in units, at the same scale — the crop's picture,
  * `picture`, laid over it there as the screen lays it — and the context: the crop's numbers, the

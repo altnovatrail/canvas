@@ -246,7 +246,7 @@ export const TEST_START = `JSON.stringify((() => {
 export const CHILD_CODE = "T22CHILD";
 
 /** A script that goes through the start of a child's session as the adult who leads it would:
- *the session chosen, the statements ticked, a new code asked — which the page shows for a
+ * the session chosen, the statements ticked, a new code asked — which the page shows for a
  * form and begins nothing with — and then the form's code typed, and «Начать». What came of each,
  * as JSON. */
 export const CHILD_START = `JSON.stringify((() => {
@@ -288,7 +288,7 @@ export const REOPEN = "(setTimeout(() => location.reload(), 0), 0)";
 export const OPEN_SHOWN = `document.getElementById("start")?.hidden === false && document.getElementById("open")?.hidden === false`;
 
 /** A script that gives the section of the page that opens a file a sample's text as a file chosen:
- *the page's own way to read it, not the system's picker, which only hardware shows.
+ * the page's own way to read it, not the system's picker, which only hardware shows.
  * The text is the script's first argument where the driver passes one, or else in it. */
 export function chooseFile(text?: string): string {
   const given = text === undefined ? "arguments[0]" : JSON.stringify(text);

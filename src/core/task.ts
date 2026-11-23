@@ -128,7 +128,7 @@ export interface Canvas extends open.Canvas {
 
 /**
  * The open view of a task as a consumer gives it, what the learner's app receives: spec's type,
- *its canvas with the element's own tools. A type gives the shape and nothing more: the
+ * its canvas with the element's own tools. A type gives the shape and nothing more: the
  * element checks the value itself.
  */
 export interface Task extends open.Task {
@@ -265,7 +265,7 @@ function isWhole({ binding }: AnswerSlot): boolean {
  * The template of a task `taskOf` gave, or of no task for `undefined`. A workbook's lines are laid
  * out on its page, and a task whose lines do not fit is a TypeError at the first item that does
  * not.
- *A zone on the sheet is a TypeError until an epic of its own; a choice the sheet passes
+ * A zone on the sheet is a TypeError until an epic of its own; a choice the sheet passes
  * over, and an item's text too: app shows them.
  */
 export function templateOf(task: CheckedTask | undefined): Template {

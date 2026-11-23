@@ -1,11 +1,10 @@
-// The synthetic samples (R49): sample files whose strokes code draws from a seed, with no
-// hand behind them (R15), each with the markup of what it drew, for tasks of tutor's file of open
-// tasks. tutor's CI checks that its eval runner reads them; they measure nothing of AI. A module's
-// eval set takes them too, on the tasks of the module's package: a sample of the eval
+// The synthetic samples: sample files whose strokes code draws from a seed, with no
+// hand behind them, each with the markup of what it drew, for tasks of tutor's file of open
+// tasks (R15, R49). tutor's CI checks that its eval runner reads them; they measure nothing of AI.
+// A module's eval set takes them too, on the tasks of the module's package: a sample of the eval
 // set by an adult, of a task and a seed its caller names. A seed gives its sample byte for byte,
-// and its ID. The code knows no key and no subject: the numbers it
-// writes, a solution's first error among them, are the seed's, and say nothing of whether the
-// solution is right.
+// and its ID. The code knows no key and no subject: the numbers it writes, a solution's first error
+// among them, are the seed's, and say nothing of whether the solution is right.
 
 import {
   type AnswerSlotNoteSchema,

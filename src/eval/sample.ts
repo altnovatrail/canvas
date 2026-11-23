@@ -2,8 +2,8 @@
 // page of a workbook, the message Sample of novatrail.eval.v1, one JSON file to a sample. The
 // samples page writes it, and so does the code that draws the synthetic samples; the eval runner
 // of tutor reads it, and spec's sample-check holds each file to the rules of the protocol. What a
-// sample holds its purpose and its writer set (R09): a sample of measurement by an adult keeps the
-// history of writing, one of an eval set and one of a child the final geometry. Its crops are
+// sample holds its purpose and its writer set: a sample of measurement by an adult keeps the
+// history of writing, one of an eval set and one of a child the final geometry (R09). Its crops are
 // drawn from the strokes the file holds, by the rules the sheet shares with the runner.
 // This module is no part of the package: no consumer of the element writes samples (R48).
 

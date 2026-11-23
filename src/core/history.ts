@@ -5,7 +5,7 @@ import { REACH } from "./sheet.js";
 
 /**
  * An event of the history of writing: spec's type, of the contract of canvas and app.
- *What an action on the sheet did, at the sheet's time `t` when it landed, in the
+ * What an action on the sheet did, at the sheet's time `t` when it landed, in the
  * order the actions landed; each event says which strokes it put on the sheet or took off, so
  * whoever reads the history replays it without the rules of the stack of undo (R19). Those the
  * sheet hands out are frozen through.
@@ -48,7 +48,7 @@ export function replay(history: readonly HistoryEvent[]): Stroke[] {
  * alone: strokes may overlap in time, as several pointers at once would write them. On a task from
  * paper, `paper`, a stroke written on the tracing paper says so, `on: "tracing"`, its points from
  * the paper's top left corner within the sheet's size; anywhere else `on` is a TypeError.
- *Whether the actions keep the rules of the stack, the work on the sheet checks as it
+ * Whether the actions keep the rules of the stack, the work on the sheet checks as it
  * replays them (`Work.restore`).
  */
 export function historyOf(value: unknown, paper = false): HistoryEvent[] {

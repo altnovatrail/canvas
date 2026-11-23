@@ -1,9 +1,9 @@
 // Type-checked by ci-lint and never built: what the entry point @altnovatrail/canvas/core gives.
-//The types of the data and the fold of a history are there; the rules of the groups, the
+// The types of the data and the fold of a history are there; the rules of the groups, the
 // crop, the snapping and the boxes are not, though the eval protocol has taken them,
 // nor is the workbook's layout. Were the entry to give one of them, the directive over it would go
 // unused, and that would be the error. The data's types of the contract are spec's, the same types,
-//and the tutor's marks are among them.
+// and the tutor's marks are among them.
 
 import type * as spec from "@altnovatrail/spec/canvas";
 import type * as open from "@altnovatrail/spec/formatv0/open";

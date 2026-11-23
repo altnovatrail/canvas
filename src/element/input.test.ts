@@ -302,7 +302,7 @@ test("a stroke under way stays through undo() and lands after the strokes left",
 });
 
 // A consumer stops the writing with a style of its own, as the board would while it checks:
-//pointer-events inherits into the shadow tree, and a real pointer then hits nothing of it.
+// pointer-events inherits into the shadow tree, and a real pointer then hits nothing of it.
 test.runIf(devtools)(
   "pointer-events: none on the element lets no real pointer write, and one historychange comes for each stroke",
   async () => {

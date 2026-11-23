@@ -18,10 +18,10 @@ import {
 } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
-// The sheet from the keyboard (R33): the element's own scroll container, while its content
+// The sheet from the keyboard: the element's own scroll container, while its content
 // overflows it, is a region named by the canvas kind, with a stop of Tab of its own, so that the
 // keyboard scrolls it in Safari too, where a container that nothing in it can take the focus in
-// scrolls by no key (WebKit's bug 277290). Tab goes into it from the bar and out of it to
+// scrolls by no key (WebKit's bug 277290; R33). Tab goes into it from the bar and out of it to
 // what follows the element (WCAG 2.1.2), and the keys scroll it as the browser scrolls a
 // container. A sheet goes past its page, wider than its container, which so is a region
 // with or without a height of its own; a worked example's sheet is its page alone, and an element

@@ -1,13 +1,13 @@
-// The layout of a workbook's page (R35): where the template puts each item's number, the
-// pieces of its line and its boxes, in whole page units, from the task's items alone. The page is
-// the sheet's, 1000 × 1400 units, and the boxes stay where the layout puts them on any
+// The layout of a workbook's page: where the template puts each item's number, the
+// pieces of its line and its boxes, in whole page units, from the task's items alone (R35). The
+// page is the sheet's, 1000 × 1400 units, and the boxes stay where the layout puts them on any
 // device: the widths of the text come from the canvas's own table (widths.ts), and SVG fits the
 // text to them. Short lines stand two to a row, in the task's order; a long line takes the page's
 // width and wraps. A task whose lines do not fit is a TypeError: nothing shrinks. The numbers and
 // the rule are the module format's, its page.yaml and its test vectors, which the npm package
-// @altnovatrail/spec carries and the tests hold the layout to: they change only
-// with the format, for histories know neither the task nor the layout. The core's entry
-// point does not give the layout.
+// @altnovatrail/spec carries and the tests hold the layout to: they change only with the format,
+// for histories know neither the task nor the layout. The core's entry point does not give the
+// layout.
 
 import { SHEET } from "./sheet.js";
 import type { WorkbookItem } from "./task.js";

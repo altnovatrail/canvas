@@ -22,9 +22,9 @@ import { REACH } from "./sheet.js";
 import { tracingFieldsOf } from "./tracing.js";
 
 /**
- * The rule that snaps a model's box to the learner's strokes (R26): the box widens on every side by
+ * The rule that snaps a model's box to the learner's strokes: the box widens on every side by
  * `margin` thousandths of the height its crop draws digits at, D′, and a stroke is taken if its
- * share of points in it, its edges too, is `share` at least, and one point at least. Both are
+ * share of points in it, its edges too, is `share` at least, and one point at least (R26). Both are
  * parameters of eval (C2). The rule counts in whole numbers, places on the crop as the crop's
  * raster has them, so that whoever snaps by it takes the same strokes.
  */

@@ -1,6 +1,6 @@
 /**
- * A pointer as the hands on the sheet see it (R29): where it is on the screen, how big its contact
- * is, and when. The DOM-free part sees no DOM, so the element hands it this much of each
+ * A pointer as the hands on the sheet see it: where it is on the screen, how big its contact
+ * is, and when (R29). The DOM-free part sees no DOM, so the element hands it this much of each
  * pointer event. The contact's size decides only what the pointer may do: it goes into no stroke,
  * no history and no sample.
  */
@@ -31,7 +31,7 @@ export const PALM_PX = 100;
 
 /**
  * Two touches that come down at most this many milliseconds apart are two fingers of one gesture:
- *Android's tap timeout, 100 ms, with a margin for children's fingers.
+ * Android's tap timeout, 100 ms, with a margin for children's fingers.
  */
 export const PAIR_MS = 150;
 
