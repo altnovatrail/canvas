@@ -39,6 +39,7 @@ class Bench {
   writing: number | undefined;
   readonly dropped: number[] = [];
   readonly steps: { readonly dx: number; readonly dy: number; readonly fresh: boolean }[] = [];
+  readonly zooms: { readonly ratio: number; readonly x: number; readonly y: number }[] = [];
   readonly hands: Hands;
   readonly mode: PenMode;
   /** Whether the sheet scrolls across: a zoomed one does (R73). */
@@ -58,6 +59,7 @@ class Bench {
           this.writing = undefined;
         },
         scroll: (dx, dy, fresh) => this.steps.push({ dx, dy, fresh }),
+        zoom: (ratio, x, y) => this.zooms.push({ ratio, x, y }),
         across: () => this.across,
       },
       mode,
@@ -237,34 +239,31 @@ describe("two fingers", () => {
     bench.mode.on = true;
     bench.down(A, 0);
     bench.down(B, 10);
-    // The middle at 105: within the slop.
+    // Read once both have moved: A alone is no step.
     bench.move(A, 20, { y: 110 });
     expect(bench.steps).toEqual([]);
-    // At 110, 2 past it, and from there on in step with the fingers.
+    // At 110, 2 past the slop, and from there on in step with the fingers.
     bench.move(B, 20, { y: 110 });
     expect(bench.steps).toEqual([{ dx: 0, dy: 2, fresh: true }]);
+    // The fingers are read once both have moved: the middle half a step aside between is no step.
     bench.move(A, 30, { y: 120 });
+    expect(bench.steps).toHaveLength(1);
     bench.move(B, 30, { y: 123 });
-    expect(bench.steps.slice(1)).toEqual([
-      { dx: 0, dy: 5, fresh: false },
-      { dx: 0, dy: 6.5, fresh: false },
-    ]);
+    expect(bench.steps.slice(1)).toEqual([{ dx: 0, dy: 11.5, fresh: false }]);
     expect(bench.scrolled).toBe((120 + 123) / 2 - 100 - SLOP_PX);
     // A move that leaves the middle where it was is no step.
     bench.move(A, 40, { y: 120 });
-    expect(bench.steps).toHaveLength(3);
+    bench.move(B, 40, { y: 123 });
+    expect(bench.steps).toHaveLength(2);
 
     const up = new Bench();
     up.mode.on = true;
     up.down(A, 0);
     up.down(B, 10);
-    // The middle goes to 80 and then to 60: 32 up past the slop.
+    // The middle goes to 60 once both have moved: 32 up past the slop.
     up.move(A, 20, { y: 60 });
     up.move(B, 20, { y: 60 });
-    expect(up.steps).toEqual([
-      { dx: 0, dy: -20 + SLOP_PX, fresh: true },
-      { dx: 0, dy: -20, fresh: false },
-    ]);
+    expect(up.steps).toEqual([{ dx: 0, dy: -40 + SLOP_PX, fresh: true }]);
   });
 
   test(`two fingers that go ${RAIL} times further across than down scroll across alone, and down alone the other way round`, () => {
@@ -275,13 +274,16 @@ describe("two fingers", () => {
     across.down(B, 10);
     // The middle goes 10 right and 4 down: past the slop, more than twice as far across, and the
     // first step is the share of the travel across that is past the slop.
-    across.move(A, 20, { x: 1120, y: 108 });
+    across.move(A, 20, { x: 1110, y: 104 });
+    across.move(B, 20, { x: 1210, y: 104 });
     const gone = Math.hypot(10, 4);
     expect(across.steps).toEqual([{ dx: (10 * (gone - SLOP_PX)) / gone, dy: 0, fresh: true }]);
     // On the rail, the fingers going down move nothing, and going on across, the sheet follows.
-    across.move(B, 20, { x: 1200, y: 130 });
+    across.move(A, 30, { x: 1110, y: 130 });
+    across.move(B, 30, { x: 1210, y: 130 });
     expect(across.steps).toHaveLength(1);
-    across.move(B, 30, { x: 1180, y: 130 });
+    across.move(A, 40, { x: 1100, y: 130 });
+    across.move(B, 40, { x: 1200, y: 130 });
     expect(across.steps.slice(1)).toEqual([{ dx: -10, dy: 0, fresh: false }]);
 
     const down = new Bench();
@@ -290,7 +292,7 @@ describe("two fingers", () => {
     down.down(B, 10);
     // 4 across and 20 down, as the middle goes: down alone, to the end of the gesture.
     down.move(A, 20, { x: 1108, y: 140 });
-    down.move(B, 20, { x: 1240, y: 100 });
+    down.move(B, 20, { x: 1200, y: 100 });
     const far = Math.hypot(4, 20);
     expect(down.steps).toEqual([{ dx: 0, dy: (20 * (far - SLOP_PX)) / far, fresh: true }]);
 
@@ -301,6 +303,7 @@ describe("two fingers", () => {
     short.down(A, 0);
     short.down(B, 10);
     short.move(A, 20, { x: 1107, y: 115 });
+    short.move(B, 20, { x: 1200, y: 100 });
     const [first] = short.steps;
     expect(first?.dx).toBe(0);
     expect(first?.dy).toBeGreaterThan(0);
@@ -318,6 +321,7 @@ describe("two fingers", () => {
     bench.move(B, 20, { x: 1240, y: 118 });
     expect(bench.steps).toEqual([{ dx: 0, dy: 12 - SLOP_PX, fresh: true }]);
     bench.move(A, 30, { x: 1180, y: 116 });
+    bench.move(B, 30, { x: 1240, y: 118 });
     expect(bench.steps.slice(1)).toEqual([{ dx: 0, dy: 5, fresh: false }]);
   });
 
@@ -328,8 +332,10 @@ describe("two fingers", () => {
     bench.down(B, 10);
     // The middle goes 9 right and 12 down, 15 in all: 7 past the slop, the same share of each.
     bench.move(A, 20, { x: 1118, y: 124 });
+    bench.move(B, 20, { x: 1200, y: 100 });
     expect(bench.steps).toEqual([{ dx: (9 * 7) / 15, dy: (12 * 7) / 15, fresh: true }]);
-    bench.move(B, 20, { x: 1210, y: 110 });
+    bench.move(B, 30, { x: 1210, y: 110 });
+    bench.move(A, 30, { x: 1118, y: 124 });
     expect(bench.steps.slice(1)).toEqual([{ dx: 5, dy: 5, fresh: false }]);
     const along = bench.steps.reduce((sum, { dx, dy }) => sum + Math.hypot(dx, dy), 0);
     // The fingers' middle went from 1150, 100 to 1164, 117: the slop less, the sheet went as far.
@@ -417,6 +423,61 @@ describe("two fingers", () => {
     expect(bench.hands.scrolling).toBe(true);
     bench.up(A);
     expect(bench.hands.scrolling).toBe(false);
+  });
+});
+
+describe("a pinch", () => {
+  test(`two fingers drawn apart past ${SLOP_PX} px zoom by the span's ratio from there, about their middle`, () => {
+    const bench = new Bench();
+    bench.mode.on = true;
+    // A at 1100 and B at 1200: a span of 100.
+    bench.down(A, 0);
+    bench.down(B, 10);
+    // 106 apart: within the slop, and the middle stays at 1150, so nothing scrolls either.
+    bench.move(A, 20, { x: 1097 });
+    bench.move(B, 20, { x: 1203 });
+    expect(bench.zooms).toEqual([]);
+    // The span is read once both have moved, not between: 116 apart, past the slop, and the zoom
+    // goes from 108 on.
+    bench.move(A, 30, { x: 1092 });
+    expect(bench.zooms).toEqual([]);
+    bench.move(B, 30, { x: 1208 });
+    expect(bench.zooms).toEqual([{ ratio: 116 / 108, x: 1150, y: 100 }]);
+    // And together again, by the ratio to the last step.
+    bench.move(A, 40, { x: 1121 });
+    bench.move(B, 40, { x: 1179 });
+    const zoomed = bench.zooms.reduce((product, { ratio }) => product * ratio, 1);
+    expect(zoomed).toBeCloseTo(58 / 108);
+  });
+
+  test("a finger that moves twice while the other stands pinches at its second move", () => {
+    const bench = new Bench();
+    bench.mode.on = true;
+    bench.down(A, 0);
+    bench.down(B, 10);
+    bench.move(B, 20, { x: 1220 });
+    expect(bench.zooms).toEqual([]);
+    bench.move(B, 30, { x: 1230 });
+    expect(bench.zooms).toEqual([{ ratio: 130 / 108, x: 1165, y: 100 }]);
+  });
+
+  test("a pinch whose middle moves scrolls too, and one finger dragging alone never zooms", () => {
+    const bench = new Bench();
+    bench.mode.on = true;
+    bench.down(A, 0);
+    bench.down(B, 10);
+    bench.move(A, 20, { x: 1080, y: 140 });
+    bench.move(B, 20, { x: 1220, y: 140 });
+    expect(bench.zooms.length).toBeGreaterThan(0);
+    expect(bench.scrolled).toBeGreaterThan(0);
+
+    const one = new Bench();
+    one.mode.on = true;
+    one.down(A, 0);
+    one.move(A, 20, { x: 1300, y: 300 });
+    one.move(A, 30, { x: 1400, y: 400 });
+    expect(one.steps.length).toBeGreaterThan(0);
+    expect(one.zooms).toEqual([]);
   });
 });
 

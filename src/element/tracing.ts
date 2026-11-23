@@ -31,6 +31,7 @@ import {
 import { SVG, write } from "./attributes.js";
 import { ICONS, type IconName, ROW } from "./icons.js";
 import { type Labels, say } from "./labels.js";
+import { lineOf } from "./notation.js";
 import { draw, plainButton } from "./tools.js";
 
 /**
@@ -117,9 +118,9 @@ export class TracingPaper {
   readonly #signWords = document.createElement("span");
   /** Over the ink: the bar of scale under the paper chosen. */
   readonly bar = document.createElement("div");
-  readonly #smaller = plainButton("zoomOut");
+  readonly #smaller = plainButton("smaller");
   readonly #percent = document.createElement("button");
-  readonly #larger = plainButton("zoomIn");
+  readonly #larger = plainButton("larger");
   readonly #fit = plainButton("fit");
   readonly #mode = plainButton("recognise");
   readonly #moves: TracingMoves;
@@ -133,6 +134,13 @@ export class TracingPaper {
   #asked = false;
   /** The statements drawn, and the size they were fitted to: drawn again only when either changes. */
   #drawn = "";
+  /** The letters' size the paper's height gives the statements, before they are fitted. */
+  #full = 0;
+  /**
+   * The lines' sizes, which change when they are first laid out — the paper hidden when they were
+   * drawn, or the font not yet loaded — and when they are fitted: each time they are fitted again.
+   */
+  readonly #lines = new ResizeObserver(() => this.#fitText());
   /** The paper on the stage, CSS pixels, as last placed. */
   #box = { width: 0, height: 0 };
   /** A corner's drag under way: its pointer, where it began, the paper then and the corner. */
@@ -373,8 +381,8 @@ export class TracingPaper {
     for (const part of [this.bar, this.sign]) write(part, "lang", lang);
     write(this.bar, "aria-label", labels.scaleButtons);
     for (const [button, words] of [
-      [this.#smaller, labels.zoomOut],
-      [this.#larger, labels.zoomIn],
+      [this.#smaller, labels.smaller],
+      [this.#larger, labels.larger],
       [this.#fit, labels.fit],
     ] as const) {
       const label = button.querySelector(".label");
@@ -461,6 +469,8 @@ export class TracingPaper {
   /** The element left the page: the crop's address goes, and a drag or a tooltip with it. */
   disconnect(): void {
     this.#connected = false;
+    this.#lines.disconnect();
+    this.#drawn = "";
     this.#release();
     this.#drag = undefined;
     this.grip.classList.remove("dragging");
@@ -694,8 +704,9 @@ export class TracingPaper {
   }
 
   /**
-   * The statements in place of the crop, a line each, "□" a dashed box: their letters as large as
-   * the paper's height shares out among them, and smaller where the longest line would not fit.
+   * The statements in place of the crop, a line each, "□" a dashed box and a fraction built up
+   * (./notation.ts): their letters as large as the paper's height shares out among them, and
+   * smaller where the longest line, or the lines with their fractions, would not fit.
    */
   #drawText(): void {
     const { width, height } = this.#box;
@@ -708,25 +719,41 @@ export class TracingPaper {
       ...statements.map((statement) => {
         const line = document.createElement("div");
         line.className = "line";
-        for (const [n, piece] of statement.split("□").entries()) {
-          if (n > 0) {
-            const box = document.createElement("span");
-            box.className = "slot";
-            line.append(box);
-          }
-          if (piece !== "") line.append(piece);
-        }
+        line.append(...lineOf(statement));
         return line;
       }),
     );
-    const lines = Math.max(1, statements.length);
-    let size = Math.min(height / (lines * 1.5), height * 0.55);
-    this.#text.style.fontSize = `${size}px`;
-    const wide = this.#text.scrollWidth;
-    if (wide > width && wide > 0) {
-      size *= (width * 0.92) / wide;
-      this.#text.style.fontSize = `${size}px`;
-    }
+    const count = Math.max(1, statements.length);
+    this.#full = Math.min(height / (count * 1.5), height * 0.55);
+    this.#text.style.fontSize = `${this.#full}px`;
+    this.#lines.disconnect();
+    for (const line of this.#text.children) this.#lines.observe(line);
+    this.#fitText();
+  }
+
+  /**
+   * The statements' letters at the paper's full size, or smaller by as much as the widest line, or
+   * the lines together, exceed the paper. Measured at the size they have, so that once fitted they
+   * fit and their size stays: the observer of the lines, which calls this again, then stops.
+   */
+  #fitText(): void {
+    const { width, height } = this.#box;
+    // The lines as laid out, not the box's scroll: centred, they spill over both its edges.
+    const lines = [...this.#text.children] as HTMLElement[];
+    const wide = Math.max(0, ...lines.map((line) => line.offsetWidth));
+    const first = lines[0];
+    const last = lines.at(-1);
+    const tall =
+      first === undefined || last === undefined
+        ? 0
+        : last.offsetTop + last.offsetHeight - first.offsetTop;
+    // Not laid out: hidden, or out of the page. The observer calls again once they are.
+    if (wide === 0 || tall === 0) return;
+    const size = Number.parseFloat(this.#text.style.fontSize) || this.#full;
+    const k = Math.min((width * 0.92) / wide, (height * 0.92) / tall);
+    const fitted = Math.min(this.#full, size * k);
+    // Within half a percent it stays: a size that moves by a rounding feeds the observer again.
+    if (Math.abs(fitted - size) > size * 0.005) this.#text.style.fontSize = `${fitted}px`;
   }
 
   /** The tooltip on hover or the keyboard's focus, unless Escape or a drag dismissed it. */

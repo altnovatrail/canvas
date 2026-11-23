@@ -140,12 +140,13 @@ import {
   whollyOff,
 } from "../core/tracing.js";
 import { nextIdOf, resumeOf, Work } from "../core/work.js";
+import { ZOOM_MIN, ZOOM_STEP } from "../core/zoom.js";
 import { placeOver, SVG, write } from "./attributes.js";
 import { knows, labelsFor, say, sayAround } from "./labels.js";
 import { Parts } from "./parts.js";
 import { Pictures } from "./pictures.js";
 import { attachProbe } from "./probe.js";
-import { PEN_MODE } from "./session.js";
+import { PAGE_ZOOM, PEN_MODE } from "./session.js";
 import { Statement } from "./statement.js";
 import { type DemoControls, type RowKind, Tools } from "./tools.js";
 import { TracingPaper } from "./tracing.js";
@@ -328,7 +329,9 @@ const ERASER_RADIUS_PX = 10;
 // element inherits — spacing, weight, transforms, the direction — moves them: `all: initial` takes
 // it off, and what the print needs comes back (R36). A box's frame is one CSS pixel at any scale,
 // on whole device pixels: an antialiased line of one pixel would lose its contrast. A filled box's
-// is three, in the same ink, and the system's highlight with forced colours (R37).
+// is three, in the same ink, and the system's highlight with forced colours (R37). A dot of the grid
+// is three pixels across at the fit and above it, and smaller by the zoom below it, so that a sheet
+// zoomed out is no field of dots (R73).
 const STYLE = `
 :host { display: flex; flex-direction: column; isolation: isolate; writing-mode: horizontal-tb; }
 :host([hidden]) { display: none; }
@@ -423,11 +426,13 @@ const STYLE = `
   display: block; outline: 2px solid var(--novatrail-canvas-ink, ${INK}); outline-offset: -2px;
 }
 .column {
-  position: relative; width: calc(min(100%, ${K_MAX * SHEET.width}px) * var(--across, 1));
+  position: relative;
+  width: calc(min(100%, ${K_MAX * SHEET.width}px) * var(--zoom, 1) * var(--across, 1));
   padding-block: var(--novatrail-canvas-pad-top, 0px) var(--novatrail-canvas-pad-bottom, 0px);
 }
 .statement, .parts {
-  position: sticky; left: 0; box-sizing: border-box; width: calc(100% / var(--across, 1));
+  position: sticky; left: 0; box-sizing: border-box;
+  width: calc(100% / (var(--zoom, 1) * var(--across, 1)));
   direction: var(--direction, ltr);
 }
 .statement { padding: 0 0 12px; overflow-wrap: break-word; }
@@ -476,7 +481,7 @@ const STYLE = `
   fill: none; stroke: var(--novatrail-canvas-grid, #d3dbe5); stroke-width: 1px;
   vector-effect: non-scaling-stroke;
 }
-.grid.dots { stroke-width: 3px; stroke-linecap: round; }
+.grid.dots { stroke-width: calc(3px * min(1, var(--zoom, 1))); stroke-linecap: round; }
 .print {
   all: initial; font-family: inherit; visibility: inherit; pointer-events: none; direction: ltr;
   font-variant-numeric: tabular-nums; font-size: ${LAYOUT.size}px;
@@ -526,10 +531,14 @@ canvas {
   color: var(--novatrail-canvas-ink, ${INK});
 }
 .statements .slot {
-  display: inline-block; box-sizing: border-box; width: 1.08em; height: 1.08em;
-  margin: 0 0.18em; vertical-align: -0.22em; border-radius: 0.2em;
+  box-sizing: border-box; border-radius: 0.2em;
   border: max(2px, 0.04em) dashed var(--novatrail-canvas-accent, ${ACCENT});
 }
+.statements span.slot {
+  display: inline-block; width: 1.08em; height: 1.08em; margin: 0 0.18em; vertical-align: -0.22em;
+}
+.statements mspace.slot { margin: 0 0.1em; }
+.statements math { font-family: inherit; font-size: inherit; color: inherit; }
 .scan {
   position: absolute; inset: 0; overflow: hidden;
   background: color-mix(in srgb, var(--novatrail-canvas-accent, ${ACCENT}) 4%, transparent);
@@ -538,8 +547,12 @@ canvas {
   position: absolute; top: 0; bottom: 0; left: -30%; width: 30%;
   background: linear-gradient(90deg, transparent,
     color-mix(in srgb, var(--novatrail-canvas-accent, ${ACCENT}) 18%, transparent), transparent);
-  border-right: 2px solid color-mix(in srgb, var(--novatrail-canvas-accent, ${ACCENT}) 60%, transparent);
   left: 35%;
+}
+/* The line runs through the middle of its glow, so the glow is the same on both sides of it. */
+.scan i::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: calc(50% - 1px); width: 2px;
+  background: color-mix(in srgb, var(--novatrail-canvas-accent, ${ACCENT}) 60%, transparent);
 }
 @keyframes novatrail-scan { from { left: -30%; } to { left: 100%; } }
 @keyframes novatrail-spin { to { transform: rotate(360deg); } }
@@ -631,7 +644,8 @@ canvas {
   .statements { color: CanvasText; }
   .statements .slot { border-color: CanvasText; }
   .scan { background: transparent; }
-  .scan i { background: transparent; border-right-color: Highlight; }
+  .scan i { background: transparent; }
+  .scan i::after { background: Highlight; }
   .stage > .tracing-sign, .stage > .tracing-sign[data-shows] {
     background: Canvas; color: CanvasText; border: 1px solid CanvasText;
   }
@@ -896,6 +910,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       choose: (tool) => this.#choose(tool),
       undo: () => this.undo(),
       clear: () => this.clear(),
+      zoom: (larger) => this.#zoomBy(larger),
       turnGrid: () => this.#turnGrid(),
       next: () => this.#openNext(),
       toggle: () => this.#toggleDemo(),
@@ -960,6 +975,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       writer: () => this.#writer(),
       drop: (pointerId) => this.#drop(pointerId),
       scroll: (dx, dy, fresh) => this.#scroll(dx, dy, fresh),
+      zoom: (ratio, x, y) => this.#pinch(ratio, x, y),
       across: () => overflowOf(this.#viewport, "x") > EDGE,
     },
     PEN_MODE,
@@ -983,6 +999,25 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   #port: Element | null = null;
   readonly #ported = new ResizeObserver(() => this.#fit());
   #unwatchPen: (() => void) | undefined;
+  #unwatchZoom: (() => void) | undefined;
+  /** The zoom the sheet is laid out by: the page's, and a worked example's 1 (R73). */
+  #zoom = 1;
+  /** Where on the screen a pinch zooms about, while it sets the page's zoom (R73). */
+  #anchor: { readonly x: number; readonly y: number } | undefined;
+  /**
+   * The point of the sheet a press zoomed about, where on the screen it stood, and where the press
+   * left the container: while nothing has scrolled or moved it since, the next press zooms about the
+   * same point, so that a zoom out at the sheet's edge, where the scroll stops short, and back in
+   * comes back where it was (R73).
+   */
+  #held:
+    | {
+        readonly at: { readonly x: number; readonly y: number };
+        readonly x: number;
+        readonly y: number;
+        readonly box: string;
+      }
+    | undefined;
   #tool: Tool = "pen";
   /** The pointer the hand moves the sheet by, and where it was on the screen last (R88). */
   #pan: { readonly pointerId: number; readonly x: number; readonly y: number } | undefined;
@@ -1688,6 +1723,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       unwatch();
       unenlist();
     };
+    // The page's zoom, on every sheet of it (R73): it may have changed while the element was away.
+    this.#unwatchZoom = PAGE_ZOOM.watch(() => this.#zoomed());
     // A page that grows or shrinks scrolls nothing, and neither does a window of another size.
     this.#page.observe(document.documentElement);
     window.addEventListener("resize", this.#resized);
@@ -1898,6 +1935,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#latchAcross = undefined;
     this.#unwatchPen?.();
     this.#unwatchPen = undefined;
+    this.#unwatchZoom?.();
+    this.#unwatchZoom = undefined;
     this.#endPan();
     this.#page.disconnect();
     this.#ported.disconnect();
@@ -2545,9 +2584,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#region();
     const area = this.#area;
     if (area === undefined || area.width === 0) return;
-    // The page is as wide as the container up to the cap, the column as wide as the sheet goes, by
-    // the style, and the stage as tall and as wide as the visible part of the sheet.
-    const k = fitScale(area.width);
+    // The page is as wide as the container up to the cap, times the zoom, the column as wide as the
+    // sheet goes, by the style, and the stage as tall and as wide as the visible part of the sheet.
+    const k = fitScale(area.width) * this.#zoom;
     const extent = this.#extent;
     this.#stage.style.width = `${Math.min(area.width, extent.width * k)}px`;
     this.#stage.style.height = `${Math.min(area.height, extent.height * k)}px`;
@@ -2582,15 +2621,18 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * How far the sheet goes (R73): past the page, the ink and the tracing paper where it lies, by
-   * one view of the window more, at the window's own fit, within the reach. A worked example's
-   * sheet is its page alone. The window's view and not the container's: the sheet is sized by its
-   * style, and a size that the container's observer gave would resize the container again while
-   * the observer reports it, which the browser tells the window as a loop.
+   * one view of the window more across and two down, at the window's own fit times the zoom,
+   * within the reach. A worked example's sheet is its page alone. The window's view and not the
+   * container's: the sheet is sized by its style, and a size that the container's observer gave
+   * would resize the container again while the observer reports it, which the browser tells the
+   * window as a loop. A zoom below the fit counts by its quarter below, so that a pinch lays the
+   * sheet out anew only as it crosses one, and above the fit as the fit: the view is smaller then.
    */
   #reach(): Size {
     if (this.#example !== undefined) return SHEET;
-    const k = fitScale(innerWidth);
-    return extentOf(this.#inkReach(), { width: innerWidth / k, height: innerHeight / k });
+    const quarter = Math.max(ZOOM_MIN, Math.floor(this.#zoom / ZOOM_STEP + 1e-6) * ZOOM_STEP);
+    const k = fitScale(innerWidth) * Math.min(1, quarter);
+    return extentOf(this.#inkReach(), { width: innerWidth / k, height: (2 * innerHeight) / k });
   }
 
   /** The right and the bottom of the sheet's ink and of the tracing paper, which counts whole. */
@@ -2620,13 +2662,77 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * page, and the sheet in the extent's proportions —, and laid out (R73).
    */
   #regrow(): void {
+    const zoom = this.#example === undefined ? PAGE_ZOOM.value : 1;
+    const zoomed = zoom !== this.#zoom;
+    if (zoomed) {
+      this.#zoom = zoom;
+      this.#column.style.setProperty("--zoom", String(zoom));
+    }
     const extent = this.#reach();
-    if (extent.width === this.#extent.width && extent.height === this.#extent.height) return;
-    this.#extent = extent;
-    this.#column.style.setProperty("--across", String(extent.width / SHEET.width));
-    this.#sheet.style.aspectRatio = `${extent.width} / ${extent.height}`;
-    this.#drawGrid();
+    const grown = extent.width !== this.#extent.width || extent.height !== this.#extent.height;
+    if (!zoomed && !grown) return;
+    if (grown) {
+      this.#extent = extent;
+      this.#column.style.setProperty("--across", String(extent.width / SHEET.width));
+      this.#sheet.style.aspectRatio = `${extent.width} / ${extent.height}`;
+      this.#drawGrid();
+    }
     this.#layout();
+  }
+
+  /**
+   * Zoom in or Zoom out was pressed (R73): the page's zoom goes a quarter larger or smaller, and
+   * every sheet of the page is laid out by it — but not while a pointer writes or erases on one of
+   * them, for nothing moves under it.
+   */
+  #zoomBy(larger: boolean): void {
+    if (!PEN_MODE.writing) PAGE_ZOOM.step(larger);
+  }
+
+  /** Two fingers pinched by `ratio` about `x` and `y` on the screen: the page's zoom goes by it. */
+  #pinch(ratio: number, x: number, y: number): void {
+    if (this.#example !== undefined) return;
+    this.#anchor = { x, y };
+    try {
+      PAGE_ZOOM.set(PAGE_ZOOM.value * ratio);
+    } finally {
+      this.#anchor = undefined;
+    }
+  }
+
+  /**
+   * The page's zoom has changed (R73): the sheet is laid out by it at once, the point of the sheet
+   * under a pinch's middle, or else the one the last press held, or else under the middle of the
+   * part in sight, standing where it was on the screen, and the bar shows what the zoom can do now.
+   */
+  #zoomed(): void {
+    const before = this.isConnected ? this.#view() : undefined;
+    const k = this.#k;
+    this.#regrow();
+    if (before !== undefined && this.#k !== k && this.#k > 0) {
+      const { shown } = before;
+      const held =
+        this.#anchor === undefined && this.#held?.box === this.#heldBox() ? this.#held : undefined;
+      const x = this.#anchor?.x ?? held?.x ?? (shown.left + shown.right) / 2;
+      const y = this.#anchor?.y ?? held?.y ?? (shown.top + shown.bottom) / 2;
+      const at = held?.at ?? {
+        x: (x - before.left) / before.k + before.vx,
+        y: (y - before.top) / before.k + before.vy,
+      };
+      const port = clientBoxOf(this.#viewport);
+      this.#viewport.scrollLeft = this.#sheetAtX + at.x * this.#k - (x - port.left) / port.across;
+      this.#viewport.scrollTop = this.#sheetAt + at.y * this.#k - (y - port.top) / port.down;
+      this.#scrolled();
+      this.#held = this.#anchor === undefined ? { at, x, y, box: this.#heldBox() } : undefined;
+    }
+    this.#refresh();
+  }
+
+  /** Where the container stands on the screen and how far it is scrolled, as a press leaves it. */
+  #heldBox(): string {
+    const { left, top, right, bottom } = this.#viewport.getBoundingClientRect();
+    const { scrollLeft, scrollTop } = this.#viewport;
+    return [left, top, right, bottom, scrollLeft, scrollTop].join(" ");
   }
 
   /**
@@ -2750,7 +2856,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     if (this.#tracing?.hidden === false) this.#leaveTracing(true);
     const state = this.#tracing;
     if (this.#paper === undefined || state === undefined) return;
-    this.#tracing = Object.freeze({ at: state.at, hidden: !state.hidden });
+    this.#tracing = Object.freeze({ ...state, hidden: !state.hidden });
     this.#refresh();
     this.#request();
     this.#tracingChanged();
@@ -3050,6 +3156,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       tool: this.#tool,
       undoable: this.#work.undoable,
       clearable: this.#work.strokes.length > 0,
+      larger: PAGE_ZOOM.larger,
+      smaller: PAGE_ZOOM.smaller,
       opens: this.#nextPart() !== undefined,
       expanded: demo?.hidden !== true,
       traced: this.#tracing?.hidden !== true,

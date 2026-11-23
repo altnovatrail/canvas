@@ -27,8 +27,8 @@ import { probe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
 
 // The sheet past the task's page in a browser (R73): the page fits the width up to a pixel a unit
-// at the sheet's left, and the sheet goes on right and down as far as the ink and one view more,
-// within its reach, nothing zooming it. The container scrolls it across as well as down — by the
+// at the sheet's left, and the sheet goes on as far as the ink and one view more right, two down,
+// within its reach, at the page's zoom of 1, which zoom.test.ts changes. The container scrolls it across as well as down — by the
 // wheel, the keys, two fingers and the hand, for the bar has no buttons that scroll it (R84; R88)
 // — the statement staying as wide as the page. The canvas stays as small as the container, and the
 // input and the eraser stay in units of the sheet. A worked example's sheet is its page alone.
@@ -50,11 +50,11 @@ function extentOf(root: ShadowRoot, view: View): { width: number; height: number
 
 /**
  * The extent the sheet should have past ink reaching `right` and `bottom`, by one view of the
- * window as room, at the window's own fit, whatever the element's own width.
+ * window as room across and two down, at the window's own fit, whatever the element's own width.
  */
 function expected(right: number = SHEET.width, bottom: number = SHEET.height) {
   const fit = Math.min(innerWidth / SHEET.width, 1);
-  const room = { width: innerWidth / fit, height: innerHeight / fit };
+  const room = { width: innerWidth / fit, height: (2 * innerHeight) / fit };
   return {
     width: Math.min(REACH.width, Math.ceil(Math.max(right, SHEET.width) + room.width)),
     height: Math.min(REACH.height, Math.ceil(Math.max(bottom, SHEET.height) + room.height)),
@@ -85,7 +85,7 @@ function rested(viewport: HTMLElement): Promise<unknown> {
 }
 
 test.each([320, 640, 1000, 1400])(
-  "at %i CSS px the page fits the width up to a pixel a unit, at the sheet's left, and the sheet goes one view past it right and down: the canvas no larger than the container, which scrolls across by the page's width",
+  "at %i CSS px the page fits the width up to a pixel a unit, at the sheet's left, and the sheet goes one view past it right and two down: the canvas no larger than the container, which scrolls across by the page's width",
   async (width) => {
     const { root, canvas, viewport, view } = await placed(made, width, 300);
     const k = Math.min(viewport.clientWidth, SHEET.width) / SHEET.width;
@@ -109,7 +109,7 @@ test.each([320, 640, 1000, 1400])(
   },
 );
 
-test("the sheet grows past the ink by one view, right and down, and shrinks back as an undo or a clearing takes the ink off", async () => {
+test("the sheet grows past the ink by one view right and two down, and shrinks back as an undo or a clearing takes the ink off", async () => {
   const { element, root, canvas, viewport, view } = await placed(made, 400, 300);
   const k = view().k;
   same(extentOf(root, view()), expected());
@@ -645,7 +645,9 @@ test("under the consumer's padding the grid goes on above the sheet and below it
   expect(ruling(above, 0)).toBeCloseTo(box.top, 3);
   expect(ruling(above, -step)).toBeCloseTo(box.top - step * k, 3);
   expect(above.firstElementChild?.getAttribute("d")).toContain(`M0 ${-step}H`);
-  expect(ruling(below, box.height / k)).toBeCloseTo(box.bottom, 3);
+  // The sheet goes a whole number of units, where the band below begins: its box, laid out in
+  // fractions of a pixel, by k is a little off it, the more so the taller the sheet.
+  expect(ruling(below, Math.round(box.height / k))).toBeCloseTo(box.bottom, 3);
   // A statement stands above the sheet in the padding: no band above it.
   element.paper = undefined;
   element.task = sheetTask();

@@ -4,7 +4,9 @@
 // Authoring Practices have one: one stop of Tab, the arrow keys up and down from button to button,
 // and the tools a group of radio buttons that the arrows go through without choosing one. Undo and
 // Clear with nothing to take back or to clear stay where the focus can reach them, marked
-// unavailable: a last undo from the keyboard leaves the focus where it was. The sheet has no
+// unavailable: a last undo from the keyboard leaves the focus where it was. After a line, Zoom in
+// and Zoom out step the page's zoom of the sheet by quarters from half its fit to twice it, each
+// unavailable at its end, as a pinch of two fingers sets it between (R73). The sheet has no
 // buttons that scroll it: the hand, two fingers or a finger in pen mode drag it, the wheel and the
 // keys scroll it (R84; R88; R90 spec). The buttons of the bar show an icon alone, of the set every
 // NovaTrail package of the interface draws from (R46; R78 spec): each is named by its label, in the
@@ -36,13 +38,14 @@ export type Value = keyof typeof ROW;
 
 /**
  * What the bar asks of the element: a tool the learner chose — perhaps the one in use — an undo, a
- * clearing, and on a worked example the next part of its demo, or the whole demo hidden or shown
+ * clearing, a step of the zoom, larger or smaller (R73), and on a worked example the next part of its demo, or the whole demo hidden or shown
  * (R42).
  */
 export interface ToolActions {
   readonly choose: (tool: Tool) => void;
   readonly undo: () => void;
   readonly clear: () => void;
+  readonly zoom: (larger: boolean) => void;
   /** A task from paper's grid turned to the next (R88). */
   readonly turnGrid: () => void;
   readonly next: () => void;
@@ -67,8 +70,9 @@ export type RowKind = "sheet" | "workbook" | "paper" | "example";
 
 /**
  * What the bar shows: what it is of, the tools the task allows — the hand besides, always —, the
- * one in use, whether undo and clearing have anything to do, and on a worked example whether Next
- * has a part to open and whether the demo is shown (R42).
+ * one in use, whether undo and clearing have anything to do, whether the zoom has a larger step
+ * and a smaller one (R73), and on a worked example whether Next has a part to open and whether the
+ * demo is shown (R42).
  */
 export interface ToolState {
   readonly kind: RowKind;
@@ -76,6 +80,8 @@ export interface ToolState {
   readonly tool: Tool;
   readonly undoable: boolean;
   readonly clearable: boolean;
+  readonly larger: boolean;
+  readonly smaller: boolean;
   readonly opens: boolean;
   readonly expanded: boolean;
   /** On a task from paper, whether its tracing paper is shown (R87), and its sheet's grid (R88). */
@@ -124,6 +130,10 @@ export class Tools {
   readonly #hand = radioButton("hand");
   readonly #undo = plainButton("undo");
   readonly #clear = plainButton("clear");
+  /** The page's zoom of the sheet, after a line (R73). */
+  readonly #beforeZoom = separator();
+  readonly #zoomIn = plainButton("zoomIn");
+  readonly #zoomOut = plainButton("zoomOut");
   /** A task from paper's grid, after a line (R88). */
   readonly #beforeGrid = separator();
   readonly #grid = plainButton("gridDots");
@@ -140,6 +150,8 @@ export class Tools {
     [this.#hand, "hand"],
     [this.#undo, "undo"],
     [this.#clear, "clear"],
+    [this.#zoomIn, "zoomIn"],
+    [this.#zoomOut, "zoomOut"],
     [this.#grid, "gridDots"],
   ];
   /**
@@ -216,6 +228,9 @@ export class Tools {
       this.#group,
       this.#undo,
       this.#clear,
+      this.#beforeZoom,
+      this.#zoomIn,
+      this.#zoomOut,
       this.#beforeGrid,
       this.#grid,
     );
@@ -247,6 +262,8 @@ export class Tools {
     };
     doing(this.#undo, actions.undo);
     doing(this.#clear, actions.clear);
+    doing(this.#zoomIn, () => actions.zoom(true));
+    doing(this.#zoomOut, () => actions.zoom(false));
     doing(this.#next, actions.next);
     this.#demo.addEventListener("click", () => actions.toggle());
     this.#grid.addEventListener("click", () => actions.turnGrid());
@@ -293,7 +310,19 @@ export class Tools {
    * and fills its icon while the paper is shown (R87), and its grid's button shows the grid (R88).
    */
   show(state: ToolState): void {
-    const { kind, tools, tool, undoable, clearable, opens, expanded, traced, grid } = state;
+    const {
+      kind,
+      tools,
+      tool,
+      undoable,
+      clearable,
+      larger,
+      smaller,
+      opens,
+      expanded,
+      traced,
+      grid,
+    } = state;
     if (kind !== this.#kind) {
       this.#kind = kind;
       this.#name();
@@ -313,6 +342,9 @@ export class Tools {
       [this.#hand, writes],
       [this.#undo, writes],
       [this.#clear, writes],
+      [this.#beforeZoom, writes],
+      [this.#zoomIn, writes],
+      [this.#zoomOut, writes],
       [this.#beforeGrid, kind === "paper"],
       [this.#grid, kind === "paper"],
     ]);
@@ -321,6 +353,8 @@ export class Tools {
     write(this.#hand, "aria-checked", String(tool === "hand"));
     write(this.#undo, "aria-disabled", undoable ? null : "true");
     write(this.#clear, "aria-disabled", clearable ? null : "true");
+    write(this.#zoomIn, "aria-disabled", larger ? null : "true");
+    write(this.#zoomOut, "aria-disabled", smaller ? null : "true");
     write(this.#next, "aria-disabled", opens ? null : "true");
     write(this.#demo, "aria-expanded", String(expanded));
     draw(this.#pen, "pen", tool === "pen");

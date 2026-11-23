@@ -111,6 +111,21 @@ test("Larger, Smaller and the percentage scale it about its centre, each telling
   expect(element.tracing?.scale).toBe(0.4);
 });
 
+test("hiding the paper and showing it again keeps its scale and its place", async () => {
+  const { element, grip, changes } = await paper();
+  choose(grip);
+  await settle();
+  buttonOf(element, "Larger").click();
+  const scaled = element.tracing;
+  buttonOf(element, "Hide the task").click();
+  await settle();
+  expect(element.tracing).toEqual({ ...scaled, hidden: true });
+  buttonOf(element, "Show the task").click();
+  await settle();
+  expect(element.tracing).toEqual(scaled);
+  expect(changes.at(-1)).toEqual(scaled);
+});
+
 test("a corner's drag scales it from the corner across, and tells once it is let go", async () => {
   const { element, grip, frame, changes, view } = await paper();
   element.tracing = { at: [600, 400], hidden: false };
@@ -258,6 +273,16 @@ test("Recognise asks for the reading, waits, shows the statements in place of th
   expect(mode.getAttribute("aria-disabled")).toBe("true");
   expect(sign.textContent).toBe("Recognising…");
   expect(root.querySelector<HTMLElement>(".scan")?.hidden).toBe(false);
+  // The sweeping line runs through the middle of its glow, which has no edge to one side.
+  const glow = root.querySelector<HTMLElement>(".scan i");
+  if (glow === null) throw new Error("no glow");
+  expect(getComputedStyle(glow).borderRightStyle).toBe("none");
+  expect(glow.getBoundingClientRect().width).toBeGreaterThan(0);
+  const line = getComputedStyle(glow, "::after");
+  expect(Number.parseFloat(line.left) + Number.parseFloat(line.width) / 2).toBeCloseTo(
+    glow.getBoundingClientRect().width / 2,
+    1,
+  );
   mode.click();
   expect(asked).toBe(1);
   element.reading = { state: "done", statements: ["□ − 3 = 7"] };
@@ -281,6 +306,90 @@ test("Recognise asks for the reading, waits, shows the statements in place of th
     element.reading = { state: "done" } as never;
   }).toThrow(TypeError);
   expect(Object.isFrozen(element.reading)).toBe(true);
+});
+
+test("the statements read draw a fraction built up, nested as printed, a power raised and the unknowns in italics, within the paper", async () => {
+  const { element, root, grip } = await paper();
+  choose(grip);
+  element.reading = { state: "ready" };
+  root.querySelector<HTMLButtonElement>(".tracing-scale .mode")?.click();
+  element.reading = {
+    state: "done",
+    statements: [
+      "\\frac{3}{17} + \\frac{1 + \\frac{1}{2}}{□} =",
+      "x^{2} = 49",
+      "Ann has 3 apples.",
+    ],
+  };
+  await settle();
+  const text = root.querySelector<HTMLElement>(".statements");
+  if (text === null) throw new Error("no statements");
+  const [first, second, third] = [...text.querySelectorAll<HTMLElement>(".line")];
+  if (!first || !second || !third) throw new Error("not three lines");
+  const fractions = [...first.querySelectorAll("mfrac")];
+  expect(fractions.length).toBe(3);
+  for (const fraction of fractions) {
+    const [over, under] = [...fraction.children];
+    if (!over || !under) throw new Error("a fraction without its two rows");
+    const middle = (e: Element) => {
+      const box = e.getBoundingClientRect();
+      return { x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 };
+    };
+    expect(middle(over).y).toBeLessThan(middle(under).y - 4);
+    expect(Math.abs(middle(over).x - middle(under).x)).toBeLessThan(2);
+  }
+  // The fraction within a fraction is set smaller than the one on the line.
+  const size = (e: Element | undefined) =>
+    Number.parseFloat(getComputedStyle(e as Element).fontSize);
+  expect(size(fractions[2]?.firstElementChild ?? undefined)).toBeLessThan(
+    size(fractions[0]?.firstElementChild ?? undefined),
+  );
+  expect(first.querySelectorAll("mspace.slot").length).toBe(1);
+  expect(second.querySelector("msup")?.textContent).toBe("x2");
+  expect(second.querySelectorAll("i").length).toBe(0);
+  expect(third.textContent).toBe("Ann has 3 apples.");
+  expect(third.querySelector("i")).toBe(null);
+  // Every line within the paper, the fractions too.
+  const paperBox = text.getBoundingClientRect();
+  for (const line of [first, second, third]) {
+    const box = line.getBoundingClientRect();
+    expect(box.top).toBeGreaterThanOrEqual(paperBox.top - 1);
+    expect(box.bottom).toBeLessThanOrEqual(paperBox.bottom + 1);
+    expect(box.width).toBeLessThanOrEqual(paperBox.width + 1);
+  }
+  element.reading = { state: "done", statements: ["3x + 5 = 20"] };
+  await settle();
+  expect([...text.querySelectorAll("i")].map((i) => i.textContent)).toEqual(["x"]);
+});
+
+test("statements read while the paper was hidden fit it once it is shown", async () => {
+  const { element, root, grip } = await paper();
+  choose(grip);
+  element.reading = { state: "ready" };
+  root.querySelector<HTMLButtonElement>(".tracing-scale .mode")?.click();
+  await settle();
+  buttonOf(element, "Hide the task").click();
+  await settle();
+  // A line far wider than the paper, read while nothing of it is laid out.
+  const long =
+    "\\frac{48}{5} : \\frac{27}{4} \\cdot \\frac{5}{12} - \\frac{17}{6} + \\frac{169}{94} \\cdot (1 - 13 : 26) =";
+  element.reading = { state: "done", statements: [long.repeat(2)] };
+  await settle();
+  buttonOf(element, "Show the task").click();
+  const text = root.querySelector<HTMLElement>(".statements");
+  if (text === null) throw new Error("no statements");
+  await expect
+    .poll(() => {
+      // Hidden, a line is 0 wide, and that is no fit.
+      const width = text.querySelector(".line")?.getBoundingClientRect().width ?? 0;
+      return width === 0 ? Number.POSITIVE_INFINITY : width / text.getBoundingClientRect().width;
+    })
+    .toBeLessThanOrEqual(1);
+  // Fitted, it stays within the paper, its letters not shrunk past reading.
+  await settle();
+  const line = text.querySelector(".line")?.getBoundingClientRect().width ?? 0;
+  expect(line).toBeLessThanOrEqual(text.getBoundingClientRect().width);
+  expect(Number.parseFloat(text.style.fontSize)).toBeGreaterThan(8);
 });
 
 test("a reading given without a task from paper is a TypeError", () => {

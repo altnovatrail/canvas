@@ -40,6 +40,9 @@ export interface Labels {
   readonly clear: string;
   /** The tool that moves the sheet and writes nothing (R88). */
   readonly hand: string;
+  /** The buttons of the page's zoom of the sheet, a step larger and a step smaller (R73). */
+  readonly zoomIn: string;
+  readonly zoomOut: string;
   /**
    * The button of a task from paper's grid, by the grid the sheet shows now: a press turns it to
    * the next (R88).
@@ -57,8 +60,8 @@ export interface Labels {
    * {percent}, which a press sets back to its own size, and fit to the window.
    */
   readonly scaleButtons: string;
-  readonly zoomOut: string;
-  readonly zoomIn: string;
+  readonly smaller: string;
+  readonly larger: string;
   readonly scaleReset: string;
   readonly fit: string;
   /**
@@ -101,6 +104,8 @@ const ENGLISH: Labels = Object.freeze({
   undo: "Undo",
   clear: "Clear",
   hand: "Hand",
+  zoomIn: "Zoom in",
+  zoomOut: "Zoom out",
   gridDots: "Grid: dots",
   gridLines: "Grid: lines",
   gridBlank: "Grid: blank",
@@ -109,8 +114,8 @@ const ENGLISH: Labels = Object.freeze({
   hideTask: "Hide the task",
   showTask: "Show the task",
   scaleButtons: "Task scale",
-  zoomOut: "Smaller",
-  zoomIn: "Larger",
+  smaller: "Smaller",
+  larger: "Larger",
   scaleReset: "{percent}: back to 100%",
   fit: "Fit",
   recognise: "Recognise",
@@ -150,6 +155,8 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
       undo: "Отменить",
       clear: "Очистить",
       hand: "Рука",
+      zoomIn: "Крупнее",
+      zoomOut: "Мельче",
       gridDots: "Сетка: точки",
       gridLines: "Сетка: строчки",
       gridBlank: "Сетка: пусто",
@@ -158,8 +165,8 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
       hideTask: "Спрятать задачу",
       showTask: "Показать задачу",
       scaleButtons: "Масштаб задачи",
-      zoomOut: "Уменьшить",
-      zoomIn: "Увеличить",
+      smaller: "Уменьшить",
+      larger: "Увеличить",
       scaleReset: "{percent}: вернуть 100 %",
       fit: "Вписать",
       recognise: "Распознать",

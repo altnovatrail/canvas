@@ -82,7 +82,7 @@ test("a label that names the place to cut at not once, or a place with no value,
 test("the buttons say the words of the table of architecture 6 spec", () => {
   const words = (tag: string) => {
     const { labels } = labelsFor(tag);
-    const { pen, eraser, hand, undo, clear, next, demo } = labels;
+    const { pen, eraser, hand, undo, clear, zoomIn, zoomOut, next, demo } = labels;
     const { gridDots, gridLines, gridBlank, gridSquares } = labels;
     return [
       pen,
@@ -90,6 +90,8 @@ test("the buttons say the words of the table of architecture 6 spec", () => {
       hand,
       undo,
       clear,
+      zoomIn,
+      zoomOut,
       next,
       demo,
       gridDots,
@@ -104,6 +106,8 @@ test("the buttons say the words of the table of architecture 6 spec", () => {
     "Hand",
     "Undo",
     "Clear",
+    "Zoom in",
+    "Zoom out",
     "Next",
     "Demo",
     "Grid: dots",
@@ -117,6 +121,8 @@ test("the buttons say the words of the table of architecture 6 spec", () => {
     "Рука",
     "Отменить",
     "Очистить",
+    "Крупнее",
+    "Мельче",
     "Дальше",
     "Показ",
     "Сетка: точки",

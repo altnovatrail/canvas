@@ -121,6 +121,11 @@ export interface HandsSheet {
    */
   scroll(dx: number, dy: number, fresh: boolean): void;
   /**
+   * Two fingers drew apart, or together, by `ratio` of the span between them: the sheet's zoom
+   * goes by it, the point of the sheet at `x` and `y` on the screen, their middle, standing (R73).
+   */
+  zoom(ratio: number, x: number, y: number): void;
+  /**
    * Whether the sheet scrolls across at all now: one wider than its container does (R73). A
    * gesture on a sheet that does not goes by its travel down alone.
    */
@@ -168,6 +173,17 @@ interface Gesture {
   /** The axes the gesture scrolls along, chosen as it passes the slop (`RAIL`). */
   across: boolean;
   down: boolean;
+  /**
+   * Two fingers' span on the screen when the gesture began, and at the last step of their pinch,
+   * once it has gone past the slop (R73).
+   */
+  readonly span0: number;
+  span: number | undefined;
+  /**
+   * The finger whose move waits for its partner's before the span is read: a browser tells the
+   * fingers' moves one by one, and the span between one moved and one not yet is no pinch.
+   */
+  unpaired: number | undefined;
 }
 
 /**
@@ -188,6 +204,8 @@ interface Gesture {
  * - Two fingers scroll by the travel of their middle on the screen, and one by its own, past its
  *   first `SLOP_PX`: along one axis alone if it went `RAIL` times further along it than along the
  *   other, or else both.
+ * - Two fingers whose span has changed by more than `SLOP_PX` pinch too: the zoom goes by the
+ *   span's ratio from there, about their middle (R73).
  * - Any other pointer, a mouse or one of no type, writes when nothing does, whatever the mode.
  */
 export class Hands {
@@ -256,9 +274,12 @@ export class Hands {
         last: undefined,
         across: true,
         down: true,
+        span0: 0,
+        span: undefined,
+        unpaired: undefined,
       };
     }
-    if (hand.role === "scrolls") this.#step();
+    if (hand.role === "scrolls") this.#step(contact.pointerId);
     return hand.role === "writes" && this.#sheet.writer() === contact.pointerId;
   }
 
@@ -354,6 +375,9 @@ export class Hands {
       last: undefined,
       across: true,
       down: true,
+      span0: spanOf(one, two),
+      span: undefined,
+      unpaired: undefined,
     };
   }
 
@@ -372,13 +396,22 @@ export class Hands {
    * The two fingers' middle has moved, or the one finger: past the slop, the sheet goes with it,
    * along the axes the gesture chose as it passed it.
    */
-  #step(): void {
+  #step(pointerId: number): void {
     const gesture = this.#gesture;
     if (gesture === undefined) return;
     const one = this.#hands.get(gesture.fingers[0]);
     const two = gesture.fingers.length === 2 ? this.#hands.get(gesture.fingers[1]) : one;
     if (one === undefined || two === undefined) return;
+    // Two fingers are read once both have moved: between their moves the middle stands half a
+    // step aside and the span is off, which would scroll a pinch off the point under it.
+    if (one !== two && !paired(gesture, pointerId)) return;
     const middle = middleOf(one, two);
+    this.#move(gesture, middle);
+    if (one !== two) this.#pinch(gesture, spanOf(one, two), middle);
+  }
+
+  /** The sheet goes with the fingers' middle, past the slop, along the axes the gesture chose. */
+  #move(gesture: Gesture, middle: At): void {
     if (gesture.last === undefined) {
       // A sheet that does not scroll across counts the travel down alone.
       const dx = this.#sheet.across() ? middle.x - gesture.from.x : 0;
@@ -399,6 +432,40 @@ export class Hands {
     gesture.last = middle;
     if (dx !== 0 || dy !== 0) this.#sheet.scroll(dx, dy, false);
   }
+
+  /**
+   * The two fingers' span has changed: past the slop, the zoom goes by its ratio to the last step's,
+   * from the slop on, without a jump, about their middle (R73).
+   */
+  #pinch(gesture: Gesture, span: number, middle: At): void {
+    if (gesture.span === undefined) {
+      const change = span - gesture.span0;
+      if (Math.abs(change) <= SLOP_PX) return;
+      gesture.span = gesture.span0 + Math.sign(change) * SLOP_PX;
+    }
+    if (span > 0 && gesture.span > 0 && span !== gesture.span) {
+      this.#sheet.zoom(span / gesture.span, middle.x, middle.y);
+    }
+    gesture.span = span;
+  }
+}
+
+/**
+ * Whether two fingers are read at this finger's move — their middle and their span: once both have
+ * moved, or this one twice while the other stood still.
+ */
+function paired(gesture: Gesture, pointerId: number): boolean {
+  if (gesture.unpaired === undefined) {
+    gesture.unpaired = pointerId;
+    return false;
+  }
+  if (gesture.unpaired !== pointerId) gesture.unpaired = undefined;
+  return true;
+}
+
+/** The span between two fingers on the screen. */
+function spanOf(one: Hand, two: Hand): number {
+  return Math.hypot(one.x - two.x, one.y - two.y);
 }
 
 /** The middle of two fingers on the screen. */

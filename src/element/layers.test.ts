@@ -129,7 +129,7 @@ test("the sheet is a stack of layers in the order of concepts 8 spec, and of the
   const rail = root.querySelector(".rail");
   const buttons = [...root.querySelectorAll(".tools button")];
   if (!bar || !row || !rail) throw new Error("the element has no bar and row in a rail");
-  expect(buttons).toHaveLength(9);
+  expect(buttons).toHaveLength(11);
   expect(rail.getBoundingClientRect().width).toBe(0);
   const boxes = [canvas, stage, sheetBox, viewport, rail, bar, row, ...buttons];
   for (const box of boxes) expect(getComputedStyle(box).pointerEvents).toBe("auto");
@@ -197,7 +197,10 @@ test("every layer shows the sheet by one view, whatever the width and the scroll
       viewport.scrollTop = scrollTop;
       await settle();
       const shown = view();
-      expect(shown.vy).toBeCloseTo(scrollTop / k, 3);
+      // The scroll ends on a whole pixel and the sheet in a fraction of one: at the end the canvas
+      // stands on the sheet's bottom, short of the scroll by less than a pixel.
+      if (scrollTop === end) expect(Math.abs(shown.vy - scrollTop / k)).toBeLessThan(1 / k);
+      else expect(shown.vy).toBeCloseTo(scrollTop / k, 3);
       for (const svg of svgs) {
         const ctm = svg.getScreenCTM();
         if (ctm === null) throw new Error("the layer has no matrix to the screen");
@@ -507,10 +510,10 @@ test("a workbook that does not fit is a TypeError at its item, and so is an answ
   expect(root.querySelector(".statement")?.textContent).toBe("Count the dots.");
 });
 
-/** The extent of an empty sheet: the page and one view of the window past it (R73). */
+/** The extent of an empty sheet: the page and one view of the window past it right, two down (R73). */
 function empty(): { width: number; height: number } {
   const fit = Math.min(innerWidth / SHEET.width, 1);
-  return reachOf(undefined, { width: innerWidth / fit, height: innerHeight / fit });
+  return reachOf(undefined, { width: innerWidth / fit, height: (2 * innerHeight) / fit });
 }
 
 test("a task given before the element is upgraded is taken, and one it cannot show leaves it ruled as it starts, with a warning; after the upgrade such a task is a TypeError", () => {

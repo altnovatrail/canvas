@@ -107,6 +107,18 @@ export const ICONS = {
       "M5 21q-.825 0-1.412-.587T3 19V5q0-.825.588-1.412T5 3h14q.825 0 1.413.588T21 5v14q0 .825-.587 1.413T19 21zm0-2h3.325v-3.325H5zm5.325 0h3.35v-3.325h-3.35zm5.35 0H19v-3.325h-3.325zM5 13.675h3.325v-3.35H5zm5.325 0h3.35v-3.35h-3.35zm5.35 0H19v-3.35h-3.325zM5 8.325h3.325V5H5zm5.325 0h3.35V5h-3.35zm5.35 0H19V5h-3.325z",
     ],
   },
+  "zoom-in-outline-rounded": {
+    viewBox: "0 0 24 24",
+    paths: [
+      "M8.5 10.5h-1q-.425 0-.712-.288T6.5 9.5t.288-.712T7.5 8.5h1v-1q0-.425.288-.712T9.5 6.5t.713.288t.287.712v1h1q.425 0 .713.288t.287.712t-.288.713t-.712.287h-1v1q0 .425-.288.713T9.5 12.5t-.712-.288T8.5 11.5zm1 5.5q-2.725 0-4.612-1.888T3 9.5t1.888-4.612T9.5 3t4.613 1.888T16 9.5q0 1.1-.35 2.075T14.7 13.3l5.6 5.6q.275.275.275.7t-.275.7t-.7.275t-.7-.275l-5.6-5.6q-.75.6-1.725.95T9.5 16m0-2q1.875 0 3.188-1.312T14 9.5t-1.312-3.187T9.5 5T6.313 6.313T5 9.5t1.313 3.188T9.5 14",
+    ],
+  },
+  "zoom-out-outline-rounded": {
+    viewBox: "0 0 24 24",
+    paths: [
+      "M8 10.5q-.425 0-.712-.288T7 9.5t.288-.712T8 8.5h3q.425 0 .713.288T12 9.5t-.288.713T11 10.5zM9.5 16q-2.725 0-4.612-1.888T3 9.5t1.888-4.612T9.5 3t4.613 1.888T16 9.5q0 1.1-.35 2.075T14.7 13.3l5.6 5.6q.275.275.275.7t-.275.7t-.7.275t-.7-.275l-5.6-5.6q-.75.6-1.725.95T9.5 16m0-2q1.875 0 3.188-1.312T14 9.5t-1.312-3.187T9.5 5T6.313 6.313T5 9.5t1.313 3.188T9.5 14",
+    ],
+  },
   "remove-outline-rounded": {
     viewBox: "0 0 24 24",
     paths: [
@@ -193,8 +205,18 @@ export const ROW = {
     filled: "grid-on-outline-rounded",
     mirrored: false,
   },
-  zoomOut: { outline: "remove-outline-rounded", filled: "remove-outline-rounded", mirrored: false },
-  zoomIn: { outline: "add-outline-rounded", filled: "add-outline-rounded", mirrored: false },
+  zoomIn: {
+    outline: "zoom-in-outline-rounded",
+    filled: "zoom-in-outline-rounded",
+    mirrored: false,
+  },
+  zoomOut: {
+    outline: "zoom-out-outline-rounded",
+    filled: "zoom-out-outline-rounded",
+    mirrored: false,
+  },
+  smaller: { outline: "remove-outline-rounded", filled: "remove-outline-rounded", mirrored: false },
+  larger: { outline: "add-outline-rounded", filled: "add-outline-rounded", mirrored: false },
   fit: {
     outline: "fit-screen-outline-rounded",
     filled: "fit-screen-outline-rounded",
