@@ -1,9 +1,9 @@
 // The pointer of the element's tests in Chromium, WebKit and Firefox: a sheet put on the page, the
 // client point over a point of it, a level stroke that a script makes, real input through
-// Chromium's DevTools protocol — a mouse, a pen and touches (R29) — the pixels of a screenshot,
+// Chromium's DevTools protocol — a mouse, a pen and touches — the pixels of a screenshot,
 // Chromium's own accessibility tree and an element given its properties before it was upgraded;
 // and for the pictures, a picture's file — an SVG, or a PNG of four colours — a load the test
-// settles, the wait for the files that came, and what changes in a node (R23, R42). The tests take
+// settles, the wait for the files that came, and what changes in a node. The tests take
 // them from here rather than each keeping a copy. Like the tests, the build leaves this module out
 // (tsconfig.build.json), and the package never has it.
 
@@ -14,7 +14,7 @@ import "./index.js";
 import { type ExportedSheet, NovatrailCanvas, type Task } from "./index.js";
 import { probe } from "./probe.js";
 
-/** The work of a sheet for checking, as its exportWork() gives it (R27): a sheet's, and not null. */
+/** The work of a sheet for checking, as its exportWork() gives it: a sheet's, and not null. */
 export async function sheetWork(element: NovatrailCanvas): Promise<ExportedSheet> {
   const work = await element.exportWork();
   if (work === null || !("png" in work) || "statement" in work) {
@@ -27,7 +27,7 @@ export async function sheetWork(element: NovatrailCanvas): Promise<ExportedSheet
  * Whether the test runs in Chromium, the one engine with the DevTools protocol: real input — a
  * mouse, a pen with its pressure, touches of several fingers — and Chromium's own accessibility
  * tree come through it alone, so a test of them is `test.runIf(devtools)`, and a test that only
- * also reads the tree reads it `if (devtools)`. WebKit and Firefox run the rest (R13, R79 spec).
+ * also reads the tree reads it `if (devtools)`. WebKit and Firefox run the rest.
  */
 export const devtools = server.browser === "chromium";
 
@@ -131,7 +131,7 @@ export function watch(node: Node): () => MutationRecord[] {
  * A sheet `width` CSS pixels wide in `parent`, as tall as its statement and sheet unless given a
  * height, laid out and drawn, with the parts of it the tests reach for — `row` is the bar of its
  * buttons, which stands over the sheet's left edge, and `actions` a worked example's row of Next,
- * Demo and the consumer's buttons at the bottom, hidden on any other kind (R84). What goes on the
+ * Demo and the consumer's buttons at the bottom, hidden on any other kind. What goes on the
  * page goes into `made`, for the test to take off: the element, or the parent it was put in.
  */
 export async function placed(
@@ -174,7 +174,7 @@ export function buttonOf(element: HTMLElement, label: string): HTMLButtonElement
 
 /**
  * A consumer's own button for a worked example's row, a child of the element in its slot
- * `actions`, as app gives its Continue there (R84).
+ * `actions`, as app gives its Continue there.
  */
 export function consumerButton(text = "Continue"): HTMLButtonElement {
   const button = document.createElement("button");
@@ -184,14 +184,14 @@ export function consumerButton(text = "Continue"): HTMLButtonElement {
   return button;
 }
 
-/** A button's icon, the SVG before its label (R46). */
+/** A button's icon, the SVG before its label. */
 export function iconOf(button: Element): SVGSVGElement {
   const icon = button.firstElementChild;
   if (!(icon instanceof SVGSVGElement)) throw new Error("the button has no icon before its label");
   return icon;
 }
 
-/** The mouse moved to the window's corner, where no element of a test stands (R84). */
+/** The mouse moved to the window's corner, where no element of a test stands. */
 export { rest } from "./mouse.fixture.js";
 
 /** A page taller than the screen, which scrolls the element: it goes into `made`, to be taken off. */
@@ -328,7 +328,7 @@ export interface Finger {
 }
 
 /**
- * Real touches through the DevTools protocol (R29), which Chromium gives the page as pointer events
+ * Real touches through the DevTools protocol, which Chromium gives the page as pointer events
  * of type `touch`. `touchStart` and `touchMove` take every finger that is down, the new ones with
  * them, and `touchEnd` the fingers that lift, or every finger when none is given. `at` is the
  * events' time in seconds since 1970, as the protocol takes it: their `timeStamp` follows. The

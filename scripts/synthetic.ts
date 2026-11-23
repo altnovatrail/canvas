@@ -1,18 +1,18 @@
-// The synthetic samples written into a folder, one file each, <ID>.json (R49), as just synthetic
+// The synthetic samples written into a folder, one file each, <ID>.json, as just synthetic
 // runs it: from the build of tsconfig.synthetic.json, since the code of src/ imports its modules by
 // .js names, which Node does not take for .ts ones.
 //
 //   node build/scripts/synthetic.js <folder> [<list>]
 //
 // It reads tutor's file of open tasks from tasks/ of the repository it was built in, which
-// ci-licenses verifies by spec's release-verify (R77 spec), and refuses one whose bytes are not
+// ci-licenses verifies by spec's release-verify, and refuses one whose bytes are not
 // those TUTOR_FILE names. Of what the folder holds it removes only the files of a set,
 // synthetic-*.json, so that none of an older set stays, and prints a line for each sample — its
 // ID, its composition and what it shows. Given a list, it writes the lines there too, under a line
-// of the columns' names: the release's synthetic-samples_v<X.Y.Z>.tsv (R50).
+// of the columns' names: the release's synthetic-samples_v<X.Y.Z>.tsv.
 //
 // The synthetic samples of a module's eval set are scripts/synthetic-module.ts, which the file
-// synthetic-module_v<X.Y.Z>.mjs of every release carries (R63, R68).
+// synthetic-module_v<X.Y.Z>.mjs of every release carries.
 
 import { createHash } from "node:crypto";
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";

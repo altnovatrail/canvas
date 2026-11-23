@@ -5,7 +5,7 @@ import { type HistoryChange, NovatrailCanvas } from "./index.js";
 import { at, sheetWork } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
-// The history of writing as the element takes and gives it (R27): read as the sheet has it, told
+// The history of writing as the element takes and gives it: read as the sheet has it, told
 // of by historychange after every action, and given back to open a sheet as it was — the same
 // history changing nothing, any other replacing the sheet, a wrong one a TypeError.
 
@@ -335,7 +335,8 @@ test("a history given before the element is upgraded is taken, with marks after 
       template.innerHTML = "<novatrail-canvas></novatrail-canvas>";
       const early = template.content.firstElementChild;
       if (!(early instanceof HTMLElement)) throw new Error("the template has no element");
-      // The marks before the history, as a page might set them: the element takes the history first.
+      // The marks before the history, as a page might set them: the element takes the history
+      // first.
       for (const [name, value] of Object.entries(values)) Reflect.set(early, name, value);
       document.body.append(early);
       made.push(early);

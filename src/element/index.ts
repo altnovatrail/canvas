@@ -2,27 +2,27 @@
 // canvas kind, with its markup in an open shadow root (R07). Importing it registers the element,
 // once: a page has one element of this name. The types of its contract with app are spec's, of
 // @altnovatrail/spec/canvas: the element implements its CanvasElement, and the package puts the
-// element and its events in the DOM's maps (R07).
+// element and its events in the DOM's maps.
 //
-// The handwriting sheet takes its input one pointer at a time (R18), with undo and clearing (R19).
+// The handwriting sheet takes its input one pointer at a time, with undo and clearing.
 // Its eraser takes strokes off whole, by the path of a press, as the tool or a pen's eraser, and
-// the sheet keeps the history of writing (R22). The sheet is a stack of layers, the task's grid on
-// its template and the task's statement above it, its look the consumer's to theme (R23). The
+// the sheet keeps the history of writing. The sheet is a stack of layers, the task's grid on
+// its template and the task's statement above it, its look the consumer's to theme. The
 // tutor's marks of a submission hold on to the learner's strokes, and a frame shows where each is,
-// over the work (R26). The history of writing comes in and goes out, an event tells of every
-// action, and the work for checking is the crop with the context of its submission (R27). Over it
+// over the work. The history of writing comes in and goes out, an event tells of every
+// action, and the work for checking is the crop with the context of its submission. Over it
 // all stand the element's own buttons — the tools the task allows, undo and clearing —, labelled
-// in the element's `lang` (R28), on a vertical bar of glass at its left edge (R84). On a tablet a
+// in the element's `lang`, on a vertical bar of glass at its left edge (R84). On a tablet a
 // pen's touch puts the page in pen mode, where a finger writes nothing, a palm writes nothing, and
-// two fingers scroll (R29), one finger too (R84).
+// two fingers scroll, one finger too.
 // The task comes in the names of the module format 0.4, checked as its schema checks it, and the
-// module's manifest gives the height of a digit and the statement's language (R32; R60).
+// module's manifest gives the height of a digit and the statement's language.
 //
 // The workbook's lines, laid out on its page, stand on the template in place of the grid —
-// numbers, text and boxes, which a screen reader reads in the task's order (R35; R36). Each stroke
+// numbers, text and boxes, which a screen reader reads in the task's order. Each stroke
 // is in one box or in none, by a rule of whole numbers, and `filled` tells which boxes hold one: a
-// filled box's frame is thicker, and its name says so (R37). A workbook's work for checking is the
-// crop of each filled box, with the table of the boxes' strokes for its context (R38).
+// filled box's frame is thicker, and its name says so. A workbook's work for checking is the
+// crop of each filled box, with the table of the boxes' strokes for its context.
 //
 // A lesson's worked example it shows on a sheet the learner does not write on: its statement above
 // the sheet, its grid, and no bar, while a finger or a pen scrolls the sheet as the browser scrolls
@@ -32,23 +32,22 @@
 // pictures of the statement and of the demo come from the consumer's media, one file for each
 // reference, all of them as the task or the example comes: a part opened shows its picture at
 // once. A picture on an area of the sheet stands on the layer of the author's demo, over its area,
-// and the sheet scrolls to the area as the part opens (R42). A worked example on a workbook lays
-// its lines out as a task's, and a part of its demo that fills a box writes the box's value in it
-// (R61).
+// and the sheet scrolls to the area as the part opens. A worked example on a workbook lays
+// its lines out as a task's, and a part of its demo that fills a box writes the box's value in it.
 //
 // The keyboard goes into the sheet and out: a container that scrolls is a region named by the
-// canvas kind, with a stop of Tab of its own and a ring when the keyboard brings the focus there
-// (R33); for a `lang` the labels are not in, the container is in theirs and the column in the
-// element's (R74). The sheet goes on past the task's page, which stands at its left, right and
+// canvas kind, with a stop of Tab of its own and a ring when the keyboard brings the focus there;
+//for a `lang` the labels are not in, the container is in theirs and the column in the
+// element's. The sheet goes on past the task's page, which stands at its left, right and
 // down as far as the ink and one view more, and nothing zooms it: the hand, two fingers, the wheel
-// and the keys move it across as well as down (R73; R88).
+// and the keys move it across as well as down.
 //
 // A task from the learner's paper it shows on a sheet of the learner's grid, which the grid's
-// button turns round, dots as the task comes (R88), with the task's crop over it as tracing paper,
+// button turns round, dots as the task comes, with the task's crop over it as tracing paper,
 // which the learner moves by its grip, hides and shows by the button atop the tools, and writes on
 // as on the sheet: a stroke begun on the paper is the paper's and moves with it, and an erasing
 // begun on it takes the paper's strokes alone. The work for checking is the crop of the paper and
-// of the sheet's strokes, with the task's crop beside it (R87).
+// of the sheet's strokes, with the task's crop beside it.
 
 import type {
   CanvasElement,
@@ -152,12 +151,12 @@ import { type DemoControls, type RowKind, Tools } from "./tools.js";
 import { TracingPaper } from "./tracing.js";
 
 /**
- * The types of the contract of canvas and app are spec's (R74 spec; R07): the element as
+ * The types of the contract of canvas and app are spec's: the element as
  * CanvasElement has it, what its events tell and the work it gives for checking, here, and the data
  * — the history of writing, the context of a submission, the filled slots and the state of a demo
  * — through the DOM-free part. The entry point gives them under spec's names, the same types, the
  * media and the tutor's marks too. The crop and a task with its temporary tools are the element's
- * own (R26, R41).
+ * own.
  */
 export type {
   Box,
@@ -213,7 +212,7 @@ const INK = "#111";
 const PAPER = "#fff";
 /**
  * The colour of the tool in use and of the focus on the bar unless the consumer's theme gives one,
- * and the bar's glass: the interface mockup's (R84; R148 spec).
+ * and the bar's glass: the interface mockup's.
  */
 const ACCENT = "#0071E3";
 const GLASS = "rgba(255, 255, 255, 0.76)";
@@ -230,14 +229,14 @@ const TRACING_READ = "tracingread";
 const GRID_CHANGE = "gridchange";
 /**
  * A task from paper's template: no statement, the pen and the eraser, and a dotted sheet, as the
- * task comes, whose grid the learner turns (R87; R88; R162 spec).
+ * task comes, whose grid the learner turns.
  */
 const PAPER_TEMPLATE: Template = Object.freeze({
   grid: Object.freeze({ kind: "dots", step: TRACING.dots }),
   statement: Object.freeze([]),
   tools: NO_TASK.tools,
 });
-/** What Next and Demo control, by their IDs in the shadow root: the region, and the list (R42). */
+/** What Next and Demo control, by their IDs in the shadow root: the region, and the list. */
 const DEMO_IDS: DemoControls = { status: "demo-status", parts: "demo-parts" };
 /**
  * The colour of the tutor's frames unless the consumer's theme gives one: a blue, and not a red,
@@ -247,7 +246,7 @@ const MARK = "#2563eb";
 /**
  * The colours of a verdict's tick and cross, over its white halo: a green, and an amber rather than
  * a red, for «not yet» is no failure; each holds more than 3:1 on white, and the halo holds them
- * over any sheet or photo of a page (R162 spec).
+ * over any sheet or photo of a page.
  */
 const RIGHT = "#15803d";
 const NOT_YET = "#b45309";
@@ -261,7 +260,7 @@ const CROSS = "M8 8l8 8M16 8l-8 8";
 /**
  * The colour of the tutor's wavy line of "Show where" unless the consumer's theme gives one: an
  * orange, as the mockup's, 3.58:1 on white, over a white halo that holds it over any sheet or photo
- * of a page (R87; R162 spec).
+ * of a page.
  */
 const WAVY = "#e8590c";
 /**
@@ -272,14 +271,14 @@ const WAVY_HALF = GRID_STEP / 4;
 const WAVY_CREST = 3.5;
 const WAVY_BELOW = 12;
 const WAVY_REACH = 10;
-/** How far a frame stands off the points of its strokes, in sheet units, as canvas-api's (R26). */
+/** How far a frame stands off the points of its strokes, in sheet units, as canvas-api's. */
 const MARK_PADDING = 10;
 /** The rounding of a frame's corners, in sheet units. */
 const MARK_CORNER = 6;
 
 /**
  * How near a stroke's ink the eraser takes it, in CSS pixels: the same on every screen, whatever
- * the sheet's scale (R22).
+ * the sheet's scale.
  */
 const ERASER_RADIUS_PX = 10;
 
@@ -289,18 +288,18 @@ const ERASER_RADIUS_PX = 10;
 // sheet's left; the sheet goes on past it as far as `#extent` says, and the container scrolls it
 // across too, left to right whatever the page's direction, while the statement and a demo's parts
 // stay as wide as the page and stick to its left, in the element's own direction: they scroll down
-// alone (R73). The layers of the sheet stand in its visible part, the stage, which sticks to the
+// alone. The layers of the sheet stand in its visible part, the stage, which sticks to the
 // container's top and left, and each shows what lies there, shifted in the frame the ink is drawn
-// in (R18, R23). Over the container, in the same cell of the frame's grid, stands the rail of the
+// in. Over the container, in the same cell of the frame's grid, stands the rail of the
 // element's own buttons: a band as tall as the part of the element in sight and as wide as nothing,
 // sticking to the top of whatever scrolls the element, as far down as the consumer's
 // --novatrail-canvas-top says, and up to its bottom less --novatrail-canvas-pad-bottom, and in its
 // middle, 16 pixels from the left edge, the bar of buttons: 52 pixels wide, round at its ends, of
 // the mockup's glass — the fill the consumer's theme gives, blurred behind, or the paper alone
-// where nothing blurs — over the sheet as it scrolls by (R84; R148 spec). A bar taller than the
+// where nothing blurs — over the sheet as it scrolls by. A bar taller than the
 // band scrolls inside its glass (WCAG 1.4.10). A worked example has no bar, and its Next and Demo
 // stand in a row of the same glass at the band's bottom, the consumer's buttons of the slot actions
-// after them (R84). The tool in use is filled with the accent at an eighth, its icon in the accent;
+// after them. The tool in use is filled with the accent at an eighth, its icon in the accent;
 // a button in focus shows a ring in the accent; an unavailable one is paler by its colour, not its
 // opacity, which would pale the ring too (WCAG 2.4.7, 1.4.11). A button's tooltip stands beside it,
 // white on near-black, as the mockup has it. Nothing in the element moves but the scrolling, which
@@ -308,30 +307,30 @@ const ERASER_RADIUS_PX = 10;
 // unless it is given a height: then the statement and the sheet scroll in it, under the bar. A
 // consumer whose own bars float over the element's top and bottom says how far by
 // --novatrail-canvas-pad-top and -bottom: the statement starts below the first, and the sheet
-// scrolls up past the second (R73). A worked example's open parts stand between the statement and
+// scrolls up past the second. A worked example's open parts stand between the statement and
 // the sheet, and the region that tells of them is out of sight, but not out of the tree a screen
-// reader reads, where a hidden region would tell nothing (R42). A picture's frame there stands in
+// reader reads, where a hidden region would tell nothing. A picture's frame there stands in
 // its item's line, from its top, so that the item's number stands at the top too, as a paragraph's
 // does, and not at the picture's bottom. A picture on an area of the sheet stands on the layer of
 // the author's demo, and the sheet scrolls to a hidden box of the area in its own flow, which
-// neither paints nor takes a pointer (R42). On the canvas the browser neither scrolls nor zooms:
+// neither paints nor takes a pointer. On the canvas the browser neither scrolls nor zooms:
 // the pointer writes, or with the hand moves the sheet, and two fingers scroll by the element's own
-// code (R29), and in pen mode one finger too (R84; R88). The canvas and the buttons take pointer
+// code, and in pen mode one finger too. The canvas and the buttons take pointer
 // events only as the element does: a consumer's pointer-events: none on the element stops the
-// writing and the buttons' pointer, though not their keys (R20, R28). A worked example's canvas
+// writing and the buttons' pointer, though not their keys. A worked example's canvas
 // takes no pointer at all: a finger or a pen on its sheet scrolls, and zooms, as the browser does
-// on the statement, and a long press or a right click opens no menu over the sheet all the same
-// (R42). The theme is the consumer's, by custom properties that the shadow tree inherits; with
+// on the statement, and a long press or a right click opens no menu over the sheet all the same.
+//The theme is the consumer's, by custom properties that the shadow tree inherits; with
 // forced colours the system's colours stand in for them. The element is horizontal whatever writing
-// mode the page is in: a sheet has no other (R36).
+// mode the page is in: a sheet has no other.
 //
 // A workbook's lines are printed in the ink's colour and the consumer's font, and nothing else the
 // element inherits — spacing, weight, transforms, the direction — moves them: `all: initial` takes
-// it off, and what the print needs comes back (R36). A box's frame is one CSS pixel at any scale,
+// it off, and what the print needs comes back. A box's frame is one CSS pixel at any scale,
 // on whole device pixels: an antialiased line of one pixel would lose its contrast. A filled box's
-// is three, in the same ink, and the system's highlight with forced colours (R37). A dot of the grid
+// is three, in the same ink, and the system's highlight with forced colours. A dot of the grid
 // is three pixels across at the fit and above it, and smaller by the zoom below it, so that a sheet
-// zoomed out is no field of dots (R73).
+// zoomed out is no field of dots.
 const STYLE = `
 :host { display: flex; flex-direction: column; isolation: isolate; writing-mode: horizontal-tb; }
 :host([hidden]) { display: none; }
@@ -675,7 +674,7 @@ const sheets = new WeakMap<Document, CSSStyleSheet>();
  * Gives the element's shadow root its style, as a sheet the root adopts, and not a `<style>` in
  * its tree: a consumer's content security policy that allows no inline style, as app's
  * `style-src 'self'`, blocks the one and not the other, and the element asks of the policy only
- * `img-src blob:` (R51; R36 spec). A root adopts only a sheet made for its own document, by that
+ * `img-src blob:` (R51). A root adopts only a sheet made for its own document, by that
  * document's window, and an element moved into another document comes there without its sheets:
  * it adopts that document's sheet then. A document without a window, which can make no sheet,
  * leaves the element unstyled till it comes into one that can.
@@ -713,7 +712,7 @@ interface ClientBox {
   readonly down: number;
 }
 
-/** The axes a scroll goes along: across the sheet and down it (R73). */
+/** The axes a scroll goes along: across the sheet and down it. */
 type Axis = "x" | "y";
 
 /** The view of the sheet, with the visible part's top left corner and size on the screen. */
@@ -739,8 +738,8 @@ interface Ink {
 }
 
 /**
- * A mark the sheet shows (R26): its name and where it is, its frame on the layer of the marks — a
- * verdict's tick or cross on its halo, or a wavy line (R162 spec) —, the frame as last drawn, in
+ * A mark the sheet shows: its name and where it is, its frame on the layer of the marks — a
+ * verdict's tick or cross on its halo, or a wavy line —, the frame as last drawn, in
  * sheet units, and whether the stroke under way is writing over it.
  */
 interface Shown {
@@ -764,7 +763,7 @@ function svgLayer(name: string): SVGSVGElement {
 
 /**
  * The layer of the tutor's marks, over the work: a screen reader reads each mark by its name, and
- * the layer itself is no picture of its own (R26).
+ * the layer itself is no picture of its own.
  */
 function marksLayer(): SVGSVGElement {
   const svg = svgLayer("marks");
@@ -781,7 +780,7 @@ function frameNode(): SVGRectElement {
 }
 
 /**
- * A verdict of a task from paper (R162 spec): a tick or a cross on a white circle, on the 24 × 24
+ * A verdict of a task from paper: a tick or a cross on a white circle, on the 24 × 24
  * that its place scales.
  */
 function verdictNode(correct: boolean): SVGGElement {
@@ -800,7 +799,7 @@ function verdictNode(correct: boolean): SVGGElement {
 }
 
 /**
- * The wavy line of "Show where" (R87): the line over a wider white one, its halo, both
+ * The wavy line of "Show where": the line over a wider white one, its halo, both
  * of the path the marks give them.
  */
 function wavyNode(): SVGGElement {
@@ -862,35 +861,35 @@ function htmlLayer(name: string): HTMLDivElement {
 }
 
 /**
- * The element `<novatrail-canvas>`: the contract's `CanvasElement` (R74 spec), and beyond it the
+ * The element `<novatrail-canvas>`: the contract's `CanvasElement`, and beyond it the
  * commands undo and clear, which the contract does not name.
  */
 export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /**
    * The wrapper, which does not scroll, of the container that scrolls and of the ring of its focus
    * over it: an outline of the container itself would stand under the sheet's paper and stage,
-   * which are positioned in it (R33).
+   * which are positioned in it.
    */
   readonly #wrapper = document.createElement("div");
   readonly #viewport = document.createElement("div");
   readonly #ring = document.createElement("div");
   readonly #column = document.createElement("div");
   readonly #sheet = document.createElement("div");
-  /** The sheet's visible part, where its layers stand, bottom to top (R23). */
+  /** The sheet's visible part, where its layers stand, bottom to top. */
   readonly #stage = document.createElement("div");
-  /** The author's template: a sheet's grid, or a workbook's lines, a list of its items (R36). */
+  /** The author's template: a sheet's grid, or a workbook's lines, a list of its items. */
   readonly #template = svgLayer("template");
   readonly #grid = document.createElementNS(SVG, "path");
-  /** The grid going on above the sheet and below it, under the consumer's floating bars (R73). */
+  /** The grid going on above the sheet and below it, under the consumer's floating bars. */
   readonly #above = document.createElementNS(SVG, "svg");
   readonly #below = document.createElementNS(SVG, "svg");
   readonly #print = document.createElementNS(SVG, "g");
   readonly #lines = document.createElementNS(SVG, "g");
-  /** The module's widget, from stage 4 (R16 spec): empty till then. */
+  /** The module's widget, from stage 4: empty till then. */
   readonly #widget = htmlLayer("widget");
-  /** The author's demo: a worked example's pictures on areas of the sheet (R42). */
+  /** The author's demo: a worked example's pictures on areas of the sheet. */
   readonly #show = svgLayer("show");
-  /** The tutor's layer, in two: the sketch under the learner's work, the marks over it (R26). */
+  /** The tutor's layer, in two: the sketch under the learner's work, the marks over it. */
   readonly #sketch = svgLayer("sketch");
   /** The learner's work: the ink. */
   readonly #canvas = document.createElement("canvas");
@@ -898,13 +897,13 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   readonly #context = this.#canvas.getContext("2d");
   /** The canvas's style as it is computed, read live: its colour is the ink's on the screen. */
   readonly #canvasStyle = getComputedStyle(this.#canvas);
-  /** The files of the pictures of the statement and of a worked example's demo (R23, R42). */
+  /** The files of the pictures of the statement and of a worked example's demo. */
   readonly #pictures = new Pictures();
-  /** The task's statement, above the sheet (R23). */
+  /** The task's statement, above the sheet. */
   readonly #statement = new Statement(this.#pictures);
-  /** A worked example's open parts, under its statement, and the region that tells of them (R42). */
+  /** A worked example's open parts, under its statement, and the region that tells of them. */
   readonly #parts = new Parts(DEMO_IDS, this.#pictures);
-  /** The element's own buttons, on a bar over the sheet's left edge (R28, R84). */
+  /** The element's own buttons, on a bar over the sheet's left edge. */
   readonly #tools = new Tools(
     {
       choose: (tool) => this.#choose(tool),
@@ -918,7 +917,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     },
     DEMO_IDS,
   );
-  /** A task from paper's tracing paper: its layer, its grip and the crop's picture (R87). */
+  /** A task from paper's tracing paper: its layer, its grip and the crop's picture. */
   readonly #tracingPaper = new TracingPaper({
     move: (at) => this.#moveTracing(at),
     resize: (at, scale) => this.#resizeTracing(at, scale),
@@ -929,14 +928,14 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
         new CustomEvent(TRACING_READ, { bubbles: true, composed: true, detail: null }),
       ),
   });
-  /** The reading of the statement of the task from paper, as the consumer gave it (R89). */
+  /** The reading of the statement of the task from paper, as the consumer gave it. */
   #reading: TracingReading | undefined;
-  /** The task from paper as the consumer gave it, and where its tracing paper lies (R87). */
+  /** The task from paper as the consumer gave it, and where its tracing paper lies. */
   #paper: PaperTask | undefined;
   #tracing: TracingState | undefined;
   /** The tracing paper's state the learner's move began at: the move tells only if it changed it. */
   #moveFrom: TracingState | undefined;
-  /** The layer the stroke under way is written on, and the erasing under way erases (R87). */
+  /** The layer the stroke under way is written on, and the erasing under way erases. */
   #writeOn: "tracing" | undefined;
   #eraseOn: "tracing" | "sheet" | undefined;
   /** Each stroke of the tracing paper where it lies on the sheet, for the place it was moved to. */
@@ -944,11 +943,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     Stroke,
     { readonly at: readonly [number, number]; readonly scale: number; readonly stroke: Stroke }
   >();
-  /** The sheet's clock, for its strokes and its actions alike (R22). */
+  /** The sheet's clock, for its strokes and its actions alike. */
   readonly #clock = new Clock();
   /**
-   * The strokes on the sheet, the actions undo takes back and the history of writing (R19, R22): a
-   * new work when the sheet is given another history (R27).
+   * The strokes on the sheet, the actions undo takes back and the history of writing: a
+   * new work when the sheet is given another history.
    */
   #work = new Work(this.#clock);
   /** How many events of the history `historychange` has told of, and whether it is telling now. */
@@ -967,7 +966,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     },
   );
   /**
-   * The hands on the sheet (R29): which pointer may write, which is a palm, and which two fingers
+   * The hands on the sheet: which pointer may write, which is a palm, and which two fingers
    * scroll, in the page's pen mode. The recorder and the eraser say which pointer writes.
    */
   readonly #hands = new Hands(
@@ -982,7 +981,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   );
   /**
    * What two fingers, or the hand, scroll in the gesture under way, down and across, each chosen at
-   * the first step that goes along its axis (R73): undefined till then, and null when nothing
+   * the first step that goes along its axis: undefined till then, and null when nothing
    * scrolls so.
    */
   #latch: Latch | null | undefined;
@@ -993,22 +992,22 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#fit();
   };
   readonly #page = new ResizeObserver(this.#resized);
-  /** A window of another size has another view: the sheet goes as far past the ink by it (R73). */
+  /** A window of another size has another view: the sheet goes as far past the ink by it. */
   readonly #rewindowed = (): void => this.#regrow();
   /** What the bar's rail sticks in, when a scroller of the page's: its height is the rail's room. */
   #port: Element | null = null;
   readonly #ported = new ResizeObserver(() => this.#fit());
   #unwatchPen: (() => void) | undefined;
   #unwatchZoom: (() => void) | undefined;
-  /** The zoom the sheet is laid out by: the page's, and a worked example's 1 (R73). */
+  /** The zoom the sheet is laid out by: the page's, and a worked example's 1. */
   #zoom = 1;
-  /** Where on the screen a pinch zooms about, while it sets the page's zoom (R73). */
+  /** Where on the screen a pinch zooms about, while it sets the page's zoom. */
   #anchor: { readonly x: number; readonly y: number } | undefined;
   /**
    * The point of the sheet a press zoomed about, where on the screen it stood, and where the press
-   * left the container: while nothing has scrolled or moved it since, the next press zooms about the
-   * same point, so that a zoom out at the sheet's edge, where the scroll stops short, and back in
-   * comes back where it was (R73).
+   * left the container: while nothing has scrolled or moved it since, the next press zooms about
+   * the same point, so that a zoom out at the sheet's edge, where the scroll stops short, and back
+   * in comes back where it was.
    */
   #held:
     | {
@@ -1019,16 +1018,16 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       }
     | undefined;
   #tool: Tool = "pen";
-  /** The pointer the hand moves the sheet by, and where it was on the screen last (R88). */
+  /** The pointer the hand moves the sheet by, and where it was on the screen last. */
   #pan: { readonly pointerId: number; readonly x: number; readonly y: number } | undefined;
-  /** A task from paper's grid, the learner's (R88). */
+  /** A task from paper's grid, the learner's. */
   #paperGrid: PaperGrid = "dots";
-  /** How far the sheet goes, in units, as laid out: the page and past it (R73). */
+  /** How far the sheet goes, in units, as laid out: the page and past it. */
   #extent: Size = SHEET;
   /** The grid's path as last drawn: its rulings and the extent they cover. */
   #gridDrawn = "";
   #task: Task | undefined;
-  /** A lesson's worked example as the consumer gave it, and as the element checked it (R42). */
+  /** A lesson's worked example as the consumer gave it, and as the element checked it. */
   #workedExample: WorkedExample | undefined;
   #example: CheckedExample | undefined;
   /** How far the learner has gone through the example's demo, frozen, or undefined without one. */
@@ -1036,25 +1035,25 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   #shownTemplate: Template = NO_TASK;
   /**
    * A workbook's page, its boxes in the task's order and their frames, and the box each stroke is
-   * in, worked out once: a stroke never changes (R22), and a new page starts the map anew.
+   * in, worked out once: a stroke never changes, and a new page starts the map anew.
    */
   #laid: Page | undefined;
   #cells: readonly Cell[] = [];
   #rects: readonly SVGRectElement[] = [];
   /**
    * The texts of the values a worked example's demo has written in its boxes, one for each frame
-   * that has had one (R61).
+   * that has had one.
    */
   #values: (SVGTextElement | undefined)[] = [];
   #taken = new WeakMap<Stroke, number>();
-  /** Which answer slots are filled, the same array until one changes, or null (R37, R42). */
+  /** Which answer slots are filled, the same array until one changes, or null. */
   #filled: Filled | null = null;
-  /** Whether the task's one answer is anywhere on the sheet or the whole sheet (R42). */
+  /** Whether the task's one answer is anywhere on the sheet or the whole sheet. */
   #whole = false;
-  /** The module's manifest as the consumer gave it, and what the element makes of it (R32). */
+  /** The module's manifest as the consumer gave it, and what the element makes of it. */
   #manifest: Manifest | undefined;
   #settings: Settings = NO_MANIFEST;
-  /** The tutor's marks as the consumer gave them, and those of them that have a place (R26). */
+  /** The tutor's marks as the consumer gave them, and those of them that have a place. */
   #marks: Marks | undefined;
   /** The marks as they were checked when given: a new history places these, whatever became of those. */
   #given: Marks | undefined;
@@ -1074,11 +1073,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     readonly strokes: readonly Stroke[];
     readonly byId: ReadonlyMap<number, Stroke>;
   } = { strokes: [], byId: new Map() };
-  /** The box of each stroke's points, worked out once: a stroke never changes (R22). */
+  /** The box of each stroke's points, worked out once: a stroke never changes. */
   readonly #pointBoxes = new WeakMap<Stroke, Box>();
   /** The stroke under way, and how many of its points the marks have been checked against. */
   #writing: { readonly stroke: Stroke; seen: number } | undefined;
-  /** The path of each finished stroke, outlined once (R18). */
+  /** The path of each finished stroke, outlined once. */
   readonly #inks = new WeakMap<Stroke, Ink>();
   readonly #resize = new ResizeObserver((entries) => {
     for (const entry of entries) {
@@ -1099,7 +1098,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    */
   #k = 0;
   #sheetAt = 0;
-  /** The sheet's left in the container's content, as laid out then, in CSS pixels (R73). */
+  /** The sheet's left in the container's content, as laid out then, in CSS pixels. */
   #sheetAtX = 0;
   /** The top and the left of the visible part, in sheet units, kept from the last scroll. */
   #vy = 0;
@@ -1138,7 +1137,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       band.firstElementChild?.setAttribute("class", "grid");
     }
     this.#print.setAttribute("class", "print");
-    // The constructor reads no attribute: the labels of a demo's boxes are English till `lang` comes.
+    // The constructor reads no attribute: the labels of a demo's boxes are English till `lang`
+    // comes.
     this.#nameBoxes(null);
     this.#nameGrip(null);
     this.#lines.setAttribute("role", "list");
@@ -1194,14 +1194,14 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     });
     // A long press of a pen or a finger, or a right click, opens no menu over the sheet: the
     // canvas's event comes up to the stage, and so does the stage's own, where a worked example's
-    // sheet takes the pointer instead (R42).
+    // sheet takes the pointer instead.
     this.#stage.addEventListener("contextmenu", (event) => event.preventDefault());
     // A new colour of the ink, from the consumer's theme or the page's colour scheme, ends a
     // transition of the canvas's colour a millisecond long: the ink is drawn anew in it.
     this.#canvas.addEventListener("transitionend", () => this.#request());
     this.#canvas.addEventListener("transitioncancel", () => this.#request());
     this.#viewport.addEventListener("scroll", () => this.#scrolled(), { passive: true });
-    // Ctrl or ⌘ with the wheel over the tracing paper scales it, not the page (R89).
+    // Ctrl or ⌘ with the wheel over the tracing paper scales it, not the page.
     this.#viewport.addEventListener("wheel", (event) => this.#wheel(event), { passive: false });
     // A container left with nothing to scroll keeps its stop of Tab while it has the focus.
     this.#viewport.addEventListener("blur", () => this.#region());
@@ -1232,17 +1232,17 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#adopt("marks");
   }
 
-  /** The element follows its own `lang`: its buttons are labelled in it (R07, R28). */
+  /** The element follows its own `lang`: its buttons are labelled in it. */
   static readonly observedAttributes = ["lang", "tools-hidden"];
 
   /**
-   * What a press of the primary button does: "pen" writes, as the element starts, "eraser" erases
-   * (R22), and "hand" moves the sheet, under any pointer (R88). The learner switches it with the
+   * What a press of the primary button does: "pen" writes, as the element starts, "eraser" erases,
+   *and "hand" moves the sheet, under any pointer. The learner switches it with the
    * element's own buttons, which say a choice of theirs with a `toolchange`, and the consumer may
-   * set it too, which says nothing (R28). A press under way goes on as it began. A pen's eraser
+   * set it too, which says nothing. A press under way goes on as it began. A pen's eraser
    * erases whatever the tool but the hand. A task without the eraser has none of it: "eraser" is a
    * TypeError then, and a new task without it puts the pen back. Every sheet the learner writes on
-   * has the hand. A worked example has the pen alone, which writes nothing on its sheet (R42).
+   * has the hand. A worked example has the pen alone, which writes nothing on its sheet.
    */
   get tool(): Tool {
     return this.#tool;
@@ -1263,18 +1263,18 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The open view of the task, of the module format 0.4 (R32): its ID, its statement, which the
-   * element shows above the page (R23), what the statement gives and asks, which app shows (R57
-   * spec), its canvas — the kind, the sheet's grid and the tools the task allows (R28) — and its
-   * items. A workbook's items are its lines, which the template shows, laid out on the page (R35,
-   * R36). The type is spec's, with the element's own tools (R73 spec; R41). A task the schema
+   * The open view of the task, of the module format 0.4: its ID, its statement, which the
+   * element shows above the page, what the statement gives and asks, which app shows, its
+   * canvas — the kind, the sheet's grid and the tools the task allows — and its
+   * items. A workbook's items are its lines, which the template shows, laid out on the page. The
+   * type is spec's, with the element's own tools. A task the schema
    * refuses is a TypeError that names the field, a field the open view has not among it, and so are
-   * a workbook whose lines do not fit, at the first item that does not (R35), and an answer slot in
+   * a workbook whose lines do not fit, at the first item that does not, and an answer slot in
    * a zone; the sheet passes over a choice and an item's text, which app shows. Another task of the
    * same layer, tools and statement changes nothing, and any other changes the template alone, of
-   * either kind: the work stays, for the next task is a new element (R20). A task without the
+   * either kind: the work stays, for the next task is a new element. A task without the
    * eraser puts the pen back, with no event. While a worked example is shown a task is a TypeError,
-   * and `undefined` changes nothing: the element shows one or the other (R42).
+   * and `undefined` changes nothing: the element shows one or the other.
    */
   get task(): Task | undefined {
     return this.#task;
@@ -1300,10 +1300,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * A lesson's worked example (R42; R58 spec): the open view of a segment `worked_example` of the
-   * module format 0.4 — its statement, which the element shows above the sheet as a task's (R23),
+   * A lesson's worked example: the open view of a segment `worked_example` of the
+   * module format 0.4 — its statement, which the element shows above the sheet as a task's,
    * the grid of its sheet or the lines of its workbook, and the parts of the author's demo, which
-   * on a workbook fill the lines' boxes with their values (R61). The type is spec's (R73 spec; R41).
+   * on a workbook fill the lines' boxes with their values. The type is spec's.
    * The element shows a task or a worked example, not both: an example while a task is given, while
    * the sheet has a history of writing, or while a stroke or an erasing is under way, is a
    * TypeError, and so is one the schema refuses, at its field. `undefined` takes the example off,
@@ -1312,9 +1312,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    *
    * On a worked example's sheet the learner does not write: the canvas takes no input, and a finger
    * or a pen there scrolls the sheet as the browser scrolls the statement. It has no bar: its row
-   * holds Next and Demo, and its region is named a worked example's. `task`, `history` other than the empty one and
-   * `marks` are TypeErrors, and so is an eraser: the tool is the pen alone, and `exportWork()` and
-   * `filled` give null. The next segment of a lesson is a new element (R20).
+   * holds Next and Demo, and its region is named a worked example's. `task`, `history` other than
+   * the empty one and `marks` are TypeErrors, and so is an eraser: the tool is the pen alone, and
+   * `exportWork()` and `filled` give null. The next segment of a lesson is a new element.
    *
    * The parts of the demo the learner opens one at a time with the row's Next, into a list between
    * the statement and the sheet, and hides and shows whole with Demo; `demoState` tells how far
@@ -1354,16 +1354,16 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * A task from the learner's paper (R87; R162 spec): `statement`, the task's crop as app cut it, a
+   * A task from the learner's paper: `statement`, the task's crop as app cut it, a
    * Blob of a JPEG or a PNG. The element shows it in place of a task and of a worked example: a
    * dotted sheet with no statement, the pen and the eraser, and the crop over it as tracing paper,
    * at the element's own place for it, shown, which `tracing` tells. While a task or an example is
    * shown it is a TypeError, and so is what is not such a task. Another task from paper, of
    * another crop, lays its crop at the start again, and the history stays: the next task is a new
-   * element (R20); one of the same crop changes nothing. `undefined` takes it off, but not while the
-   * history has strokes on the tracing paper, a TypeError. Either drops a stroke or an erasing under
-   * way on the tracing paper, as a new history drops the one under the pen. The crop's picture is
-   * read as it comes; till then the paper has its largest size.
+   * element; one of the same crop changes nothing. `undefined` takes it off, but not while the
+   * history has strokes on the tracing paper, a TypeError. Either drops a stroke or an erasing
+   * under way on the tracing paper, as a new history drops the one under the pen. The crop's
+   * picture is read as it comes; till then the paper has its largest size.
    */
   get paper(): PaperTask | undefined {
     return this.#paper;
@@ -1424,13 +1424,14 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * Where the tracing paper of the task from paper lies on the sheet, its top left corner in sheet
-   * units, and whether it is hidden (R87): frozen, and the same object until it changes;
-   * `undefined` without a task from paper. The learner moves it by its grip and hides or shows it by
-   * the button atop the tools, which a `tracingchange` tells; the consumer keeps it and gives it
-   * back, which tells nothing. Given before the task from paper it is a TypeError, and so is a state
-   * that is not one, or one that puts the paper wholly off the sheet; `undefined` changes nothing.
-   * Till the crop's picture is read the paper has its largest size: a state that puts the paper of
-   * its real size wholly off the sheet then moves to the nearest place wholly on it, with no event.
+   * units, and whether it is hidden: frozen, and the same object until it changes;
+   * `undefined` without a task from paper. The learner moves it by its grip and hides or shows it
+   * by the button atop the tools, which a `tracingchange` tells; the consumer keeps it and gives it
+   * back, which tells nothing. Given before the task from paper it is a TypeError, and so is a
+   * state that is not one, or one that puts the paper wholly off the sheet; `undefined` changes
+   * nothing. Till the crop's picture is read the paper has its largest size: a state that puts the
+   * paper of its real size wholly off the sheet then moves to the nearest place wholly on it, with
+   * no event.
    */
   get tracing(): TracingState | undefined {
     return this.#tracing;
@@ -1454,7 +1455,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The reading of the task from paper's statement in clean print (R89): `undefined` offers no
+   * The reading of the task from paper's statement in clean print: `undefined` offers no
    * "Recognise"; `"ready"` offers it, and its press sends a `tracingread`; `"busy"` waits; `"done"`
    * holds the statements, which take the crop's place for the learner who asked, till "Original".
    * Frozen; given without a task from paper, or not a reading, it is a TypeError.
@@ -1476,7 +1477,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * How far the learner has gone through the worked example's demo (R42): `opened`, how many of
+   * How far the learner has gone through the worked example's demo: `opened`, how many of
    * its parts are open, from the first, and `hidden`, whether the whole demo is hidden — frozen,
    * and the same object until it changes. A new example starts at `{ opened: 0, hidden: false }`,
    * and without one it is `undefined`. The learner changes it with the row's Next and Demo, which
@@ -1507,8 +1508,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The open view of the module's manifest (R32), of which the element reads the version of the
-   * module format — "0.4", or the manifest is a TypeError (R44 spec) — the height of a digit on the
+   * The open view of the module's manifest, of which the element reads the version of the
+   * module format — "0.4", or the manifest is a TypeError — the height of a digit on the
    * crop for checking, `canvas.digit_height`, 24 px unless given, and the explanation language, the
    * statement's and a workbook's lines'. Without a manifest the digits are 24 px, and the statement
    * and the lines are in the element's own `lang`. The rest of it the element passes over, but for
@@ -1516,7 +1517,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * cannot read is a TypeError that names the field, and the element stays as it was; the same
    * object given again is read again, for the consumer may have changed it. The task and the
    * manifest are each the consumer's to give, in either order: `exportWork()` takes the height
-   * when it is called (R27).
+   * when it is called.
    */
   get manifest(): Manifest | undefined {
     return this.#manifest;
@@ -1535,9 +1536,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * What gives the files of the pictures, by their references, as the contract has it (R07;
-   * R36 spec): a task's statement's, and a worked example's — its statement's and every part's of
-   * its demo, which it asks for as the example comes, before the learner opens them (R42). A
+   * What gives the files of the pictures, by their references, as the contract has it: a
+   * task's statement's, and a worked example's — its statement's and every part's of
+   * its demo, which it asks for as the example comes, before the learner opens them. A
    * reference is asked for once, whichever pictures show it, and its file stays while the task or
    * the example names it. Until a picture's file comes, or if it never does, its frame shows what
    * it shows in words. A new function serves the references that have no file yet, and stops no
@@ -1557,7 +1558,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The grid of the task from paper's sheet (R88): `undefined` without a task from paper, and
+   * The grid of the task from paper's sheet: `undefined` without a task from paper, and
    * "dots" as one comes. The learner turns it by the element's button, which a `gridchange`
    * tells; the consumer keeps it and gives it back, which tells nothing. A grid given before the
    * task from paper is a TypeError, and so is one not of `PaperGrid`; `undefined` changes nothing.
@@ -1582,7 +1583,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The history of writing (R22, R27): every stroke, erasing, clearing and undo on the sheet, in the
+   * The history of writing: every stroke, erasing, clearing and undo on the sheet, in the
    * order they landed, at the sheet's time — frozen, and the same array until the next action. The
    * consumer keeps it, adding what `historychange` tells, and gives it back to open the sheet as it
    * was: the strokes, and the actions undo takes back.
@@ -1596,8 +1597,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * event, the next stroke takes the next ID, and the tutor's marks go back on the strokes, or off,
    * if the history has not their strokes. A history that is where the sheet's began loses what came
    * after, and says so in the console. The task and the history are each the consumer's to give, in
-   * either order. A worked example's sheet has the empty history alone: any other is a TypeError
-   * (R42).
+   * either order. A worked example's sheet has the empty history alone: any other is a TypeError.
    */
   get history(): readonly HistoryEvent[] {
     return this.#work.history;
@@ -1625,7 +1625,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       };
       return;
     }
-    // A worked example's sheet is no one's to write on (R42).
+    // A worked example's sheet is no one's to write on.
     if (this.#example !== undefined) {
       throw new TypeError(`<${TAG}> shows a worked example, whose sheet has no history of writing`);
     }
@@ -1660,9 +1660,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /**
    * Which answer slots the learner's strokes fill, per item, per slot, in the task's order, by the
    * strokes `exportWork()` would take — not the stroke under way, but those under an eraser not
-   * yet lifted. A workbook's boxes, each whether it holds one (R34, R37): a stroke is in one box
-   * or in none, by the rule of R37, and what is in none is the draft. A sheet's one answer anywhere
-   * on it or the whole sheet, whether the sheet holds one (R42). `null` for a sheet of choices,
+   * yet lifted. A workbook's boxes, each whether it holds one: a stroke is in one box
+   * or in none, by the boxes' rule, and what is in none is the draft. A sheet's one answer anywhere
+   * on it or the whole sheet, whether the sheet holds one. `null` for a sheet of choices,
    * whose options app marks, for a sheet with no task, and for a worked example. Frozen, and the
    * same array until a slot changes. An action on the sheet changes it before its
    * `historychange`, and a task or a history given changes it with no event.
@@ -1672,20 +1672,20 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The tutor's marks of one submission, with the context the element gave with its work (R07,
-   * R26): each a frame where a group of strokes is, or a box on the crop the model saw, and on a
-   * workbook where an answer cell is, by its item and its slot (R39). A mark holds on to the
-   * strokes the model saw there and is drawn around those of them the sheet shows, as they are now
-   * — a cell's around its box too: new strokes do not move it, and when all of them are erased it
-   * is gone, till undo brings them back. A box of a workbook that was empty is framed alone (R74
-   * spec). A box that comes near no stroke, and a cell on a sheet, which takes no zones, have no
-   * frame: the question is asked without one. The type is spec's (R83 spec). A submission goes back
-   * to a sheet whose history holds its strokes, as its digest tells (R27), and a workbook's to a
-   * page of its boxes: one of other strokes or other boxes is a TypeError, and so are marks
-   * given before the task and the history they hold on to, and marks that are not marks. A new
-   * history, and a new page, put the marks back on their strokes, or take them off. `undefined`
-   * takes the marks off. Every value is checked as it comes, and marks equal to those shown write
-   * nothing. A worked example's sheet has nothing to mark: marks are a TypeError there (R42).
+   * The tutor's marks of one submission, with the context the element gave with its work: each a
+   * frame where a group of strokes is, or a box on the crop the model saw, and on a workbook where
+   * an answer cell is, by its item and its slot. A mark holds on to the strokes the model saw there
+   * and is drawn around those of them the sheet shows, as they are now — a cell's around its box
+   * too: new strokes do not move it, and when all of them are erased it is gone, till undo brings
+   * them back. A box of a workbook that was empty is framed alone. A box that comes near no stroke,
+   * and a cell on a sheet, which takes no zones, have no frame: the question is asked without one.
+   * The type is spec's. A submission goes back to a sheet whose history holds its strokes, as its
+   * digest tells, and a workbook's to a page of its boxes: one of other strokes or other boxes is a
+   * TypeError, and so are marks given before the task and the history they hold on to, and marks
+   * that are not marks. A new history, and a new page, put the marks back on their strokes, or take
+   * them off. `undefined` takes the marks off. Every value is checked as it comes, and marks equal
+   * to those shown write nothing. A worked example's sheet has nothing to mark: marks are a
+   * TypeError there.
    */
   get marks(): Marks | undefined {
     return this.#marks;
@@ -1702,7 +1702,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#showMarks(shown);
   }
 
-  /** The element moved into another document: its root adopts that document's sheet (R51). */
+  /** The element moved into another document: its root adopts that document's sheet. */
   adoptedCallback(): void {
     if (this.shadowRoot !== null) adoptStyle(this.shadowRoot);
   }
@@ -1715,15 +1715,16 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#watchColours();
     this.#pictures.connect();
     this.#tracingPaper.connect();
-    // The page's pen mode, on every sheet of it (R29). The bar shows a change once the event that
-    // made it is over: by then a pen that came down writes. The sheet tells the page whether it is written on, and hears when a stroke ends.
+    // The page's pen mode, on every sheet of it. The bar shows a change once the event that
+    // made it is over: by then a pen that came down writes. The sheet tells the page whether it is
+    // written on, and hears when a stroke ends.
     const unwatch = PEN_MODE.watch(() => queueMicrotask(() => this.#refresh()));
     const unenlist = PEN_MODE.enlist(() => this.#writer() !== undefined);
     this.#unwatchPen = () => {
       unwatch();
       unenlist();
     };
-    // The page's zoom, on every sheet of it (R73): it may have changed while the element was away.
+    // The page's zoom, on every sheet of it: it may have changed while the element was away.
     this.#unwatchZoom = PAGE_ZOOM.watch(() => this.#zoomed());
     // A page that grows or shrinks scrolls nothing, and neither does a window of another size.
     this.#page.observe(document.documentElement);
@@ -1736,9 +1737,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * The element's `lang` came, changed or went: its buttons and a workbook's boxes are labelled in
-   * it, or in English for a language their labels are not in, and for none (R28, R36). Or
+   * it, or in English for a language their labels are not in, and for none. Or
    * `tools-hidden` did: while the element has it, the bar is out of sight and of the accessibility
-   * tree, as `app` hides it on a phone under its tutor's sheet (R84; R36 spec). An attribute the
+   * tree, as `app` hides it on a phone under its tutor's sheet. An attribute the
    * element had before it was defined comes here just after the constructor, which reads no
    * attribute.
    */
@@ -1757,7 +1758,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * The demo's list says a box it fills in the labels' language, around its value, which is a node
-   * of its own in the parts' language: "Box 1.2: " and "5" (R61); its open items too, anew.
+   * of its own in the parts' language: "Box 1.2: " and "5"; its open items too, anew.
    * Without `lang` the labels are English, as the element's own.
    */
   #nameBoxes(tag: string | null = this.getAttribute("lang")): void {
@@ -1771,7 +1772,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     };
   }
 
-  /** The tracing paper's grip is named in the labels' language, and its tooltip says it (R87). */
+  /** The tracing paper's grip is named in the labels' language, and its tooltip says it. */
   #nameGrip(tag: string | null = this.getAttribute("lang")): void {
     const { lang, labels } = labelsFor(tag);
     this.#tracingPaper.label(labels, lang);
@@ -1779,8 +1780,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * Takes back the last action on the sheet — the last stroke written, the last erasing, or the
-   * clearing — and says whether there was one (R19, R22), with a `historychange` if there was
-   * (R27). The element's Undo button calls it, and so may the consumer (R28). A stroke under way
+   * clearing — and says whether there was one, with a `historychange` if there was.
+   *The element's Undo button calls it, and so may the consumer. A stroke under way
    * stays: it lands when it ends. So does an erasing: what it came near leaves the sheet when it
    * lifts, if it is on the sheet then.
    */
@@ -1792,8 +1793,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * Takes every stroke off the sheet, an action that undo takes back, and says whether there were
-   * any (R19), with a `historychange` if there were (R27). The element's Clear button calls it, and
-   * so may the consumer (R28). A stroke under way stays: it lands when it ends.
+   * any, with a `historychange` if there were. The element's Clear button calls it, and
+   * so may the consumer. A stroke under way stays: it lands when it ends.
    */
   clear(): boolean {
     const cleared = this.#work.clear(performance.now());
@@ -1802,17 +1803,17 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The work for checking (R07, R27), when the consumer asks for it, at Check, at the height of a
-   * digit the manifest asks for (R25, R32). On a sheet it is the crop of the strokes the sheet
+   * The work for checking, when the consumer asks for it, at Check, at the height of a
+   * digit the manifest asks for. On a sheet it is the crop of the strokes the sheet
    * shows, its PNG, and the context of the submission — the crop's numbers, the groups and their
-   * digest (R26, R27). On a workbook it is the crop of each filled box, by its strokes alone, with
-   * its item and its slot, and the context — the table «box → stroke IDs» and its digest (R34,
-   * R38); the draft goes nowhere. The consumer keeps the context, sends only the PNGs and their
-   * places to be checked (R09 spec), and gives the context back with the tutor's marks. It is the
+   * digest. On a workbook it is the crop of each filled box, by its strokes alone, with
+   * its item and its slot, and the context — the table «box → stroke IDs» and its digest; the
+   * draft goes nowhere. The consumer keeps the context, sends only the PNGs and their
+   * places to be checked, and gives the context back with the tutor's marks. It is the
    * sheet as it is when this is called: a stroke under way is not on it yet, while the strokes
    * under an eraser not yet lifted still are, as `filled` has them. A sheet without strokes, and a
    * workbook with no box filled, have no work to check, and the promise gives null (H3); so has a
-   * worked example, whose sheet the learner does not write on (R42).
+   * worked example, whose sheet the learner does not write on.
    */
   async exportWork(): Promise<ExportedWork | null> {
     if (this.#example !== undefined) return null;
@@ -1858,23 +1859,23 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * The picture of the work, for the `picture` of a stored work that app puts on the server, a
-   * method of the agreement with app (R83; R36 spec): the PNG of the strokes the surface shows,
+   * method of the agreement with app: the PNG of the strokes the surface shows,
    * with no condition — the sheet's page, or the workbook's whole page with its draft, and the ink
-   * past the page, right and down, with the tracing paper where it lies (R73): one pixel a unit,
+   * past the page, right and down, with the tracing paper where it lies: one pixel a unit,
    * 1000 × 1400 for the page alone, and scaled down past the page to hold no more pixels than it,
    * its size in its PNG's header —, whatever is filled and whether the work was sent to be checked
-   * or not; an empty surface, and a worked example's, is white. The strokes are those `exportWork()` takes, as
-   * the history has them: not the stroke under way, but those under an eraser not yet lifted. Each
-   * is the outline the screen fills, black on white with no theme and no template — on a task from
-   * paper the strokes of both layers, the tracing paper's where it lies, hidden or not, with the
-   * crop's picture laid in grey and multiplied (R87) —, and the pixels
-   * go through the crop's encoder, grey a byte each: so the picture looks as the sheet does, and
-   * holds at most 1,576,640 bytes, for the encoder spends at most 9 bits on a byte of a row, under
-   * the 4 MiB of a stored work.
+   * or not; an empty surface, and a worked example's, is white. The strokes are those
+   * `exportWork()` takes, as the history has them: not the stroke under way, but those under an
+   * eraser not yet lifted. Each is the outline the screen fills, black on white with no theme and
+   * no template — on a task from paper the strokes of both layers, the tracing paper's where it
+   * lies, hidden or not, with the crop's picture laid in grey and multiplied —, and the pixels go
+   * through the crop's encoder, grey a byte each: so the picture looks as the sheet does, and holds
+   * at most 1,576,640 bytes, for the encoder spends at most 9 bits on a byte of a row, under the 4
+   * MiB of a stored work.
    */
   async exportPicture(): Promise<Blob> {
-    // A pixel a unit, the ink 3 px wide as on a screen of a pixel a unit, while the page and the ink
-    // past it hold no more pixels than the page; scaled down to hold them past that (R83).
+    // A pixel a unit, the ink 3 px wide as on a screen of a pixel a unit, while the page and the
+    // ink past it hold no more pixels than the page; scaled down to hold them past that.
     const reach = this.#inkReach();
     const { width, height, scale } = pictureOf({
       maxX: reach.maxX + INK_REACH,
@@ -1894,7 +1895,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     for (const stroke of strokes) {
       const traced = tracing !== undefined && work.onTracing(stroke.id);
       const [x, y] = traced ? tracing.at : [0, 0];
-      // A stroke of the tracing paper is as large as the paper's scale draws it (R89).
+      // A stroke of the tracing paper is as large as the paper's scale draws it.
       const by = traced ? scale * scaleIn(tracing) : scale;
       context.setTransform(by, 0, 0, by, x * scale, y * scale);
       context.fill(this.#finished(stroke).path);
@@ -1908,7 +1909,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const gray = new Uint8Array(width * height);
     for (let at = 0; at < gray.length; at++) gray[at] = data[4 * at] as number;
     // A task from paper's crop lies over it where the tracing paper lies, shown or hidden, at the
-    // picture's scale, as the crop of the work has it (R87).
+    // picture's scale, as the crop of the work has it.
     if (tracing !== undefined) {
       const { size, gray: picture } = await this.#tracingPaper.read;
       if (picture !== null) {
@@ -1989,7 +1990,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * A task's template, or a worked example's, in place of the last (R23, R42). The layer and the
+   * A task's template, or a worked example's, in place of the last. The layer and the
    * statement apart: a new grid or new lines leave the statement and its pictures as they are, and
    * the other way round. A tool not allowed puts the pen back, with no event, and the row shows
    * what it is of, by its name, and the tools allowed: only what has changed is written. Then the
@@ -2002,10 +2003,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#shownTemplate = template;
     if (!sameLayer(template, shown)) {
       this.#lay(template);
-      // A page of other boxes, or of the other kind, puts the marks back or takes them off (R39).
+      // A page of other boxes, or of the other kind, puts the marks back or takes them off.
       this.#replace();
     } else if (this.#laid === undefined) {
-      // The same grid may ask another answer: the sheet's strokes, or choices that app marks (R42).
+      // The same grid may ask another answer: the sheet's strokes, or choices that app marks.
       this.#fill();
     }
     if (!sameStatement(template, shown)) this.#statement.show(template.statement);
@@ -2016,14 +2017,14 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#refresh();
   }
 
-  /** Whether the sheet shown has a tool: the task's, and the hand on every sheet written on (R88). */
+  /** Whether the sheet shown has a tool: the task's, and the hand on every sheet written on. */
   #allows(tool: Tool): boolean {
     if (tool === HAND) return this.#example === undefined;
     return this.#shownTemplate.tools.includes(tool);
   }
 
   /**
-   * Whether the element may show a worked example now (R42): not while it shows a task, not on a
+   * Whether the element may show a worked example now: not while it shows a task, not on a
    * sheet the learner has written on, and not while a stroke or an erasing is under way, which
    * would land on a sheet that takes none. A TypeError says which.
    */
@@ -2051,7 +2052,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The template's layer (R23, R36): a sheet's grid, which says nothing to a screen reader, or a
+   * The template's layer: a sheet's grid, which says nothing to a screen reader, or a
    * workbook's lines, which it reads — a list of the items in the task's order, each its number,
    * its text and its boxes, where the layout puts them.
    */
@@ -2061,8 +2062,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     write(this.#template, "aria-hidden", workbook ? null : "true");
     write(this.#template, "role", workbook ? "none" : null);
     this.#lines.replaceChildren(...(workbook ? template.page.items.map(itemOf) : []));
-    // A canvas of the other kind fills its answer slots anew: a workbook's are its own arrays, and a
-    // sheet's those all sheets share (R42).
+    // A canvas of the other kind fills its answer slots anew: a workbook's are its own arrays, and
+    // a sheet's those all sheets share.
     if (workbook !== (this.#laid !== undefined)) this.#filled = null;
     this.#laid = workbook ? template.page : undefined;
     this.#cells = workbook ? cellsOf(template.page) : [];
@@ -2075,10 +2076,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * Which answer slots the strokes fill, and whether that changed. A workbook's boxes by the rule
-   * of R37, each stroke's box worked out once: a new array, and the frames marked anew, only if a
+   * Which answer slots the strokes fill, and whether that changed. A workbook's boxes by the boxes'
+   * rule, each stroke's box worked out once: a new array, and the frames marked anew, only if a
    * box changed. A sheet's one answer anywhere on it or the whole sheet by any stroke on it, or
-   * nothing for a sheet of choices or with no task (R42).
+   * nothing for a sheet of choices or with no task.
    */
   #fill(): boolean {
     const page = this.#laid;
@@ -2107,10 +2108,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * Each box of the lines as it now is (R36, R37): its frame, thicker when it is filled, and its
+   * Each box of the lines as it now is: its frame, thicker when it is filled, and its
    * name in the labels' language, by the element's `lang` — "Box" alone in its line, numbered by
    * its slot among several, and "filled" when it is. A value a worked example's demo wrote in it is
-   * no part of its name: its text after the frame says it, in the lines' language (R61). Only
+   * no part of its name: its text after the frame says it, in the lines' language. Only
    * what has changed is written.
    */
   #markBoxes(): void {
@@ -2129,7 +2130,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * The marks as they were checked when given, back on their strokes after a new history or a new
-   * page, if those have their strokes and boxes, or else off, with no event (R27, R39).
+   * page, if those have their strokes and boxes, or else off, with no event.
    */
   #replace(): void {
     if (this.#given === undefined) return;
@@ -2154,7 +2155,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * The marks of a submission, as `marksOf` checked them, that have a place on this sheet, each
-   * with its name: a TypeError for a submission that is not this sheet's (R26, R27).
+   * with its name: a TypeError for a submission that is not this sheet's.
    */
   #places(given: Marks): { readonly name: string; readonly placed: Placed }[] {
     const cells = isWorkbook(this.#shownTemplate) ? this.#cells : null;
@@ -2214,13 +2215,13 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * One pointer at a time writes or erases (R18, R22), as the hands let it: a pen, a finger out of
-   * pen mode, or a mouse (R29). The primary button does what the tool says, and a pen's eraser
+   * One pointer at a time writes or erases, as the hands let it: a pen, a finger out of
+   * pen mode, or a mouse. The primary button does what the tool says, and a pen's eraser
    * erases — if the task allows the eraser: without it, the pen's eraser does nothing, for the
-   * recorder takes the primary button alone (R28).
+   * recorder takes the primary button alone.
    */
   #down(event: PointerEvent): void {
-    // A worked example's sheet takes no input (R42): the canvas takes no pointer then, and an event
+    // A worked example's sheet takes no input: the canvas takes no pointer then, and an event
     // that a script sends it does nothing either, nor puts the page in pen mode.
     if (this.#example !== undefined) return;
     // A pointer that comes down again lost its way up: what it was writing or erasing ends where it
@@ -2228,7 +2229,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#recorder.end(event.pointerId);
     this.#eraser.end(event.pointerId);
     // The hand moves the sheet under a pen, a finger or a mouse alike, and writes nothing: one
-    // pointer at a time, and the others do nothing while it moves (R88).
+    // pointer at a time, and the others do nothing while it moves.
     if (this.#tool === HAND) {
       if (this.#pan !== undefined) return;
       this.#pan = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
@@ -2239,9 +2240,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       return;
     }
     const writes = this.#hands.down(contactOf(event));
-    // The canvas holds on to every pointer that comes down on it until it lifts, writing or not: its
-    // moves and its lift come here, so that a stroke goes on beyond the canvas, two fingers scroll,
-    // a palm stays one, and the hands forget no pointer that lifted elsewhere.
+    // The canvas holds on to every pointer that comes down on it until it lifts, writing or not:
+    // its moves and its lift come here, so that a stroke goes on beyond the canvas, two fingers
+    // scroll, a palm stays one, and the hands forget no pointer that lifted elsewhere.
     this.#capture(event.pointerId);
     if (!writes) return;
     const screen = this.#view();
@@ -2251,7 +2252,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       this.#shownTemplate.tools.includes("eraser") &&
       (this.#tool === "eraser" || onSheetSample.button === ERASER_BUTTON);
     // On a task from paper a press begun on the tracing paper in sight writes or erases on it, its
-    // points from its corner; one begun elsewhere, on the sheet (R87).
+    // points from its corner; one begun elsewhere, on the sheet.
     const tracing = this.#tracing;
     const size = this.#tracingPaper.size;
     const scale = tracing === undefined ? 1 : scaleIn(tracing);
@@ -2260,7 +2261,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       !tracing.hidden &&
       this.#tracingPaper.ready &&
       onTracing(onSheetSample, tracing.at, scaled(size, scale));
-    // A press on the sheet lets the tracing paper go: its frame and bar of scale leave (R89).
+    // A press on the sheet lets the tracing paper go: its frame and bar of scale leave.
     this.#tracingPaper.letGo();
     const layer = traced ? "tracing" : undefined;
     if (erases) this.#eraseOn = tracing === undefined ? undefined : (layer ?? "sheet");
@@ -2336,7 +2337,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * A pointer lifted, or the device or the page took it from the sheet: the hands forget it, and a
-   * gesture that ended, or the hand's move, lets go of what it scrolled (R29; R88).
+   * gesture that ended, or the hand's move, lets go of what it scrolled.
    */
   #lifted(pointerId: number): void {
     if (this.#pan?.pointerId === pointerId) this.#endPan();
@@ -2375,7 +2376,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     return undefined;
   }
 
-  /** The layer a pointer's stroke or erasing is on: the tracing paper's, or the sheet's (R87). */
+  /** The layer a pointer's stroke or erasing is on: the tracing paper's, or the sheet's. */
   #layerOf(input: Recorder | Eraser): "tracing" | undefined {
     const on = input === this.#eraser ? this.#eraseOn : this.#writeOn;
     return on === "tracing" ? "tracing" : undefined;
@@ -2383,7 +2384,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * A pointer's place on the sheet, or on the tracing paper, `layer`, from its corner and kept to
-   * it (R87).
+   * it.
    */
   #sample(event: PointerEvent, screen: Screen, layer?: "tracing"): PointerSample {
     const point = toSheet(screen, event.clientX - screen.left, event.clientY - screen.top);
@@ -2410,7 +2411,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * one on the screen, after whatever transform the page puts on the element. The container's
    * rectangle gives the part of the canvas it shows: with the statement in sight, the canvas
    * goes on below the container's bottom. The bar of buttons over the sheet takes what is under it
-   * itself: a pointer there presses a button, and writes nothing (R84).
+   * itself: a pointer there presses a button, and writes nothing.
    */
   #view(): Screen | undefined {
     const canvas = this.#canvas.getBoundingClientRect();
@@ -2432,7 +2433,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * The sheet's top in the container's content, in CSS pixels as laid out: under the statement —
-   * or, along `x`, its left (R73).
+   * or, along `x`, its left.
    */
   #sheetEdge(axis: Axis): number {
     const port = clientBoxOf(this.#viewport);
@@ -2458,7 +2459,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /**
    * The statement and a demo's parts keep the element's own direction while the container runs
    * left to right: the direction the element computes, by an attribute or by a style, as the last
-   * layout read it (R73).
+   * layout read it.
    */
   #keepDirection(): void {
     if (!this.isConnected) return;
@@ -2469,7 +2470,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * What the rail's CSS cannot know (R84): the height of what it sticks in — the scroller's, which
+   * What the rail's CSS cannot know: the height of what it sticks in — the scroller's, which
    * it watches, or the window's —, from whose top it runs down to its bottom, below the consumer's
    * --novatrail-canvas-top; and the element's width, which a worked example's row keeps within, as
    * the rail is as wide as nothing. A band in pixels is taken as it changes; one in percent, of the
@@ -2511,12 +2512,12 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * Two fingers, or the hand, moved right on the screen by `dx` CSS pixels and down it by `dy`
-   * (R29; R88), and what they scroll goes with them. The gesture's first step down chooses what it
-   * scrolls down, for the whole gesture, and its first step across what it scrolls across (R73): the sheet's own container if it can go that way, or else the nearest ancestor of the
-   * element that scrolls and can, or else the page. A container at its end hands the scroll on at
-   * the next gesture, not within this one. The steps of an event add up, and its end scrolls them
-   * at once.
+   * Two fingers, or the hand, moved right on the screen by `dx` CSS pixels and down it by `dy`,
+   *and what they scroll goes with them. The gesture's first step down chooses what it
+   * scrolls down, for the whole gesture, and its first step across what it scrolls across: the
+   * sheet's own container if it can go that way, or else the nearest ancestor of the element that
+   * scrolls and can, or else the page. A container at its end hands the scroll on at the next
+   * gesture, not within this one. The steps of an event add up, and its end scrolls them at once.
    */
   #scroll(dx: number, dy: number, fresh: boolean): void {
     if (fresh) {
@@ -2549,7 +2550,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * What scrolls on down the content, for `onward`, or back up it — or, along `x`, on right across
-   * it or back left (R73).
+   * it or back left.
    */
   #scrollerFor(onward: boolean, axis: Axis = "y"): Latch | undefined {
     if (scrollsOn(this.#viewport, onward, axis)) {
@@ -2567,7 +2568,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       const keeps = axis === "y" ? style.overscrollBehaviorY : style.overscrollBehaviorX;
       if (keeps === "contain" || keeps === "none") return undefined;
     }
-    // A page that hides its overflow, as one under a modal does, a finger would not scroll: nor do two.
+    // A page that hides its overflow, as one under a modal does, a finger would not scroll: nor do
+    // two.
     if (overflow === "hidden" || overflow === "clip") return undefined;
     const page = document.scrollingElement;
     if (page === null || !scrollsOn(page, onward, axis)) return undefined;
@@ -2576,8 +2578,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * The stage takes the visible part of the sheet, and the canvas a pixel of its buffer for each
-   * device pixel: its size on the screen times the density (R18). The layers follow in the same
-   * frame. However far the sheet goes, the canvas is no larger than the container (R73).
+   * device pixel: its size on the screen times the density. The layers follow in the same
+   * frame. However far the sheet goes, the canvas is no larger than the container.
    */
   #layout(): void {
     // The content of a new size, or the container, may overflow it now, or no more.
@@ -2620,7 +2622,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * How far the sheet goes (R73): past the page, the ink and the tracing paper where it lies, by
+   * How far the sheet goes: past the page, the ink and the tracing paper where it lies, by
    * one view of the window more across and two down, at the window's own fit times the zoom,
    * within the reach. A worked example's sheet is its page alone. The window's view and not the
    * container's: the sheet is sized by its style, and a size that the container's observer gave
@@ -2659,7 +2661,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /**
    * The ink, the tracing paper or the window went past the sheet's extent, or back: the sheet is
    * sized anew by its style — the column as wide as the page's fit times the extent's share of the
-   * page, and the sheet in the extent's proportions —, and laid out (R73).
+   * page, and the sheet in the extent's proportions —, and laid out.
    */
   #regrow(): void {
     const zoom = this.#example === undefined ? PAGE_ZOOM.value : 1;
@@ -2681,7 +2683,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * Zoom in or Zoom out was pressed (R73): the page's zoom goes a quarter larger or smaller, and
+   * Zoom in or Zoom out was pressed: the page's zoom goes a quarter larger or smaller, and
    * every sheet of the page is laid out by it — but not while a pointer writes or erases on one of
    * them, for nothing moves under it.
    */
@@ -2701,7 +2703,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The page's zoom has changed (R73): the sheet is laid out by it at once, the point of the sheet
+   * The page's zoom has changed: the sheet is laid out by it at once, the point of the sheet
    * under a pinch's middle, or else the one the last press held, or else under the middle of the
    * part in sight, standing where it was on the screen, and the bar shows what the zoom can do now.
    */
@@ -2736,8 +2738,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The template's grid over the whole sheet, as far as it goes (R73): the task's, or a task from
-   * paper's that the learner turns, none on a blank one (R88); a workbook has its lines instead.
+   * The template's grid over the whole sheet, as far as it goes: the task's, or a task from
+   * paper's that the learner turns, none on a blank one; a workbook has its lines instead.
    */
   #drawGrid(): void {
     const template = this.#shownTemplate;
@@ -2790,7 +2792,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /**
    * The work has changed — a stroke landed, an erasing, an undo, a clearing: the sheet is drawn
    * anew, and whoever listens hears of it at once, the history already as it now is, with the
-   * events it has gained (R27). The event goes up from the element itself, and out of a consumer's
+   * events it has gained. The event goes up from the element itself, and out of a consumer's
    * own shadow tree too, should the element be in one. An action a listener takes while it hears is
    * told of next, once every listener has heard of the one before: each hears the history's events
    * in its order. A history given meanwhile is no action, and what it replaced is told of no more.
@@ -2821,7 +2823,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The learner chose a tool with the element's own button (R28): it is the tool now, and whoever
+   * The learner chose a tool with the element's own button: it is the tool now, and whoever
    * listens hears of it. A consumer that gives the tool follows it, or its next render would set
    * back what the learner chose.
    */
@@ -2834,7 +2836,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The learner turned the task from paper's grid with its button (R88): the next, round, and
+   * The learner turned the task from paper's grid with its button: the next, round, and
    * whoever listens hears of it. A consumer that gives the grid follows it.
    */
   #turnGrid(): void {
@@ -2847,7 +2849,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The learner hid the tracing paper with the button atop the tools, or showed it again (R87): its
+   * The learner hid the tracing paper with the button atop the tools, or showed it again: its
    * strokes go out of sight with it and stay in the history and in the work, and whoever listens
    * hears of the new state. A stroke or an erasing under way on the paper ends where it is, as on a
    * lost capture: the pointer goes on over a paper that is not there.
@@ -2863,7 +2865,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The learner's grip moves the tracing paper to a place, kept to the sheet whole (R87): its
+   * The learner's grip moves the tracing paper to a place, kept to the sheet whole: its
    * strokes move with it, and the marks on them too. The move tells of itself once it is over.
    */
   #moveTracing(to: readonly [number, number]): readonly [number, number] {
@@ -2879,7 +2881,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     return at;
   }
 
-  /** Ctrl or ⌘ with the wheel over the tracing paper in sight: a notch of its scale (R89). */
+  /** Ctrl or ⌘ with the wheel over the tracing paper in sight: a notch of its scale. */
   #wheel(event: WheelEvent): void {
     if (!(event.ctrlKey || event.metaKey) || event.deltaY === 0) return;
     const tracing = this.#tracing;
@@ -2894,7 +2896,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The learner scales the tracing paper by a corner, the bar of scale or the wheel (R89): to a
+   * The learner scales the tracing paper by a corner, the bar of scale or the wheel: to a
    * place and a scale, kept to the rule and to the sheet whole; its strokes scale with it, and the
    * marks on them too. The change tells of itself once it is over.
    */
@@ -2916,7 +2918,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * "Fit" (R89): the tracing paper as wide as the window shows the sheet right of the bar of tools,
+   * "Fit": the tracing paper as wide as the window shows the sheet right of the bar of tools,
    * at the rule's place there, kept to the rule; down the window, centred, below the rule's top.
    */
   #fitTracing(): void {
@@ -2939,14 +2941,14 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const state = this.#tracing;
     if (from === undefined || state === undefined || sameTracing(from, state)) return;
     // The marks were placed by the strokes where they lay: a submission of the paper elsewhere is
-    // not this sheet's any more, and they go (R26).
+    // not this sheet's any more, and they go.
     this.#replace();
     this.#tracingChanged();
   }
 
   /**
    * A stroke or an erasing under way on the tracing paper ends where it is, `end`, or goes, as on
-   * `pointercancel`: the paper it was on goes out of sight or away (R87).
+   * `pointercancel`: the paper it was on goes out of sight or away.
    */
   #leaveTracing(end: boolean): void {
     const writer = this.#writeOn === "tracing" ? this.#recorder.pointer : undefined;
@@ -2961,7 +2963,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The crop's picture is read, and the tracing paper has its size (R87): a state the consumer gave,
+   * The crop's picture is read, and the tracing paper has its size: a state the consumer gave,
    * checked against the largest paper, that puts the paper of this size wholly off the sheet moves
    * to the nearest place wholly on it, with its strokes and their marks. It tells nothing, as the
    * state given did not.
@@ -2981,15 +2983,15 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#request();
   }
 
-  /** Whoever listens hears of the tracing paper's new state, which the learner chose (R87). */
+  /** Whoever listens hears of the tracing paper's new state, which the learner chose. */
   #tracingChanged(): void {
     const detail = this.#tracing;
     this.dispatchEvent(new CustomEvent(TRACING_CHANGE, { bubbles: true, composed: true, detail }));
   }
 
   /**
-   * A stroke where it lies on the sheet: one of the tracing paper's moved to where the paper lies at
-   * its scale, once for each place (R87; R89); the sheet's as it is.
+   * A stroke where it lies on the sheet: one of the tracing paper's moved to where the paper lies
+   * at its scale, once for each place; the sheet's as it is.
    */
   #onSheet(stroke: Stroke, tracing: TracingState): Stroke {
     if (!this.#work.onTracing(stroke.id)) return stroke;
@@ -3010,11 +3012,12 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The learner opened the next part of the demo with the row's Next (R42). The list grows above
+   * The learner opened the next part of the demo with the row's Next. The list grows above
    * the sheet, and the layout keeps a sheet scrolled into sight where it was at once, before the
    * scroll of the container is heard; then the part comes into sight between the band and the row
    * of glass, the region tells of it, and whoever listens hears of the new state. The focus stays
-   * on Next, which opens the part after it. Nothing happens while the demo is hidden, or open whole.
+   * on Next, which opens the part after it. Nothing happens while the demo is hidden, or open
+   * whole.
    */
   #openNext(): void {
     const example = this.#example;
@@ -3031,7 +3034,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The learner hid the whole demo with the row's Demo, or showed it again (R42): its open parts
+   * The learner hid the whole demo with the row's Demo, or showed it again: its open parts
    * stay open, out of sight, and the region tells of none. A sheet scrolled into sight stays where
    * it was, and nothing else scrolls.
    */
@@ -3046,7 +3049,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * The demo as a state has it: the list, laid out at once, so that the sheet's place is the new
-   * one before any scroll is heard (R42), and the row.
+   * one before any scroll is heard, and the row.
    */
   #showDemo(example: CheckedExample, state: DemoState): void {
     this.#demoState = state;
@@ -3057,11 +3060,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The values a worked example's demo has written in the boxes of its workbook (R61): each in
+   * The values a worked example's demo has written in the boxes of its workbook: each in
    * the middle of its box, on the line's baseline, at the width the layout gives its text, as the
    * lines' texts are; none while the demo is hidden. A value is a text of its own just after its
    * box's frame, which a screen reader reads after the box, in the lines' language, as the lines'
-   * texts are (R61; WCAG 3.1.2). Only what changed is written.
+   * texts are (WCAG 3.1.2). Only what changed is written.
    */
   #showFills(fills: ReadonlyMap<string, string>): void {
     const page = this.#laid;
@@ -3100,13 +3103,13 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     }
   }
 
-  /** Whoever listens hears of the demo's new state, which the learner chose (R42). */
+  /** Whoever listens hears of the demo's new state, which the learner chose. */
   #demoChanged(): void {
     const detail = this.#demoState;
     this.dispatchEvent(new CustomEvent(DEMO_CHANGE, { bubbles: true, composed: true, detail }));
   }
 
-  /** The part Next opens: the one after those open, while the demo is shown (R42). */
+  /** The part Next opens: the one after those open, while the demo is shown. */
   #nextPart(): ExamplePart | undefined {
     const state = this.#demoState;
     if (state === undefined || state.hidden) return undefined;
@@ -3114,24 +3117,24 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * An item of the list, or an area of the sheet, comes into sight at once, as near as it is (R42),
+   * An item of the list, or an area of the sheet, comes into sight at once, as near as it is,
    * and then out from under the consumer's band, --novatrail-canvas-top, should the band cover
    * where it came to: what scrolls back up goes back as far as the band covers it. A margin of
    * scrolling would hold for every scroller of the chain alike — the sheet's container and the
    * page. An area of the sheet taller than what is in sight comes by its top from below, but by its
-   * bottom from above, and then the band's cover brings its top back into sight (R42). The bar of
+   * bottom from above, and then the band's cover brings its top back into sight. The bar of
    * buttons covers nothing at the top: it stands at the left edge, and a worked example's row at
-   * the bottom, where a scroll margin keeps what comes from below above it (R84).
+   * the bottom, where a scroll margin keeps what comes from below above it.
    */
   #bringIntoSight(item: HTMLElement): void {
     // A worked example's row of glass stands over the bottom of what is in sight: what comes into
-    // sight from below stops 16 pixels above it (R84).
+    // sight from below stops 16 pixels above it.
     const { rail, row } = this.#tools;
     const under = rail.hidden || row.hidden ? 0 : row.offsetHeight + 32;
     item.style.setProperty("scroll-margin-bottom", `${under}px`);
     item.scrollIntoView({ block: "nearest", behavior: "instant" });
     // A scroller that comes to its top hands the rest on to the next. A scroller goes again only
-    // while each of its scrolls leaves less covered than the last (R73).
+    // while each of its scrolls leaves less covered than the last.
     const covered = new Map<Element | Window, number>();
     for (;;) {
       const latch = this.#scrollerFor(false);
@@ -3146,7 +3149,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * The row of buttons as the sheet now is: the tools the task allows, the one in use, whether
-   * undo and clearing have anything to do (R28), and a worked example's demo (R42).
+   * undo and clearing have anything to do, and a worked example's demo.
    */
   #refresh(): void {
     const demo = this.#demoState;
@@ -3170,11 +3173,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /**
    * The container as a region of its own, a stop of Tab and a name, while its content overflows
    * it, and the keyboard scrolls it: in Safari a container that nothing in it can take the focus in
-   * scrolls by no key without (R90 spec; WebKit's bug 277290). Without a height of its own the
+   * scrolls by no key without (WebKit's bug 277290). Without a height of its own the
    * element scrolls with the page and has no stop of Tab, and neither has one whose task fits. A
-   * container that holds the focus keeps all three till the focus leaves it, not the window (R33).
+   * container that holds the focus keeps all three till the focus leaves it, not the window.
    * Across, it scrolls while the sheet is wider than it, and an element without a height has a
-   * region then too (R73).
+   * region then too.
    */
   #region(): void {
     if (!this.isConnected) return;
@@ -3191,11 +3194,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * The region's name: the canvas kind's, or a worked example's, in the labels' language, which
    * the row's buttons are named in. For a `lang` the labels are not in, the container is in
    * theirs, English, and the column, all the container holds, in the element's: the name is said
-   * in the language it is in, and the statement, the parts and the sheet in the element's (R74).
+   * in the language it is in, and the statement, the parts and the sheet in the element's.
    * With a `lang` the labels are in, the name is in the element's language already, and both are
    * in it, by an attribute of their own: Firefox gives a shadow tree no language of its host, and
    * WebKit takes no new one into the tree, though HTML has a node whose parent is a shadow root
-   * take its host's (R78). Without a `lang` the element's language is the page's, which no
+   * take its host's. Without a `lang` the element's language is the page's, which no
    * attribute could name, and neither has one.
    */
   #nameRegion(): void {
@@ -3208,7 +3211,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     write(this.#column, "lang", tag);
   }
 
-  /** What the row of buttons is of, and is named by: a worked example, or the canvas kind (R42). */
+  /** What the row of buttons is of, and is named by: a worked example, or the canvas kind. */
   #rowKind(): RowKind {
     if (this.#example !== undefined) return "example";
     if (this.#paper !== undefined) return "paper";
@@ -3225,7 +3228,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * The layers show the visible part of the sheet: each `<svg>` layer by its view box, in sheet
-   * units, which the browser scales to the stage (R23). Before any is drawn, so that none goes on
+   * units, which the browser scales to the stage. Before any is drawn, so that none goes on
    * showing a part of the sheet the others have left.
    */
   #place(screen: Screen): void {
@@ -3249,7 +3252,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The frames of the marks, around their strokes as the sheet shows them now (R26): off their
+   * The frames of the marks, around their strokes as the sheet shows them now: off their
    * points by the padding, in sheet units, and kept to the sheet by half the frame's line, so that
    * a frame at its edge stays whole. A frame the stroke under way comes into fades till the stroke
    * lands, and only what has changed is written.
@@ -3261,8 +3264,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const pending = this.#eraser.pending;
     const tracing = this.#tracing;
     const work = this.#work;
-    // A stroke of the tracing paper is where the paper lies, and out of sight while it is hidden
-    // (R87). Its box moves with the paper, and the stroke is not copied for each place of a drag.
+    // A stroke of the tracing paper is where the paper lies, and out of sight while it is hidden.
+    //Its box moves with the paper, and the stroke is not copied for each place of a drag.
     const onScreen = (id: number): Box | undefined => {
       const stroke = pending.has(id) ? undefined : byId.get(id);
       if (stroke === undefined) return undefined;
@@ -3289,7 +3292,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       else if (!mark.under) {
         // A frame that came or moved while the stroke was under way is checked against all of it.
         const points = sameBox(frame, mark.frame) ? fresh : this.#writing.stroke.points;
-        // A stroke on the tracing paper holds its points from the paper's corner (R87).
+        // A stroke on the tracing paper holds its points from the paper's corner.
         const on = this.#writeOn === "tracing" ? this.#tracing : undefined;
         const [dx, dy] = on?.at ?? [0, 0];
         const by = on === undefined ? 1 : scaleIn(on);
@@ -3345,7 +3348,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     return fresh;
   }
 
-  /** The strokes on the sheet by ID: each action on the work gives a new array of them (R19). */
+  /** The strokes on the sheet by ID: each action on the work gives a new array of them. */
   #byId(): ReadonlyMap<number, Stroke> {
     const strokes = this.#work.strokes;
     if (this.#strokesById.strokes !== strokes) {
@@ -3367,7 +3370,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * The layers in the visible part, and the strokes there, in device pixels: each finished stroke
    * by the path it was given once, the stroke under way outlined anew. A stroke whose points lie
    * far out of sight is not outlined till it comes into sight: a history given to the sheet may
-   * hold thousands (R27). What the eraser under way has come near is out of sight already, though
+   * hold thousands. What the eraser under way has come near is out of sight already, though
    * still on the sheet until it lifts. The ink's colour is the canvas's, as the theme makes it.
    */
   #draw(): void {
@@ -3391,7 +3394,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const bottom = screen.vy + screen.height / screen.k;
     const erasing = this.#eraser.pending;
     // A task from paper's tracing paper: its strokes over the sheet's, moved to where it lies, and
-    // none while it is hidden (R87).
+    // none while it is hidden.
     const tracing = this.#tracing;
     const work = this.#work;
     const shown = tracing !== undefined && !tracing.hidden;
@@ -3416,7 +3419,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     if (live !== undefined && !liveTraced) context.fill(pathOf(this.#outline(live, false)));
     if (!shown) return;
     const [dx, dy] = tracing.at;
-    // The paper's strokes are as large as its scale draws it, from its corner (R89).
+    // The paper's strokes are as large as its scale draws it, from its corner.
     const by = scaleIn(tracing);
     context.setTransform(
       across * by,
@@ -3470,7 +3473,7 @@ function near({ x, y }: InkPoint, box: Box, reach: number): boolean {
 }
 
 /**
- * An item of a workbook's lines (R36): its number, then its text and its boxes in the order they
+ * An item of a workbook's lines: its number, then its text and its boxes in the order they
  * are read, each where the layout put it. The item is an `<svg>` of its own place and size, which
  * shows what it holds beyond its edges, and its parts lie from its origin: Firefox brings a group
  * into view as a point at its origin, and only a box with a size whole.
@@ -3504,7 +3507,7 @@ function textOf({ text, left, baseline, width }: PageText, item: PageItem): SVGT
   return element;
 }
 
-/** A box, a picture to a screen reader, which its name tells of (R34). */
+/** A box, a picture to a screen reader, which its name tells of. */
 function rectOf(box: PageBox, item: PageItem): SVGRectElement {
   const rect = document.createElementNS(SVG, "rect");
   const { x, y } = fromItem(item, box.left, box.top);
@@ -3532,7 +3535,7 @@ function coalesced(event: PointerEvent): readonly PointerEvent[] {
   return events.length > 0 ? events : [event];
 }
 
-/** What the hands see of a pointer event (R29): where on the screen, how big, when. */
+/** What the hands see of a pointer event: where on the screen, how big, when. */
 function contactOf(event: PointerEvent): Contact {
   return {
     pointerId: event.pointerId,
@@ -3545,7 +3548,7 @@ function contactOf(event: PointerEvent): Contact {
   };
 }
 
-/** The scroll an event's fingers owe a scroller, in whole pixels, if any: the rest waits (R29). */
+/** The scroll an event's fingers owe a scroller, in whole pixels, if any: the rest waits. */
 function owed(
   latch: Latch | null | undefined,
 ): { target: Element | Window; step: number } | undefined {
@@ -3690,7 +3693,7 @@ function parentOf(element: Element): Element | null {
  * An element's client box on the screen — what it shows of its content, within its borders and
  * without its scroll bar — and how much the page scales it down the screen: 1 unless an ancestor
  * transforms it. The sheet's container has one, and so has any ancestor the fingers or
- * the hand scroll (R29; R88).
+ * the hand scroll.
  */
 function clientBoxOf(element: Element): ClientBox {
   const box = element.getBoundingClientRect();
@@ -3704,7 +3707,7 @@ function clientBoxOf(element: Element): ClientBox {
 }
 
 /**
- * How much the page scales an element down the screen, or across it along `x` (R73): 1 unless an
+ * How much the page scales an element down the screen, or across it along `x`: 1 unless an
  * ancestor transforms it. `box` is its rectangle on the screen, when the caller has it already.
  */
 function scaleOf(element: Element, box?: DOMRect, axis: Axis = "y"): number {
@@ -3751,6 +3754,6 @@ declare global {
   }
   // The events bubble and leave shadow trees: their types hold on the element, on its ancestors and
   // on the document alike. Their map is the contract's, and the package that registers the element
-  // puts it in the DOM's (R74 spec).
+  // puts it in the DOM's.
   interface GlobalEventHandlersEventMap extends CanvasEventMap {}
 }

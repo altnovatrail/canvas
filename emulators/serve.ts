@@ -1,7 +1,7 @@
 // A server of a folder's files on the runner, for a browser in an emulator or a simulator. By
 // default it hands them out the way a release of GitHub was read to: as application/octet-stream
 // with Content-Disposition: attachment, so the browser downloads the file, as a volunteer does,
-// and no pre-release has to go out for a run (R54). With --inline it serves
+// and no pre-release has to go out for a run. With --inline it serves
 // them as pages, the way a hosting of the samples page would: the iPad opens no page from a file,
 // so the simulator's Safari opens it from here.
 //

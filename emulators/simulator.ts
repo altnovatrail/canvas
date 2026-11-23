@@ -1,4 +1,4 @@
-// The choice of the iPad simulator for the probe and the samples page (R54): the newest available
+// The choice of the iPad simulator for the probe and the samples page: the newest available
 // iOS runtime of a version, and the iPad the run is on, from the lists `xcrun simctl list --json`
 // gives. emulators/simulator.sh asks it:
 //

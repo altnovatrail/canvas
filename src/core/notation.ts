@@ -1,10 +1,10 @@
 /**
- * A statement read from a task from paper, as the element draws it (R89): the text as printed,
+ * A statement read from a task from paper, as the element draws it: the text as printed,
  * "□" for each box an answer goes in, and what one line of text cannot hold written LaTeX's way —
- * a fraction with a bar as `\frac{3}{17}`, nested as printed, and a raised power as `^{2}` (R169
- * spec). Nothing else of LaTeX is the reading's; a model that strays all the same gets its few
- * common signs drawn as signs, `\left` and `\right` dropped, and any other command shown as
- * written, so a reading is never lost to its notation.
+ * a fraction with a bar as `\frac{3}{17}`, nested as printed, and a raised power as `^{2}`. Nothing
+ * else of LaTeX is the reading's; a model that strays all the same gets its few common signs drawn
+ * as signs, `\left` and `\right` dropped, and any other command shown as written, so a reading is
+ * never lost to its notation.
  */
 export type Piece =
   | { readonly kind: "text"; readonly text: string }

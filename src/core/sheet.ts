@@ -9,7 +9,7 @@ export const SHEET = Object.freeze({ width: 1000, height: 1400 } as const);
 /**
  * How far the sheet goes from its origin, in units: ten pages across and ten down. The learner
  * writes past the page, to the right of it and below it, and a point beyond this is no point of a
- * history: the bound keeps the rules' whole numbers small and a history's numbers sane (R06).
+ * history: the bound keeps the rules' whole numbers small and a history's numbers sane.
  */
 export const REACH = Object.freeze({ width: 10000, height: 14000 } as const);
 
@@ -20,7 +20,7 @@ export interface Size {
 }
 
 /**
- * The sheet as large as it is laid out (R06): the page, and past it and past the furthest ink a
+ * The sheet as large as it is laid out: the page, and past it and past the furthest ink a
  * `room` more — the part of the sheet in sight, so that there is always somewhere to move it to and
  * write —, within `REACH`. `ink` is the right and the bottom of the furthest strokes, none for an
  * empty sheet.
@@ -44,7 +44,7 @@ export function extentOf(
 export const PICTURE_BYTES = (SHEET.width + 1) * SHEET.height;
 
 /**
- * The picture of a work (R83): the page, and the ink past it, right and down, with no room past the
+ * The picture of a work: the page, and the ink past it, right and down, with no room past the
  * ink, at a pixel a unit while its rows hold no more than `PICTURE_BYTES`, and scaled down to hold
  * them otherwise. `scale` is pixels a unit.
  */

@@ -7,7 +7,7 @@ import { adler32, crc32, encodePNG } from "./png.js";
 import { pictureOf, rasterOf } from "./raster.js";
 import { CROP_SHEETS, random, SHEETS } from "./sheets.fixture.js";
 
-// The PNG of the crop (R25), read back two ways: by Node's zlib, and by a reader of the fixed
+// The PNG of the crop, read back two ways: by Node's zlib, and by a reader of the fixed
 // Huffman codes written here from RFC 1951, which also says which codes the stream holds.
 
 interface Chunk {
@@ -196,7 +196,7 @@ describe("the PNG", () => {
       [1, 1],
       [1568, 3],
       // The picture of the work, the whole surface: 1,576,640 bytes at most, 1.5 MiB, under the
-      // 4 MiB of a stored work (R83).
+      // 4 MiB of a stored work.
       [1000, 1400],
     ] as const) {
       const png = encodePNG(noise(width, height, width), width, height);

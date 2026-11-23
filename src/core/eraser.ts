@@ -104,7 +104,7 @@ export class Eraser {
     return this.#finish(sample.time);
   }
 
-  /** `pointercancel`: the device took the touch for an accident, and nothing is erased (R05). */
+  /** `pointercancel`: the device took the touch for an accident, and nothing is erased. */
   cancel(pointerId: number): boolean {
     if (this.#press?.pointerId !== pointerId) return false;
     this.#press = undefined;

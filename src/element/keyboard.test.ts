@@ -21,9 +21,9 @@ import { probe } from "./probe.js";
 // The sheet from the keyboard (R33): the element's own scroll container, while its content
 // overflows it, is a region named by the canvas kind, with a stop of Tab of its own, so that the
 // keyboard scrolls it in Safari too, where a container that nothing in it can take the focus in
-// scrolls by no key (R90 spec; WebKit's bug 277290). Tab goes into it from the bar and out of it to
+// scrolls by no key (WebKit's bug 277290). Tab goes into it from the bar and out of it to
 // what follows the element (WCAG 2.1.2), and the keys scroll it as the browser scrolls a
-// container. A sheet goes past its page, wider than its container (R73), which so is a region
+// container. A sheet goes past its page, wider than its container, which so is a region
 // with or without a height of its own; a worked example's sheet is its page alone, and an element
 // without a height of its own, or one its example fits in, scrolls with the page and has no such
 // stop. A ring shows the focus the keyboard brought, over the sheet (WCAG 2.4.7).
@@ -46,7 +46,7 @@ function after(): HTMLButtonElement {
 /**
  * The kinds of canvas, put on the page, what the region and the bar are named in English — a
  * worked example has no bar —, and the buttons Tab comes to between the bar and the region: a
- * worked example's row (R84).
+ * worked example's row.
  */
 const KINDS = [
   {
@@ -160,7 +160,7 @@ test("the keys scroll the container in focus as the browser scrolls one, and the
   ];
   // The browsers scroll from the keyboard smoothly: the next key comes once the place the key
   // scrolls to has held for three frames, not after a time, which a loaded host outlasts, nor on a
-  // scrollend, which the scroll of the key before may send late (R75). A key that never gets
+  // scrollend, which the scroll of the key before may send late. A key that never gets
   // there stops the waiting after 600 frames, and the check says where it is.
   for (const [keys, check] of steps) {
     await userEvent.keyboard(keys);
@@ -238,7 +238,7 @@ test("the region and the row are named in the element's language, by the kind it
     each.task = sheetTask();
   }, 300);
   const russian = labelsFor("ru").labels;
-  // A worked example has no bar, which so has no name (R84).
+  // A worked example has no bar, which so has no name.
   const names = () => [viewport.getAttribute("aria-label"), row.getAttribute("aria-label")];
   element.setAttribute("lang", "ru");
   expect(names()).toEqual([russian.sheet, russian.sheetButtons]);
@@ -294,8 +294,8 @@ test("for a lang the labels are not in, the container is in theirs and the colum
   // A lang of no language is out of the table too: the column keeps it, as the element has it.
   element.setAttribute("lang", "");
   apart("", "Worked example");
-  // A lang the labels are in: both have it, for Firefox gives a shadow tree no language of its host,
-  // and WebKit takes no new one into it.
+  // A lang the labels are in: both have it, for Firefox gives a shadow tree no language of its
+  // host, and WebKit takes no new one into it.
   for (const tag of ["ru-RU", "en-GB", "ru"]) {
     element.setAttribute("lang", tag);
     expect(langs()).toEqual([tag, tag]);

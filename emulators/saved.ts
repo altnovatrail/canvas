@@ -1,4 +1,4 @@
-// The files the samples page saved in the emulators (R54, R55), read in the toolchain stage by the
+// The files the samples page saved in the emulators, read in the toolchain stage by the
 // workflow's job of the saved files once each device's job has left its own in the folder saved/
 // of its artifact:
 //
@@ -8,7 +8,7 @@
 // version, with a task and with strokes. A folder of the release build holds an adult's
 // measurement under its set in force: an adult's, with its history, one sheet in their own hand
 // and one workbook imitating a child's. A folder of the test build, whose name ends in -test,
-// holds a child's session under the test set: the final geometry and the code typed (R59, R65).
+// holds a child's session under the test set: the final geometry and the code typed.
 // Each folder must hold a sheet's and a workbook's, of one code, the code of the page's one
 // opening. spec's sample-check holds the same files to the protocol after it, markup and all. The
 // strokes are the code's, drawn by the drivers. The code of src/ imports its modules by the names
@@ -25,7 +25,7 @@ import { CHILD_CODE } from "./watch.ts";
  * legal part at the tag spec/ stands on, which scripts/page.test.ts holds the build to. */
 export const RELEASE_TEXTS = "measure-3";
 
-/** Which build a folder's files came from: the test build's folders end in -test (R65). */
+/** Which build a folder's files came from: the test build's folders end in -test. */
 export type Built = "release" | "test";
 
 /** The build of a run's folder, by its name. */
@@ -36,7 +36,7 @@ export function builtOf(folder: string): Built {
 /** What is wrong with one sample of a page of a version; nothing when it is right. A release's is
  * a measurement by an adult, in their own hand or imitating a child's, with its history, under the
  * measurement's set in force; a test build's is of a child's session, its final geometry and the
- * code the adult typed, under the test set (R59). */
+ * code the adult typed, under the test set. */
 export function problemsOf(sample: Sample, version: string, built: Built = "release"): string[] {
   const problems: string[] = [];
   const want = (ok: boolean, what: string) => {
@@ -65,7 +65,7 @@ export function problemsOf(sample: Sample, version: string, built: Built = "rele
       "not of the test set of a child's session",
     );
     want(sample.writerCode === CHILD_CODE, `not of the code typed, ${CHILD_CODE}`);
-    // A workbook's final geometry holds only the strokes in its boxes (R53), and the drivers'
+    // A workbook's final geometry holds only the strokes in its boxes, and the drivers'
     // stroke falls in the draft beside them: a child's workbook may hold none.
     want(
       sample.ink.case === "geometry" &&

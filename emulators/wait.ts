@@ -1,4 +1,4 @@
-// Waiting for a sign within a time, for the drivers of the emulators (R54). A wait counted in tries
+// Waiting for a sign within a time, for the drivers of the emulators. A wait counted in tries
 // lasts as long as its tries take: a try of uiautomator's dump takes two or three seconds, and
 // "five seconds" of them took fifteen. A wait here lasts the seconds it is given, however long each
 // try takes, so a device that does not show the sign fails the pass in the time the step allows,

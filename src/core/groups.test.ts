@@ -21,11 +21,11 @@ import { replay } from "./history.js";
 import type { Stroke } from "./ink.js";
 import { random, SHEETS, staircase, stroke, undone } from "./sheets.fixture.js";
 
-// The sheets of these tests are drawn by code, as every test's strokes are: no hand wrote them
-// (R15). The synthetic sheets, in sheets.fixture.ts, lie in whole tenths of a unit and whole
+// The sheets of these tests are drawn by code, as every test's strokes are: no hand wrote them.
+//The synthetic sheets, in sheets.fixture.ts, lie in whole tenths of a unit and whole
 // milliseconds, so that they come out the same on every machine. The tests of rounding and the
 // crowded sheets take hundredths and fractions of a millisecond on purpose: those are what the rule
-// rounds. The test vectors of the rule are spec's, in the eval protocol's form (R94 spec).
+// rounds. The test vectors of the rule are spec's, in the eval protocol's form.
 
 const idsOf = (groups: readonly Group[]) => groups.map(({ ids }) => ids);
 
@@ -354,7 +354,7 @@ describe("the synthetic sheets", () => {
   });
 });
 
-/** A case of spec's vectors of the groups (R94 spec). */
+/** A case of spec's vectors of the groups. */
 interface GroupCase {
   readonly name: string;
   readonly history: { readonly events: readonly ProtocolEvent[] };

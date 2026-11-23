@@ -1,7 +1,7 @@
 // The legal texts of the samples page (R69): spec's release file legal-<n>.tar.gz, which
-// ci-licenses verifies by release-verify (R77 spec) and the build holds to its sum, read as the
+// ci-licenses verifies by release-verify and the build holds to its sum, read as the
 // README of spec's legal part gives — the passport's schema first, then the rules in the order of
-// its table (R130 spec). The archive is git archive's of spec's legal/ at the tag, so it carries
+// its table. The archive is git archive's of spec's legal/ at the tag, so it carries
 // the schema and the vectors of reading too: the build reads the part against that schema, and the
 // tests read the vectors through this same reader. A third reader, beside spec's own check and
 // api's; spec's text, not its code, is what it follows, for canvas's code reads nothing of spec/.
@@ -15,8 +15,8 @@
 // with it.
 //
 // From version 3 of the part a version in force applies from its day, in_force_since, and a reader
-// reads the part on a day of its own, a date in UTC: the build of the samples page on the day of its
-// build. The current version is the newest in force whose day has come, and the next one the
+// reads the part on a day of its own, a date in UTC: the build of the samples page on the day of
+// its build. The current version is the newest in force whose day has come, and the next one the
 // version that becomes current on the nearest day still to come; a set applies from the day it was
 // approved, so the page takes the current set alone.
 
@@ -40,7 +40,7 @@ import type { Block, Inline, LegalSet } from "../page/sets.ts";
 /**
  * The legal texts the build carries: spec's release, the file's name in it, and the SHA-256 of its
  * bytes, which release-verify accepted. The release is the tag spec/ stands on, whose npm package
- * @altnovatrail/spec is a dependency too (R41): a move to a new tag of spec raises the three and
+ * @altnovatrail/spec is a dependency too: a move to a new tag of spec raises the three and
  * the file together.
  */
 export const LEGAL_FILE = Object.freeze({
@@ -53,7 +53,7 @@ export const LEGAL_FILE = Object.freeze({
  * its name alone. */
 export const LEGAL_PATH = join("tasks", `spec-${LEGAL_FILE.tag}`, LEGAL_FILE.name);
 
-/** The set of spec's legal part each purpose of the page takes (R130 spec, R133 spec). */
+/** The set of spec's legal part each purpose of the page takes. */
 export const PURPOSE_SETS = Object.freeze({
   measurement: "measure",
   evalSet: "eval-set",
@@ -94,7 +94,7 @@ export const RULES = [
 
 const IN_FORCE = "in_force";
 /** The privacy policy, whose section "Who we are" names the operator, and that section's heading,
- * of the second level (R115 spec). */
+ * of the second level. */
 export const POLICY = "privacy-policy";
 const WHO_WE_ARE = "Who we are";
 /** A day as a reader reads the part on it. */
@@ -331,7 +331,7 @@ export function hasWhoWeAre(source: string | Uint8Array): boolean {
 }
 
 /** legal.operator: the part has the privacy policy, at the place app, with a version whose day has
- * come, and every version of it, a draft too, has the section "Who we are" (R115 spec). The policy
+ * come, and every version of it, a draft too, has the section "Who we are". The policy
  * is named by its ID when it is missing, elsewhere or not yet in force, and a version without the
  * section by its file; a translation needs no such heading. legal.files has held, so every version
  * has its file. */

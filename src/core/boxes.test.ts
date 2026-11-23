@@ -341,7 +341,7 @@ test("the rule is its words: a second writing of it, in BigInt, agrees on the co
   }
 });
 
-/** A case of spec's vectors of the boxes (R94 spec). */
+/** A case of spec's vectors of the boxes. */
 interface BoxCase {
   readonly name: string;
   readonly boxes: readonly (PageBox & { readonly answer_slot: CellPlace })[];

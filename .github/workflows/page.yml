@@ -1,13 +1,13 @@
-# The samples page in the emulators, on each pull request that changes what goes into it (R54,
-# R55): no tablets of the author's own, so the emulators stand in for them, in the software they
-# run. Each device's job builds the page itself, so that none waits for another; Chrome in an
-# Android emulator downloads it and opens it from the download, and Safari in the iPad Simulator
-# opens it from the runner — a page opened from a file does not run on an iPad. In each the driver
-# goes through the page's start, draws a stroke, marks it up through the page's form, saves the
-# sheet's and the workbook's samples, and sees that the page asked for nothing and broke no rule of
-# its policy; the saved files are then read as sample files and held to the protocol by spec's
-# sample-check. The strokes are the code's: no handwriting goes into a run. The pen, the palm and
-# iCloud need real tablets.
+# The samples page in the emulators, on each pull request that changes what goes into it: no tablets
+# of the author's own, so the emulators stand in for them, in the software they run. Each device's
+# job builds the page itself, so that none waits for another; Chrome in an Android emulator
+# downloads it and opens it from the download, and Safari in the iPad Simulator opens it from the
+# runner — a page opened from a file does not run on an iPad. In each the driver goes through the
+# page's start, draws a stroke, marks it up through the page's form, saves the sheet's and the
+# workbook's samples, and sees that the page asked for nothing and broke no rule of its policy; the
+# saved files are then read as sample files and held to the protocol by spec's sample-check. The
+# strokes are the code's: no handwriting goes into a run. The pen, the palm and iCloud need real
+# tablets.
 #
 # The workflow runs on every pull request, with Android alone, and with the iPad too on a push to
 # main, of the same paths, and by hand: main holds the cache of the toolchain stage every pull
@@ -85,8 +85,8 @@ jobs:
   # release of GitHub, where the emulator reaches it on its own localhost through adb reverse
   # (emulators/android.sh). The files it saved are read and held to the protocol here too, in the
   # same stage. The test build, with the legal texts' part for tests alone, goes the same way after
-  # the release's, a child's session on it (R65), and is kept as an artifact of its own (R58,
-  # R59): no release carries it.
+  # the release's, a child's session on it, and is kept as an artifact of its own: no
+  # release carries it.
   android:
     name: Android
     needs: changes
@@ -94,17 +94,17 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      # With spec/, whose recipe sample-check holds the files to the protocol (R93 spec).
+      # With spec/, whose recipe sample-check holds the files to the protocol.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           submodules: true
 
-      # The toolchain stage from the cache, by the Dockerfile's sha256 (R57): the Dockerfile pins
+      # The toolchain stage from the cache, by the Dockerfile's sha256: the Dockerfile pins
       # everything it installs by exact version, digest, sha256 and snapshot, so the image the cache
       # holds is the one it builds. The key, the file and the image novatrail-toolchain are those of
       # .github's shared workflows and spec's toolchain.sh, which builds it here too, so that every
-      # workflow keeps one entry (R42 .github; R57). Only a push to main saves it, the entry every
+      # workflow keeps one entry. Only a push to main saves it, the entry every
       # pull request reads; a pull request's would serve its own re-runs alone. Saved as soon as it
       # is built, so that a run whose emulator fails later still fills it.
       - name: Toolchain image from the cache
@@ -160,7 +160,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      # The emulator of the probe, by the same versions (R54).
+      # The emulator of the probe, by the same versions.
       - name: Emulator and page
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
@@ -219,7 +219,7 @@ jobs:
   # through WebDriverAgent. The runners of macOS have no Docker, so the page is built with the
   # Dockerfile's Node through setup-node, from the same tree and lock file.
   #
-  # Not on a pull request (R54): the job takes 7 to 10 minutes and as many again waiting for
+  # Not on a pull request: the job takes 7 to 10 minutes and as many again waiting for
   # a runner of macOS, while its driver works two; a pull request waits for Android alone, and a
   # fault only Safari sees shows on main before a release.
   ipad:

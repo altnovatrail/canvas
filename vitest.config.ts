@@ -1,10 +1,10 @@
-// The tests, in three projects (R12). The DOM-free part, the sample file of src/eval/, the
-// scripts, the probe of a page opened from a file (R52) and the drivers of the emulators (R54) run
+// The tests, in three projects. The DOM-free part, the sample file of src/eval/, the
+// scripts, the probe of a page opened from a file and the drivers of the emulators run
 // in Node: the probe's test drives Chrome Headless Shell itself, by file:// addresses, which a
 // browser project never opens. The element runs in the three engines CI checks — Chrome Headless
 // Shell, WebKit and Firefox from the toolchain stage of .devcontainer/Dockerfile, through
-// Playwright (R13, R79 spec) — and once more with forced colours, a mode of the browser's context
-// that only its own file runs in, in Chromium and Firefox: WebKit has none to emulate (R23). Each
+// Playwright (R13) — and once more with forced colours, a mode of the browser's context
+// that only its own file runs in, in Chromium and Firefox: WebKit has none to emulate. Each
 // instance's name ends in its engine, which ci-test and ci-engines pick the runs by: Vitest's v8
 // coverage works in Chromium alone, so WebKit and Firefox run apart, without it. Each project
 // names its own files: the spec submodule beside them has tests of its own, which are not canvas's.
@@ -19,7 +19,7 @@ export default defineConfig({
     // wrapper sends to Codecov (R43): one lcov report of all three projects, coverage/lcov.info,
     // as the wrapper takes it. V8 counts it, in Node and in Chromium alike. What it covers is the
     // code of src/: the package's, every module of it, those no test loads too, at zero, and the
-    // sample file of src/eval/, which is no part of the package (R48). The scripts check the
+    // sample file of src/eval/, which is no part of the package. The scripts check the
     // package after the tests, and the demo page is tried by hand. WebKit and Firefox run without
     // coverage, in a run of their own.
     coverage: {
@@ -55,7 +55,7 @@ export default defineConfig({
             // CI still keeps test.only out of CI, as Vitest's allowOnly does by default.
             headless: true,
             // Twice: at the density of a plain screen, and at the double density of most laptops
-            // and tablets, which the canvas's buffer follows (R18). The second browser has that
+            // and tablets, which the canvas's buffer follows. The second browser has that
             // density from the start: one that the DevTools protocol sets in the middle of a test
             // tells the test's frame nothing, no media query's change. WebKit and Firefox run at
             // the plain density: the buffer's rule is the engine's own arithmetic, which Chromium's

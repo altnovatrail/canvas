@@ -7,7 +7,7 @@ import type { Stroke } from "./ink.js";
 import { pictureOf, rasterOf } from "./raster.js";
 import { CROP_SHEETS, dot, later, SHEETS, staircase, stroke, whole } from "./sheets.fixture.js";
 
-// The pixels of the crop (R25) on the synthetic sheets: what is ink and what is white, measured
+// The pixels of the crop on the synthetic sheets: what is ink and what is white, measured
 // against the strokes themselves, each pixel's distance to them found the long way round.
 
 function cropAt(strokes: readonly Stroke[], digit = 32): Crop {

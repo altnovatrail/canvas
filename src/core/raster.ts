@@ -10,12 +10,12 @@ interface Spot {
 }
 
 /**
- * The pixels of a crop (R25): grey, a byte each, row by row from the top, white 255 and the ink 0,
+ * The pixels of a crop: grey, a byte each, row by row from the top, white 255 and the ink 0,
  * of the strokes the crop was made of. Every segment of a stroke is a line as wide all along, with
  * round ends, and a stroke of one point a dot as wide as the line: a pixel takes the share of it
  * that the line covers, along a ramp a pixel wide at the line's edge, and the darkest of what
  * covers it. The places are the crop's own whole numbers, from the points in tenths of a unit, as
- * a sample keeps them (R09). Only adding, subtracting, multiplying, dividing and Math.sqrt go into
+ * a sample keeps them. Only adding, subtracting, multiplying, dividing and Math.sqrt go into
  * a pixel, which ECMAScript rounds alike in every engine, so the bytes are the same in each.
  */
 export function rasterOf(strokes: readonly Stroke[], crop: Crop): Uint8Array<ArrayBuffer> {
@@ -41,7 +41,7 @@ export function rasterOf(strokes: readonly Stroke[], crop: Crop): Uint8Array<Arr
   return gray;
 }
 
-/** The PNG of a crop: its pixels, encoded (R25). */
+/** The PNG of a crop: its pixels, encoded. */
 export function pictureOf(strokes: readonly Stroke[], crop: Crop): Uint8Array<ArrayBuffer> {
   return encodePNG(rasterOf(strokes, crop), crop.width, crop.height);
 }

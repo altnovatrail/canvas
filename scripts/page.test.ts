@@ -1,5 +1,5 @@
-// The build of the samples page (R55): what the builder refuses, the one file it writes, and that
-// file opened by file:// in Chrome Headless Shell from the toolchain stage (R13), as a volunteer
+// The build of the samples page: what the builder refuses, the one file it writes, and that
+// file opened by file:// in Chrome Headless Shell from the toolchain stage, as a volunteer
 // opens it from the downloads — no request leaves it, the policy is kept, and the sample it saves
 // reads back.
 
@@ -36,7 +36,7 @@ import {
   textsFor,
 } from "./page.ts";
 
-/** The banks of tutor's file in tasks/, which the build offers whole (R62). */
+/** The banks of tutor's file in tasks/, which the build offers whole. */
 const BANKS = (
   JSON.parse(readFileSync(join("tasks", TUTOR_FILE.name), "utf8")) as {
     banks: { bank: string; tasks: { id: string }[] }[];
@@ -57,7 +57,7 @@ interface ViewEntry {
   readonly open_view_digest: string;
 }
 /** The modules of the copy the build carries for an eval set, each with the tasks the page takes of
- * it, in the build's order, after tutor's (R71). */
+ * it, in the build's order, after tutor's. */
 const MODULES = (
   JSON.parse(readFileSync(join(modulesFolder(MODULES_FILE.tag), OPEN_VIEWS), "utf8")) as {
     modules: {
@@ -81,7 +81,7 @@ const placeOf = (module: (typeof MODULES)[number]) =>
     IDS.length,
   );
 
-/** The part of the legal texts for tests alone, its sets in force (R58, R69). */
+/** The part of the legal texts for tests alone, its sets in force. */
 const TEST_PART = "page/sets/test";
 
 let folder: string;
@@ -97,7 +97,7 @@ beforeAll(async () => {
   browser = await chromium.launch();
 }, budget(4_500));
 
-/** The start gone through on a page (R58, R59): a purpose, for the measurement a new writer's code
+/** The start gone through on a page: a purpose, for the measurement a new writer's code
  * or one typed, for a child's session the code typed, and every statement ticked; the writer's
  * code it began with, if any. */
 async function begin(
@@ -152,7 +152,7 @@ async function markAndSave(page: Page, text: string): Promise<Sample> {
   return readSample(readFileSync(await download.path(), "utf8"));
 }
 
-/** What axe finds against WCAG 2.2 level AA on a page as it stands (R70): each rule violated, with
+/** What axe finds against WCAG 2.2 level AA on a page as it stands: each rule violated, with
  * its nodes, and each it leaves incomplete. Its script goes in by evaluate, for the page's policy
  * admits no script the page did not bring. */
 async function axeFinds(page: Page): Promise<string[]> {
@@ -430,8 +430,7 @@ describe("the file", () => {
     expect(page).toMatch(/["'`]measure-3["'`]/);
     expect(page).toMatch(/["'`]eval-set-2["'`]/);
     expect(page).not.toMatch(/test-(measure|eval-set|child-sample)/);
-    // The notice in force is shown, and no draft of the legal texts, a child's sample's, to anyone
-    // (R130 spec).
+    // The notice in force is shown, and no draft of the legal texts, a child's sample's, to anyone.
     expect(page).toContain("what happens to your samples");
     expect(page).not.toMatch(/child-sample-\d/);
   });
@@ -473,8 +472,8 @@ describe("opened from a file", () => {
       });
       await page.goto(pathToFileURL(built.path).href);
       await page.waitForFunction(() => customElements.get("novatrail-canvas") !== undefined);
-      // Every task of tutor's file, a group for each bank, in the file's order (R62), then the
-      // tasks of each module the page takes, a group for each (R71).
+      // Every task of tutor's file, a group for each bank, in the file's order, then the
+      // tasks of each module the page takes, a group for each.
       const groups = () =>
         page
           .locator("#task optgroup")
@@ -495,14 +494,15 @@ describe("opened from a file", () => {
         "Тетрадь: workbook-01",
         "Сочинение: essay-01",
       ]);
-      // The emulators' drivers count the tasks and choose the workbook by these (emulators/watch.ts).
+      // The emulators' drivers count the tasks and choose the workbook by these
+      // (emulators/watch.ts).
       expect([titles.length, WORKBOOK]).toEqual([EMULATED_TASKS, EMULATED_WORKBOOK]);
       expect(await page.textContent("#version")).toBe("Версия страницы: 0.0.0.");
-      // The words for a device where the script does not run, an iPad's Files: in the file, and gone
-      // once the script runs.
+      // The words for a device where the script does not run, an iPad's Files: in the file, and
+      // gone once the script runs.
       expect(readFileSync(built.path, "utf8")).toContain("На iPad сборку, открытую из файла");
       expect(await page.locator("#no-script").count()).toBe(0);
-      // The start (R58, R72): the measurement and the eval set open by their sets in force, a
+      // The start: the measurement and the eval set open by their sets in force, a
       // child's session closed, with why, while its set is a draft; nothing is written before the
       // purpose, a new writer's code shown to be written down, and both statements.
       expect(await page.isDisabled('input[name="purpose"][value="evalSet"]')).toBe(false);
@@ -513,13 +513,13 @@ describe("opened from a file", () => {
       expect(await page.isHidden("#work")).toBe(true);
       const code = (await begin(page, "measurement")) ?? "";
       expect(code).toMatch(/^[0-9A-Z]{6,16}$/);
-      // The measurement takes tutor's tasks alone: the modules' leave the picker (R71).
+      // The measurement takes tutor's tasks alone: the modules' leave the picker.
       expect(await groups()).toEqual(ofBanks);
       expect(await page.textContent("#summary-text")).toContain(code);
       const box = await page.locator("novatrail-canvas").boundingBox();
       if (!box) throw new Error("the element is not shown");
       await stroke(page, box, [120, 220], [220, 280]);
-      // Nothing is saved before the markup is whole (R56): the stroke is one part, its text the
+      // Nothing is saved before the markup is whole: the stroke is one part, its text the
       // final answer, and the answer as written.
       expect(await page.isDisabled("#save")).toBe(true);
       // A second stroke far off, a group of its own: two parts, which the writer joins after
@@ -700,7 +700,7 @@ describe("opened from a file", () => {
       expect(await page.textContent("#start-lacks")).toContain("от 6 до 16");
       await page.fill("#typed", "");
       expect(await begin(page, "measurement", "ab12 cd34")).toBeUndefined();
-      // Once writing has begun, no file opens: the sheet half written stays as it is (R64).
+      // Once writing has begun, no file opens: the sheet half written stays as it is.
       expect(await page.isHidden("#open")).toBe(true);
       expect(await page.textContent("#summary-text")).toContain("AB12CD34");
       const storage = () =>
@@ -727,7 +727,7 @@ describe("opened from a file", () => {
     try {
       const page = await context.newPage();
       await page.goto(pathToFileURL(tested.path).href);
-      // The build carries the tasks of modules, so the eval set is open by its set (R71).
+      // The build carries the tasks of modules, so the eval set is open by its set.
       expect(await page.isDisabled('input[name="purpose"][value="evalSet"]')).toBe(false);
       expect(await page.locator("#purpose-note-evalSet").count()).toBe(0);
       expect(await page.locator("#purpose-note-measurement").count()).toBe(0);
@@ -909,7 +909,8 @@ describe("opened from a file", () => {
       if (!box) throw new Error("the element is not shown");
       await stroke(page, box, [120, 220], [220, 280]);
       const sample = await markAndSave(page, "7");
-      // Illegible on purpose is the writer's to say: the adult marking a child's sheet says it unread.
+      // Illegible on purpose is the writer's to say: the adult marking a child's sheet says it
+      // unread.
       expect(
         await page.locator('#form label:has(input[data-flag="illegible"])').textContent(),
       ).toContain("со слов ребёнка");
@@ -919,7 +920,7 @@ describe("opened from a file", () => {
       expect(sample.writerCode).toBe("KID12345");
       expect(sample.textSetVersion).toBe("test-child-sample-1");
       expect(sample.license).toBeUndefined();
-      // By the organiser's upload link, then erased from the device (R125 spec).
+      // By the organiser's upload link, then erased from the device.
       const handOver = await page.textContent("#hand-over");
       expect(handOver).toContain("не pull request");
       expect(handOver).toContain("по ссылке на загрузку");
@@ -962,8 +963,8 @@ describe("a sample file opened on the page (T87)", () => {
         await page.setInputFiles("#open-file", path);
         await page.locator("#view").waitFor({ state: "visible" });
         expect(await page.isHidden("#start")).toBe(true);
-        // Every stroke the file holds is drawn: what the sheet showed at the end, and apart what the
-        // history did not show, which the examples erased.
+        // Every stroke the file holds is drawn: what the sheet showed at the end, and apart what
+        // the history did not show, which the examples erased.
         const { shown, hidden } = viewOf(sample);
         const erased = (sample.ink.case === "history" ? sample.ink.value.events : []).flatMap(
           ({ event }) => (event.case === "erase" ? event.value.ids : []),
@@ -1000,7 +1001,7 @@ describe("a sample file opened on the page (T87)", () => {
         const parts =
           sample.markup?.writing.case === "parts" ? sample.markup.writing.value.parts : [];
         for (const part of parts) expect(text).toContain(part.text);
-        // Nothing axe finds in the file shown, either (R70). A workbook's boxes carry their places
+        // Nothing axe finds in the file shown, either. A workbook's boxes carry their places
         // under the strokes, inside the picture: text that is «part of a picture that contains
         // significant other visual content», which 1.4.3 exempts, and whose background axe cannot
         // tell.

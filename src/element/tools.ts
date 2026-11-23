@@ -1,30 +1,30 @@
-// The element's own buttons (R28, R84): the tools the task allows — the pen and the eraser — and
-// the hand, which moves the sheet (R88), undo and clearing, on a vertical bar of glass at the left
-// edge of the element, as the interface mockup draws it (R148 spec). It is a toolbar as WAI-ARIA's
+// The element's own buttons (R28): the tools the task allows — the pen and the eraser — and
+// the hand, which moves the sheet, undo and clearing, on a vertical bar of glass at the left
+// edge of the element, as the interface mockup draws it. It is a toolbar as WAI-ARIA's
 // Authoring Practices have one: one stop of Tab, the arrow keys up and down from button to button,
 // and the tools a group of radio buttons that the arrows go through without choosing one. Undo and
 // Clear with nothing to take back or to clear stay where the focus can reach them, marked
 // unavailable: a last undo from the keyboard leaves the focus where it was. After a line, Zoom in
 // and Zoom out step the page's zoom of the sheet by quarters from half its fit to twice it, each
-// unavailable at its end, as a pinch of two fingers sets it between (R73). The sheet has no
+// unavailable at its end, as a pinch of two fingers sets it between. The sheet has no
 // buttons that scroll it: the hand, two fingers or a finger in pen mode drag it, the wheel and the
-// keys scroll it (R84; R88; R90 spec). The buttons of the bar show an icon alone, of the set every
-// NovaTrail package of the interface draws from (R46; R78 spec): each is named by its label, in the
+// keys scroll it. The buttons of the bar show an icon alone, of the set every
+// NovaTrail package of the interface draws from: each is named by its label, in the
 // element's language (labels.ts), which only a screen reader reads, and shows it in a tooltip of
 // its own on the pointer's hover and on the keyboard's focus, which Escape dismisses and the
-// pointer can move onto (R90 spec; WCAG 1.4.13). The bar is named by the canvas kind's buttons: the
-// sheet's or the workbook's (R36), for the kind's own name is the scroll container's (R28). A
+// pointer can move onto (WCAG 1.4.13). The bar is named by the canvas kind's buttons: the
+// sheet's or the workbook's, for the kind's own name is the scroll container's. A
 // lesson's worked example has no bar: the learner does not write on its sheet, which scrolls as the
 // page does. Its demo's buttons, Next, which opens the next part, and Demo, a disclosure button
-// that hides the whole demo and shows it again, are actions, not tools (R42; R90 spec): each shows
+// that hides the whole demo and shows it again, are actions, not tools: each shows
 // its label beside its icon, a stop of Tab of its own, in a row of glass at the bottom of the
 // element, and after a line the slot `actions`, where the consumer puts its own buttons — app's
-// Continue —, as the mockup has one row (R84; R36 spec). A task from paper's bar has one button
+// Continue —, as the mockup has one row. A task from paper's bar has one button
 // more, atop the tools, after a line: "Hide the task" while its tracing paper is shown, its icon
 // filled, and "Show the task" while it is hidden — the name says the state, so the button is no
-// toggle button as well, which would say it twice (R87; R90 spec) —, and one last, after a line:
+// toggle button as well, which would say it twice —, and one last, after a line:
 // the sheet's grid, its icon and its name the grid shown now, which a press turns to the next,
-// round — dots, lines, blank, squares (R88). A button that goes gives its stop of Tab and the focus
+// round — dots, lines, blank, squares. A button that goes gives its stop of Tab and the focus
 // to the first button shown. This module is no entry point of the package.
 
 import type { PaperGrid } from "@altnovatrail/spec/canvas";
@@ -38,23 +38,23 @@ export type Value = keyof typeof ROW;
 
 /**
  * What the bar asks of the element: a tool the learner chose — perhaps the one in use — an undo, a
- * clearing, a step of the zoom, larger or smaller (R73), and on a worked example the next part of its demo, or the whole demo hidden or shown
- * (R42).
+ * clearing, a step of the zoom, larger or smaller, and on a worked example the next part of its
+ * demo, or the whole demo hidden or shown.
  */
 export interface ToolActions {
   readonly choose: (tool: Tool) => void;
   readonly undo: () => void;
   readonly clear: () => void;
   readonly zoom: (larger: boolean) => void;
-  /** A task from paper's grid turned to the next (R88). */
+  /** A task from paper's grid turned to the next. */
   readonly turnGrid: () => void;
   readonly next: () => void;
   readonly toggle: () => void;
-  /** A task from paper's tracing paper hidden, or shown again (R87). */
+  /** A task from paper's tracing paper hidden, or shown again. */
   readonly trace: () => void;
 }
 
-/** What Next and Demo control, by their IDs in the element's shadow root (R42). */
+/** What Next and Demo control, by their IDs in the element's shadow root. */
 export interface DemoControls {
   /** The region that tells of the part Next opens. */
   readonly status: string;
@@ -63,16 +63,15 @@ export interface DemoControls {
 }
 
 /**
- * What the bar is of, and is named by: a sheet, a workbook, a task from paper or a worked example
- * (R36, R42, R87).
+ * What the bar is of, and is named by: a sheet, a workbook, a task from paper or a worked example.
  */
 export type RowKind = "sheet" | "workbook" | "paper" | "example";
 
 /**
  * What the bar shows: what it is of, the tools the task allows — the hand besides, always —, the
  * one in use, whether undo and clearing have anything to do, whether the zoom has a larger step
- * and a smaller one (R73), and on a worked example whether Next has a part to open and whether the
- * demo is shown (R42).
+ * and a smaller one, and on a worked example whether Next has a part to open and whether the
+ * demo is shown.
  */
 export interface ToolState {
   readonly kind: RowKind;
@@ -84,7 +83,7 @@ export interface ToolState {
   readonly smaller: boolean;
   readonly opens: boolean;
   readonly expanded: boolean;
-  /** On a task from paper, whether its tracing paper is shown (R87), and its sheet's grid (R88). */
+  /** On a task from paper, whether its tracing paper is shown, and its sheet's grid. */
   readonly traced: boolean;
   readonly grid: PaperGrid;
 }
@@ -107,13 +106,13 @@ export const TIP_GRACE_MS = 200;
 export class Tools {
   /**
    * What the element puts beside its scroll container: the band the bar stands in the middle of,
-   * as wide as nothing, so that only the bar and its tooltip, which stand out of it, take a pointer,
-   * and as the element does: a consumer's pointer-events: none stops them too (R20, R28).
+   * as wide as nothing, so that only the bar and its tooltip, which stand out of it, take a
+   * pointer, and as the element does: a consumer's pointer-events: none stops them too.
    */
   readonly rail = document.createElement("div");
   /** The bar: a toolbar, named in the element's language. */
   readonly element = document.createElement("div");
-  /** A worked example's row: Next, Demo and the consumer's buttons in the slot `actions` (R84). */
+  /** A worked example's row: Next, Demo and the consumer's buttons in the slot `actions`. */
   readonly row = document.createElement("div");
   readonly #actions = document.createElement("slot");
   readonly #beforeActions = separator();
@@ -121,7 +120,7 @@ export class Tools {
   readonly tip = document.createElement("div");
   readonly #next = plainButton("next");
   readonly #demo = plainButton("demoShown");
-  /** A task from paper's button atop the tools, and the line under it (R87). */
+  /** A task from paper's button atop the tools, and the line under it. */
   readonly #task = plainButton("task");
   readonly #afterTask = separator();
   readonly #group = document.createElement("div");
@@ -130,16 +129,16 @@ export class Tools {
   readonly #hand = radioButton("hand");
   readonly #undo = plainButton("undo");
   readonly #clear = plainButton("clear");
-  /** The page's zoom of the sheet, after a line (R73). */
+  /** The page's zoom of the sheet, after a line. */
   readonly #beforeZoom = separator();
   readonly #zoomIn = plainButton("zoomIn");
   readonly #zoomOut = plainButton("zoomOut");
-  /** A task from paper's grid, after a line (R88). */
+  /** A task from paper's grid, after a line. */
   readonly #beforeGrid = separator();
   readonly #grid = plainButton("gridDots");
   /**
    * The buttons with the keys of their labels, the row's and then the bar's in the order the arrow
-   * keys go through them. A button is named only by its label (R46), so each is here with its key.
+   * keys go through them. A button is named only by its label, so each is here with its key.
    */
   readonly #labelled: readonly (readonly [HTMLButtonElement, keyof Labels])[] = [
     [this.#next, "next"],
@@ -156,7 +155,7 @@ export class Tools {
   ];
   /**
    * The bar's buttons in the order the arrow keys go through them: each shows an icon alone, and a
-   * tooltip. Next and Demo show their labels (R90 spec).
+   * tooltip. Next and Demo show their labels.
    */
   readonly #buttons: readonly HTMLButtonElement[] = this.#labelled
     .map(([button]) => button)
@@ -304,10 +303,10 @@ export class Tools {
   /**
    * The bar as the sheet now is. Only what has changed is written. A worked example has no bar, for
    * the learner does not write on its sheet, and its row has Next, unavailable while the demo is
-   * hidden or open whole, and Demo, expanded while the demo is shown (R42). The tool in use shows its
+   * hidden or open whole, and Demo, expanded while the demo is shown. The tool in use shows its
    * icon filled, and Demo's icon points down while the demo is shown, and along the row while it is
-   * hidden (R46). A task from paper's button atop the tools says what it does to the tracing paper,
-   * and fills its icon while the paper is shown (R87), and its grid's button shows the grid (R88).
+   * hidden. A task from paper's button atop the tools says what it does to the tracing paper,
+   * and fills its icon while the paper is shown, and its grid's button shows the grid.
    */
   show(state: ToolState): void {
     const {
@@ -407,7 +406,7 @@ export class Tools {
 
   /**
    * The name of a task from paper's button atop the tools, by the tracing paper's state, and its
-   * tooltip's, should it show (R87).
+   * tooltip's, should it show.
    */
   #nameTask(): void {
     const { labels } = labelsFor(this.#lang ?? null);
@@ -418,7 +417,7 @@ export class Tools {
     if (this.#tipFor === this.#task) this.tip.textContent = name;
   }
 
-  /** The name of a task from paper's grid button, by the grid shown, and its tooltip's (R88). */
+  /** The name of a task from paper's grid button, by the grid shown, and its tooltip's. */
   #nameGrid(): void {
     const { labels } = labelsFor(this.#lang ?? null);
     const label = this.#grid.lastElementChild;
@@ -467,7 +466,8 @@ export class Tools {
    * beside it at the bar's edge, unless Escape dismissed it: only what has changed is written.
    */
   #showTip(): void {
-    // A button the pointer was over may have gone with no pointerleave: the focus's has its tooltip.
+    // A button the pointer was over may have gone with no pointerleave: the focus's has its
+    // tooltip.
     const wanted = [this.#hovered, this.#focused].find((button) => button && !button.hidden);
     if (this.#dismissed !== undefined && this.#dismissed !== wanted) this.#dismissed = undefined;
     const button = wanted !== this.#dismissed ? wanted : undefined;
@@ -525,7 +525,7 @@ export class Tools {
 
   /**
    * Buttons come or go, all of them at once, and then a button that went gives its stop of Tab and
-   * the focus to the first button shown: the pen on a sheet, or a task from paper's button (R28). Till
+   * the focus to the first button shown: the pen on a sheet, or a task from paper's button. Till
    * a button has had the focus, the stop is the first button shown, whichever it is now. Nothing is
    * read or written while every button stays as it is: the bar is shown anew after every stroke.
    */
@@ -599,7 +599,7 @@ function radioButton(value: Value): HTMLButtonElement {
 
 /**
  * A button: its icon, an SVG that says nothing — no title, hidden from a screen reader — and its
- * label, which names it (R46; R78 spec): on the bar, only a screen reader reads it (R84).
+ * label, which names it: on the bar, only a screen reader reads it.
  */
 export function plainButton(value: Value): HTMLButtonElement {
   const button = document.createElement("button");
@@ -619,7 +619,7 @@ export function plainButton(value: Value): HTMLButtonElement {
 /**
  * A value's icon on its button, filled or in outline, written only when it is another than the one
  * there: the icon's name stays on the SVG, as data. One mirrored in a row that runs right to left
- * says so by its class, which the style turns (R46).
+ * says so by its class, which the style turns.
  */
 export function draw(button: HTMLButtonElement, value: Value, filled: boolean): void {
   const icon = button.firstElementChild;

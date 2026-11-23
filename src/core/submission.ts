@@ -16,14 +16,14 @@ import { encodePNG } from "./png.js";
 import { pictureOf, rasterOf } from "./raster.js";
 import { type Gray, layOver, type TracingState, tenthsOf } from "./tracing.js";
 
-/** The work of a sheet for checking (R27): the PNG of its crop, and the context of the submission. */
+/** The work of a sheet for checking: the PNG of its crop, and the context of the submission. */
 export interface WorkForCheck {
   readonly png: Uint8Array<ArrayBuffer>;
   readonly submission: SheetSubmission;
 }
 
 /**
- * The work of a task from paper for checking (R87): the PNG of the crop of its work, and the
+ * The work of a task from paper for checking: the PNG of the crop of its work, and the
  * context of the submission.
  */
 export interface PaperForCheck {
@@ -39,7 +39,7 @@ export interface CellForCheck {
 }
 
 /**
- * The work of a workbook for checking (R34, R38): the crop of each filled box, in the task's order,
+ * The work of a workbook for checking: the crop of each filled box, in the task's order,
  * and the context of the submission.
  */
 export interface CellsForCheck {
@@ -48,10 +48,10 @@ export interface CellsForCheck {
 }
 
 /**
- * The work of a sheet for checking, as `exportWork()` gives it (R07, R27): of the strokes the sheet
- * shows, their groups by the sheet's rule (R24), their crop with its digits `digit` px high and its
- * PNG (R25), and the context of the submission — the crop's numbers that place the tutor's marks,
- * the groups, the table «label → stroke IDs», and their digest (R26, R27) — frozen through. A sheet
+ * The work of a sheet for checking, as `exportWork()` gives it: of the strokes the sheet
+ * shows, their groups by the sheet's rule, their crop with its digits `digit` px high and its
+ * PNG, and the context of the submission — the crop's numbers that place the tutor's marks,
+ * the groups, the table «label → stroke IDs», and their digest — frozen through. A sheet
  * without strokes has no work to check, and gives null (H3).
  */
 export function workForCheck(strokes: readonly Stroke[], digit: number): WorkForCheck | null {
@@ -65,14 +65,14 @@ export function workForCheck(strokes: readonly Stroke[], digit: number): WorkFor
 }
 
 /**
- * The work of a workbook for checking, as `exportWork()` gives it (R34, R38): of the strokes the
- * page shows, the table of the boxes they fill by the rule of boxes (R37), and the crop of each
- * filled box by R25 — the box's strokes alone, one group of them, its digits `digit` px high —
- * with its item and its slot, in the task's order, and the context of the submission: the table and
- * its digest. The draft goes nowhere. A page with no box filled has no work to check, and gives
- * null, though it holds draft. The crops are frozen, not their bytes, which no freezing holds; the
- * context is frozen through. One crop of every box's strokes, which spec may choose, is
- * `croppedOf` of the table's strokes with the table's rows for groups (R38).
+ * The work of a workbook for checking, as `exportWork()` gives it: of the strokes the
+ * page shows, the table of the boxes they fill by the rule of boxes, and the crop of each
+ * filled box by the crop's rule — the box's strokes alone, one group of them, its digits `digit` px
+ * high — with its item and its slot, in the task's order, and the context of the submission: the
+ * table and its digest. The draft goes nowhere. A page with no box filled has no work to check, and
+ * gives null, though it holds draft. The crops are frozen, not their bytes, which no freezing
+ * holds; the context is frozen through. One crop of every box's strokes, which spec may choose, is
+ * `croppedOf` of the table's strokes with the table's rows for groups.
  */
 export function cellsForCheck(
   strokes: readonly Stroke[],
@@ -95,15 +95,15 @@ export function cellsForCheck(
 }
 
 /**
- * The work of a task from paper for checking, as `exportWork()` gives it with the task's crop
- * (R87): of the strokes the sheet and the tracing paper hold, where they lie on the sheet, their
- * groups by the sheet's rule (R24), and their crop by R25 with its digits `digit` px high, taking
- * in the tracing paper's rectangle `rect`, in units, at the same scale — the crop's picture,
+ * The work of a task from paper for checking, as `exportWork()` gives it with the task's crop:
+ *of the strokes the sheet and the tracing paper hold, where they lie on the sheet, their
+ * groups by the sheet's rule, and their crop by the crop's rule with its digits `digit` px high,
+ * taking in the tracing paper's rectangle `rect`, in units, at the same scale — the crop's picture,
  * `picture`, laid over it there as the screen lays it — and the context: the crop's numbers, the
- * groups, where the tracing paper lay, `tracing`, and the digest of it all, which holds the
- * strokes written on the tracing paper, `paper`. Hidden or shown, the tracing paper is in the
- * crop. No stroke on either is no work to check: null (H3). The picture not read yet, or not at
- * all, `null`, leaves the paper white.
+ * groups, where the tracing paper lay, `tracing`, and the digest of it all, which holds the strokes
+ * written on the tracing paper, `paper`. Hidden or shown, the tracing paper is in the crop. No
+ * stroke on either is no work to check: null (H3). The picture not read yet, or not at all, `null`,
+ * leaves the paper white.
  */
 export function paperWorkForCheck(
   strokes: readonly Stroke[],
@@ -158,7 +158,7 @@ function pixelsOf(
   };
 }
 
-/** The crop of strokes in their groups, its digits `digit` px high, and its PNG (R25). */
+/** The crop of strokes in their groups, its digits `digit` px high, and its PNG. */
 function croppedOf(
   strokes: readonly Stroke[],
   groups: readonly Group[],

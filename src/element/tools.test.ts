@@ -24,18 +24,18 @@ import { probe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
 import { TIP_GRACE_MS } from "./tools.js";
 
-// The element's own buttons in a browser (R28, R84): a vertical bar of glass over the sheet's left
-// edge, as the interface mockup draws it (R148 spec), a toolbar of the tools the task allows and
+// The element's own buttons in a browser: a vertical bar of glass over the sheet's left
+// edge, as the interface mockup draws it, a toolbar of the tools the task allows and
 // the hand, of undo and clearing, of the page's zoom after a line, and on a task from paper of its
 // grid, found by its roles and names
 // in the element's language, worked with the pointer and with the keyboard, telling of the
 // learner's choice of tool and of grid, standing in the middle of what is in sight of the element
 // and taking no room of its own. Each button shows an icon alone, its label its name and its
-// tooltip, which the pointer's hover and the keyboard's focus show and Escape dismisses (R90 spec;
-// WCAG 1.4.13). A worked example has no bar, and its Next and Demo, with their labels beside their
+// tooltip, which the pointer's hover and the keyboard's focus show and Escape dismisses (WCAG
+// 1.4.13). A worked example has no bar, and its Next and Demo, with their labels beside their
 // icons, stand in a row of the same glass at the bottom, the consumer's buttons of the slot actions
-// after them (R42, R84). The sheet has no buttons that scroll it: the hand drags it, the wheel and
-// the keys scroll it (R84; R88), and how far it goes is wide.test.ts's.
+// after them. The sheet has no buttons that scroll it: the hand drags it, the wheel and
+// the keys scroll it, and how far it goes is wide.test.ts's.
 
 const made: HTMLElement[] = [];
 afterEach(async () => {
@@ -67,7 +67,7 @@ function buttons(element: HTMLElement, names = labelsFor(null).labels) {
   };
 }
 
-/** A button's icon: its name in the set, and whether the style mirrors it (R46). */
+/** A button's icon: its name in the set, and whether the style mirrors it. */
 function drawn(each: Element) {
   const icon = iconOf(each);
   return { icon, name: icon.dataset.icon, mirrored: getComputedStyle(icon).transform !== "none" };
@@ -149,13 +149,13 @@ test("the bar is a vertical toolbar of the pen, the eraser and the hand, undo an
   await expect.element(found.hand).not.toBeChecked();
   await expect.element(found.undo).toBeVisible();
   await expect.element(found.clear).toBeVisible();
-  // At the fit the zoom goes either way (R73).
+  // At the fit the zoom goes either way.
   await expect.element(found.zoomIn).not.toHaveAttribute("aria-disabled");
   await expect.element(found.zoomOut).not.toHaveAttribute("aria-disabled");
   expect(row.getAttribute("aria-orientation")).toBe("vertical");
   // The order the arrow keys go through, and the language the names are in. The hand is on every
-  // sheet the learner writes on (R88). The first button and the last are a task from paper's, which
-  // a sheet hides (R87). A worked example's Next and Demo are not the bar's: they stand in its row,
+  // sheet the learner writes on. The first button and the last are a task from paper's, which
+  // a sheet hides. A worked example's Next and Demo are not the bar's: they stand in its row,
   // which a sheet hides.
   expect([...row.querySelectorAll("button")].map((each) => each.textContent)).toEqual([
     "Hide the task",
@@ -204,7 +204,7 @@ test("each button shows its icon, its label after it: an SVG that names nothing,
   ]);
   for (const one of each) {
     const { icon } = drawn(one);
-    // The label names the button, and the icon says nothing to a screen reader (R78 spec).
+    // The label names the button, and the icon says nothing to a screen reader.
     expect(icon.getAttribute("aria-hidden")).toBe("true");
     expect(icon.querySelector("title")).toBeNull();
     expect(icon.getAttribute("viewBox")).toBe("0 0 24 24");
@@ -270,7 +270,7 @@ test("in an element whose text runs right to left, the icons of Next, Undo and a
   element.workedExample = workedExample();
   await settle();
   expect(mirrored()).toEqual({ Next: true, Demo: false });
-  // The row runs as the text does: Demo stands to the left of Next, where Next's arrow points (R46).
+  // The row runs as the text does: Demo stands to the left of Next, where Next's arrow points.
   const across = (label: string) => buttonOf(element, label).getBoundingClientRect();
   expect(across("Demo").right).toBeLessThanOrEqual(across("Next").left);
   buttonOf(element, "Demo").click();
@@ -393,7 +393,7 @@ test("a tool the learner chooses with the bar is the element's tool, and toolcha
   // The tool in use, chosen again, is no change.
   await userEvent.click(found.eraser);
   expect(told).toHaveLength(1);
-  // The hand is a tool of the bar as the others are (R88).
+  // The hand is a tool of the bar as the others are.
   await userEvent.click(found.hand);
   expect(element.tool).toBe("hand");
   await expect.element(found.hand).toBeChecked();
@@ -559,7 +559,7 @@ test("the bar is one stop of Tab, the arrows down and up move between its button
   await userEvent.keyboard(" ");
   expect(element.tool).toBe("eraser");
   expect(told).toEqual([{ tool: "eraser" }]);
-  // Out of the bar, through the container, a region whose sheet scrolls across (R73), and back:
+  // Out of the bar, through the container, a region whose sheet scrolls across, and back:
   // the focus comes back to the button it left.
   await userEvent.tab();
   expect(root.activeElement?.classList.contains("viewport")).toBe(true);
@@ -635,7 +635,7 @@ test("a task without the eraser has none: no button, no eraser of the pen, no to
   level(canvas, view(), 100, 100, 300);
   element.task = sheetTask({ tools: ["pen"] });
   await expect.element(buttons(element).pen).toBeChecked();
-  // The pen, and the hand, which every sheet has (R88).
+  // The pen, and the hand, which every sheet has.
   expect(page.elementLocator(element).getByRole("radio").elements()).toHaveLength(2);
   // The pen's other end over the stroke neither erases nor writes.
   const pen = { pointerId: 3, pointerType: "pen", isPrimary: true, bubbles: true };
@@ -690,7 +690,7 @@ test("a new task without the eraser puts the pen back, with no event, and the fo
 });
 
 test("a worked example has no bar: its toolbar goes out of sight and of the accessibility tree, in pen mode too, and Next and Demo stand in the row with their labels, each a stop of Tab; leaving the example brings the sheet's bar back, its stop on Pen", async () => {
-  // A device with touch, in pen mode: a worked example has no tools of writing even so (R42).
+  // A device with touch, in pen mode: a worked example has no tools of writing even so.
   Object.defineProperty(navigator, "maxTouchPoints", { value: 5, configurable: true });
   try {
     const { element, root, row, actions } = await sheet();
@@ -714,7 +714,7 @@ test("a worked example has no bar: its toolbar goes out of sight and of the acce
     const focused = root.activeElement;
     expect(focused instanceof HTMLElement && focused.closest("[hidden]") !== null).toBe(false);
     // Next and Demo are actions, not the bar's: plain buttons of the row, each a stop of Tab of its
-    // own, which show their labels beside their icons (R90 spec).
+    // own, which show their labels beside their icons.
     expect([actions.hidden, actions.getAttribute("role")]).toEqual([false, null]);
     expect(shown(actions)).toEqual(["Next", "Demo"]);
     for (const name of ["Next", "Demo"]) {
@@ -902,14 +902,13 @@ test("an eraser given before the element is upgraded, with a task without it, le
 });
 
 test("every button is at least 44 CSS pixels square, in English and in Russian, pen mode's too, a task from paper's and a worked example's", async () => {
-  // A device with touch, in pen mode: the bar shows every button it has (R29).
+  // A device with touch, in pen mode: the bar shows every button it has.
   Object.defineProperty(navigator, "maxTouchPoints", { value: 5, configurable: true });
   try {
     const { element, root } = await sheet(400);
     PEN_MODE.on = true;
-    // A sheet's seven buttons, the zoom's two among them (R73), then a worked example's two of its
-    // row (R42), then a task from paper's nine, with its button atop the tools and its grid's (R87;
-    // R88).
+    // A sheet's seven buttons, the zoom's two among them, then a worked example's two of its
+    // row, then a task from paper's nine, with its button atop the tools and its grid's.
     for (const count of [7, 2, 9]) {
       if (count === 2) element.workedExample = workedExample();
       if (count === 9) {
@@ -954,7 +953,7 @@ test.each(["ltr", "rtl"])(
       const rect = each.getBoundingClientRect();
       expect([rect.width, rect.height]).toEqual([44, 44]);
       expect(getComputedStyle(each).borderRadius).toBe("22px");
-      // The label is out of sight, and still the button's name (R46).
+      // The label is out of sight, and still the button's name.
       expect(each.querySelector(".label")?.getBoundingClientRect().width).toBeLessThanOrEqual(1);
       expect(iconOf(each).getBoundingClientRect().width).toBeCloseTo(20, 1);
     }
@@ -1205,7 +1204,8 @@ test.runIf(devtools)(
     await press(buttonOf(element, "Pen"));
     expect(element.tool).toBe("pen");
     expect(probe(element).strokes).toEqual([]);
-    // A stroke from the sheet onto Clear, over the sheet's edge: it lands, and Clear stays unpressed.
+    // A stroke from the sheet onto Clear, over the sheet's edge: it lands, and Clear stays
+    // unpressed.
     level(canvas, view(), 300, 100, 200);
     await input("mousePressed", at(canvas, view(), 100, 100));
     await input("mouseMoved", at(canvas, view(), 300, 100));
@@ -1225,7 +1225,7 @@ test.runIf(devtools)(
     buttonOf(element, "Eraser").focus();
     await userEvent.keyboard(" ");
     expect(element.tool).toBe("eraser");
-    // The hand's key chooses it, though its drag would start no move then (R88).
+    // The hand's key chooses it, though its drag would start no move then.
     await press(buttonOf(element, "Hand"));
     expect(element.tool).toBe("eraser");
     buttonOf(element, "Hand").focus();

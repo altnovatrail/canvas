@@ -1,6 +1,6 @@
-// The policy of a page opened from a file (R52, R55): no network, and the page's own style and
+// The policy of a page opened from a file: no network, and the page's own style and
 // script by their hashes, in a <meta> element, for a page from a file gets no headers. The probe of
-// a page from a file tries it on the devices a volunteer opens the page on (R52, R54), and the
+// a page from a file tries it on the devices a volunteer opens the page on, and the
 // samples page carries it. A hash covers the text of an inline element as the browser reads it,
 // its UTF-8 bytes: a carriage return the parser drops would make it miss.
 
@@ -12,7 +12,7 @@ export function hash(text: string): string {
 }
 
 /** The policy of a page with this style and this script: nothing else, and no network. Pictures
- * come from blobs of the page's own, as the element shows a task's media (R23). */
+ * come from blobs of the page's own, as the element shows a task's media. */
 export function policy(style: string, script: string): string {
   return [
     "default-src 'none'",

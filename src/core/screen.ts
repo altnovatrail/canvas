@@ -1,7 +1,7 @@
 import { REACH, SHEET } from "./sheet.js";
 
 /**
- * Where the sheet is on the screen, one view for every layer (R06): `k` CSS pixels to a logical
+ * Where the sheet is on the screen, one view for every layer: `k` CSS pixels to a logical
  * unit, for the page fits the width of its area, and `vx` and `vy`, the left and the top of the
  * sheet's visible part, in units.
  */
@@ -19,7 +19,7 @@ export interface Point {
 
 /**
  * The most CSS pixels to a unit: on a wide screen the page is 1000 CSS pixels wide, a pixel to a
- * unit as on the picture of the work, at the sheet's left, and the sheet goes on past it (R23).
+ * unit as on the picture of the work, at the sheet's left, and the sheet goes on past it.
  */
 export const K_MAX = 1;
 

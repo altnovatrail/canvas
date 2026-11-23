@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# An iPad simulator booted on a runner of macOS, for the probe and the samples page (R54): the
+# An iPad simulator booted on a runner of macOS, for the probe and the samples page: the
 # newest runtime of the iOS version it is given and the iPad on it, as emulators/simulator.ts picks
 # them, with the settings SETTINGS names set first.
 # What it booted goes into versions.txt in the run's folder, the time of each phase into
@@ -34,7 +34,7 @@ xcrun simctl boot "$udid"
 phase "the simulator's boot status"
 xcrun simctl bootstatus "$udid" -b > /dev/null
 phase "the simulator is booted"
-# The runner's image as GitHub names it — a label alone pins no runner (R54) — macOS's version, and
+# The runner's image as GitHub names it — a label alone pins no runner — macOS's version, and
 # the Xcode's as `xcodebuild -version` words it, read from the Xcode's own version.plist:
 # xcodebuild took 57 s of the job for these two lines.
 xcode_plist="$(xcode-select -p)/../version.plist"

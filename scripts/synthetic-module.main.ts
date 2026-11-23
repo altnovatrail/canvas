@@ -1,4 +1,4 @@
-// The entry of the generator's file, synthetic-module_v<X.Y.Z>.mjs (R68): scripts/generator.ts
+// The entry of the generator's file, synthetic-module_v<X.Y.Z>.mjs: scripts/generator.ts
 // bundles it, and Node runs it as the main module, so it runs the call at once: --module writes a
 // module's synthetic samples, and --digest prints the digests of its tasks' open views
 // (scripts/synthetic-module.ts).

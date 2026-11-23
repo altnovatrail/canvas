@@ -1,4 +1,4 @@
-// What the build of the samples page and the copy of the open views of modules share (R71): the
+// What the build of the samples page and the copy of the open views of modules share: the
 // file module-kit open writes, which tasks the page takes of it, and which files of media/ a task
 // may name. Both scripts/page.ts and scripts/modules.ts take it, so that the copy holds the media
 // of the very tasks the build carries; a module of its own, so that the copy's command loads none
@@ -7,11 +7,11 @@
 import type * as open from "@altnovatrail/spec/formatv0/open";
 import type { TaskKind } from "../page/texts.ts";
 
-/** The file module-kit open writes the open views in (R43 module-kit). */
+/** The file module-kit open writes the open views in. */
 export const OPEN_VIEWS = "open-views.json";
 
 /** The version of the module format the element reads — FORMAT of src/core/manifest.ts, which a
- * test holds this to: the packages the copy takes are of it (R44 spec). */
+ * test holds this to: the packages the copy takes are of it. */
 export const MODULE_FORMAT = "0.4";
 
 /** A task of an open view, as its JSON holds it. */
@@ -40,8 +40,8 @@ export const PICTURE_TYPES: Readonly<Record<string, string>> = Object.freeze({
 
 /**
  * The type of a picture a statement names, by its path from the module's media/: a path of words
- * between slashes, none of them empty, `.` or `..`, with no backslash, and of a file PNG or WebP. Any
- * other path is an Error, for the copy and the build would read a file outside media/.
+ * between slashes, none of them empty, `.` or `..`, with no backslash, and of a file PNG or WebP.
+ * Any other path is an Error, for the copy and the build would read a file outside media/.
  */
 export function pictureType(path: string): string {
   const words = path.split("/");

@@ -1,17 +1,16 @@
 // The build of the generator's file (R68): the synthetic samples of a module's eval set,
 // scripts/synthetic-module.ts, as one ES module for Node with no package of npm beside it, which
-// every release carries and modules checks by spec's release-verify (R77 spec):
+// every release carries and modules checks by spec's release-verify:
 //
 //   node scripts/generator.ts <folder> <version>
 //
 // writes <folder>/synthetic-module_v<version>.mjs and prints its path. The file has two modes:
 // --module writes samples, and --digest prints the digests of the tasks' open views. Vite's
-// API bundles scripts/synthetic-module.main.ts for Node, as the page's builder bundles the page
-// (R55): every package inside, Node's own modules outside, the code as it is written and not
+// API bundles scripts/synthetic-module.main.ts for Node, as the page's builder bundles the page:
+//every package inside, Node's own modules outside, the code as it is written and not
 // minified, so that a reader of modules sees what runs in its CI. The file opens with a comment
 // that names it, the Node it wants and how to check it, and the license notices of all the code it
-// carries — its own and every package's —; a package under a license off the list stops the build
-// (R12).
+// carries — its own and every package's —; a package under a license off the list stops the build.
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -21,7 +20,7 @@ import { bundleOf, type Carried, NOTICE_SEPARATOR, noticeParts } from "./notices
 /** The entry the file is bundled from, from the repository's root. */
 export const ENTRY = "scripts/synthetic-module.main.ts";
 
-/** The Node the file is built for and tried on: the one of spec's devcontainer (R79 spec). */
+/** The Node the file is built for and tried on: the one of spec's devcontainer. */
 export const NODE = "24";
 
 /** The name of the generator's file for a version. */

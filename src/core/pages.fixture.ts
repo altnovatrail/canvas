@@ -1,6 +1,7 @@
-// The pages of the workbook's tests and of the sweep of its layout (R35): lines a code writes, each
+// The pages of the workbook's tests and of the sweep of its layout: lines a code writes, each
 // page with what it is to show set before the layout ever ran on it. A module of the tests alone,
-// which the build leaves out (tsconfig.build.json): `pageOf` takes the items, and these are made up.
+// which the build leaves out (tsconfig.build.json): `pageOf` takes the items, and these are made
+// up.
 
 import type { LinePart, WorkbookItem } from "./task.js";
 
@@ -28,7 +29,7 @@ export interface CorpusPage {
   readonly refused?: number;
 }
 
-/** The short lines of a school page that each stand in a column, two to a row (R35). */
+/** The short lines of a school page that each stand in a column, two to a row. */
 export const SHORT = [
   "7 × [] = 56",
   "[] ÷ 8 = 4",

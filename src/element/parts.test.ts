@@ -31,7 +31,7 @@ import {
 } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
-// The parts of a worked example's demo in a browser (R42): the row's Next opens them one at a time
+// The parts of a worked example's demo in a browser: the row's Next opens them one at a time
 // into a numbered list between the statement and the sheet, and Demo hides and shows the whole
 // demo; demoState tells how far the learner has gone, and demochange tells of the learner's own
 // presses alone. A polite region tells a screen reader of the part just opened, the list keeps its
@@ -354,7 +354,7 @@ test.runIf(devtools)(
         role(node) === "StaticText" && String(node.name?.value).startsWith("A path is 20 m"),
     );
     const list = at((node) => role(node) === "list");
-    // A worked example has no bar (R84).
+    // A worked example has no bar.
     expect(toolbar).toBe(-1);
     expect(named("Next")).toBeGreaterThanOrEqual(0);
     expect(named("Demo")).toBeGreaterThan(named("Next"));

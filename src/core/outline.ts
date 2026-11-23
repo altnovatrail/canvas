@@ -3,11 +3,11 @@ import type { Stroke } from "./ink.js";
 
 /**
  * The width of the line, in sheet units: 3, as the check board of tutor draws with a `lineWidth`
- * of 3 px on its sheet 1000 wide (R19 tutor; R18).
+ * of 3 px on its sheet 1000 wide.
  */
 export const INK_WIDTH = 3;
 
-/** How much a pen's pressure changes the width: from half of it to one and a half (R05, R18). */
+/** How much a pen's pressure changes the width: from half of it to one and a half. */
 const PEN_THINNING = 0.5;
 
 /**
@@ -18,8 +18,8 @@ const PEN_THINNING = 0.5;
 export const INK_REACH = INK_WIDTH * (0.5 + PEN_THINNING / 2);
 
 /**
- * Every option of perfect-freehand 1.2.3 is given: its code's defaults are not its README's
- * (R18). The pressure is the pointer's own, the third number of each point, never simulated, and
+ * Every option of perfect-freehand 1.2.3 is given: its code's defaults are not its README's.
+ *The pressure is the pointer's own, the third number of each point, never simulated, and
  * the ends are round, without a taper.
  */
 const OPTIONS = {
@@ -32,7 +32,7 @@ const OPTIONS = {
   end: { cap: true, taper: false },
 } satisfies StrokeOptions;
 
-/** Whether a stroke's line widens with its pressure on the screen: only a pen's does (R05, R18). */
+/** Whether a stroke's line widens with its pressure on the screen: only a pen's does. */
 export function followsPressure(stroke: Stroke): boolean {
   return stroke.kind === "pen";
 }
@@ -40,7 +40,7 @@ export function followsPressure(stroke: Stroke): boolean {
 /**
  * The outline of a stroke on the screen, as perfect-freehand draws it: a closed polygon around the
  * stroke's points, in sheet units, to be filled. A pen's line widens with its pressure; a mouse's
- * or a finger's is as wide all along (R18). `complete` says the stroke has ended: its last point is
+ * or a finger's is as wide all along. `complete` says the stroke has ended: its last point is
  * then taken as it is, rather than eased toward.
  */
 export function outline(stroke: Stroke, complete: boolean): Vec2[] {

@@ -1,4 +1,4 @@
-// The journal of a run in an emulator (R54): whose failure a run's end is, and the summary its job
+// The journal of a run in an emulator: whose failure a run's end is, and the summary its job
 // shows.
 
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";

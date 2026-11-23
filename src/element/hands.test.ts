@@ -20,9 +20,9 @@ import {
 import { probe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
 
-// Input on a tablet in Chromium (R29): a pen, fingers and a palm, through the DevTools protocol as
+// Input on a tablet in Chromium: a pen, fingers and a palm, through the DevTools protocol as
 // the browser gives them — the pen mode they put the page in, which no button of the bar turns off,
-// one finger in pen mode dragging the sheet (R84), and two fingers scrolling the sheet or the page.
+// one finger in pen mode dragging the sheet, and two fingers scrolling the sheet or the page.
 // The bar stands over the sheet's left edge, so the pointers here come down to the right of it.
 
 const made: HTMLElement[] = [];
@@ -406,7 +406,7 @@ test.runIf(devtools)(
     timeout: budget(786),
   },
   async () => {
-    // Tall enough for the pen at 400: the bar over the sheet takes none of its height (R84).
+    // Tall enough for the pen at 400: the bar over the sheet takes none of its height.
     const { element, canvas, viewport, view } = await sheet(400, 400);
     const finger = fingerAt(1, canvas, view(), 200, 200);
     await touches("touchStart", [finger]);
@@ -493,7 +493,7 @@ test.runIf(devtools)(
     await settle();
     expect(viewport.scrollTop).toBe(0);
     element.style.pointerEvents = "";
-    // On the statement the browser scrolls by itself (R23).
+    // On the statement the browser scrolls by itself.
     const statement = root.querySelector(".statement")?.getBoundingClientRect();
     if (statement === undefined) throw new Error("no statement");
     // To the right of the bar, whose glass scrolls itself, and nothing beyond it.

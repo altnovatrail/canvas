@@ -21,11 +21,11 @@ import {
 } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
-// The workbook in a browser (R34, R35, R36): its lines on the template where the layout puts them,
+// The workbook in a browser: its lines on the template where the layout puts them,
 // whatever the font and the styles the element inherits; its boxes over the ink they take; a list a
 // screen reader reads, in the DOM and in Chromium's own tree; the theme; the way between the kinds
-// of canvas; the boxes filled (R37); the work for checking, the crop of each filled box (R38); and
-// the tutor's marks on the boxes (R39).
+// of canvas; the boxes filled; the work for checking, the crop of each filled box; and
+// the tutor's marks on the boxes.
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -178,7 +178,7 @@ test("each box lies where the ink is, at any width and scroll: a stroke through 
     );
     const end = viewport.scrollHeight - viewport.clientHeight;
     expect(end).toBeGreaterThan(0);
-    // The page's bottom in sight: the sheet goes on below it, where there are no boxes (R73).
+    // The page's bottom in sight: the sheet goes on below it, where there are no boxes.
     const sheetTop =
       (element.shadowRoot?.querySelector(".sheet")?.getBoundingClientRect().top ?? 0) -
       viewport.getBoundingClientRect().top;
@@ -368,7 +368,7 @@ test("an item at the bottom of the page that is brought into view, or its text, 
       const port = viewport.getBoundingClientRect();
       const where = `${writing}, ${target}`;
       expect(viewport.scrollTop, where).toBeGreaterThan(0);
-      // The bar, over the sheet's left edge, takes none of the container's height (R84).
+      // The bar, over the sheet's left edge, takes none of the container's height.
       expect(item.top, where).toBeGreaterThanOrEqual(port.top - 0.5);
       expect(item.bottom, where).toBeLessThanOrEqual(port.bottom + 0.5);
       element.remove();
@@ -505,7 +505,7 @@ test("an action's historychange finds filled already new, and a history or a tas
   // Other lines put the same stroke in no box, or in one of theirs.
   other.element.task = workbookTask(SHORT);
   expect(other.element.filled).toHaveLength(SHORT.length);
-  // A sheet's answer anywhere: the strokes stay, and they fill it (R42).
+  // A sheet's answer anywhere: the strokes stay, and they fill it.
   other.element.task = sheetTask();
   expect(other.element.filled).toEqual([[true]]);
   other.element.task = workbookTask(EXAMPLE);
@@ -647,7 +647,7 @@ test("a mark of a box stands round the box and its ink, 10 units off, read by it
     marks: [onBox(1, 1, "Look at this box"), onBox(2, 1, "Nothing here")],
   };
   await settle();
-  // The empty box's mark rounds its box alone (R74 spec).
+  // The empty box's mark rounds its box alone.
   expect(probe(element).marks).toEqual([
     { name: "Look at this box", ids: [1], frame: padded(first) },
     { name: "Nothing here", ids: [], frame: padded(empty) },

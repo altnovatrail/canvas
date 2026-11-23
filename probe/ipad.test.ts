@@ -1,4 +1,4 @@
-// What the driver of the iPad Simulator reads off WebDriverAgent's tree (R54): its elements, the
+// What the driver of the iPad Simulator reads off WebDriverAgent's tree: its elements, the
 // one to tap and where, the page's first line and its report. The run itself is the workflow's, on
 // a runner of macOS.
 

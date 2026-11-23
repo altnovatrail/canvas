@@ -297,7 +297,7 @@ describe("the layout of a workbook's page", () => {
 // The layout by spec's page: the numbers of format/page.yaml and its test vectors
 // format/vectors/pages/, which the npm package @altnovatrail/spec carries as JSON, are the format's
 // rule: the element lays a page out by the same numbers, and its tests hold its layout to the
-// vectors (R60; R51 spec). vectors/pages.json is a record the log's decisions name: no test reads
+// vectors. vectors/pages.json is a record the log's decisions name: no test reads
 // or writes it.
 
 const require = createRequire(import.meta.url);

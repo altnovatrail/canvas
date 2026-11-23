@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The script android-emulator-runner runs once the emulator is up (R54): the action runs each line
+# The script android-emulator-runner runs once the emulator is up: the action runs each line
 # of its script on its own, so the run is this one file, for the driver it names and the folder it
 # leaves its findings in:
 #
@@ -24,7 +24,7 @@ sdkmanager --list_installed > "$out/sdk-installed.txt" 2>&1 || true
 "$adb" forward tcp:9222 localabstract:chrome_devtools_remote
 # The servers' ports on the emulator's own loopback lead to the runner's.
 "$adb" reverse tcp:8080 tcp:8080
-# The test build's server, on a port of its own (R65).
+# The test build's server, on a port of its own.
 "$adb" reverse tcp:8081 tcp:8081
 
 docker run --rm --init --network host --user "$(id -u):$(id -g)" \

@@ -5,7 +5,7 @@ import type { NovatrailCanvas } from "./index.js";
 import { level, placed, press } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
-// What filled tells on a handwriting sheet (R42): a task's one answer anywhere on the sheet, or the
+// What filled tells on a handwriting sheet: a task's one answer anywhere on the sheet, or the
 // whole sheet, is filled by any stroke the work for checking would take, and a sheet of choices,
 // whose options app marks, or with no task has nothing to say. The workbook's boxes are
 // workbook.test.ts's.
@@ -25,7 +25,7 @@ const CHOICES = sheetTask({
 
 /**
  * What filled tells of a sheet's one answer, as the history and the work for checking have it: a
- * stroke the work would take is one the history leaves on the sheet (R27).
+ * stroke the work would take is one the history leaves on the sheet.
  */
 async function agreed(element: NovatrailCanvas): Promise<boolean> {
   const stroked = replay(element.history).length > 0;

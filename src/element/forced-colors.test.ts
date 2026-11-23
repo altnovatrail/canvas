@@ -22,7 +22,7 @@ import {
 } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
-// The sheet with forced colours, in a browser context that is in the mode from the start (R23):
+// The sheet with forced colours, in a browser context that is in the mode from the start:
 // the system's colours stand in for the consumer's theme on the screen, the tutor's frames and a
 // workbook's print too, and the crop for checking is as it always is; a picture keeps its own
 // colours. vitest.config.ts runs this file alone, in a project of its own.
@@ -147,7 +147,7 @@ test("with forced colours the sheet takes the system's colours, whatever the con
   if (!frame) throw new Error("no frame drawn");
   expect(getComputedStyle(frame).stroke).toBe(system("Highlight"));
 
-  // The crop for checking is the sheet's own raster, whatever colours the system forces (R25).
+  // The crop for checking is the sheet's own raster, whatever colours the system forces.
   const work = await sheetWork(element);
   const own = workForCheck(probe(element).strokes, CROP.digit);
   if (own === null) throw new Error("the sheet gave no work for checking");
@@ -175,7 +175,7 @@ test("with forced colours the bar takes the system's colours, its glass the canv
   expect(pen.getAttribute("aria-checked")).toBe("true");
   expect(getComputedStyle(pen).backgroundColor).toBe(system("Highlight"));
   expect(getComputedStyle(pen).color).toBe(system("HighlightText"));
-  // An icon is the colour of its button's text, whatever the mode makes it (R46).
+  // An icon is the colour of its button's text, whatever the mode makes it.
   expect(getComputedStyle(iconOf(eraser)).fill).toBe(system("ButtonText"));
   expect(getComputedStyle(iconOf(pen)).fill).toBe(system("HighlightText"));
   // Nothing to undo yet, and nothing to clear.
@@ -198,7 +198,7 @@ test("with forced colours the ring of a button in focus is the system's highligh
   const { root, pen, clear, tip } = barOf(element);
   await userEvent.tab();
   for (const focused of [pen, clear]) {
-    // Clear stands before the zoom's two buttons, the last of the bar (R73).
+    // Clear stands before the zoom's two buttons, the last of the bar.
     if (focused === clear) await userEvent.keyboard("{End}{ArrowUp}{ArrowUp}");
     expect(root.activeElement).toBe(focused);
     expect(focused.matches(":focus-visible")).toBe(true);
@@ -255,10 +255,10 @@ test("with forced colours a workbook's text and the frames of its boxes are the 
   const text = element.shadowRoot?.querySelector(".print text");
   const box = element.shadowRoot?.querySelector(".print rect");
   if (!text || !box) throw new Error("the workbook has no print");
-  // Explicit: SVG keeps its parent's colour in the mode, and the theme's ink would stay (R36).
+  // Explicit: SVG keeps its parent's colour in the mode, and the theme's ink would stay.
   expect(getComputedStyle(text).fill).toBe(system("CanvasText"));
   expect(getComputedStyle(box).stroke).toBe(system("CanvasText"));
-  // A stroke across the first box fills it (R37).
+  // A stroke across the first box fills it.
   const first = pageOf(SHORT).items[0]?.boxes[0];
   if (first === undefined) throw new Error("the page has no box");
   const y = first.top + first.height / 2;
@@ -278,7 +278,7 @@ test("with forced colours a workbook's text and the frames of its boxes are the 
   ];
   expect(box.classList.contains("filled")).toBe(true);
   expect(getComputedStyle(box).stroke).toBe(system("Highlight"));
-  // The tutor's mark on that box, as on a sheet (R39).
+  // The tutor's mark on that box, as on a sheet.
   const work = await element.exportWork();
   if (work === null || !("cells" in work)) throw new Error("the workbook gave no work of boxes");
   element.marks = {
@@ -378,8 +378,8 @@ test.each(KINDS)(
   "$name has no violation that axe finds in forced colours either (T90)",
   async ({ put, incomplete, clear = incomplete }) => {
     // The selected tool is in the system's Highlight and HighlightText, whose contrast is the
-    // system's, in every engine: Firefox's own palette has them 2.94 to 1, white on #3399ff (R70).
-    // The bar's glass is the mode's opaque Canvas, and axe tells what stands on it (R84).
+    // system's, in every engine: Firefox's own palette has them 2.94 to 1, white on #3399ff.
+    // The bar's glass is the mode's opaque Canvas, and axe tells what stands on it.
     await axeOf(await put(made), clear, highlight());
   },
 );

@@ -3,7 +3,7 @@ import type { InkPoint, Stroke } from "./ink.js";
 
 /**
  * What the recorder takes of a pointer event, and of each event coalesced into it. The DOM-free
- * part sees no DOM (R12), so the element hands it this much, the place already in sheet units.
+ * part sees no DOM, so the element hands it this much, the place already in sheet units.
  */
 export interface PointerSample {
   /** The event's `pointerId`. */
@@ -25,7 +25,7 @@ export interface PointerSample {
 
 /**
  * How close two recorded points of a stroke may come, in sheet units: 0.1, the precision of a
- * sample file (R09). A point nearer than that to the last one recorded adds nothing the file would
+ * sample file. A point nearer than that to the last one recorded adds nothing the file would
  * keep (R18).
  */
 export const MIN_STEP = 0.1;
@@ -46,11 +46,11 @@ interface Live {
 }
 
 /**
- * The strokes of one sheet, from the pointer's samples (R18). One pointer writes at a time, with
+ * The strokes of one sheet, from the pointer's samples. One pointer writes at a time, with
  * its primary button: a second pointer, and any other button, write nothing while a stroke is
  * under way. A finished stroke goes to the handler the recorder is made with — onto the work on
- * the sheet (R19). Its points take their time from the sheet's clock, which the sheet's other
- * actions keep too (R22).
+ * the sheet. Its points take their time from the sheet's clock, which the sheet's other
+ * actions keep too.
  */
 export class Recorder {
   readonly #finished: (stroke: Stroke) => void;
@@ -117,7 +117,7 @@ export class Recorder {
     return this.#finish();
   }
 
-  /** `pointercancel`: the device took the touch for an accident, and the stroke goes (R05). */
+  /** `pointercancel`: the device took the touch for an accident, and the stroke goes. */
   cancel(pointerId: number): boolean {
     if (this.#live?.pointerId !== pointerId) return false;
     this.#live = undefined;
@@ -135,7 +135,7 @@ export class Recorder {
   }
 
   /**
-   * The sheet has taken another history of writing (R27): the stroke under way goes, as on
+   * The sheet has taken another history of writing: the stroke under way goes, as on
    * `pointercancel` — its ID and its times are the last sheet's — and the next stroke is `nextId`.
    */
   restart(nextId: number): void {
@@ -156,7 +156,7 @@ export class Recorder {
   /**
    * A point of the sample, its time the sheet's and never going back. Its pressure is kept to 0–1,
    * the range Pointer Events gives it: an event a script makes may say more, and the sheet would
-   * write a history it does not take back (R27).
+   * write a history it does not take back.
    */
   #point(sample: PointerSample, pressure: number): InkPoint {
     const p = Math.min(Math.max(pressure, 0), 1);

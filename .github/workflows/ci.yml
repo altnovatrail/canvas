@@ -1,4 +1,4 @@
-# NovaTrail's shared checks (R03 .github), pinned to a release of .github by SHA with its version
+# NovaTrail's shared checks, pinned to a release of .github by SHA with its version
 # beside it; Dependabot moves both. The repository's own jobs go beside them.
 name: CI
 
@@ -30,20 +30,19 @@ jobs:
     name: Documents
     uses: altnovatrail/.github/.github/workflows/documents.yml@f1c7e9e6f8245fdbdbc23c4091f3c26350e3a44e # v0.1.33
 
-  # The repository's TypeScript code, by its own ci- recipes in its toolchain stage (R19 .github).
+  # The repository's TypeScript code, by its own ci- recipes in its toolchain stage.
   # Its licenses job checks the spec submodule out, for ci-licenses to run spec's recipes from it,
   # and there ci-licenses also checks the signature of each package of @altnovatrail in the lock
-  # file, which needs the network the job has (R77 spec; R44). Its coverage job sends the report
+  # file, which needs the network the job has. Its coverage job sends the report
   # of ci-test to Codecov by OIDC, and a nested job has no more than this one gives it: without
-  # id-token: write the run would not start at all (R43). Its input engines adds the check
+  # id-token: write the run would not start at all. Its input engines adds the check
   # "TypeScript / engines", the recipe ci-engines — the tests in WebKit and Firefox, beside
-  # ci-test's Node and Chromium with the coverage —, so that the two run side by side (R19 .github;
-  # R78). Its job toolchain alone builds the image on a miss and only a push to main saves it, by
-  # the path and the name page.yml and emulators.yml take too (R42 .github; R57). Lint, vuln and
-  # licenses, which start no browser, run in the stage toolchain-core — Node, just, Go and buf,
-  # under toolchain and its browsers —, and so does the job of documents.yml; the job toolchain
-  # keeps the core's image by a file and a key of its own (R47 .github; R57). A release of .github
-  # older than v0.1.31 lacks one of these and turns a check red.
+  # ci-test's Node and Chromium with the coverage —, so that the two run side by side. Its job
+  # toolchain alone builds the image on a miss and only a push to main saves it, by the path and the
+  # name page.yml and emulators.yml take too. Lint, vuln and licenses, which start no browser, run
+  # in the stage toolchain-core — Node, just, Go and buf, under toolchain and its browsers —, and so
+  # does the job of documents.yml; the job toolchain keeps the core's image by a file and a key of
+  # its own. A release of .github older than v0.1.31 lacks one of these and turns a check red.
   typescript:
     name: TypeScript
     permissions:

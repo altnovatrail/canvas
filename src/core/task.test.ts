@@ -29,15 +29,15 @@ function sheetOf(template: Template): SheetTemplate {
 
 // Copies of the task examples and the open-view vectors of the module format at spec v0.14.0
 // (spec/format/examples/task/ and spec/format/vectors/open-view/task/): code and tests read nothing
-// of spec/, so a move to a new tag compares them with `git -C spec diff <old> <new> -- format/`
-// (R32). The format is version 0.4, and no draft (R64 spec). Each is written as a change to what
+// of spec/, so a move to a new tag compares them with `git -C spec diff <old> <new> -- format/`.
+//The format is version 0.4, and no draft. Each is written as a change to what
 // the examples share, with its keys in their order: a valid example as its open view, as app gets
 // it, and an invalid one with its open fields and the closed field at fault, its other closed
 // fields left as those the examples share.
 
 /**
- * The closed fields of a task, of its items and of their answer slots and boxes (R51 spec, R56 spec,
- * R57 spec, R60 spec): the open view, which the element gets, has none of them.
+ * The closed fields of a task, of its items and of their answer slots and boxes: the
+ * open view, which the element gets, has none of them.
  */
 const CLOSED = [
   "skills",
@@ -90,7 +90,7 @@ const FIRST_SENTENCES = [
 ];
 const LADDER =
   "The rungs of a ladder are 30 cm apart. From the lowest rung to the highest it is 180 cm. How many rungs are there?";
-/** What the ladder's statement gives and asks: the chips app shows (R57 spec). */
+/** What the ladder's statement gives and asks: the chips app shows. */
 const LADDER_CHIPS = {
   givens: ["The rungs are 30 cm apart.", "It is 180 cm from the lowest rung to the highest."],
   unknown: "How many rungs there are.",
@@ -105,15 +105,16 @@ function oneSlot(id: string, text: string, slot: AnswerSlot, grid?: GridKind): T
   return { id, statement: [{ text }], canvas, items: [{ answer_slots: [slot] }] };
 }
 
-/** A template's line of the workbook to fill in, {first} × [ ] = {product} (R60 spec). */
+/** A template's line of the workbook to fill in, {first} × [ ] = {product}. */
 const FACTOR_LINE = {
   line: [{ text: "{first} ×" }, { binding: "box" }, { text: "= {product}" }],
 } as const;
 
 /**
- * The open views of the valid examples: their closed fields left out, as app gets them. A template's
- * placeholders stand in them as written: app gets an instance's open view, numbers in their place
- * (R60 spec), and an open view of either is a task.
+ * The open views of the valid examples: their closed fields left out, as app gets them. A
+ * template's placeholders stand in them as written: app gets an instance's open view, numbers in
+ * their place,
+ *and an open view of either is a task.
  */
 const VALID: Readonly<Record<string, Task>> = {
   "anchor-among-supporting-skills": oneSlot(
@@ -353,7 +354,7 @@ function missing(check?: object): object {
   };
 }
 
-/** A template of the line {a} × [ ] = {product}, the key of its box this one (R60 spec). */
+/** A template of the line {a} × [ ] = {product}, the key of its box this one. */
 function templated(template: object, key = "{b}"): object {
   const box = { binding: "box", check: { kind: "number", key } };
   return {
@@ -367,7 +368,7 @@ function templated(template: object, key = "{b}"): object {
 const DIGITS = { from: 2, to: 9 };
 const FACTORS = { parameters: { a: DIGITS, b: DIGITS }, derived: { product: "a * b" } };
 const EIGHT = { kind: "number", key: "8" };
-/** A solver's program that finds the missing factor (R61 spec). */
+/** A solver's program that finds the missing factor. */
 const FACTOR = 'def solve(numbers):\n    return {"factor": numbers["product"] // numbers["a"]}\n';
 
 /**
@@ -789,8 +790,8 @@ const INVALID: readonly (readonly [string, string, object])[] = [
 
 /**
  * The invalid examples whose place is open but whose fault is not: the check of a box or an answer
- * slot left out, or one on a piece of a line's text, and the solution left out. The open view leaves
- * all of them out, and what the element gets is a task.
+ * slot left out, or one on a piece of a line's text, and the solution left out. The open view
+ * leaves all of them out, and what the element gets is a task.
  */
 const CLOSED_FAULTS = [
   "box-without-a-key",
@@ -881,8 +882,8 @@ test("a task with its closed fields is no open view: a TypeError at the first of
   expect(() => taskOf({ ...OPEN_VIEWS["workbook-lines"], items: [line] })).toThrow(
     /^task\.items\[0\]\.skills: no field of an item of a workbook$/,
   );
-  // The format's other closed fields: the solution, what helps on the way, the template (R56 spec,
-  // R57 spec, R60 spec), the simpler case of an item and the check of each answer slot and box.
+  // The format's other closed fields: the solution, what helps on the way, the template, the
+  // simpler case of an item and the check of each answer slot and box.
   const later: [string, unknown][] = [
     ["solution", RUNGS.solution],
     ["techniques", ["draw", "small-numbers"]],
@@ -1117,7 +1118,7 @@ test("a value that is no open view of a task is a TypeError that names its field
       part({ alt: "Posts" }),
       /^task\.statement\[0\]\.alt: no field of a paragraph of the statement$/,
     ],
-    // What the statement gives and asks: texts not empty, the givens all different (R57 spec).
+    // What the statement gives and asks: texts not empty, the givens all different.
     [at({ givens: [] }), /^task\.givens: a list of givens, one at least, not \[\]$/],
     [at({ givens: "The path is 20 m long." }), /^task\.givens: a list of givens, not "The/],
     [at({ givens: null }), /^task\.givens: a list of givens, not null$/],

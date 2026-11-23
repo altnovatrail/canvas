@@ -9,7 +9,7 @@ import { Sets } from "./sets.js";
  * milliseconds lie between them and their boxes come within `across` sheet units of each other
  * across the sheet and within `down` units down it. A group is the strokes a chain of neighbours
  * joins. The rule counts in whole numbers — tenths of a unit and milliseconds, the precision of a
- * sample file (R09), rounded half up as `Math.round` rounds: 1000.5 tenths are 1001 — and only
+ * sample file, rounded half up as `Math.round` rounds: 1000.5 tenths are 1001 — and only
  * subtracts and compares them, so that tutor's runner, which groups by the same rule, gets the same
  * groups to the bit.
  */
@@ -23,15 +23,15 @@ export interface GroupRule {
 }
 
 /**
- * The rule the sheet groups by (R24): 2 seconds, the threshold by which studies of writing tell a
+ * The rule the sheet groups by: 2 seconds, the threshold by which studies of writing tell a
  * pause of writing from one of thinking, and a cell of the default grid, across and down.
  */
 export const GROUP_RULE: GroupRule = Object.freeze({ pause: 2000, across: 50, down: 50 });
 
 /**
  * A group of the strokes on a sheet: its label, by place, and the IDs of its strokes, in ascending
- * order. The labels and the IDs are the table «label → stroke IDs» of one submission (R06). spec's
- * type (R74 spec).
+ * order. The labels and the IDs are the table «label → stroke IDs» of one submission. spec's
+ * type.
  */
 export type { Group };
 
@@ -45,10 +45,10 @@ interface Piece extends Box {
 }
 
 /**
- * The groups of the strokes on a sheet (R24): the strokes it shows, with the times of their points
+ * The groups of the strokes on a sheet: the strokes it shows, with the times of their points
  * as they were written, in any order. Erased strokes are none of it: whoever groups a history
  * replays it first, and the groups come from what the sheet shows. Labelled by place, from the top
- * down (R09): A, B, … Z, then AA, AB, … — by the top of a group's rectangle, then its left edge.
+ * down: A, B, … Z, then AA, AB, … — by the top of a group's rectangle, then its left edge.
  */
 export function groupsOf(strokes: readonly Stroke[], rule: GroupRule = GROUP_RULE): Group[] {
   const pieces = piecesOf(strokes);
@@ -68,9 +68,9 @@ export function groupsOf(strokes: readonly Stroke[], rule: GroupRule = GROUP_RUL
 }
 
 /**
- * The pairs of neighbours among the strokes on a sheet, by ID (R24): each pair once, the smaller
+ * The pairs of neighbours among the strokes on a sheet, by ID: each pair once, the smaller
  * ID first, in ascending order. Its groups join these pairs; spec's test vectors give them too, for
- * a runner to see where its grouping parts from the sheet's (R94 spec).
+ * a runner to see where its grouping parts from the sheet's.
  */
 export function neighboursOf(
   strokes: readonly Stroke[],
@@ -83,7 +83,7 @@ export function neighboursOf(
 
 /**
  * The rectangle of a group on the sheet: the box around the points of its strokes, in sheet units,
- * of the geometry it is given — the raw strokes on the device, the recorded ones in a sample (R09).
+ * of the geometry it is given — the raw strokes on the device, the recorded ones in a sample.
  * Its box in the fractions of a cut-out is the cut-out's.
  */
 export function rectOf(ids: readonly number[], strokes: readonly Stroke[]): Box {

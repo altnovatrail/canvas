@@ -11,7 +11,7 @@ export interface Grid {
 
 export const GRID_KINDS: readonly GridKind[] = ["squares", "lines", "dots"];
 
-/** The step of a grid whose task gives none, in units: canvas-api's square (R06). */
+/** The step of a grid whose task gives none, in units: canvas-api's square. */
 export const GRID_STEP = 50;
 /**
  * The steps a task may give, in units. A finer grid would be thousands of dots, and one wider than
@@ -22,7 +22,7 @@ export const GRID_STEP_MAX = 500;
 
 /**
  * The grid of a sheet whose task gives none, or that has no task: squares of 50 units. spec knows
- * no sheet without a grid (R23).
+ * no sheet without a grid.
  */
 export const DEFAULT_GRID: Grid = Object.freeze({ kind: "squares", step: GRID_STEP });
 
@@ -62,7 +62,7 @@ function rulings(step: number, length: number): number[] {
 /**
  * A grid's path on a band of the sheet across its whole width, from `top` to `bottom` in units,
  * either of them past the sheet: its rulings at the step's multiples within the band, both ends
- * taken, so that they go on from the sheet's own above or below it (R73).
+ * taken, so that they go on from the sheet's own above or below it.
  */
 export function gridBand(grid: Grid, width: number, top: number, bottom: number): string {
   const xs = rulings(grid.step, width);

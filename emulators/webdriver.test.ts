@@ -1,4 +1,4 @@
-// The client of WebDriver for safaridriver (R54): what it asks of, and how long it lets each
+// The client of WebDriver for safaridriver: what it asks of, and how long it lets each
 // command take.
 
 import { expect, test } from "vitest";

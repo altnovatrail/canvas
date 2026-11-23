@@ -1,4 +1,4 @@
-// The copy of the open views of modules the samples page carries (R71): which packages module-kit
+// The copy of the open views of modules the samples page carries: which packages module-kit
 // open takes of an index, which files the copy holds, and every difference from what module-kit
 // wrote that the check finds. just modules-open runs module-kit itself, in ci-licenses.
 

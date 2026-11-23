@@ -1,5 +1,5 @@
 // The samples page in Safari in the iPad Simulator, on a pull request that changes what goes into
-// it (R54, R55). emulators/page-ipad.sh runs it on a runner of macOS once the simulator is booted,
+// it. emulators/page-ipad.sh runs it on a runner of macOS once the simulator is booted,
 // safaridriver answers and emulators/serve.ts serves the page as pages:
 //
 //   node emulators/page-ipad.ts
@@ -10,7 +10,7 @@
 // emulators/watch.ts written in before its own script; safaridriver drives Safari and reads it on
 // the volunteer's way of emulators/volunteer.ts. A stroke is drawn by the page's own touch events,
 // and so are the moves of the emulators' checklist — a stroke cancelled, two fingers — while the
-// buttons are pressed by their own click() (R65). Each file the page hands to a download is kept
+// buttons are pressed by their own click(). Each file the page hands to a download is kept
 // from the watch's copy of its text in the run's folder saved/, for the workflow's job of the
 // saved files; the probe saw Safari put the download "On My iPad", in Downloads. The release build
 // goes first, then the test build on a port of its own, each a run of its own. The strokes are the
@@ -124,7 +124,7 @@ class Safari implements Device {
 
   /** A stroke on the element by the page's own pointer events of a touch (strokeBy): WebDriver's
    * actions in Safari of the simulator took a window other than the session's, and the mouse after
-   * them hung (R65). */
+   * them hung. */
   async draw(name: string, second = false): Promise<string | undefined> {
     const sheet = await this.element();
     const stroke = sheet && strokeIn(sheet, second);
@@ -150,7 +150,7 @@ class Safari implements Device {
   }
 
   /** A stroke of the page's own touch events that ends in a pointercancel, as a browser that takes
-   * the touch back ends it (R65). */
+   * the touch back ends it. */
   async cancel(name: string): Promise<string | undefined> {
     const sheet = await this.element();
     const stroke = sheet && strokeIn(sheet, true);
@@ -180,7 +180,7 @@ class Safari implements Device {
   }
 
   /** The text of the sheet's file given to the section that opens a file, as a file of the page's
-   * own: the picker of iPadOS is the hardware's to show (R65). */
+   * own: the picker of iPadOS is the hardware's to show. */
   async openFile(text: string): Promise<string | undefined> {
     await command("POST", `/session/${this.session}/execute/sync`, {
       script: `return ${chooseFile()};`,
@@ -245,7 +245,7 @@ function ways(run: Run, build: string, port: string, way: Way): Ways {
   return {
     pass: () => volunteer(run, new Safari(run, file, port), { keep: true, way }),
     // Safari closed and launched anew, for the next session to connect to. A Safari that is no
-    // longer running cannot be terminated, and is launched all the same (R54).
+    // longer running cannot be terminated, and is launched all the same.
     recover: async () => {
       try {
         execFileSync(XCRUN, ["simctl", "terminate", udid, SAFARI], { stdio: "ignore" });

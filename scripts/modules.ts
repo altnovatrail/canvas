@@ -1,5 +1,5 @@
 // The tasks of modules the samples page carries (R71): the open views module-kit open writes of a
-// release of modules (R43 module-kit), as a copy in tasks/modules-<tag>/, since the build of a
+// release of modules, as a copy in tasks/modules-<tag>/, since the build of a
 // release runs with no network, token or spec/ and so cannot run module-kit itself.
 // just modules-open fetches module-kit's binary and the packages the index names, has spec's
 // release-verify accept each, runs module-kit open with the seeds of the justfile, and gives this
@@ -46,8 +46,8 @@ function newer(a: string, b: string): boolean {
 
 /**
  * The packages module-kit open takes of an index: of each module, the release and the digest of its
- * newest version of the module format MODULE_FORMAT that the index does not mark withdrawn, as a new
- * attempt takes it (R43 module-kit). A module with none is left out, as module-kit leaves it.
+ * newest version of the module format MODULE_FORMAT that the index does not mark withdrawn, as a
+ * new attempt takes it. A module with none is left out, as module-kit leaves it.
  */
 export function packagesOf(index: unknown): { release: string; digest: string }[] {
   const { modules } = index as { readonly modules?: unknown };
@@ -84,9 +84,9 @@ interface ViewEntry {
 }
 
 /**
- * The files of the copy, by their paths from it, beside open-views.json: of each module its LICENSE,
- * its NOTICE if module-kit wrote one, and every file of media/ a statement of a task the page takes
- * names, each once.
+ * The files of the copy, by their paths from it, beside open-views.json: of each module its
+ * LICENSE, its NOTICE if module-kit wrote one, and every file of media/ a statement of a task the
+ * page takes names, each once.
  */
 export function filesOf(out: string): string[] {
   const { modules } = JSON.parse(readFileSync(join(out, OPEN_VIEWS), "utf8")) as {

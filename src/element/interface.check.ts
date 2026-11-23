@@ -1,7 +1,7 @@
-// Type-checked by ci-lint and never built: the element's interface as a consumer's types see it
-// (R07, R27, R28, R32, R37, R38, R39, R42). What a consumer may do type-checks; each line under a
+// Type-checked by ci-lint and never built: the element's interface as a consumer's types see it.
+//What a consumer may do type-checks; each line under a
 // directive must be an error, and were it not, the directive would go unused, and that would be the
-// error instead. The types of the contract are spec's (R74 spec): the element is its
+// error instead. The types of the contract are spec's: the element is its
 // CanvasElement, and the entry point gives the same types as spec's package.
 
 import type * as spec from "@altnovatrail/spec/canvas";
@@ -42,7 +42,7 @@ import type {
 } from "./index.js";
 
 /**
- * The entry point's types of the contract are spec's, under spec's names (R74 spec): a copy
+ * The entry point's types of the contract are spec's, under spec's names: a copy
  * that went its own way would be false here. The DOM's map of events holds the contract's, each
  * event's type, which the package puts there. The data's types the DOM-free part checks the same.
  */
@@ -89,7 +89,7 @@ declare const manifest: Manifest;
 declare const given: open.Task;
 declare const lesson: open.WorkedExample;
 
-/** A task's open view on a handwriting sheet, as the module format 0.4 has it (R32). */
+/** A task's open view on a handwriting sheet, as the module format 0.4 has it. */
 const posts = {
   id: "posts-1",
   statement: [{ text: "How many posts are there?" }],
@@ -100,7 +100,7 @@ const posts = {
 /** The tag gives the element's type, made or found. */
 export const made: NovatrailCanvas = document.createElement("novatrail-canvas");
 export const found: NovatrailCanvas | null = document.querySelector("novatrail-canvas");
-/** The element is the contract's, as app holds it by spec's types (R74 spec). */
+/** The element is the contract's, as app holds it by spec's types. */
 export const held: spec.CanvasElement = made;
 
 /** The event's type holds on the element and on the document it bubbles up to. */
@@ -110,14 +110,14 @@ document.addEventListener("historychange", (event) => {
   return events;
 });
 
-/** The learner's choice of tool is told on the element and on the document alike (R28). */
+/** The learner's choice of tool is told on the element and on the document alike. */
 sheet.addEventListener("toolchange", (event: ToolChangeEvent) => event.detail.tool);
 document.addEventListener("toolchange", (event) => {
   const tool: Tool = event.detail.tool;
   return tool;
 });
 sheet.tool = "eraser";
-/** The hand moves the sheet and writes nothing (R88). */
+/** The hand moves the sheet and writes nothing. */
 sheet.tool = "hand";
 sheet.task = posts;
 sheet.task = { ...posts, canvas: { kind: "handwriting_sheet", grid: "dots", grid_step: 40 } };
@@ -129,12 +129,12 @@ sheet.task = {
 };
 sheet.manifest = manifest;
 sheet.manifest = undefined;
-/** app's task, of spec's type, goes in as it is (R73 spec; R41), the chips of what it gives too. */
+/** app's task, of spec's type, goes in as it is, the chips of what it gives too. */
 sheet.task = given;
 sheet.task = { ...posts, givens: ["A post every 4 m."], unknown: "How many posts there are." };
 
 export const work: Promise<ExportedWork | null> = sheet.exportWork();
-/** The work's key tells its kind: the crop of a sheet, or the crops of a workbook's boxes (R38). */
+/** The work's key tells its kind: the crop of a sheet, or the crops of a workbook's boxes. */
 export const sent: Blob | readonly Blob[] =
   "png" in done ? done.png : done.cells.map(({ png }) => png);
 export const place: readonly [number, number] | undefined =
@@ -142,23 +142,23 @@ export const place: readonly [number, number] | undefined =
 export const history: readonly HistoryEvent[] = sheet.history;
 /**
  * The picture of the work, a PNG of the whole surface with no condition, for a stored work's
- * picture (R83): always a Blob, never null.
+ * picture: always a Blob, never null.
  */
 export const picture: Promise<Blob> = sheet.exportPicture();
-/** A workbook's marks stand on answer cells, by their item and slot (R39). */
+/** A workbook's marks stand on answer cells, by their item and slot. */
 sheet.marks = {
   submission: boxes,
   marks: [{ kind: "frame", at: { cell: { item: 1, slot: 2 } }, name: "This box" }],
 };
 /**
- * Which answer slots the strokes fill, per item, per slot: a workbook's boxes, or a sheet's one answer
- * anywhere or the whole sheet; null for a sheet of choices or with no task (R37, R42).
+ * Which answer slots the strokes fill, per item, per slot: a workbook's boxes, or a sheet's one
+ * answer anywhere or the whole sheet; null for a sheet of choices or with no task.
  */
 export const filled: Filled | null = sheet.filled;
 export const first: boolean | undefined = sheet.filled?.[0]?.[0];
 /**
  * A task from paper: its crop, a Blob, as tracing paper over a sheet of its grid, where the learner
- * moves and hides it, which a tracingchange tells; its work holds the crop beside the work's (R87).
+ * moves and hides it, which a tracingchange tells; its work holds the crop beside the work's.
  */
 declare const statement: Blob;
 declare const fromPaper: ExportedPaper;
@@ -172,7 +172,7 @@ document.addEventListener("tracingchange", (event) => {
 });
 /**
  * Its sheet's grid, the learner's, which a gridchange tells and the consumer gives back; none
- * without a task from paper (R88).
+ * without a task from paper.
  */
 sheet.grid = "lines";
 sheet.grid = undefined;
@@ -190,7 +190,7 @@ sheet.paper = { statement: "blob:crop" };
 sheet.paper = undefined;
 sheet.history = undefined;
 sheet.history = [];
-/** A lesson's worked example, of spec's type, goes in as it is, and off by undefined (R42). */
+/** A lesson's worked example, of spec's type, goes in as it is, and off by undefined. */
 sheet.workedExample = lesson;
 sheet.workedExample = {
   statement: posts.statement,
@@ -204,7 +204,7 @@ sheet.workedExample = undefined;
 export const example: WorkedExample | undefined = sheet.workedExample;
 /**
  * How far the learner has gone through the demo, which app keeps as demochange tells it and gives
- * back after the example (R42); the event's type holds on the element and on the document alike.
+ * back after the example; the event's type holds on the element and on the document alike.
  */
 sheet.demoState = { opened: 2, hidden: true };
 sheet.demoState = undefined;
@@ -215,27 +215,26 @@ document.addEventListener("demochange", (event) => {
   sheet.demoState = kept;
 });
 
-/** A task's temporary tools the element takes, though the contract's task has none (R28, R41). */
+/** A task's temporary tools the element takes, though the contract's task has none. */
 sheet.task = { ...posts, canvas: { kind: "handwriting_sheet", tools: ["pen"] } };
 
-// @ts-expect-error The tools are the element's own: the contract's task has no tools (R41).
+// @ts-expect-error The tools are the element's own: the contract's task has no tools.
 held.task = { ...posts, canvas: { kind: "handwriting_sheet", tools: ["pen"] } };
-// The media are the contract's: app gives them through it (R36 spec).
+// The media are the contract's: app gives them through it.
 held.media = async (ref) => new Blob([ref]);
 held.media = undefined;
 // @ts-expect-error A picture's file comes as a Blob, not as its address.
 held.media = async (ref: string) => ref;
-// The tutor's marks are the contract's too, with the submission's context (R83 spec).
+// The tutor's marks are the contract's too, with the submission's context.
 held.marks = sheet.marks;
 held.marks = undefined;
-// @ts-expect-error Nor the commands undo and clear: the element's own buttons call them (R28).
+// @ts-expect-error Nor the commands undo and clear: the element's own buttons call them.
 held.undo();
 // @ts-expect-error The same for clear.
 held.clear();
-// The picture of the work is the contract's: app puts it as a stored work's picture (R36 spec;
-// R83).
+// The picture of the work is the contract's: app puts it as a stored work's picture.
 export const agreed: Promise<Blob> = held.exportPicture();
-// @ts-expect-error exportPNG() is gone (R27): the picture of the work is exportPicture() (R83).
+// @ts-expect-error exportPNG() is gone: the picture of the work is exportPicture().
 sheet.exportPNG();
 // @ts-expect-error null is no history: undefined, and undefined alone, is the empty one.
 sheet.history = null;
@@ -257,11 +256,11 @@ if ("cells" in done) {
   // @ts-expect-error The crops are the element's to give, not the consumer's to change.
   done.cells.push({ item: 1, slot: 1, png: new Blob() });
 }
-// @ts-expect-error An answer cell has no ID: its place names it (R51 spec).
+// @ts-expect-error An answer cell has no ID: its place names it.
 sheet.marks = { submission: boxes, marks: [{ kind: "frame", at: { cell: "a" }, name: "This" }] };
 // @ts-expect-error null is no manifest: undefined, and undefined alone, is none.
 sheet.manifest = null;
-// @ts-expect-error null is no worked example: undefined, and undefined alone, is none (R42).
+// @ts-expect-error null is no worked example: undefined, and undefined alone, is none.
 sheet.workedExample = null;
 // @ts-expect-error A task is no worked example: it has items and no demo.
 sheet.workedExample = posts;
@@ -277,7 +276,7 @@ document.addEventListener("demochange", (event) => {
 sheet.task = { ...posts, canvas: { kind: "handwriting_sheet", step: 40 } };
 // @ts-expect-error The height of a digit is the manifest's, not the task's.
 sheet.task = { ...posts, canvas: { kind: "handwriting_sheet", digit: 48 } };
-// @ts-expect-error What the statement gives is a list of texts, not one (R57 spec).
+// @ts-expect-error What the statement gives is a list of texts, not one.
 sheet.task = { ...posts, givens: "A post every 4 m." };
 // @ts-expect-error A tool the sheet has not is no tool of it.
 sheet.tool = "ruler";
@@ -289,5 +288,5 @@ document.addEventListener("gridchange", (event) => {
   // @ts-expect-error The grid told is the learner's choice, to read.
   event.detail.grid = "dots";
 });
-// @ts-expect-error Marks whose submission has no digest are no marks of a submission (R27).
+// @ts-expect-error Marks whose submission has no digest are no marks of a submission.
 sheet.marks = { submission: { crop, groups: [] }, marks: [] };

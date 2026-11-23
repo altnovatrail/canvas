@@ -1,4 +1,4 @@
-// A legal text's notice on the samples page (R69): the blocks scripts/legal.ts gave a version's
+// A legal text's notice on the samples page: the blocks scripts/legal.ts gave a version's
 // Markdown, as elements of the page's own document. Every word goes in as text, never as HTML, so
 // the page's policy needs nothing more (scripts/csp.ts). A heading steps down below the notice's
 // own, of the third level: the text's title, of the first, is a heading of the fourth.

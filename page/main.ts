@@ -1,18 +1,18 @@
-// The samples page (R55, R56): a build of its own of the element <novatrail-canvas>, one HTML
-// file that opens from a file on the device and goes to no network (R25 spec; R07, R11).
+// The samples page: a build of its own of the element <novatrail-canvas>, one HTML
+// file that opens from a file on the device and goes to no network.
 // scripts/page.ts builds it and puts the tasks in: every task of tutor's file of open tasks in
-// tasks/, bank by bank (R62), with its open view and the sample's reference to it, worked out at
-// the build (R49). The page takes the element as a consumer does, through its properties and
-// events (R07), and saves a sample as a file on the device.
+// tasks/, bank by bank, with its open view and the sample's reference to it, worked out at
+// the build. The page takes the element as a consumer does, through its properties and
+// events, and saves a sample as a file on the device.
 //
-// First the start (R58): the purpose — the measurement, or a module's eval set — as the sets of
-// texts the build carries open them (R11, R69), the writer's code for the measurement, typed or
+// First the start: the purpose — the measurement, or a module's eval set — as the sets of
+// texts the build carries open them, the writer's code for the measurement, typed or
 // new and never remembered, the purpose's notice and the statements without which the person goes
-// no further. Below the purposes, a child's session (R59): the adult who leads it types the
+// no further. Below the purposes, a child's session: the adult who leads it types the
 // child's code from the form accepted, or asks a new one for a form, without the child. Once
 // begun, they hold for this opening alone: another needs the page opened anew.
 //
-// The writer writes, then marks the writing up (R56): on a sheet, the parts of the solution — the
+// The writer writes, then marks the writing up: on a sheet, the parts of the solution — the
 // element's groups of strokes, which the writer joins — with their texts and flags, the final
 // answer and the first error; on an essay, its text as written; on a workbook, every box. The
 // element frames on the sheet what is being marked, and the page shows the crops the model would
@@ -20,9 +20,9 @@
 // child writes and the adult marks up, from what the child says. The page remembers nothing: not a
 // sheet half written either. Every text is page/texts.ts's or a set's.
 //
-// Below the start, a sample file opens to be looked at (R64): its strokes, drawn from the file
+// Below the start, a sample file opens to be looked at: its strokes, drawn from the file
 // alone with what a history erased apart, its crops and its markup in words, for whoever looks in
-// it for a name or a contact before it goes on (R110 spec). Nothing of it is changed, kept or
+// it for a name or a contact before it goes on. Nothing of it is changed, kept or
 // sent, and back to the start is the page opened anew.
 
 import { Purpose, Writer } from "@altnovatrail/contracts/novatrail/eval/v1/sample_pb.js";
@@ -86,7 +86,7 @@ interface PageTask {
   readonly bank: string;
   readonly task: Task;
   readonly open: OpenTask;
-  /** The module and version whose manifest and media the task takes, "<ID> <version>" (R71). */
+  /** The module and version whose manifest and media the task takes, "<ID> <version>". */
   readonly module?: string;
 }
 
@@ -113,7 +113,7 @@ function versionFor(purpose: PurposeKey): string {
   if (version === undefined) throw new TypeError(`the build has no texts for ${purpose}`);
   return version;
 }
-/** Whether a task of the build is a module's: only an eval set takes it, and only it (R71). */
+/** Whether a task of the build is a module's: only an eval set takes it, and only it. */
 const ofModule = ({ open }: PageTask) => open.reference.source?.case === "modules";
 const moduleTasks = data.tasks.some(ofModule);
 
@@ -150,7 +150,7 @@ const handOver = byId("hand-over");
 const typed = byId<HTMLInputElement>("typed");
 
 /** What the start settled: the purpose, and the writer's code where it has one. It holds for this
- * opening alone, and the page keeps it nowhere else (R11). */
+ * opening alone, and the page keeps it nowhere else. */
 let begun: { readonly purpose: PurposeKey; readonly code?: string } | undefined;
 /** The new codes of this opening, made when the person first asks for one: an adult's and a
  * child's apart, for they are two people's. */
@@ -259,7 +259,7 @@ function mount(): void {
   element.lang = "ru";
   const { task, module } = chosen();
   const carried = module === undefined ? undefined : data.modules[module];
-  // A module's manifest gives the height of its digits (R32); tutor's file has none.
+  // A module's manifest gives the height of its digits; tutor's file has none.
   if (carried) element.manifest = carried.manifest;
   element.task = task;
   // A module's task takes the files of its media the build carries; tutor's tasks have none, and a
@@ -286,7 +286,7 @@ function mount(): void {
   handOver.hidden = true;
 }
 
-/** A crop's PNG as a picture of the page, by a blob URL, as its policy allows (R23). */
+/** A crop's PNG as a picture of the page, by a blob URL, as its policy allows. */
 function picture(png: Blob, alt: string): HTMLImageElement {
   const url = URL.createObjectURL(png);
   crops.push(url);
@@ -648,7 +648,7 @@ function writer(): Writer {
   return checked?.value === "child" ? Writer.ADULT_AS_CHILD : Writer.ADULT;
 }
 
-/** The sample of what is on the sheet, with its markup, for the purpose begun (R09). */
+/** The sample of what is on the sheet, with its markup, for the purpose begun. */
 function current(): { id: string; text: string } | undefined {
   const now = made();
   if (!now || !("markup" in now) || !begun) return undefined;
@@ -674,14 +674,14 @@ function current(): { id: string; text: string } | undefined {
   return { id: sample.id, text: sampleText(sample) };
 }
 
-/** Save the sample as a file on the device: a link to a blob of the page's own (R55). */
+/** Save the sample as a file on the device: a link to a blob of the page's own. */
 function save(): void {
   const sample = current();
   if (!sample) return;
   savedAt = sheet?.history.length ?? 0;
   const link = make("a");
   link.href = URL.createObjectURL(new Blob([sample.text], { type: "application/json" }));
-  // Named by its ID alone, as an eval set of a module lays its files out (R71).
+  // Named by its ID alone, as an eval set of a module lays its files out.
   link.download = `${sample.id}.json`;
   document.body.append(link);
   link.click();
@@ -748,7 +748,7 @@ function purposeChoices(): void {
 }
 
 /** A purpose's notice: a legal text's gist in Russian, then its English text, which is the one in
- * force (R130 spec). */
+ * force. */
 function noticeOf(own: LegalSet): HTMLElement[] {
   const english = make("div", "", { lang: "en", class: "legal" });
   english.append(...noticeNodes(own.notice));
@@ -842,7 +842,7 @@ function begin(): void {
   begun = hasCode(purpose) && code ? { purpose, code } : { purpose };
   const child = purpose === "child";
   byId("start").hidden = true;
-  // Writing has begun: a file is opened from the start alone (R64).
+  // Writing has begun: a file is opened from the start alone.
   byId("open").hidden = true;
   byId("summary-text").textContent = TEXTS.summary(
     TEXTS.purpose[purpose],
@@ -857,7 +857,7 @@ function begin(): void {
   byId("summary").hidden = false;
   byId("work").hidden = false;
   // An eval set takes the tasks of modules alone, and the measurement and a child's session those
-  // of tutor's file alone (R71): the others leave the picker.
+  // of tutor's file alone: the others leave the picker.
   for (const option of [...picker.options]) {
     const task = data.tasks[Number(option.value)];
     if (!task || ofModule(task) !== (purpose === "evalSet")) option.remove();
@@ -880,7 +880,7 @@ function restart(): void {
 const SVG = "http://www.w3.org/2000/svg";
 
 /** A new element of SVG with its attributes: presentation attributes, for the page's policy allows
- * no style attribute (R55). */
+ * no style attribute. */
 function drawn<K extends keyof SVGElementTagNameMap>(
   tag: K,
   attributes: Record<string, string>,
@@ -914,7 +914,7 @@ function line({ points }: Line, attributes: Record<string, string>): SVGPolyline
   });
 }
 
-/** The picture of the sample from its file alone (R64): the sheet, a workbook's boxes with their
+/** The picture of the sample from its file alone: the sheet, a workbook's boxes with their
  * places, the strokes shown at the end, and those the history did not show, apart and hidden until
  * asked for. It takes in a stroke beyond the sheet too: none is cut off. */
 function sketch(view: SampleView): SVGSVGElement {
@@ -981,7 +981,7 @@ function markupShown(view: SampleView): Node[] {
   return nodes;
 }
 
-/** The sample the person chose, read and shown: nothing of it is changed, kept or sent (R64). A
+/** The sample the person chose, read and shown: nothing of it is changed, kept or sent. A
  * file that is no sample is said so, and nothing is drawn. */
 async function opened(): Promise<void> {
   const chosen = byId<HTMLInputElement>("open-file");
@@ -1039,10 +1039,10 @@ async function opened(): Promise<void> {
 }
 
 // The page's script runs: the words for where it does not — an iPad's Files, which shows the page
-// without its script (R25 spec) — go.
+// without its script — go.
 byId("no-script").remove();
 words();
-// A group of the picker for each bank and each module, in the build's order (R62, R71); a
+// A group of the picker for each bank and each module, in the build's order; a
 // template's instance is named by its seed.
 const banks = new Map<string, HTMLOptGroupElement>();
 for (const [index, { kind, bank, task, open, module }] of data.tasks.entries()) {
@@ -1070,6 +1070,6 @@ typed.addEventListener("input", () => startShown(false));
 beginButton.addEventListener("click", begin);
 byId("restart").addEventListener("click", restart);
 byId("open-file").addEventListener("change", () => void opened());
-// Back to the start is the page opened anew: it keeps nothing of the file (R11).
+// Back to the start is the page opened anew: it keeps nothing of the file.
 byId("open-back").addEventListener("click", () => location.reload());
 startShown(false);

@@ -1,23 +1,23 @@
-// The module's manifest as the element reads it (R32): the open view of manifest.yaml, of which it
+// The module's manifest as the element reads it: the open view of manifest.yaml, of which it
 // takes three fields — the version of the module format, the height of a digit on the crop for
-// checking and the explanation language, which the task's statement is in (R51 spec). The rest of
+// checking and the explanation language, which the task's statement is in. The rest of
 // the manifest it passes over: what a manifest may hold, module-kit checks. Its canvas settings are
 // the canvas's own, though: a setting the element does not know is a TypeError, as a field of a
 // task is, for the element would draw the module's canvas without it. The type is spec's, from
-// its npm package at the version of the spec/ submodule (R73 spec; R41), and app gets the
-// manifest's open view once for a module's package and gives it to the element as it is (R36 spec).
+// its npm package at the version of the spec/ submodule, and app gets the
+// manifest's open view once for a module's package and gives it to the element as it is.
 
 import { CROP } from "./crop.js";
 import { closed, record, shown, whole } from "./fields.js";
 
 /**
  * The version of the module format the element reads: while the format is v0, the platform reads
- * its current version alone, and a module of another is refused with the reason (R44 spec). The
- * format's rules of a module's versions are module-kit's and api's: the element compares none (R32).
+ * its current version alone, and a module of another is refused with the reason. The
+ * format's rules of a module's versions are module-kit's and api's: the element compares none.
  */
 export const FORMAT = "0.4";
 
-/** The open view of a module's manifest, whole: spec's type (R73 spec). */
+/** The open view of a module's manifest, whole: spec's type. */
 export type { Manifest } from "@altnovatrail/spec/formatv0/open";
 
 /**

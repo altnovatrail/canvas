@@ -1,4 +1,4 @@
-// The probe of a page opened from a file in an Android emulator (R54). emulators/android.sh runs
+// The probe of a page opened from a file in an Android emulator. emulators/android.sh runs
 // it in CI, in the toolchain stage's container on the runner's network, once the emulator is up
 // and emulators/serve.ts hands the probe's files out:
 //

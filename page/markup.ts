@@ -1,14 +1,14 @@
-// The markup of a sample as the samples page makes it on the screen (R56): what the writer says
-// their writing is, by the eval protocol (R95 spec). No DOM: the page's screen holds a form of
+// The markup of a sample as the samples page makes it on the screen: what the writer says
+// their writing is, by the eval protocol. No DOM: the page's screen holds a form of
 // it, and this turns the form into the sample's `markup` and names what it still lacks, by the
 // rules spec's sample-check holds a file to, so that the page saves no sample the check refuses.
 //
-// On a sheet the parts of the solution are the device's groups of strokes (R06), each part one or
+// On a sheet the parts of the solution are the device's groups of strokes, each part one or
 // more neighbouring groups that the writer joins: every stroke the sheet shows is in one part. The
 // truth of the task's one answer slot, bound `anywhere`, follows from the parts that hold the
 // final answer. An essay, whose one answer slot is the whole sheet, has no parts: its truth is its
 // text as written, or blank, or illegible as a whole, and the marks of its criteria the organizer
-// adds after the writing, so the page writes none (R56, R62). On a workbook the truth is every box
+// adds after the writing, so the page writes none. On a workbook the truth is every box
 // of the page, by its place: an empty one is blank.
 
 import { PartKind } from "@altnovatrail/contracts/novatrail/eval/v1/sample_pb.js";
@@ -216,7 +216,7 @@ export function sheetMarkup(groups: readonly Group[], form: SheetForm): Made {
 }
 
 /** What an essay's form lacks, or its markup, of a sheet that shows strokes or none: the truth of
- * its one answer slot and no mark of a criterion (R95 spec). */
+ * its one answer slot and no mark of a criterion. */
 export function essayMarkup(shows: boolean, form: EssayForm): Made {
   if (!shows && form.illegible) return { lacks: [LACKS.illegibleBlank] };
   // A text typed where the truth holds none would be lost on saving: the writer says which holds.

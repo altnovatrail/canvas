@@ -1,6 +1,6 @@
 /**
  * The sets that strokes join into, pair by pair: union-find, each set known by its root, which is
- * its smallest member. The groups grow in them (R24), and the crop's bundles (R25).
+ * its smallest member. The groups grow in them, and the crop's bundles.
  */
 export class Sets {
   readonly #parent: number[];

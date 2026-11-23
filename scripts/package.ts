@@ -1,4 +1,4 @@
-// After just build: the package the way a consumer takes it (R07, R12).
+// After just build: the package the way a consumer takes it.
 //
 //   node scripts/package.ts
 //
@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 
 /**
  * The paths npm pack takes, besides the build: package.json, the files npm always adds, and NOTICE,
- * which names the icons the package embeds (R46).
+ * which names the icons the package embeds.
  */
 const ALWAYS = new Set(["package.json", "README.md", "LICENSE", "NOTICE"]);
 /** A file of the build: JavaScript or a declaration, at any depth under lib/core or lib/element. */
@@ -72,7 +72,7 @@ async function main(): Promise<string[]> {
   if (SHEET?.width !== 1000 || SHEET.height !== 1400) {
     problems.push(`${core} does not give the sheet of 1000 × 1400 units`);
   }
-  // The sheet's size and the fold of a history, and none of the rules (R27).
+  // The sheet's size and the fold of a history, and none of the rules.
   const given = Object.keys(entry);
   if (given.length !== 2 || !given.includes("SHEET") || !given.includes("replay")) {
     problems.push(`${core} gives ${given.join(", ")}, not SHEET and replay`);

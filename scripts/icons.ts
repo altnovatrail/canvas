@@ -1,4 +1,4 @@
-// The icons of the row's buttons (R46; R78 spec): Material Symbols, in the style Rounded, from the
+// The icons of the row's buttons (R46): Material Symbols, in the style Rounded, from the
 // npm package of the set at the version package-lock.json pins, and of it only the icons the row
 // shows. It writes the module the element draws them from and NOTICE, which names the set the
 // package embeds:
@@ -36,11 +36,11 @@ export interface Value {
 
 /**
  * The values of the row, as spec's table of values names them, each by its button's key in
- * labels.ts (R78 spec); no button scrolls the sheet, which the hand moves (R84). Demo has two, as
+ * labels.ts; no button scrolls the sheet, which the hand moves. Demo has two, as
  * the demo is shown or hidden, and the grid of a task from paper's sheet four, one for each grid,
- * which its button shows (R46). The task from paper's button atop the tools fills its icon while
- * the tracing paper is shown (R87). The tracing paper's bar and sign have theirs: Smaller, Larger,
- * Fit, Recognise and Original, which the photo's sign shows too (R89).
+ * which its button shows. The task from paper's button atop the tools fills its icon while
+ * the tracing paper is shown. The tracing paper's bar and sign have theirs: Smaller, Larger,
+ * Fit, Recognise and Original, which the photo's sign shows too.
  */
 export const TABLE: Readonly<Record<string, Value>> = {
   task: { base: "article", filled: true, mirrored: false },

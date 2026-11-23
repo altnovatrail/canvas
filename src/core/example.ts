@@ -1,8 +1,8 @@
-// A lesson's worked example (R58 spec; R42): the open view of a segment `worked_example`, of spec's
-// type WorkedExample (R73 spec; R41) — its statement, the handwriting sheet or the workbook the
+// A lesson's worked example (R42): the open view of a segment `worked_example`, of spec's
+// type WorkedExample — its statement, the handwriting sheet or the workbook the
 // author's demo is shown on, and the demo's parts in order: paragraphs, pictures beside the sheet,
-// pictures on areas of a sheet, and on a workbook the boxes it fills (format 0.4; R61). The
-// element checks it as the schema does, every object closed (R32), and by the format's rules
+// pictures on areas of a sheet, and on a workbook the boxes it fills. The
+// element checks it as the schema does, every object closed, and by the format's rules
 // lesson.areas, lesson.example-fills and lesson.workbook-page too: an area lies on the sheet, the
 // demo fills each box of the lines once, and the lines fit the page, each value its box. What the
 // check gives is the element's own shape of the same example, the kinds of its parts apart, which
@@ -36,7 +36,7 @@ import {
   zoneOf,
 } from "./task.js";
 
-/** A lesson's worked example as a consumer gives it: spec's type (R73 spec). */
+/** A lesson's worked example as a consumer gives it: spec's type. */
 export type WorkedExample = open.WorkedExample;
 
 /**
@@ -100,9 +100,9 @@ export interface CheckedExample {
 }
 
 /**
- * How far the learner has gone through the author's demo (R42): how many of its parts are open,
+ * How far the learner has gone through the author's demo: how many of its parts are open,
  * from the first, and whether the whole demo is hidden. app keeps it and may give it back. spec's
- * type (R74 spec).
+ * type.
  */
 export type { DemoState };
 
@@ -115,7 +115,7 @@ const ROOT = "workedExample";
 /** The path the element names the state of a demo's fields by: its property's name. */
 const STATE = "demoState";
 
-/** A worked example's tools: the pen alone, which writes nothing on its sheet (R42). */
+/** A worked example's tools: the pen alone, which writes nothing on its sheet. */
 const PEN_ALONE: readonly Tool[] = Object.freeze(["pen"]);
 
 /**
@@ -153,7 +153,7 @@ export function exampleOf(value: unknown): CheckedExample {
 }
 
 /**
- * What the canvas makes of a worked example, as of a task (R42): the grid on the sheet, or the
+ * What the canvas makes of a worked example, as of a task: the grid on the sheet, or the
  * example's lines laid out on the workbook's page as a task's are, its boxes empty till the demo
  * fills them; the statement above it, and the pen alone, for the learner does not write on it.
  */
@@ -197,7 +197,7 @@ function boxesOf(line: ExampleLine | undefined): ValueBox[] {
 }
 
 /**
- * The state of a demo of `parts` parts, checked (R42): an object of `opened`, a whole number from 0
+ * The state of a demo of `parts` parts, checked: an object of `opened`, a whole number from 0
  * to `parts`, and `hidden`, true or false, both of them and nothing else. What it refuses is a
  * TypeError that names the field by its path. It gives a frozen copy of its own.
  */
@@ -216,7 +216,7 @@ export function onSheet(part: ExamplePart): part is AreaPicture {
 }
 
 /**
- * Whether two worked examples show the same (R42): the same statement, the same grid — its kind and
+ * Whether two worked examples show the same: the same statement, the same grid — its kind and
  * step as drawn, the defaults filled in — and the same parts of the demo in the same order.
  */
 export function sameExample(a: CheckedExample, b: CheckedExample): boolean {
@@ -248,7 +248,7 @@ function sameLine(a: ExampleLine, b: ExampleLine): boolean {
 
 /**
  * What a worked example is shown on: a handwriting sheet and its grid, or a workbook, and no tools,
- * for the learner does not write on it (R42).
+ * for the learner does not write on it.
  */
 function exampleCanvasOf(value: unknown, path: string): ExampleCanvas {
   const canvas = closed(value, path, ["kind", "grid", "grid_step"], "a worked example's canvas");

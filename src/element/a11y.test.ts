@@ -1,5 +1,5 @@
-// The element by axe-core (R70): every kind of canvas has no violation of WCAG 2.2 level AA that
-// axe finds in its shadow tree (R90 spec), and a violation put into it fails the helper. axe cannot
+// The element by axe-core: every kind of canvas has no violation of WCAG 2.2 level AA that
+// axe finds in its shadow tree, and a violation put into it fails the helper. axe cannot
 // tell the background of a workbook's printed lines, which the layer of input covers, nor that of a
 // worked example's labelled buttons, which stand on glass over the canvas and the pictures of the
 // sheet, which axe takes for images: their contrast is this test's own, against the glass over the
@@ -181,7 +181,7 @@ test.each([
     const { root, bar, pen, clear, glass } = barOf(element);
     await userEvent.tab();
     for (const focused of [pen, clear]) {
-      // Clear stands before the zoom's two buttons, the last of the bar (R73).
+      // Clear stands before the zoom's two buttons, the last of the bar.
       if (focused === clear) await userEvent.keyboard("{End}{ArrowUp}{ArrowUp}");
       expect(root.activeElement).toBe(focused);
       expect(focused.matches(":focus-visible")).toBe(true);

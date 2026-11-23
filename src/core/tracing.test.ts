@@ -34,7 +34,7 @@ import {
 } from "./tracing.js";
 import { Work } from "./work.js";
 
-// The tracing paper of a task from paper (R87): its size and place, its strokes from its corner,
+// The tracing paper of a task from paper: its size and place, its strokes from its corner,
 // the history and the work that hold them, and the work for checking with the crop's picture.
 
 /** The value as a store that keeps JSON gives it back. */
@@ -97,7 +97,7 @@ describe("the tracing paper's size and place", () => {
     const state = tracingStateOf({ at: [-399, 13999], hidden: true, more: 1 }, size);
     expect(state).toEqual({ at: [-399, 13999], hidden: true, scale: 1 });
     expect(Object.isFrozen(state) && Object.isFrozen(state.at)).toBe(true);
-    // Past the page it is on the sheet still (R73).
+    // Past the page it is on the sheet still.
     expect(tracingStateOf({ at: [1000, 1400], hidden: false }, size).at).toEqual([1000, 1400]);
     for (const at of [
       [-400, 0],
@@ -287,7 +287,7 @@ describe("the work of a task from paper for checking", () => {
     expect(digest).not.toBe(
       digestOf(strokes, crop, groups, { at, scale: 1, onTracing: () => false }),
     );
-    // A scale tells in the digest; a scale of 1 adds nothing to it (R89).
+    // A scale tells in the digest; a scale of 1 adds nothing to it.
     expect(digest).not.toBe(digestOf(strokes, crop, groups, { ...paper, scale: 2 }));
   });
 

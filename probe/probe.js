@@ -1,4 +1,4 @@
-// The probe of a page opened from a file (R52): what the samples page's build would meet once a
+// The probe of a page opened from a file: what the samples page's build would meet once a
 // volunteer has downloaded it from a release and opened it on a device. probe/build.ts puts this
 // script inline into both files of the probe, one with the policy the build would carry and one
 // without it. The report holds only what it may: numbers, flags, the browser's string, the file's
@@ -155,7 +155,7 @@ void Promise.all(asked.map((request) => Promise.race([request, timeout]))).then(
   }, 200);
 });
 
-// A picture from a blob of the page's own, as the element gets the media of a task (R23).
+// A picture from a blob of the page's own, as the element gets the media of a task.
 const picture = document.getElementById("picture");
 const svg =
   '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16" fill="teal"/></svg>';

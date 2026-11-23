@@ -1,5 +1,5 @@
-// The samples page in an Android emulator, on a pull request that changes what goes into it (R54,
-// R55). emulators/android.sh runs it in CI, in the toolchain stage's container on the runner's
+// The samples page in an Android emulator, on a pull request that changes what goes into it.
+// emulators/android.sh runs it in CI, in the toolchain stage's container on the runner's
 // network, once the emulator is up and emulators/serve.ts hands out build/page, which the
 // workflow's build job wrote with scripts/page.ts, and the test build beside it on a port of its
 // own:
@@ -11,7 +11,7 @@
 // emulators/watch.ts into the page and loads it again under it, with the requests it makes
 // recorded. A stroke is drawn through the emulator's own touchscreen, and the save button pressed
 // by a tap. The moves of the emulators' checklist — a stroke Chrome cancels, the buttons of the
-// element's row, two fingers — are Chrome's own touches, sent through DevTools (R65). The files
+// element's row, two fingers — are Chrome's own touches, sent through DevTools. The files
 // the page saved come off the device into the run's folder saved/, for the workflow's job of the
 // saved files to read. The release build goes first, then the test build, each a run of its own.
 // The strokes are the code's: no handwriting goes into a run. It needs adb (ADB) and the servers'
@@ -216,7 +216,7 @@ class Chrome implements Device {
     return "by the touchscreen";
   }
 
-  /** Chrome's own touches, sent through DevTools in the page's CSS pixels (R65): the fingers of
+  /** Chrome's own touches, sent through DevTools in the page's CSS pixels: the fingers of
    * the paths come down together, move along them in steps, and end as the end says — lifted, or
    * taken back by the browser, which the page hears as a pointercancel. */
   private async touches(
@@ -275,7 +275,7 @@ class Chrome implements Device {
   }
 
   /** The sheet's file the page saved, as Chrome took it into its downloads, given to the section
-   * that opens a file through DevTools, as a picker would give it (R64). Should Chrome not read it
+   * that opens a file through DevTools, as a picker would give it. Should Chrome not read it
    * there, the page is given its text as a file of its own. */
   async openFile(text: string): Promise<string | undefined> {
     if (!this.tools) throw new Error("no page");

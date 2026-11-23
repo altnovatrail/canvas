@@ -3,7 +3,7 @@ import type { Point } from "./screen.js";
 import { REACH } from "./sheet.js";
 
 /**
- * A rectangle on the sheet, as rbush takes one (R05): in units, or in tenths of a unit where the
+ * A rectangle on the sheet, as rbush takes one: in units, or in tenths of a unit where the
  * rules count in whole numbers. The contract's Box, spec's, is one in tenths: of a crop's numbers.
  */
 export interface Box {
@@ -14,8 +14,8 @@ export interface Box {
 }
 
 /**
- * A length or a place in whole tenths of a unit, as a sample file keeps them (R09), rounded half
- * up: 100.05 units, 1000.5 tenths, are 1001. The groups and the crop count in them (R24, R25).
+ * A length or a place in whole tenths of a unit, as a sample file keeps them, rounded half
+ * up: 100.05 units, 1000.5 tenths, are 1001. The groups and the crop count in them.
  */
 export function tenths(value: number): number {
   return Math.round(value * 10);
@@ -27,9 +27,10 @@ export interface Extent extends Box {
 }
 
 /**
- * The box of a stroke's points in whole tenths (R25, R37): rounding keeps order, so its edges are
+ * The box of a stroke's points in whole tenths: rounding keeps order, so its edges are
  * the rounded least and most of the points. A stroke with no points is a TypeError, and one with a
- * point off the sheet, or no number, a RangeError: the rules' whole numbers hold on the sheet alone.
+ * point off the sheet, or no number, a RangeError: the rules' whole numbers hold on the sheet
+ * alone.
  */
 export function extentOf({ id, points }: Stroke): Extent {
   if (points.length === 0) throw new TypeError(`the stroke ${id} has no points`);
@@ -118,8 +119,9 @@ function pointDistance(p: Point, a: Point, b: Point): number {
 }
 
 /**
- * Whether ab and cd cross: each segment's ends lie on either side of the other's line. Segments that
- * only touch, or lie along one line, are left to the distances of their ends, which are 0 then.
+ * Whether ab and cd cross: each segment's ends lie on either side of the other's line. Segments
+ * that only touch, or lie along one line, are left to the distances of their ends, which are 0
+ * then.
  */
 function crosses(a: Point, b: Point, c: Point, d: Point): boolean {
   const abc = turn(a, b, c);

@@ -8,7 +8,7 @@ import { userEvent } from "vitest/browser";
 /**
  * The mouse moved to the window's bottom right corner, where no element of a test stands: Vitest
  * keeps the page's pointer from test to test and from file to file, and an element laid out under
- * a pointer left over a bar's button would show that button's tooltip (R84).
+ * a pointer left over a bar's button would show that button's tooltip.
  */
 export async function rest(): Promise<void> {
   const corner = document.createElement("div");

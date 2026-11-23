@@ -1,7 +1,7 @@
-// The synthetic sheets of the tests, drawn by code as every test's strokes are: no hand wrote them
-// (R15). Each sheet comes with what a teacher sees on it, set down before any run of the code: its
-// groups (R24) and the median height its crop scales by (R25). The tests of the groups, of the crop
-// and of the marks take them; the test vectors are spec's (R94 spec). A module of the tests alone:
+// The synthetic sheets of the tests, drawn by code as every test's strokes are: no hand wrote them.
+//Each sheet comes with what a teacher sees on it, set down before any run of the code: its
+// groups and the median height its crop scales by. The tests of the groups, of the crop
+// and of the marks take them; the test vectors are spec's. A module of the tests alone:
 // the build leaves it out, as it leaves out the tests (tsconfig.build.json), and the package check
 // holds to that (scripts/package.ts).
 
@@ -9,8 +9,8 @@ import { DIGITS, type Font, Hand, random, spot, TUTOR } from "../eval/hand.js";
 import type { Stroke } from "./ink.js";
 import { Work } from "./work.js";
 
-// The hand that writes these sheets is src/eval/hand.ts, which the synthetic samples draw with too
-// (R49); the tests that wrote their own sheets with it, or took a seed's numbers, take it from here.
+// The hand that writes these sheets is src/eval/hand.ts, which the synthetic samples draw with too;
+//the tests that wrote their own sheets with it, or took a seed's numbers, take it from here.
 export { Hand, random };
 
 /** A stroke of these points, each [x, y, t]: sheet units and the sheet's milliseconds. */
@@ -20,7 +20,8 @@ export function stroke(id: number, ...points: (readonly [number, number, number]
 
 /**
  * A crowded sheet of a seed: up to 40 strokes of one to five points, writing and lines, anywhere on
- * the sheet, to hundredths of a unit, which the rules round. The crop's test and the marks' take it.
+ * the sheet, to hundredths of a unit, which the rules round. The crop's test and the marks' take
+ * it.
  */
 export function crowd(seed: number): Stroke[] {
   const next = random(seed);
@@ -42,7 +43,7 @@ export function crowd(seed: number): Stroke[] {
 
 /**
  * A sheet for the crop, with the height of its writing as a teacher sees it: the median its crop
- * scales by, in units, set down before any run of the rule (R25).
+ * scales by, in units, set down before any run of the rule.
  */
 export interface CropSheet {
   readonly name: string;
@@ -53,7 +54,7 @@ export interface CropSheet {
 
 /**
  * A sheet, with the groups a teacher sees on it: set down by the IDs of their strokes before any
- * run of the rule (R24). The crop takes it too.
+ * run of the rule. The crop takes it too.
  */
 export interface Sheet extends CropSheet {
   readonly groups: readonly (readonly number[])[];
@@ -373,7 +374,7 @@ export const SHEETS: readonly (() => Sheet)[] = [
 ];
 
 // The sheets of the crop: what the median of its bundles meets — drawings, fractions, rows that
-// touch, signs and lines — and the bounds of its rule (R25). The median of each is the height of
+// touch, signs and lines — and the bounds of its rule. The median of each is the height of
 // its writing as a teacher sees it, and where the rule falls short of that, what the rule gives:
 // the lone drawing and the rows that touch say so.
 

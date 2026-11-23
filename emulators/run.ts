@@ -1,4 +1,4 @@
-// The journal of a run in an emulator or a simulator (R54): the probe's drivers and the samples
+// The journal of a run in an emulator or a simulator: the probe's drivers and the samples
 // page's write it alike. Each step says what it did, whether it did it, and whose failure a failed
 // step is: the device's — the emulator, the browser, the download, the driver's way into the page
 // — or the page's own. A failure of the device may be the runner's luck and earns one more pass; a

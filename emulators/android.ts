@@ -31,7 +31,7 @@ export const AWAY = /^(Download|Download anyway|Keep|No thanks|Don.t allow|Not n
 export const HOST = "localhost";
 /** The runner's port that emulators/android.sh forwards Chrome's DevTools socket to. */
 const DEVTOOLS_PORT = 9222;
-/** How long an adb command of the recovery may take before it counts as failed (R54). */
+/** How long an adb command of the recovery may take before it counts as failed. */
 const ADB_WAIT = 15_000;
 
 /** A node of uiautomator's dump: its text, its description, its bounds on the screen and, where
@@ -261,7 +261,7 @@ export class Android {
   }
 
   /** Whether adb reaches the device: a runner's emulator can go offline in the middle of a run,
-   * and nothing brings it back by itself before the run's end (R54). */
+   * and nothing brings it back by itself before the run's end. */
   online(): boolean {
     try {
       const state = execFileSync(this.adb, ["get-state"], {
@@ -290,7 +290,7 @@ export class Android {
   }
 
   /** Chrome stopped, for a pass or a build to begin afresh: the emulator brought back first where
-   * adb has lost it, and the forwards set again either way (R54). */
+   * adb has lost it, and the forwards set again either way. */
   async reset(ports: readonly string[], pause = 3000): Promise<void> {
     if (!this.online()) {
       this.run.log("the emulator is offline: adb reconnects it");

@@ -1,29 +1,29 @@
 // The build of the samples page (R55): one HTML file that opens from a file on the device and goes
-// to no network (R25 spec; R08, R11), of page/index.html and page/main.ts with the element and all
+// to no network, of page/index.html and page/main.ts with the element and all
 // they take inline:
 //
 //   node scripts/page.ts <folder> <version> [--texts <part>]
 //
 // writes <folder>/samples-page_v<version>.html, with the current sets of texts of spec's release
-// file of the legal texts in tasks/, held to its sum (R69; scripts/legal.ts), on the day of the
-// build, or of SOURCE_DATE_EPOCH to repeat a build of another day (R78): a purpose with no current
+// file of the legal texts in tasks/, held to its sum (scripts/legal.ts), on the day of the
+// build, or of SOURCE_DATE_EPOCH to repeat a build of another day: a purpose with no current
 // set is closed. --texts names a part of the legal texts for tests instead, whose sets begin with
-// test-, and only into a page of version 0.0.0, which no release has (R58). It builds from the tree
+// test-, and only into a page of version 0.0.0, which no release has. It builds from the tree
 // alone — no spec/, no git, no token, no network — in the stage toolchain-core, as release-files
 // takes it. Vite's API bundles page/main.ts into one script; the page's own style stays as it is.
 // The policy of scripts/csp.ts goes into a <meta> element with the hashes of both. The tasks are
-// worked out here, from tutor's file of open tasks in tasks/, checked against its sum (R49), and
+// worked out here, from tutor's file of open tasks in tasks/, checked against its sum, and
 // put into the bundle: a page has no synchronous hash for openTasksOf. Every task of the file goes
-// in, bank by bank (R62): openTasksOf refuses a task with a field outside the open view, so no key,
+// in, bank by bank: openTasksOf refuses a task with a field outside the open view, so no key,
 // solution or trap reaches the file a release carries, and a task that names a picture stops the
 // build, since tutor's file carries no media for it. So do the tasks of modules, for an eval set,
-// of the copy of what module-kit open wrote in tasks/modules-<tag>/, held to its sum (R71;
-// scripts/modules.ts): each module's sheets of one answer slot anywhere or on the whole sheet and
+// of the copy of what module-kit open wrote in tasks/modules-<tag>/, held to its sum
+// (scripts/modules.ts): each module's sheets of one answer slot anywhere or on the whole sheet and
 // its pages of a workbook, with the files of media/ their statements name, inline, and its
 // manifest; a choice the learner taps, which app shows, the page leaves out. The license notices
 // of all the code the file carries — its own, every package bundled, the icons' set — go into the
 // file itself, and the notices of the modules whose tasks it carries; a package under a license
-// off the list stops the build (R12; scripts/notices.ts).
+// off the list stops the build (scripts/notices.ts).
 
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -51,7 +51,7 @@ const TEST_PREFIX = "test-";
 
 /**
  * The day in UTC the build reads the legal texts on: the day of SOURCE_DATE_EPOCH, the seconds of
- * a build that is to repeat another, or else today (R78). Two builds of one tree on one day are the
+ * a build that is to repeat another, or else today. Two builds of one tree on one day are the
  * same bytes, and so are a release's and a rebuild of its tree on another day given the day of the
  * release: a set whose day came between them would differ otherwise.
  */
@@ -66,7 +66,7 @@ export function buildDay(env: NodeJS.ProcessEnv = process.env): string {
 
 /** The texts of a page of a version: each purpose's current set on the day in the release file of
  * spec's legal texts — or, given a part for tests, in that part, for a page of version 0.0.0 alone,
- * which no release of canvas has (R58), read against the schema the release file carries. */
+ * which no release of canvas has, read against the schema the release file carries. */
 export function textsFor(version: string, part?: string, day = buildDay()): PageTexts {
   if (part !== undefined && version !== "0.0.0") {
     throw new Error(`the texts of ${part} are for tests: they go into no page but 0.0.0`);
@@ -94,8 +94,8 @@ function escaped(text: string): string {
   return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
-/** The notices of a file: its own code's license, each package's, the icons' NOTICE (R46), and
- * those of the modules whose tasks it carries (R71). */
+/** The notices of a file: its own code's license, each package's, the icons' NOTICE, and
+ * those of the modules whose tasks it carries. */
 export function notices(
   own: string,
   packages: readonly Carried[],
@@ -200,10 +200,11 @@ export function pageTasksOf(
 
 /**
  * The tasks of modules the page offers, of the open views of the copy, module by module in its
- * order, each task and template's instance that kindOf gives a kind: a choice the learner taps, which
- * app shows (R42), stays out. Beside them, of each module that has one, its manifest and the files of
- * media/ the statements of its tasks name, with their types, in base64, which `file` gives by the
- * module, the version and the path. A picture of another type, or a path outside media/, is an Error.
+ * order, each task and template's instance that kindOf gives a kind: a choice the learner taps,
+ * which app shows, stays out. Beside them, of each module that has one, its manifest and the files
+ * of media/ the statements of its tasks name, with their types, in base64, which `file` gives by
+ * the module, the version and the path. A picture of another type, or a path outside media/, is an
+ * Error.
  */
 export function moduleTasksFor(
   modules: readonly ModuleViews[],
@@ -242,8 +243,8 @@ export function modulesFolder(tag: string): string {
 
 /**
  * The tasks the page offers, with their open views and references: from tutor's file in tasks/, for
- * the measurement and a child's session, and from the copy of the open views of modules, for an eval
- * set, each held to its sum; and the modules' manifests and media.
+ * the measurement and a child's session, and from the copy of the open views of modules, for an
+ * eval set, each held to its sum; and the modules' manifests and media.
  */
 async function tasksOf(): Promise<{
   tasks: PageTask[];
@@ -287,7 +288,7 @@ async function tasksOf(): Promise<{
 
 /**
  * The notices of the modules whose tasks a page carries, by "<ID> <version>", from the copy of the
- * open views in `copy` (R71): the license its manifest names, with the text of its LICENSE — or,
+ * open views in `copy`: the license its manifest names, with the text of its LICENSE — or,
  * when that is canvas's own, `own`, the first part's — and its NOTICE, which holds the notices of
  * what the module took from others, when it has one. A manifest that names no license is an Error.
  */

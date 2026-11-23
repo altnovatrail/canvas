@@ -7,8 +7,8 @@ import { type Media, NovatrailCanvas, type Task } from "./index.js";
 import { arrive, at, deferred, file, level, settle, watch } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
-// The task's statement above the sheet in a browser (R23): its text, its language, which the
-// module's manifest gives (R32), and its pictures, which come from the consumer's media, the frames
+// The task's statement above the sheet in a browser: its text, its language, which the
+// module's manifest gives, and its pictures, which come from the consumer's media, the frames
 // that stand in for them, and the addresses of their files, which go when the pictures leave.
 
 const made: HTMLElement[] = [];
@@ -75,12 +75,11 @@ test("the statement stands above the sheet as text, in the module's language, an
   const sheetBox = root.querySelector(".sheet")?.getBoundingClientRect();
   const above = statement.getBoundingClientRect();
   expect(sheetBox?.top).toBeGreaterThanOrEqual(above.bottom);
-  // The bar of the element's own buttons stands over the column, in no room of its own (R84):
+  // The bar of the element's own buttons stands over the column, in no room of its own:
   // nothing stands above the statement.
   const box = element.getBoundingClientRect();
   expect(above.top).toBeCloseTo(box.top, 0);
-  // The page and, past it, two views of the window more of the sheet down, at the window's own fit
-  // (R73).
+  // The page and, past it, two views of the window more of the sheet down, at the window's own fit.
   expect(box.height).toBeCloseTo(above.height + (sheetBox?.height ?? 0), 0);
   const fit = Math.min(window.innerWidth / 1000, 1);
   expect(

@@ -1,7 +1,7 @@
-// The watch the drivers of the samples page put into it (R54): its pure parts, and the watch itself
-// in the page's build opened by file:// in Chrome Headless Shell from the toolchain stage (R13), as
+// The watch the drivers of the samples page put into it: its pure parts, and the watch itself
+// in the page's build opened by file:// in Chrome Headless Shell from the toolchain stage, as
 // the drivers use it in the emulators — a stroke, a save, the workbook's page, and a page that
-// asks for the network, which it must see; and the scripts of the checklist's moves (R65): a stroke
+// asks for the network, which it must see; and the scripts of the checklist's moves: a stroke
 // cancelled, the eraser and undo, two fingers, the page opened anew with a file opened in it, and
 // the test build's child's session.
 
@@ -96,7 +96,7 @@ describe("the pure parts", () => {
     // Wholly above the window, or a strip of it too thin to draw in: no stroke.
     expect(strokeIn({ x: 0, y: -900, width: 100, height: 800, view: 1000 })).toBeUndefined();
     expect(strokeIn({ x: 0, y: 980, width: 100, height: 800, view: 1000 })).toBeUndefined();
-    // The sheet's second stroke, to the right of the first and apart from it (R65).
+    // The sheet's second stroke, to the right of the first and apart from it.
     expect(strokeIn({ x: 10, y: 100, width: 500, height: 400, view: 1000 }, true)).toEqual([
       [310, 220],
       [410, 300],
@@ -212,7 +212,7 @@ describe("the pure parts", () => {
 describe("in the page's build", () => {
   let folder: string;
   let file: string;
-  /** The test build, with the legal texts' part for tests alone (R59, R69). */
+  /** The test build, with the legal texts' part for tests alone. */
   let tested: string;
   let browser: Browser;
 
@@ -263,7 +263,7 @@ describe("in the page's build", () => {
     const page = await opened(file);
     try {
       expect(await read(page)).toMatchObject({ watched: true, defined: true, tasks: TASKS });
-      // Through the start, as the drivers go (R58): then the sheet is there, laid out a frame on.
+      // Through the start, as the drivers go: then the sheet is there, laid out a frame on.
       expect(await page.evaluate(START)).toBe(true);
       await framed(page);
       // The spy on Blob keeps a blob the browser makes a Blob to the page, as the element asks.
@@ -369,7 +369,7 @@ describe("in the page's build", () => {
       expect(after.events).toBe(before.events);
       expect(after.scrolled).toBeGreaterThan(before.scrolled);
       expect(await page.evaluate(clickButton("Нет такой"))).toBe(false);
-      // The sheet saved, then the page opened anew and its file opened in it (R64).
+      // The sheet saved, then the page opened anew and its file opened in it.
       await page.evaluate(MARKUP);
       await until(page, MARKING);
       expect(await page.evaluate(MARK)).toBe(true);

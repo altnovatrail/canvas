@@ -1,4 +1,4 @@
-// The synthetic samples of a module's eval set (R110 spec; R63, R68): one of each task and seed the
+// The synthetic samples of a module's eval set: one of each task and seed the
 // call names, on the package that module-kit build wrote of the module at the commit the samples go
 // into — its inventory.json and server.json —, naming the newest release of modules by its tag.
 // Into the folder, the module's eval/, go synthetic-<seed>.json files. A file there already of the
@@ -15,7 +15,7 @@
 //
 // The second prints each task's ID and the digest of its open view, by the projection the samples
 // name it by: a module's CI holds people's samples to the package of its commit with it, and a
-// task of a changed open view loses them (R95 spec). A template has no open view, and a task the
+// task of a changed open view loses them. A template has no open view, and a task the
 // package does not have no digest: the call prints the others' lines and names those, exit 1.
 
 import { createHash } from "node:crypto";

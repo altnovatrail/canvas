@@ -31,9 +31,9 @@ import {
 } from "./sample.js";
 
 // The sheets and the pages of these tests are the synthetic ones of the tests of the groups, the
-// crop and the boxes, drawn by code: no hand wrote them (R15). The files they write into
+// crop and the boxes, drawn by code: no hand wrote them. The files they write into
 // examples/ are synthetic samples, one of each composition, which spec's sample-check holds to the
-// protocol in ci-licenses (R48).
+// protocol in ci-licenses.
 
 /** The task of a sheet the examples answer: one of the open tasks of tutor v0.1.1, as spec's are. */
 const SHEET_TASK: MessageInitShape<typeof TaskReferenceSchema> = {
@@ -255,7 +255,7 @@ describe("the history of writing", () => {
       for (const point of event.value.points) {
         expect(Number.isInteger(point.tMs)).toBe(true);
         expect(Math.round(point.x * 10) / 10).toBe(point.x);
-        // A stroke lands no sooner than its last point (R22).
+        // A stroke lands no sooner than its last point.
         expect(point.tMs).toBeLessThanOrEqual(tMs);
       }
     }

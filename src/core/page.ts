@@ -1,23 +1,23 @@
-// The layout of a workbook's page (R34, R35): where the template puts each item's number, the
+// The layout of a workbook's page (R35): where the template puts each item's number, the
 // pieces of its line and its boxes, in whole page units, from the task's items alone. The page is
-// the sheet's, 1000 × 1400 units (R06), and the boxes stay where the layout puts them on any
+// the sheet's, 1000 × 1400 units, and the boxes stay where the layout puts them on any
 // device: the widths of the text come from the canvas's own table (widths.ts), and SVG fits the
 // text to them. Short lines stand two to a row, in the task's order; a long line takes the page's
 // width and wraps. A task whose lines do not fit is a TypeError: nothing shrinks. The numbers and
 // the rule are the module format's, its page.yaml and its test vectors, which the npm package
-// @altnovatrail/spec carries and the tests hold the layout to (R60; R51 spec): they change only
-// with the format, for histories know neither the task nor the layout (R34). The core's entry
+// @altnovatrail/spec carries and the tests hold the layout to: they change only
+// with the format, for histories know neither the task nor the layout. The core's entry
 // point does not give the layout.
 
 import { SHEET } from "./sheet.js";
 import type { WorkbookItem } from "./task.js";
 import { clustersOf, clusterWidth, SPACE, wordsOf, wordWidth } from "./widths.js";
 
-/** The numbers of the layout (R35), in page units, the type size among them. */
+/** The numbers of the layout, in page units, the type size among them. */
 export interface Layout {
   /** The type size of the line's text. */
   readonly size: number;
-  /** A box, the same for the whole task (R34). */
+  /** A box, the same for the whole task. */
   readonly boxWidth: number;
   readonly boxHeight: number;
   /** The height of a line of text without a box. */
@@ -36,7 +36,7 @@ export interface Layout {
   readonly margin: number;
 }
 
-/** The layout the workbook has: a sweep chose it around the box the author chose (R35). */
+/** The layout the workbook has: a sweep chose it around the box the author chose. */
 export const LAYOUT: Layout = Object.freeze({
   size: 30,
   boxWidth: 100,
@@ -50,7 +50,7 @@ export const LAYOUT: Layout = Object.freeze({
   margin: 40,
 });
 
-/** A piece of a line's text, or its part on one line of the page: one `<text>` (R34, R35). */
+/** A piece of a line's text, or its part on one line of the page: one `<text>`. */
 export interface PageText {
   readonly text: string;
   /** Where it starts, and its alphabetic baseline, in page units. */
@@ -170,8 +170,8 @@ function measuresOf(layout: Layout): Measures {
 
 /**
  * The width of a text as one piece on one line, in whole units: its words and the spaces between
- * them, as the layout measures a fragment of a piece (R35). A worked example's value is held to its
- * box's width by it (the format's rule lesson.workbook-page; R60), and drawn at it.
+ * them, as the layout measures a fragment of a piece. A worked example's value is held to its
+ * box's width by it (the format's rule lesson.workbook-page), and drawn at it.
  */
 export function pieceWidth(text: string, layout: Layout = LAYOUT): number {
   const words = wordsOf(text);
@@ -187,7 +187,7 @@ function textWidth(layout: Layout, hundredths: number): number {
 }
 
 /**
- * The page of a workbook's items (R35): a function of the items alone, in whole units, frozen. A
+ * The page of a workbook's items: a function of the items alone, in whole units, frozen. A
  * row that does not fit is a TypeError at the first item of it, `task.items[i]`.
  */
 export function pageOf(items: readonly WorkbookItem[], layout: Layout = LAYOUT): Page {
