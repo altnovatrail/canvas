@@ -8,7 +8,7 @@ import type { Stroke } from "./ink.js";
 import type { Point } from "./screen.js";
 
 /**
- * An action on the sheet, the thing undo takes back (R19, R22): a stroke written; strokes erased,
+ * An action on the sheet, the thing undo takes back: a stroke written; strokes erased,
  * each with the place it had on the sheet; or the sheet cleared, with the strokes that were on it.
  */
 type Action =
@@ -29,8 +29,8 @@ interface Entry extends Box {
 
 /**
  * The work on the sheet: the strokes in sight, the stack of the actions that undo takes back, the
- * last first (R19), and the history of writing, every action as an event at the sheet's time
- * (R22). Clearing and erasing are actions too, so undo brings their strokes back. Nothing is
+ * last first, and the history of writing, every action as an event at the sheet's time.
+ * Clearing and erasing are actions too, so undo brings their strokes back. Nothing is
  * redone. The times its methods take are the page's, and the sheet's clock turns one into the
  * sheet's time only when the action lands: an undo that has nothing to take back is no event. A
  * history given to the sheet is replayed by the same rules, each action at its own time (R27).
@@ -51,7 +51,7 @@ export class Work {
   #index = new RBush<Entry>();
   #indexed: readonly Stroke[] = this.#strokes;
   readonly #entries = new WeakMap<Stroke, Entry>();
-  /** The IDs of the strokes written on the tracing paper of a task from paper (R87). */
+  /** The IDs of the strokes written on the tracing paper of a task from paper. */
   readonly #tracing = new Set<number>();
 
   constructor(clock = new Clock()) {
@@ -59,15 +59,15 @@ export class Work {
   }
 
   /**
-   * The work a history of writing given to the sheet leaves (R27): its strokes, its stack of
+   * The work a history of writing given to the sheet leaves: its strokes, its stack of
    * actions for undo and the history itself, in frozen objects of the work's own. The events are
-   * checked as `historyOf` checks them, then replayed by the work's own rules, each at its own time,
-   * and each must be what the work records for it: an erasing takes off strokes on the sheet, in
-   * the sheet's order; a clearing clears a sheet with strokes, all of them; an undo takes back the
-   * last action still in force and says what the stack says. A history the sheet could not have
+   * checked as `historyOf` checks them, then replayed by the work's own rules, each at its own
+   * time, and each must be what the work records for it: an erasing takes off strokes on the sheet,
+   * in the sheet's order; a clearing clears a sheet with strokes, all of them; an undo takes back
+   * the last action still in force and says what the stack says. A history the sheet could not have
    * written is a TypeError that names the event. The clock is not asked: it goes on as the sheet
-   * that takes the work tells it (`Clock.resume`). On a task from paper, `paper`, a stroke may
-   * be the tracing paper's (R87).
+   * that takes the work tells it (`Clock.resume`). On a task from paper, `paper`, a stroke may be
+   * the tracing paper's.
    */
   static restore(value: unknown, clock: Clock, paper = false): Work {
     const work = new Work(clock);
@@ -90,8 +90,8 @@ export class Work {
   }
 
   /**
-   * Whether undo has an action to take back (R19): the stack is not empty. The element's Undo
-   * button stands unavailable while it is (R28).
+   * Whether undo has an action to take back: the stack is not empty. The element's Undo
+   * button stands unavailable while it is.
    */
   get undoable(): boolean {
     return this.#done.length > 0;
@@ -99,7 +99,7 @@ export class Work {
 
   /**
    * Whether a stroke of this ID was written on the tracing paper of a task from paper, its points
-   * from the paper's corner (R87).
+   * from the paper's corner.
    */
   onTracing(id: number): boolean {
     return this.#tracing.has(id);
@@ -125,7 +125,7 @@ export class Work {
    * than a longer one, for an array once handed out never changes: a clearing keeps the one it
    * cleared, and whoever read `strokes` keeps what they read. It lands at the sheet's latest time:
    * its last point's, unless an action landed while it was under way and it ended without its
-   * pointerup, its last point earlier. A stroke on the tracing paper says so, `on` (R87).
+   * pointerup, its last point earlier. A stroke on the tracing paper says so, `on`.
    */
   write(stroke: Stroke, on?: "tracing"): void {
     this.#write(stroke, Math.max(this.#clock.latest, stroke.points.at(-1)?.t ?? 0), on);
@@ -155,9 +155,9 @@ export class Work {
   /**
    * The strokes on the sheet whose line comes within `reach` of the segment from `from` to `to`, in
    * sheet units: the index finds those whose box is near enough, and the distance to each segment
-   * of their points decides (R05). A segment whose ends are one point is that point. On a task from
+   * of their points decides. A segment whose ends are one point is that point. On a task from
    * paper an erasing takes the strokes of one layer alone, `layer`: the tracing paper's, its
-   * points from its corner, or the sheet's (R87).
+   * points from its corner, or the sheet's.
    */
   near(from: Point, to: Point, reach: number, layer?: "tracing" | "sheet"): Stroke[] {
     const hits: Stroke[] = [];
@@ -172,8 +172,8 @@ export class Work {
 
   #write(stroke: Stroke, t: number, on?: "tracing"): void {
     // A history replayed writes its strokes one after another, without a copy of the sheet for
-    // each: thousands of strokes would copy the sheet thousands of times. A clearing keeps the array
-    // it cleared and leaves the sheet a new one, so no array an action keeps grows by it.
+    // each: thousands of strokes would copy the sheet thousands of times. A clearing keeps the
+    // array it cleared and leaves the sheet a new one, so no array an action keeps grows by it.
     if (this.#replaying) (this.#strokes as Stroke[]).push(stroke);
     else this.#strokes = [...this.#strokes, stroke];
     this.#done.push({ kind: "write", stroke });
@@ -273,7 +273,7 @@ export class Work {
   }
 }
 
-/** The ID the next stroke takes after a history (R27): one past the highest written, or 1. */
+/** The ID the next stroke takes after a history: one past the highest written, or 1. */
 export function nextIdOf(history: readonly HistoryEvent[]): number {
   let highest = 0;
   for (const event of history) {
@@ -283,8 +283,8 @@ export function nextIdOf(history: readonly HistoryEvent[]): number {
 }
 
 /**
- * Where the sheet's clock goes on after a history given to it (R27): past its last event by more
- * than the pause of the groups (R24), so that the first stroke after it is no neighbour of its
+ * Where the sheet's clock goes on after a history given to it: past its last event by more
+ * than the pause of the groups, so that the first stroke after it is no neighbour of its
  * strokes; at 0 after an empty history, which is a new sheet's.
  */
 export function resumeOf(history: readonly HistoryEvent[]): number {

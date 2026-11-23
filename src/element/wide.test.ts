@@ -26,12 +26,13 @@ import {
 import { probe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
 
-// The sheet past the task's page in a browser (R73): the page fits the width up to a pixel a unit
+// The sheet past the task's page in a browser: the page fits the width up to a pixel a unit
 // at the sheet's left, and the sheet goes on as far as the ink and one view more right, two down,
-// within its reach, at the page's zoom of 1, which zoom.test.ts changes. The container scrolls it across as well as down — by the
-// wheel, the keys, two fingers and the hand, for the bar has no buttons that scroll it (R84; R88)
-// — the statement staying as wide as the page. The canvas stays as small as the container, and the
-// input and the eraser stay in units of the sheet. A worked example's sheet is its page alone.
+// within its reach, at the page's zoom of 1, which zoom.test.ts changes. The container scrolls it
+// across as well as down — by the wheel, the keys, two fingers and the hand, for the bar has no
+// buttons that scroll it — the statement staying as wide as the page. The canvas stays as small as
+// the container, and the input and the eraser stay in units of the sheet. A worked example's sheet
+// is its page alone.
 
 const made: HTMLElement[] = [];
 afterEach(async () => {
@@ -280,7 +281,7 @@ test("a stroke on a sheet scrolled across lands in sheet units past the page, wi
   element.tool = "pen";
   element.undo();
   expect(probe(element).strokes.map((each) => each.id)).toEqual([1, 2]);
-  // The picture is the page and the ink past it, scaled down to the page's bytes (R83).
+  // The picture is the page and the ink past it, scaled down to the page's bytes.
   const picture = await createImageBitmap(await element.exportPicture());
   const right = Math.max(
     ...probe(element).strokes.flatMap((each) => each.points.map(({ x }) => x)),
@@ -303,7 +304,7 @@ test("an element without a height, whose sheet is wider than it, is a region wit
   expect(viewport.getAttribute("tabindex")).toBe("0");
   expect(viewport.getAttribute("role")).toBe("region");
   expect(viewport.getAttribute("aria-label")).toBe("Sheet");
-  // No scrollbar takes a strip of the sheet, across or down (R73).
+  // No scrollbar takes a strip of the sheet, across or down.
   expect(viewport.offsetWidth - viewport.clientWidth).toBe(0);
   expect(viewport.offsetHeight - viewport.clientHeight).toBe(0);
   await axeOf(element);
@@ -433,7 +434,7 @@ test("every layer shows the sheet by the canvas's one view, scrolled across and 
   expect([vx, vy]).toEqual([expect.closeTo(250 / k, 3), expect.any(Number)]);
   expect(vy).toBeGreaterThan(0);
   const rect = canvas.getBoundingClientRect();
-  // The tracing paper's layer shows a task from paper's alone (R87).
+  // The tracing paper's layer shows a task from paper's alone.
   for (const svg of root.querySelectorAll<SVGSVGElement>('.stage > svg:not([display="none"])')) {
     // A point of the sheet stands on the screen where the canvas draws it.
     const matrix = svg.getScreenCTM();
@@ -495,7 +496,7 @@ test("a worked example's sheet is its page alone: as wide as the container, with
   same(extentOf(root, view()), expected());
 });
 
-// The hand (R88): a tool of the bar that moves the sheet under any pointer and writes nothing.
+// The hand: a tool of the bar that moves the sheet under any pointer and writes nothing.
 
 /** A pointer on the canvas, made by a script, at client points: a mouse's unless told. */
 function pointer(canvas: HTMLCanvasElement, init: PointerEventInit = {}) {
@@ -612,7 +613,8 @@ test.runIf(devtools)(
 );
 
 test("under the consumer's padding the grid goes on above the sheet and below it, a ruling on each step, and a padding of none shows no band", async () => {
-  // A task from paper: its statement is the tracing paper, and the element draws none above the sheet.
+  // A task from paper: its statement is the tracing paper, and the element draws none above the
+  // sheet.
   const { element, root, view } = await placed(made, 400, 300);
   element.paper = { statement: await paperCrop() };
   element.grid = "squares";

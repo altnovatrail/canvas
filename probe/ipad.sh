@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The iPad's run of the probe on a runner of macOS (R54): an iPad simulator of the iOS runtime IOS
+# The iPad's run of the probe on a runner of macOS: an iPad simulator of the iOS runtime IOS
 # names, WebDriverAgent started on it — its build for testing from the workflow's cache, or built
 # from its tag by the runner's Xcode on a miss (R80) —, then probe/ipad.ts. What the run ran on goes
 # into build/probe-ipad beside what it found.
@@ -13,7 +13,7 @@ mkdir -p "$out"
 # keys the cache of its build by this file's sha256 and by the commit, read from this line.
 wda_tag=v16.15.3
 wda_commit=02cb92f0e93c8b021443bcbb8eeb80932c113220
-# The build for testing, which the workflow's cache holds (R80): the .xctestrun file and the apps
+# The build for testing, which the workflow's cache holds: the .xctestrun file and the apps
 # it names, all test-without-building needs, and the commit it was built from.
 products=build/wda/Build/Products
 runner=com.facebook.WebDriverAgentRunner.xctrunner
@@ -40,7 +40,7 @@ build() {
 }
 
 # WebDriverAgent started from a build for testing of the pinned commit, in the background, its log
-# into the file named, and whether it answered within ten minutes, by the clock (R54, R80): on a
+# into the file named, and whether it answered within ten minutes, by the clock: on a
 # loaded runner xcodebuild itself has taken 8 minutes to its first line. One that did not answer
 # is stopped, its runner on the simulator too, so that no stale agent holds the port.
 start() {

@@ -89,7 +89,7 @@ describe("the release file", () => {
   });
 
   // No line of CI's log gives this test's time: it is the test below's 4 804 ms on the runner,
-  // scaled by their ratio on one machine, 1 956 ms for the part read on eight days to 724 (R75).
+  // scaled by their ratio on one machine, 1 956 ms for the part read on eight days to 724.
   test("is read on a day: version 3 of the policy is the next until 2026-11-27, then the current, and version 5, of the same day as 4, from 2026-11-28", {
     timeout: budget(13_000),
   }, () => {
@@ -140,7 +140,7 @@ describe("the release file", () => {
       const reading = readingOf(validatorOf(schema), part, null, todayInUtc());
       if (!("current" in reading)) throw new Error("spec's part is refused");
       // The release's adults' sets are in force at the versions whose notices give the upload link
-      // 12 hours at most, and the child's is still a draft (R139 spec, R141 spec).
+      // 12 hours at most, and the child's is still a draft.
       expect(reading.current.sets).toEqual({ measure: 3, "eval-set": 2 });
       expect(Object.keys(part.files)).toContain("texts/privacy-policy/2.ru.md");
       for (const [file, bytes] of Object.entries(part.files)) {

@@ -1,14 +1,14 @@
-// The page to try the element on by hand, as app is to have it (R27): it listens on the element
+// The page to try the element on by hand, as app is to have it: it listens on the element
 // itself, as app is to, and gives a new element for each task, a reopened sheet and a worked
-// example (R20). It shows the element's own buttons, in the language the page gives and with the
-// tools the task allows (R28), and a pen's eraser, which erases whatever the tool is if the task
-// allows the eraser (R22); a task in the names of the module format and its manifest's
-// height of digits (R32); the dark theme by the element's custom properties (R23); a workbook's
-// page of the layout's corpus, its filled boxes and their crops (R35, R36, R37, R38); a worked
+// example. It shows the element's own buttons, in the language the page gives and with the
+// tools the task allows, and a pen's eraser, which erases whatever the tool is if the task
+// allows the eraser; a task in the names of the module format and its manifest's
+// height of digits; the dark theme by the element's custom properties; a workbook's
+// page of the layout's corpus, its filled boxes and their crops; a worked
 // example, whose progress it gives back to the next element as app is to, with the page's picture
-// from one call of its media (R42). Under the sheet it draws the stroke groups and the crop for
-// checking at every height of eval (R24, R25), and a box dragged over the crop, a group or a box
-// picked comes back to the element as a tutor's mark, which holds on to its strokes (R26, R39).
+// from one call of its media. Under the sheet it draws the stroke groups and the crop for
+// checking at every height of eval, and a box dragged over the crop, a group or a box
+// picked comes back to the element as a tutor's mark, which holds on to its strokes.
 // The page reads what the element made of the marks through the probe of the tests. Its tasks are
 // its own, made up, and it keeps nothing once it is closed.
 
@@ -153,7 +153,7 @@ function taskFor(n: number): Task {
 /**
  * The worked example of the page's number `n`: a sheet of the grid chosen, with a statement and its
  * picture, and the parts of its demo — a paragraph, a picture beside the sheet, one on an area of
- * it, and a paragraph — which the learner opens one at a time (R42).
+ * it, and a paragraph — which the learner opens one at a time.
  */
 function exampleFor(n: number): WorkedExample {
   return workedExample({
@@ -267,12 +267,12 @@ place.append(sheet);
 
 function count(): void {
   const told = `historychange × ${changes} · ${kept.length} events kept`;
-  // The answer slots the strokes fill, as the element tells: a workbook's boxes, or a sheet's answer
-  // anywhere or the whole sheet; nothing on a sheet of choices (R37, R42).
+  // The answer slots the strokes fill, as the element tells: a workbook's boxes, or a sheet's
+  // answer anywhere or the whole sheet; nothing on a sheet of choices.
   const boxes = sheet.filled?.flat() ?? [];
   const filled =
     sheet.filled === null ? "" : ` · filled ${boxes.filter(Boolean).length} of ${boxes.length}`;
-  // How far the learner has gone through a worked example's demo (R42).
+  // How far the learner has gone through a worked example's demo.
   const state = sheet.demoState;
   const parts = sheet.workedExample?.demo.length ?? 0;
   const demo =
@@ -307,9 +307,10 @@ function shape(name: string, attributes: Record<string, string | number>): SVGEl
 }
 
 /**
- * The groups of the strokes the sheet's history leaves, drawn under it in sheet units: each stroke a
- * line through its points, each group a box with its label, and the table of labels and stroke IDs
- * (R24). Then the crop of the strokes, with the frames of these groups (R25).
+ * The groups of the strokes the sheet's history leaves, drawn under it in sheet units: each stroke
+ * a line through its points, each group a box with its label, and the table of labels and stroke
+ * IDs.
+ * Then the crop of the strokes, with the frames of these groups.
  */
 function showGroups(): void {
   const strokes = replay(sheet.history);
@@ -371,7 +372,7 @@ function pictureFor(strokes: readonly Stroke[], shown: Crop): Uint8Array<ArrayBu
 
 /**
  * The crop for checking of the strokes, at the height of digits the manifest gives, with the
- * frames of the groups over it, and the crop's size at every height of eval (R25).
+ * frames of the groups over it, and the crop's size at every height of eval.
  */
 function showCrop(strokes: readonly Stroke[], groups: readonly Group[]): void {
   if (crop.src !== "") URL.revokeObjectURL(crop.src);
@@ -461,8 +462,8 @@ function forget(): void {
 }
 
 /**
- * What Check sends: the crop of exportWork() (R27), whose submission the page keeps, or on a
- * workbook the crop of each filled box (R38). Marks given before go: they were of the last
+ * What Check sends: the crop of exportWork(), whose submission the page keeps, or on a
+ * workbook the crop of each filled box. Marks given before go: they were of the last
  * submission. The work is null on an empty sheet, and on a workbook with no box filled.
  */
 async function send(): Promise<boolean> {
@@ -476,7 +477,7 @@ async function send(): Promise<boolean> {
   await showCells(work !== null && "cells" in work ? work.cells : []);
   if (work === null || "cells" in work) {
     sent.removeAttribute("src");
-    // On a workbook a mark stands on a filled box, by its item and its slot (R39).
+    // On a workbook a mark stands on a filled box, by its item and its slot.
     for (const { item, slot } of work?.submission.boxes ?? []) {
       pick(`${item}.${slot}`, { cell: { item, slot } }, `Box ${item}.${slot}`);
     }
@@ -501,7 +502,7 @@ function pick(text: string, at: Mark["at"], name: string): void {
   sentGroups.append(button);
 }
 
-/** The crops of a workbook's filled boxes Check sent, each with its place and its size (R38). */
+/** The crops of a workbook's filled boxes Check sent, each with its place and its size. */
 async function showCells(cells: readonly ExportedCell[]): Promise<void> {
   for (const image of sentCells.querySelectorAll("img")) URL.revokeObjectURL(image.src);
   sentCells.replaceChildren();
@@ -592,7 +593,7 @@ function onSent(event: PointerEvent): { readonly x: number; readonly y: number }
   };
 }
 
-/** The box between two places on the crop, in whole thousandths, min < max (R53 spec). */
+/** The box between two places on the crop, in whole thousandths, min < max. */
 function fractions(
   a: { readonly x: number; readonly y: number },
   b: { readonly x: number; readonly y: number },
@@ -660,7 +661,7 @@ let checking = false;
 /**
  * Check: the writing and the buttons stop at once, then the work for checking comes, and both stay
  * stopped while the models would think. A stroke already under way goes on: the element holds its
- * pointer (R20).
+ * pointer.
  */
 async function check(): Promise<void> {
   if (checking) return;
@@ -668,7 +669,7 @@ async function check(): Promise<void> {
   const checked = sheet;
   checked.style.pointerEvents = "none";
   for (const button of buttons) button.disabled = true;
-  // The pointer writes nothing meanwhile; the keys of the element's buttons still work (R28).
+  // The pointer writes nothing meanwhile; the keys of the element's buttons still work.
   status.textContent = "Checking: no writing with the pointer until it ends…";
   try {
     if (!(await send())) {
@@ -692,7 +693,7 @@ async function check(): Promise<void> {
 /**
  * The canvas kind, the page, the grid and the tools the controls give, by a new task: the work
  * stays. A step out of bounds, and a page whose lines do not fit, are left. A worked example comes
- * and goes as a new element, as the next segment of a lesson does (R20, R42), and its grid changes
+ * and goes as a new element, as the next segment of a lesson does, and its grid changes
  * by a new example.
  */
 function regrid(): void {

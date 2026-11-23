@@ -1,4 +1,4 @@
-// The generator's file (R68): one ES module for Node that writes a module's synthetic samples as
+// The generator's file: one ES module for Node that writes a module's synthetic samples as
 // writeModuleSamples does, byte for byte, with no package of npm beside it, the same bytes on every
 // build, and the license notices of all it carries.
 

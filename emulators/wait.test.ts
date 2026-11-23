@@ -1,4 +1,4 @@
-// Waiting for a sign within a time (R54), on a clock of the test's own: a wait lasts its seconds,
+// Waiting for a sign within a time, on a clock of the test's own: a wait lasts its seconds,
 // however long each try takes.
 
 import { expect, test } from "vitest";

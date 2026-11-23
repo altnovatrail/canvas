@@ -45,9 +45,9 @@ import {
 import { cellsForCheck } from "./submission.js";
 import { erased } from "./workbooks.fixture.js";
 
-// The tutor's marks on the sheet (R26), on strokes code draws, as every test's strokes are (R15):
+// The tutor's marks on the sheet, on strokes code draws, as every test's strokes are:
 // the synthetic sheets, crowded sheets of a seeded generator, and a few strokes of a test's own. A
-// submission is what the element gives with its crop (R27): the crop's numbers, the
+// submission is what the element gives with its crop: the crop's numbers, the
 // groups and their digest. The rule of snapping is checked against the rule written out once more
 // in BigInt from its words — the box laid on the sheet by the crop's sheet_box — where nothing
 // rounds.
@@ -59,7 +59,7 @@ const DIGITS = CROP.heights;
 type Fractions = readonly [number, number, number, number];
 
 /**
- * What the element gives with its crop at `digit` (R27): the crop's numbers, the groups and their
+ * What the element gives with its crop at `digit`: the crop's numbers, the groups and their
  * digest — the crop whole here, for the tests read its heights too.
  */
 function submissionOf(
@@ -808,7 +808,7 @@ describe("a workbook's marks (R39)", () => {
 const big = (value: number): bigint => BigInt(value);
 
 /**
- * The rule written out once more, from its words (R26): the box laid on the sheet by the crop's
+ * The rule written out once more, from its words: the box laid on the sheet by the crop's
  * `sheet_box` and widened there by H × margin / 1000 tenths, in exact fractions over 1000 × D′
  * tenths; a stroke taken with the share of its points in it, and one at least.
  */
@@ -918,7 +918,7 @@ describe("the rule written out once more", () => {
   });
 });
 
-/** A case of spec's vectors of the snapping (R94 spec). */
+/** A case of spec's vectors of the snapping. */
 interface SnapCase {
   readonly name: string;
   readonly digit_height: number;

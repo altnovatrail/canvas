@@ -1,9 +1,9 @@
-// The workbooks of the boxes' rule (R37): pages laid out by R35, with what a hand wrote in their
-// boxes and beside them, drawn by code as every test's strokes are. Each stroke comes with where
-// it belongs as a teacher sees it — its box, the draft, or either — set down as it was written,
-// before any run of the rule. The tests of the rule and its sweep take them, each at four
-// densities of points, and spec's test vectors hold some of them (R94 spec). A module of the
-// tests alone: the build leaves it out (tsconfig.build.json).
+// The workbooks of the boxes' rule: pages laid out by src/core/page.ts, with what a hand wrote in
+// their boxes and beside them, drawn by code as every test's strokes are. Each stroke comes with
+// where it belongs as a teacher sees it — its box, the draft, or either — set down as it was
+// written, before any run of the rule. The tests of the rule and its sweep take them, each at four
+// densities of points, and spec's test vectors hold some of them. A module of the tests alone: the
+// build leaves it out (tsconfig.build.json).
 
 import { type Density, fontOf, Hand, random } from "../eval/hand.js";
 import { type Cell, cellsOf } from "./boxes.js";
@@ -27,7 +27,7 @@ export interface Workbook {
   readonly places: ReadonlyMap<number, Place>;
   /**
    * The characters written in boxes, each its strokes: one whose strokes go different ways is cut
-   * in two, as the rule takes each stroke alone (R34).
+   * in two, as the rule takes each stroke alone.
    */
   readonly characters: readonly (readonly number[])[];
 }

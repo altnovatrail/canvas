@@ -17,7 +17,7 @@ import {
 import { probe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
 
-// A lesson's worked example on the element, in a browser (R42): the property workedExample, which
+// A lesson's worked example on the element, in a browser: the property workedExample, which
 // the element takes instead of a task, and the mode in which the learner does not write — the
 // canvas takes no input, a finger on the sheet scrolls it as the browser does, and there is no work
 // to give, to check or to mark. Its buttons are tools.test.ts's, its layers layers.test.ts's.
@@ -63,10 +63,10 @@ test("a worked example shows its statement above the sheet in the manifest's lan
   const statement = root.querySelector(".statement");
   expect(statement?.textContent).toBe(question);
   expect(statement?.getAttribute("lang")).toBe("ru");
-  // Its sheet is its page alone, ruled as far as it goes, once it is laid out (R73).
+  // Its sheet is its page alone, ruled as far as it goes, once it is laid out.
   await settle();
   expect(root.querySelector(".grid")?.getAttribute("d")).toBe(gridPath({ kind: "dots", step: 40 }));
-  // Nothing of a work: the learner does not write on a worked example's sheet (R42).
+  // Nothing of a work: the learner does not write on a worked example's sheet.
   expect(element.history).toEqual([]);
   expect(element.filled).toBeNull();
   expect(await element.exportWork()).toBeNull();
@@ -129,7 +129,7 @@ test("a worked example is a TypeError while a task is given, on a sheet written 
   erasing.lift();
   expect(element.history).toEqual([]);
   show();
-  // The example puts the pen back, as a task without the eraser does, with no event (R28).
+  // The example puts the pen back, as a task without the eraser does, with no event.
   expect(element.tool).toBe("pen");
   element.workedExample = undefined;
   level(canvas, view(), 200, 100, 300);
@@ -157,7 +157,7 @@ test("an example equal to the one shown changes nothing, and another changes its
   await settle();
   const paragraph = root.querySelector(".statement p");
   const grid = root.querySelector(".grid")?.getAttribute("d");
-  // The statement's picture and the demo's, each once, as the example comes (R42).
+  // The statement's picture and the demo's, each once, as the example comes.
   const asked = ["pictures/posts.png", "pictures/lamp.png", "pictures/path-in-gaps.png"];
   expect(media.mock.calls.map(([ref]) => ref)).toEqual(asked);
   const same = structuredClone(given) as WorkedExample;
@@ -187,7 +187,7 @@ test.runIf(devtools)(
     expect([style.pointerEvents, style.touchAction]).toEqual(["none", "auto"]);
     const point = at(canvas, view(), 500, 250);
     expect(root.elementFromPoint(point.clientX, point.clientY)).toBe(root.querySelector(".stage"));
-    // A finger: the browser scrolls the container, as on the statement (R23).
+    // A finger: the browser scrolls the container, as on the statement.
     const finger = { id: 1, ...point };
     await touches("touchStart", [finger]);
     for (let step = 1; step <= 10; step++) {
@@ -196,8 +196,8 @@ test.runIf(devtools)(
     await touches("touchEnd", []);
     await settle();
     expect(viewport.scrollTop).toBeGreaterThan(0);
-    // A pen and a mouse, through the browser's input, in the middle of what the container shows, and
-    // a pen's event a script sends the canvas.
+    // A pen and a mouse, through the browser's input, in the middle of what the container shows,
+    // and a pen's event a script sends the canvas.
     const box = viewport.getBoundingClientRect();
     const from = { clientX: box.left + 100, clientY: (box.top + box.bottom) / 2 };
     const to = { ...from, clientX: from.clientX + 100 };
@@ -247,7 +247,7 @@ test("undefined takes the worked example off: the sheet is one with no task agai
   element.workedExample = undefined;
   expect(element.workedExample).toBeUndefined();
   expect(root.querySelector(".statement")?.textContent).toBe("");
-  // The sheet goes past the page again, ruled as far as it goes (R73).
+  // The sheet goes past the page again, ruled as far as it goes.
   await settle();
   const box = root.querySelector(".sheet")?.getBoundingClientRect();
   const extent = {
@@ -263,7 +263,7 @@ test("undefined takes the worked example off: the sheet is one with no task agai
   expect(root.elementFromPoint(point.clientX, point.clientY)).toBe(canvas);
   level(canvas, view(), 200, 100, 300);
   expect(element.history).toHaveLength(1);
-  // A task may follow on the same element now, though app gives each segment a new one (R20).
+  // A task may follow on the same element now, though app gives each segment a new one.
   element.workedExample = undefined;
   element.task = sheetTask();
   expect(element.task).toBeDefined();
@@ -282,7 +282,7 @@ test("a worked example given before the element is upgraded is taken, and with a
     const taken = upgrade({ tool: "eraser", workedExample: given });
     expect(taken.workedExample).toBe(given);
     expect(taken.tool).toBe("pen");
-    // It has no bar (R84).
+    // It has no bar.
     expect(taken.shadowRoot?.querySelector<HTMLElement>(".tools")?.hidden).toBe(true);
     expect(warn).not.toHaveBeenCalled();
     // The task before the example: the task stays, and the example goes.

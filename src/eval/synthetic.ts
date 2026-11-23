@@ -1,11 +1,10 @@
-// The synthetic samples (R49; R38 spec): sample files whose strokes code draws from a seed, with no
-// hand behind them (R15), each with the markup of what it drew, for tasks of tutor's file of open
-// tasks. tutor's CI checks that its eval runner reads them; they measure nothing of AI. A module's
-// eval set takes them too, on the tasks of the module's package (R110 spec): a sample of the eval
+// The synthetic samples: sample files whose strokes code draws from a seed, with no
+// hand behind them, each with the markup of what it drew, for tasks of tutor's file of open
+// tasks (R15, R49). tutor's CI checks that its eval runner reads them; they measure nothing of AI.
+// A module's eval set takes them too, on the tasks of the module's package: a sample of the eval
 // set by an adult, of a task and a seed its caller names. A seed gives its sample byte for byte,
-// and its ID (R09). The code knows no key and no subject (R93 spec; R02 spec): the numbers it
-// writes, a solution's first error among them, are the seed's, and say nothing of whether the
-// solution is right (R95 spec).
+// and its ID. The code knows no key and no subject: the numbers it writes, a solution's first error
+// among them, are the seed's, and say nothing of whether the solution is right.
 
 import {
   type AnswerSlotNoteSchema,
@@ -65,7 +64,7 @@ const { MEASUREMENT, EVAL_SET } = Purpose;
 const { ADULT, ADULT_AS_CHILD, CHILD } = Writer;
 
 /**
- * The synthetic set (R49): every composition on a sheet and on a workbook, every writer, every
+ * The synthetic set: every composition on a sheet and on a workbook, every writer, every
  * event of a history and every kind of a markup's part, each scenario once or twice. The seeds
  * start at 101, clear of the examples' (src/eval/sample.test.ts).
  */
@@ -119,7 +118,7 @@ export function syntheticSample(entry: Entry, tasks: OpenTasks): Synthetic {
 }
 
 /**
- * The sample of a module's eval set of a task and a seed (R110 spec): a sample of the eval set
+ * The sample of a module's eval set of a task and a seed: a sample of the eval set
  * by an adult, in their own hand or imitating a child's, which the seed chooses with the scenario,
  * one of those of the task's canvas.
  */

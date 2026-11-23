@@ -3,7 +3,7 @@ import { line } from "../core/pages.fixture.js";
 import { sheetTask, workbookTask, workedExample } from "../core/tasks.fixture.js";
 import { arrive, file, level, placed, settle, sheetWork } from "./pointer.fixture.js";
 
-// The element under app's content security policy, in a browser (R51; R36 spec): no inline style,
+// The element under app's content security policy, in a browser: no inline style,
 // and images only from blob: addresses. The policy goes into this frame's head once the file's
 // modules have loaded, so that from then on the frame loads nothing else but the runner's scripts,
 // as app's page; the runner keeps working. Each test file has a frame of its own, so no other file
@@ -13,7 +13,7 @@ import { arrive, file, level, placed, settle, sheetWork } from "./pointer.fixtur
 // it all come under it, styled by the adopted sheet.
 
 /**
- * app's policy (R09 app), as R36 spec names it, with the runner's scripts from this origin: after
+ * app's policy, as spec names it, with the runner's scripts from this origin: after
  * the tests the runner imports the module that takes the file's coverage again, and Chrome Headless
  * Shell, from 158, holds that import to the policy. Sources with a path, the runner's own, do not
  * admit it; the origin does. The element imports no script once loaded, so it is the styles and
@@ -117,7 +117,7 @@ test("a worked example shows its pictures beside the sheet and on it under the p
   const beside = root.querySelector<HTMLImageElement>(".parts img");
   expect(beside?.src.startsWith("blob:")).toBe(true);
   expect(beside?.naturalWidth).toBe(40);
-  // The picture on the sheet takes the address only once an image has decoded it (R42).
+  // The picture on the sheet takes the address only once an image has decoded it.
   const onTheSheet = root.querySelector(".show image");
   expect(onTheSheet?.getAttribute("href")?.startsWith("blob:")).toBe(true);
   expect(await heard()).toEqual([]);

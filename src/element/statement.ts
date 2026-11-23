@@ -1,5 +1,5 @@
-// The statement of a task, above the sheet, in the element's own scrolling (R23): its paragraphs
-// as text and its pictures from the consumer's media, which the element's pictures load (R42).
+// The statement of a task, above the sheet, in the element's own scrolling: its paragraphs
+// as text and its pictures from the consumer's media, which the element's pictures load.
 // Each picture keeps a frame of its own size, so that nothing moves under the pen when it comes,
 // and the frame shows what the picture shows in words until it comes, or if it never does. This
 // module is no entry point of the package.
@@ -11,7 +11,7 @@ import type { Pictures } from "./pictures.js";
 export class Statement {
   /**
    * The statement's element: the paragraphs and the pictures, in the module's explanation language,
-   * or in the element's own without a manifest (R32).
+   * or in the element's own without a manifest.
    */
   readonly element = document.createElement("div");
   readonly #pictures: Pictures;
@@ -44,7 +44,7 @@ export class Statement {
     const parts = statement.map((part) => {
       if ("text" in part) {
         const paragraph = document.createElement("p");
-        // Text, never markup: a module is data (R02 spec).
+        // Text, never markup: a module is data.
         paragraph.textContent = part.text;
         return paragraph;
       }
@@ -65,7 +65,7 @@ export interface Framed {
 
 /**
  * A picture beside the sheet in a frame of its size, placed with the element's pictures: a
- * statement's, and a worked example's in its list of parts (R42). The frame shows the picture once
+ * statement's, and a worked example's in its list of parts. The frame shows the picture once
  * its file has come and is decoded, and what it shows in words till then, or if it never does.
  */
 export function framed(pictures: Pictures, part: PicturePart): Framed {
@@ -89,7 +89,7 @@ export function framed(pictures: Pictures, part: PicturePart): Framed {
         frame.replaceChildren(image);
       };
       // A browser that keeps the decoded address at hand has the picture whole at once, as
-      // Chromium does; another decodes it again, and the frame shows its words till then (R42).
+      // Chromium does; another decodes it again, and the frame shows its words till then.
       if (image.complete && image.naturalWidth > 0) {
         swap();
         return;

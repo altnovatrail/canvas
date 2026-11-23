@@ -1,14 +1,14 @@
-// The steps before writing on the samples page (R11, R58, R59, R69): which purposes the build's
+// The steps before writing on the samples page: which purposes the build's
 // sets of texts and its tasks open — a child's session among them — and why the others are
 // closed, the statements each asks for, the writer's code the person types, and what the start
-// still lacks. No DOM: page/main.ts shows what this decides, and every word is page/texts.ts's or
-// a set's.
+// still lacks (R11). No DOM: page/main.ts shows what this decides, and every word is
+// page/texts.ts's or a set's.
 
 import type { LegalSet, PageTexts } from "./sets.js";
 import { HAND_OVER, PURPOSE_NOTES, START_LACKS, STATEMENTS } from "./texts.js";
 
 /** What a start begins: the measurement or a module's eval set, which an adult writes for, or a
- * child's session, whose samples are of the measurement, written by the child (R59). */
+ * child's session, whose samples are of the measurement, written by the child. */
 export type PurposeKey = "measurement" | "evalSet" | "child";
 
 /** A purpose as the start offers it: open or not, and a word on why. */
@@ -20,10 +20,10 @@ export interface Offered {
 }
 
 /** The purposes under a build's texts, for a build with or without tasks of modules, a child's
- * session last. Each opens with a current set of its own (R130 spec): the author approves the
- * adults' and a child's consent apart, and one with none is closed (R72). The eval set opens only
+ * session last. Each opens with a current set of its own: the author approves the
+ * adults' and a child's consent apart, and one with none is closed. The eval set opens only
  * where the build has tasks of modules too: a module's eval set takes samples of its own module's
- * tasks alone (R95 spec), and a sample of a task of tutor would be refused there. */
+ * tasks alone, and a sample of a task of tutor would be refused there. */
 export function purposes(texts: PageTexts, moduleTasks: boolean): Offered[] {
   const closed = (key: PurposeKey, note: string): Offered => ({ key, open: false, note });
   let evalSet: Offered = { key: "evalSet", open: true };
@@ -57,7 +57,7 @@ export function handOverOf(texts: PageTexts, purpose: PurposeKey): string | unde
 }
 
 /** Whether a purpose's sample has a writer's code: the measurement's and a child's do, an eval
- * set's, which is published, does not (R09). */
+ * set's, which is published, does not. */
 export function hasCode(purpose: PurposeKey): purpose is "measurement" | "child" {
   return purpose !== "evalSet";
 }
@@ -100,7 +100,7 @@ export function lacks(texts: PageTexts, moduleTasks: boolean, start: Start): str
   const open = purposes(texts, moduleTasks).find(({ key }) => key === start.purpose)?.open ?? false;
   if (!start.purpose || !open) return [START_LACKS.purpose];
   if (start.purpose === "child" && start.way === "new") {
-    // A new code goes into the form first: a session begins with the code of a form accepted (R11).
+    // A new code goes into the form first: a session begins with the code of a form accepted.
     found.push(START_LACKS.childNew);
   } else if (hasCode(start.purpose) && start.code === undefined) {
     const child = start.purpose === "child";

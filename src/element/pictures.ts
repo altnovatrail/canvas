@@ -1,4 +1,4 @@
-// The files of the pictures an element shows, by their references (R23, R42): a task's statement's,
+// The files of the pictures an element shows, by their references: a task's statement's,
 // and a worked example's — its statement's and its demo's, beside the sheet and on areas of it.
 // One reference is one file and one call of the consumer's media, however many pictures show it,
 // and a file stays while what the element shows names its reference. On the page a file has one
@@ -8,7 +8,7 @@
 // no entry point of the package.
 
 // What gives the file of a picture of a task or a worked example is spec's type, Media, of the
-// contract of canvas and app (R36 spec; R07): the consumer's, for the canvas goes to no network.
+// contract of canvas and app: the consumer's, for the canvas goes to no network.
 // app takes the files from what api serves, the samples page from its own build.
 
 import type { Media } from "@altnovatrail/spec/canvas";

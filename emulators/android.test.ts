@@ -1,4 +1,4 @@
-// What the drivers of the Android emulator read off the screen (R54): the nodes of a dump of
+// What the drivers of the Android emulator read off the screen: the nodes of a dump of
 // uiautomator, where a tap on one lands, and where a point of the page lies on the screen; and how
 // they ask adb for an emulator gone offline and bring it back, on a stand-in for adb. The run
 // itself is the workflow's, on a runner with an emulator.
@@ -84,7 +84,8 @@ test("Chrome has the focus only when dumpsys window names its window as the curr
 });
 
 test("a point of the page lies on the screen as one element seen both ways says", () => {
-  // A button of 100 CSS pixels at (20, 300) in the page, 200 pixels wide at (40, 840) on the screen.
+  // A button of 100 CSS pixels at (20, 300) in the page, 200 pixels wide at (40, 840) on the
+  // screen.
   const toScreen = calibrate(
     { x: 20, y: 300, width: 100, height: 30 },
     { text: "", description: "", bounds: [40, 840, 240, 900] },

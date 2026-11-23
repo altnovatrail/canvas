@@ -3,13 +3,13 @@ import { cdp } from "vitest/browser";
 import { sheetTask, workedExample } from "../core/tasks.fixture.js";
 import { buttonOf, devtools, placed, settle, spacer } from "./pointer.fixture.js";
 
-// Motion and the learner's wish for less of it (WCAG 2.3.3, which R90 spec asks of canvas):
-// nothing in the element moves but the scrolling, and its scrolls jump to where they go — two
-// fingers and a part of a worked example brought into sight — whatever smoothness the
+// Motion and the learner's wish for less of it (WCAG 2.3.3, which spec's standard of UI packages
+// asks of canvas): nothing in the element moves but the scrolling, and its scrolls jump to where
+// they go — two fingers and a part of a worked example brought into sight — whatever smoothness the
 // page asks of its scrolling. The style animates nothing: its one transition, of the canvas's
 // colour, a millisecond long, moves nothing and only tells the element to draw the ink anew. The
-// page asks for reduced motion here, through the DevTools protocol, so that a smoothness that
-// came in quietly would fail where a learner who asked for none would see it.
+// page asks for reduced motion here, through the DevTools protocol, so that a smoothness that came
+// in quietly would fail where a learner who asked for none would see it.
 
 const made: HTMLElement[] = [];
 const smooth: HTMLElement[] = [];
@@ -54,7 +54,7 @@ test.runIf(devtools)(
   },
 );
 
-/** The media query of the one motion: the wait for a reading, to whom motion is no harm (R89). */
+/** The media query of the one motion: the wait for a reading, to whom motion is no harm. */
 const NO_PREFERENCE = "(prefers-reduced-motion: no-preference)";
 
 /** Every style rule of a sheet, those inside its media queries too, but for the motion's own. */
@@ -74,7 +74,7 @@ test.runIf(devtools)(
     const sheets = root.adoptedStyleSheets;
     expect(sheets.length).toBeGreaterThan(0);
     const all = sheets.flatMap((sheet) => [...sheet.cssRules]);
-    // Its keyframes are the wait's alone, and only a query of no preference names them (R89).
+    // Its keyframes are the wait's alone, and only a query of no preference names them.
     expect(all.filter((rule) => rule instanceof CSSKeyframesRule).map((rule) => rule.name)).toEqual(
       ["novatrail-scan", "novatrail-spin"],
     );

@@ -3,7 +3,7 @@ export const ZOOM_MIN = 0.5;
 export const ZOOM_MAX = 2;
 
 /**
- * The step of Zoom in and Zoom out, a quarter of the fit (R73): from any zoom a pinch left, a
+ * The step of Zoom in and Zoom out, a quarter of the fit: from any zoom a pinch left, a
  * press goes to the next quarter, so 50, 75, … 200 % are where the buttons stop.
  */
 export const ZOOM_STEP = 0.25;
@@ -25,8 +25,8 @@ export function stepZoom(value: number, larger: boolean): number {
 }
 
 /**
- * The page's zoom (R73): one for every sheet of the page, from 100 % when the page is loaded, as
- * the pen mode is (R29). The next task is a new element (R20), and the zoom stays: a learner who
+ * The page's zoom: one for every sheet of the page, from 100 % when the page is loaded, as
+ * the pen mode is. The next task is a new element, and the zoom stays: a learner who
  * needs it larger or smaller asks once. It lives in memory alone: nothing is stored or sent.
  */
 export class PageZoom {
@@ -47,7 +47,7 @@ export class PageZoom {
     return this.#value > ZOOM_MIN;
   }
 
-  /** A step to the next quarter, larger or smaller, if there is one (R73). */
+  /** A step to the next quarter, larger or smaller, if there is one. */
   step(larger: boolean): boolean {
     return this.set(stepZoom(this.#value, larger));
   }

@@ -11,7 +11,7 @@ import { SHEETS, staircase, stroke } from "./sheets.fixture.js";
 import { cellsForCheck, workForCheck } from "./submission.js";
 import { DENSITIES, WORKBOOKS } from "./workbooks.fixture.js";
 
-// The work for checking that exportWork() gives (R27, R38), on the synthetic sheets and workbooks:
+// The work for checking that exportWork() gives, on the synthetic sheets and workbooks:
 // the crop's PNG, or each filled box's, and the context of the submission, as the rules of the
 // groups, the boxes, the crop and the marks make them.
 
@@ -113,7 +113,7 @@ describe("the work of a workbook", () => {
             name,
           ).toEqual(table.map(({ item, slot }) => [item, slot]));
           for (const [n, { ids }] of table.entries()) {
-            // The box's strokes alone, one group of them, drawn by the crop's rule (R25).
+            // The box's strokes alone, one group of them, drawn by the crop's rule.
             const own = strokes.filter(({ id }) => ids.includes(id));
             const crop = cropOf(own, [{ label: "A", ids }], digit);
             if (crop === null) throw new Error(`${name}: a filled box has no crop`);
@@ -140,7 +140,7 @@ describe("the work of a workbook", () => {
       { item: 1, slot: 1, ids: [2, 3] },
       { item: 1, slot: 2, ids: [1] },
     ]);
-    // A box's crop is its strokes' alone: the lower bound of R25, 200 px a side.
+    // A box's crop is its strokes' alone: the crop's lower bound, 200 px a side.
     const own = STROKES.slice(0, 1);
     const crop = cropOf(own, [{ label: "A", ids: [1] }]);
     if (crop === null) throw new Error("the box has no crop");
@@ -167,7 +167,7 @@ describe("the work of a workbook", () => {
     const digestOf = (strokes: readonly Stroke[], cells: readonly Cell[] = CELLS) =>
       cellsForCheck(strokes, cells, CROP.digit)?.submission.digest;
     const digest = digestOf(STROKES);
-    // The text of R38: the table's strokes by ID, in tenths and milliseconds, every box of the
+    // The context's text: the table's strokes by ID, in tenths and milliseconds, every box of the
     // page, and the table's rows; the CRC-32 and the Adler-32 of its UTF-8.
     const text = [
       "1;3500,1200,1000;3500,1800,1200",

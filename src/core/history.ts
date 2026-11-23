@@ -4,17 +4,17 @@ import type { InkPoint, Stroke } from "./ink.js";
 import { REACH } from "./sheet.js";
 
 /**
- * An event of the history of writing (R09, R22): spec's type, of the contract of canvas and app
- * (R74 spec; R07). What an action on the sheet did, at the sheet's time `t` when it landed, in the
+ * An event of the history of writing: spec's type, of the contract of canvas and app.
+ * What an action on the sheet did, at the sheet's time `t` when it landed, in the
  * order the actions landed; each event says which strokes it put on the sheet or took off, so
  * whoever reads the history replays it without the rules of the stack of undo (R19). Those the
- * sheet hands out are frozen through (R27).
+ * sheet hands out are frozen through.
  */
 export type { HistoryEvent };
 
 /**
  * The strokes a history leaves on the sheet, in the order they were written: what the sheet shows
- * after it (R09).
+ * after it.
  */
 export function replay(history: readonly HistoryEvent[]): Stroke[] {
   const written: Stroke[] = [];
@@ -39,7 +39,7 @@ export function replay(history: readonly HistoryEvent[]): Stroke[] {
 }
 
 /**
- * The events of a history given to the sheet (R27), each checked field by field and copied into
+ * The events of a history given to the sheet, each checked field by field and copied into
  * frozen objects of the sheet's own, with only the fields the sheet keeps: others are passed over.
  * A value that is not such a history is a TypeError that names the field. Each event must be one of
  * the four, at a time from 0 that never goes back along the history; a stroke must have a new ID, a
@@ -47,8 +47,8 @@ export function replay(history: readonly HistoryEvent[]): Stroke[] {
  * times never going back and none after the time it landed. Times are checked for their order
  * alone: strokes may overlap in time, as several pointers at once would write them. On a task from
  * paper, `paper`, a stroke written on the tracing paper says so, `on: "tracing"`, its points from
- * the paper's top left corner within the sheet's size; anywhere else `on` is a TypeError
- * (R87). Whether the actions keep the rules of the stack, the work on the sheet checks as it
+ * the paper's top left corner within the sheet's size; anywhere else `on` is a TypeError.
+ * Whether the actions keep the rules of the stack, the work on the sheet checks as it
  * replays them (`Work.restore`).
  */
 export function historyOf(value: unknown, paper = false): HistoryEvent[] {
@@ -103,7 +103,7 @@ export function historyOf(value: unknown, paper = false): HistoryEvent[] {
 }
 
 /**
- * An event, frozen through: its stroke with its points, or its lists of IDs (R27). Whoever holds
+ * An event, frozen through: its stroke with its points, or its lists of IDs. Whoever holds
  * an event the sheet handed out cannot change the sheet by it.
  */
 export function frozen(event: HistoryEvent): HistoryEvent {
@@ -121,7 +121,7 @@ export function frozen(event: HistoryEvent): HistoryEvent {
 }
 
 /**
- * Whether a value given as a history is the history the sheet has (R27): the very array, or a list
+ * Whether a value given as a history is the history the sheet has: the very array, or a list
  * whose every event says what the sheet's says, by the fields the sheet keeps — others are passed
  * over. `undefined` is the empty history. It never throws: a value that is no history is simply not
  * the same one.

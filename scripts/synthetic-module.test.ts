@@ -1,4 +1,4 @@
-// The synthetic samples of a module's eval set (R63, R68): what writeModuleSamples writes and
+// The synthetic samples of a module's eval set: what writeModuleSamples writes and
 // refuses, as the generator's file runs it, and the digests of the tasks' open views that
 // moduleDigests prints.
 
@@ -18,7 +18,7 @@ import { readSample } from "../src/eval/sample.ts";
 import { temporary } from "./folders.fixture.ts";
 import { moduleDigests, writeModuleSamples } from "./synthetic-module.ts";
 
-// The samples of a module's eval set (R63), on grade-3-math 0.2.0 from the release of modules
+// The samples of a module's eval set, on grade-3-math 0.2.0 from the release of modules
 // v0.2.0, which ci-licenses verifies.
 const PACKAGE = fileURLToPath(MODULE_PACKAGE);
 

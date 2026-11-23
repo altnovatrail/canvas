@@ -30,7 +30,7 @@ The repository is cloned with `git clone --recurse-submodules`: `spec/` is a git
 
 ## Releases
 
-A release of canvas carries six files and `SHA256SUMS`: the package's archive, which npm publishes at the same version, the synthetic samples' archive and the list of what each shows, the samples page, the generator of a module's eval set, and LICENSE (architecture 3.4; R08, R50, R66, R68).
+A release of canvas carries six files and `SHA256SUMS`: the package's archive, which npm publishes at the same version, the synthetic samples' archive and the list of what each shows, the samples page, the generator of a module's eval set, and LICENSE (architecture 3.4).
 
 ### The package
 

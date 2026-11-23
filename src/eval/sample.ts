@@ -1,10 +1,10 @@
-// The sample file of the eval protocol (R48; R93–R95 spec): one sample of writing on a sheet or a
+// The sample file of the eval protocol: one sample of writing on a sheet or a
 // page of a workbook, the message Sample of novatrail.eval.v1, one JSON file to a sample. The
 // samples page writes it, and so does the code that draws the synthetic samples; the eval runner
 // of tutor reads it, and spec's sample-check holds each file to the rules of the protocol. What a
-// sample holds its purpose and its writer set (R09): a sample of measurement by an adult keeps the
-// history of writing, one of an eval set and one of a child the final geometry. Its crops are
-// drawn from the strokes the file holds, by the rules the sheet shares with the runner (R94 spec).
+// sample holds its purpose and its writer set: a sample of measurement by an adult keeps the
+// history of writing, one of an eval set and one of a child the final geometry (R09). Its crops are
+// drawn from the strokes the file holds, by the rules the sheet shares with the runner.
 // This module is no part of the package: no consumer of the element writes samples (R48).
 
 import {
@@ -39,15 +39,14 @@ import { byPlace, finalPoints } from "./resample.js";
 /** The protocol a sample file is written in: the package of its message. */
 export const PROTOCOL = "novatrail.eval.v1";
 
-/** What the samples page writes of a person's sample: the version of its texts and its own (R11). */
+/** What the samples page writes of a person's sample: the version of its texts and its own. */
 export interface PersonOrigin {
   readonly person: { readonly textSetVersion: string; readonly canvasVersion: string };
 }
 
 /**
  * What code that draws a sample gives: its seed, an unsigned integer of 64 bits in decimal digits.
- * The page did not write it, so it has canvas_version "0.0.0" and text_set_version "none"
- * (R93 spec).
+ * The page did not write it, so it has canvas_version "0.0.0" and text_set_version "none".
  */
 export interface SyntheticOrigin {
   readonly synthetic: { readonly seed: string };
@@ -66,7 +65,7 @@ export type Surface =
 
 /**
  * What a sample is made of. The markup names strokes by the IDs the sheet's history gave them; a
- * sample of the final geometry renumbers them by place, as it does its groups and its table (R09).
+ * sample of the final geometry renumbers them by place, as it does its groups and its table.
  */
 export interface SampleInput {
   /** The sample's ID: a person's at random (`personId`), a synthetic one's from its seed. */
@@ -76,20 +75,20 @@ export interface SampleInput {
   readonly origin: PersonOrigin | SyntheticOrigin;
   /** The writer's code (`writerCode`): a sample of measurement has one, an eval set's none. */
   readonly writerCode?: string;
-  /** The task the sample answers, without its key (R93 spec): as the caller found it. */
+  /** The task the sample answers, without its key: as the caller found it. */
   readonly task: MessageInitShape<typeof TaskReferenceSchema>;
   readonly surface: Surface;
   readonly markup: MessageInitShape<typeof MarkupSchema>;
 }
 
-/** The license a sample of an eval set is published under, as modules publishes it (R20 spec). */
+/** The license a sample of an eval set is published under, as modules publishes it. */
 const EVAL_SET_LICENSE = "Apache-2.0";
 
-/** The writers whose sample of measurement keeps the history of writing: adults (R09). */
+/** The writers whose sample of measurement keeps the history of writing: adults. */
 const ADULTS = new Set([Writer.ADULT, Writer.ADULT_AS_CHILD]);
 
 /**
- * The sample of the input (R09; R93 spec), checked as far as the input alone tells: a sample with
+ * The sample of the input, checked as far as the input alone tells: a sample with
  * no purpose or no writer, a child's sample of an eval set, and a writer's code where its
  * composition has none, or none where it has one, are each a TypeError. The rest — the shape of an
  * ID, a code, a version, a digest, the markup against the strokes — is spec's sample-check's.
@@ -113,7 +112,7 @@ export function sampleOf(input: SampleInput): Sample {
   const { history, digit } =
     "sheet" in input.surface ? input.surface.sheet : input.surface.workbook;
   const cells = "workbook" in input.surface ? input.surface.workbook.cells : null;
-  // The groups and the table of boxes are the device's, of the strokes as they came (R09; R24).
+  // The groups and the table of boxes are the device's, of the strokes as they came.
   const raw = replay(history);
   const groups = cells === null ? groupsOf(raw) : [];
   const table = cells === null ? [] : tableOf(raw, cells);
@@ -205,7 +204,7 @@ export function sampleText(sample: Sample): string {
 }
 
 /**
- * The sample a file's text holds, read strictly (R93 spec): a field the message does not have, or
+ * The sample a file's text holds, read strictly: a field the message does not have, or
  * a file of another protocol, is a TypeError. Whether it keeps the protocol's rules is spec's
  * sample-check's to say.
  */
@@ -241,7 +240,7 @@ export function personId(random: Uint8Array): string {
 
 /**
  * A writer's code, at random: 8 digits and capital letters, 40 bits, of the first 8 of the random
- * bytes given (R09). The page makes it, and the adult writes it down beside the consent.
+ * bytes given. The page makes it, and the adult writes it down beside the consent.
  */
 export function writerCode(random: Uint8Array): string {
   return lettersOf(random, 8, CODE_LETTERS);
@@ -259,17 +258,17 @@ interface Ink {
   readonly numbers: ReadonlyMap<number, number>;
 }
 
-/** A place to a tenth of a unit, as a sample keeps it (R09): round(10 × v), half up. */
+/** A place to a tenth of a unit, as a sample keeps it: round(10 × v), half up. */
 const toTenth = (value: number) => tenths(value) / 10;
 
 /** A time in whole milliseconds, half up. */
 const toMs = (t: number) => Math.round(t);
 
 /**
- * The history of writing as a sample keeps it (R09; R93 spec): each event at its time in whole
+ * The history of writing as a sample keeps it: each event at its time in whole
  * milliseconds, a stroke's points to a tenth of a unit and in whole milliseconds, without the
  * pressure. Rounding keeps the order of times, so a stroke still lands no sooner than its last
- * point (R22). Its strokes are those the history shows at the end, as the file holds them.
+ * point. Its strokes are those the history shows at the end, as the file holds them.
  */
 function historyInk(history: readonly HistoryEvent[], shown: readonly Stroke[]): Ink {
   const events = history.map((event): MessageInitShape<typeof HistoryEventSchema> => {
@@ -304,7 +303,7 @@ function historyInk(history: readonly HistoryEvent[], shown: readonly Stroke[]):
 }
 
 /**
- * The final geometry of the strokes a sheet shows (R09): each in its canonical direction, its
+ * The final geometry of the strokes a sheet shows: each in its canonical direction, its
  * points along it a step apart, the strokes numbered by place from 1. Its points have no time and
  * no pressure, and the crops are drawn from them.
  */
@@ -332,7 +331,7 @@ function finalStroke(id: number, points: readonly Point[]): Stroke {
   return { id, kind: "", points: points.map(({ x, y }) => ({ x, y, t: 0, p: 0 })) };
 }
 
-/** The strokes of a workbook its boxes hold: the draft goes nowhere (R09). */
+/** The strokes of a workbook its boxes hold: the draft goes nowhere. */
 function inBoxes(
   strokes: readonly Stroke[],
   table: readonly { ids: readonly number[] }[],
@@ -342,7 +341,7 @@ function inBoxes(
 }
 
 /**
- * The field `crops` of a set of strokes with their groups (R25; R94 spec): a crop at each height of
+ * The field `crops` of a set of strokes with their groups: a crop at each height of
  * eval and at the module's, each once, by the height ascending, with its PNG, and the box of the
  * points and h_med in whole tenths. Of no strokes, no field: a sheet without strokes has no crops.
  */
@@ -353,7 +352,7 @@ function cropsField(
 ): { crops?: MessageInitShape<typeof CropSetSchema> } {
   if (strokes.length === 0) return {};
   const heights = [...new Set([...CROP.heights, digit])].sort(byNumber);
-  // A box's strokes are one group to the rule of the crop, and its crops have no frames (R38).
+  // A box's strokes are one group to the rule of the crop, and its crops have no frames.
   const framed = groups.length > 0;
   const ruled = framed ? groups : [{ label: "A", ids: strokes.map(({ id }) => id) }];
   const drawn = heights.map((height) => {
@@ -381,7 +380,7 @@ function cropsField(
     };
   });
   // The box of the points and h_med are every crop's: h_med itself, not the crop's exact median,
-  // which is H, the median the scale takes, min(h_med, 1000) (R25).
+  // which is H, the median the scale takes, min(h_med, 1000).
   const [first] = drawn;
   if (first === undefined) throw new Error("no heights of digits");
   const { minX, minY, maxX, maxY } = first.exact.box;

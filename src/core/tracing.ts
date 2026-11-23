@@ -8,13 +8,13 @@ import type { Point } from "./screen.js";
 import { REACH } from "./sheet.js";
 
 /**
- * Where the tracing paper of a task from paper lies on the sheet, and whether it is hidden (R87):
- * spec's type, of the contract of canvas and app (R74 spec).
+ * Where the tracing paper of a task from paper lies on the sheet, and whether it is hidden:
+ * spec's type, of the contract of canvas and app (R87).
  */
 export type { TracingState };
 
 /**
- * The tracing paper's rule (R87), in sheet units: the crop is drawn as large as fits within
+ * The tracing paper's rule, in sheet units: the crop is drawn as large as fits within
  * `width` × `height`, in its own proportions; it starts at `at`, right of the bar of buttons, which
  * stands over the sheet's left edge; the keyboard moves it by `step`, or by `leap` with Shift. The
  * dots of its sheet stand `dots` apart.
@@ -29,18 +29,18 @@ export const TRACING = Object.freeze({
 });
 
 /**
- * The tracing paper's scale (R89): from `min` to `max` times its own size, as the mockup's
+ * The tracing paper's scale: from `min` to `max` times its own size, as the mockup's
  * `Zadacha-masshtab` has it; a button's press multiplies it by `button`, a notch of the wheel by
- * `wheel`, and a scale is kept in hundredths, as the percentage shows it.
+ * `wheel`, and a scale is kept in hundredths, as the percentage shows it (R89).
  */
 export const SCALE = Object.freeze({ min: 0.4, max: 4, button: 1.2, wheel: 1.08 });
 
-/** A scale kept to the rule's bounds, in hundredths (R89). */
+/** A scale kept to the rule's bounds, in hundredths. */
 export function scaleOf(scale: number): number {
   return Math.round(clamp(scale, SCALE.min, SCALE.max) * 100) / 100;
 }
 
-/** The scale of a tracing state: 1 where it has none (R89). */
+/** The scale of a tracing state: 1 where it has none. */
 export function scaleIn(state: TracingState): number {
   return state.scale ?? 1;
 }
@@ -52,7 +52,7 @@ export function scaled(size: Size, scale: number): Size {
 
 /**
  * The grids of a task from paper's sheet in the order its button turns them, round, the first as
- * the task comes (R88).
+ * the task comes.
  */
 export const PAPER_GRIDS: readonly PaperGrid[] = Object.freeze([
   "dots",
@@ -61,7 +61,7 @@ export const PAPER_GRIDS: readonly PaperGrid[] = Object.freeze([
   "squares",
 ]);
 
-/** Each grid's rulings, in sheet units, as the mockup draws them: a blank sheet has none (R88). */
+/** Each grid's rulings, in sheet units, as the mockup draws them: a blank sheet has none. */
 const RULINGS: Readonly<Record<PaperGrid, Grid | undefined>> = Object.freeze({
   dots: Object.freeze({ kind: "dots", step: TRACING.dots }),
   lines: Object.freeze({ kind: "lines", step: 40 }),
@@ -74,12 +74,12 @@ export function isPaperGrid(value: unknown): value is PaperGrid {
   return typeof value === "string" && (PAPER_GRIDS as readonly string[]).includes(value);
 }
 
-/** The rulings of a task from paper's grid, or none for a blank sheet (R88). */
+/** The rulings of a task from paper's grid, or none for a blank sheet. */
 export function rulingsOf(grid: PaperGrid): Grid | undefined {
   return RULINGS[grid];
 }
 
-/** The grid the button turns a task from paper's grid to: the next, round (R88). */
+/** The grid the button turns a task from paper's grid to: the next, round. */
 export function nextGrid(grid: PaperGrid): PaperGrid {
   return PAPER_GRIDS[(PAPER_GRIDS.indexOf(grid) + 1) % PAPER_GRIDS.length] as PaperGrid;
 }
@@ -94,7 +94,7 @@ export interface Size {
 export const LARGEST: Size = Object.freeze({ width: TRACING.width, height: TRACING.height });
 
 /**
- * The tracing paper's size for a crop `width` × `height` px (R87): as large as fits within the
+ * The tracing paper's size for a crop `width` × `height` px: as large as fits within the
  * rule's box, in the crop's proportions. A picture of no size has the largest.
  */
 export function sizeOf(width: number, height: number): Size {
@@ -111,7 +111,7 @@ export const TRACING_START: TracingState = Object.freeze({
 });
 
 /**
- * A tracing state a consumer gives (R74 spec), checked and frozen: an object of `at`, [x, y] in
+ * A tracing state a consumer gives, checked and frozen: an object of `at`, [x, y] in
  * units, finite numbers, `hidden`, true or false, and `scale`, if any, from 0.4 to 4; other fields
  * are passed over. A state that puts the tracing paper of `size` at its scale wholly off the sheet
  * is a TypeError, as is anything else that is not such a state.
@@ -166,11 +166,11 @@ export function whollyOff(at: readonly [number, number], size: Size): boolean {
   return x >= REACH.width || y >= REACH.height || x + size.width <= 0 || y + size.height <= 0;
 }
 
-/** The most statements a reading holds, as the attempt's tasks are (R162 spec). */
+/** The most statements a reading holds, as the attempt's tasks are. */
 const STATEMENTS = 20;
 
 /**
- * A reading of the statement a consumer gives (R89), checked and frozen: `state` "ready" or
+ * A reading of the statement a consumer gives, checked and frozen: `state` "ready" or
  * "busy", or "done" with `statements`, from none to 20 strings; other fields are passed over.
  * Anything else is a TypeError.
  */
@@ -208,7 +208,7 @@ export function rectOf(at: readonly [number, number], size: Size): Box {
 
 /**
  * The place nearest `at` where the tracing paper of `size` lies wholly on the sheet: where the
- * learner's grip and keys leave it (R87).
+ * learner's grip and keys leave it.
  */
 export function keptOn(at: readonly [number, number], size: Size): readonly [number, number] {
   return Object.freeze([
@@ -225,7 +225,7 @@ export function onTracing(point: Point, at: readonly [number, number], size: Siz
 
 /**
  * A point of the sheet as a stroke on the tracing paper of `size` at `scale` holds it: from the
- * paper's top left corner, in its own units, kept to the paper (R74 spec; R89).
+ * paper's top left corner, in its own units, kept to the paper.
  */
 export function toTracing(
   point: Point,
@@ -241,8 +241,8 @@ export function toTracing(
 
 /**
  * A stroke of the tracing paper where it lies on the sheet: its points scaled by `scale` and moved
- * by `at`, and kept to the sheet, should the paper lie in part beyond it — the rules of the groups and the crop hold on
- * the sheet alone (R24, R25). The same ID, kind and times.
+ * by `at`, and kept to the sheet, should the paper lie in part beyond it — the rules of the groups
+ * and the crop hold on the sheet alone. The same ID, kind and times.
  */
 export function onSheet(stroke: Stroke, at: readonly [number, number], scale = 1): Stroke {
   return Object.freeze({
@@ -276,7 +276,7 @@ export function boxOnSheet(box: Box, at: readonly [number, number], scale = 1): 
 }
 
 /**
- * The tracing paper's rectangle on the sheet in whole tenths of a unit, as the crop counts (R25),
+ * The tracing paper's rectangle on the sheet in whole tenths of a unit, as the crop counts,
  * kept to the sheet: the part of it a crop of the work takes in.
  */
 export function tenthsOf(rect: Box): Box {
@@ -297,7 +297,7 @@ export interface Gray {
 
 /**
  * The grey of a picture's pixels, four bytes each — red, green, blue and alpha — as a canvas reads
- * them: the luma of BT.601 in whole numbers, over white where a pixel is transparent (R87).
+ * them: the luma of BT.601 in whole numbers, over white where a pixel is transparent.
  */
 export function grayOf(rgba: Uint8ClampedArray | Uint8Array, width: number, height: number): Gray {
   if (rgba.length !== 4 * width * height) {
@@ -316,7 +316,7 @@ export function grayOf(rgba: Uint8ClampedArray | Uint8Array, width: number, heig
 }
 
 /**
- * The crop's picture laid into the pixels of a crop of the work (R87), multiplied, as the screen
+ * The crop's picture laid into the pixels of a crop of the work, multiplied, as the screen
  * lays the tracing paper over the sheet: `ink` the crop's pixels, `width` px wide, and `rect`
  * where the tracing paper lies on them, in px, which may reach beyond them. Each pixel of the crop
  * under the paper takes the mean of the picture's pixels whose centres fall within it, or the one

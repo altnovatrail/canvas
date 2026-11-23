@@ -4,7 +4,7 @@ import { groupsOf } from "../core/groups.js";
 import { pictureOf, rasterOf } from "../core/raster.js";
 import { dot, staircase, words } from "../core/sheets.fixture.js";
 
-// The crop's PNG (R25) as a browser takes it: Chromium's own decoder, with no conversion of colour
+// The crop's PNG as a browser takes it: Chromium's own decoder, with no conversion of colour
 // space, gives back the very greys the crop was drawn in. The crop is the DOM-free part's, but a
 // browser decodes it only here.
 

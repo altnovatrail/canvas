@@ -1,4 +1,4 @@
-// What the driver of Safari on macOS works out for itself (R54): which files of the Downloads
+// What the driver of Safari on macOS works out for itself: which files of the Downloads
 // folder are saved reports. The run itself is the workflow's, on a runner of macOS.
 
 import { expect, test } from "vitest";

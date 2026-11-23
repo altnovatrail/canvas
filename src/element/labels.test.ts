@@ -1,4 +1,4 @@
-// The element's labels by the shared rules of translations (R28; R91 spec): every language has
+// The element's labels by the shared rules of translations: every language has
 // every label, with the places of English's; a label is filled by name, its places in any order,
 // and never shows a brace; the buttons say the words of spec's table of words; a language the
 // element's table has not is English, under its own tag.

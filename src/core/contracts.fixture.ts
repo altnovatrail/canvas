@@ -1,5 +1,5 @@
 // spec's test vectors of the rules the sheet shares with the eval runner of tutor — the groups of
-// strokes, the crop, the snapping of a model's box and the boxes of a workbook (R94 spec) — as the
+// strokes, the crop, the snapping of a model's box and the boxes of a workbook — as the
 // npm package @altnovatrail/contracts gives them at the tag of spec that canvas stands on, and what
 // turns their messages into the sheet's own types. The vectors are spec's, in the protocol's form;
 // the sheet's tests hold its code to them.
@@ -61,7 +61,7 @@ export interface ProtocolEvent {
 }
 
 /**
- * The pressure a point of a protocol's stroke is given: a sample holds none (R93 spec), and no rule
+ * The pressure a point of a protocol's stroke is given: a sample holds none, and no rule
  * of the vectors reads it.
  */
 const PRESSURE = 0.5;
@@ -112,7 +112,7 @@ export function tenthsTo({ minX, minY, maxX, maxY }: Box): TenthsBox {
   return { ymin: minY, xmin: minX, ymax: maxY, xmax: maxX };
 }
 
-/** A box in units as the protocol's, in whole tenths, as the rules take a place (R94 spec). */
+/** A box in units as the protocol's, in whole tenths, as the rules take a place. */
 export function tenthsOf({ minX, minY, maxX, maxY }: Box): TenthsBox {
   return tenthsTo({
     minX: tenths(minX),

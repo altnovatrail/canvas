@@ -1,10 +1,10 @@
 /**
- * The sheet's clock: milliseconds of the sheet, never going back (R09, R18). The page's time it is
+ * The sheet's clock: milliseconds of the sheet, never going back. The page's time it is
  * given — a pointer event's `timeStamp`, or `performance.now()` for a method the consumer calls —
  * both count from the page's time origin (DOM Standard; High Resolution Time), so one clock serves
- * the strokes, the eraser and the actions of the sheet alike (R22). A new sheet's time starts at
- * its first event; a sheet given a history of writing goes on from where that history leaves off
- * (R27): the sheet's time is its history's.
+ * the strokes, the eraser and the actions of the sheet alike. A new sheet's time starts at
+ * its first event; a sheet given a history of writing goes on from where that history leaves off:
+ * the sheet's time is its history's.
  */
 export class Clock {
   #origin: number | undefined;
@@ -31,7 +31,7 @@ export class Clock {
 
   /**
    * The clock goes on at `t`: the next moment asked about is the sheet's `t`, whatever the page's
-   * time, and the clock counts on from there (R27). It may go back, when the sheet takes a history
+   * time, and the clock counts on from there. It may go back, when the sheet takes a history
    * shorter than the one it had; `resume(0)` makes it a new sheet's clock.
    */
   resume(t: number): void {

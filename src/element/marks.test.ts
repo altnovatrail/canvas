@@ -8,10 +8,10 @@ import { NovatrailCanvas } from "./index.js";
 import { at, screenshot, sheetWork } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
-// The tutor's marks on the sheet in a browser (R26): a frame round the strokes a mark holds on to,
+// The tutor's marks on the sheet in a browser: a frame round the strokes a mark holds on to,
 // as they are now, over the work and through to the pen, read by its name; fading while a stroke
 // comes into it; and nothing written while nothing changes. The submissions are the element's own,
-// from its exportWork() (R27): the crop's numbers, the groups and their digest.
+// from its exportWork(): the crop's numbers, the groups and their digest.
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -84,7 +84,7 @@ function twoGroups(canvas: HTMLCanvasElement, view: () => View): void {
   draw(canvas, view, [600, 600], [800, 600]);
 }
 
-/** The element's submission, as its exportWork() gives it (R27): its crop at 24 px, its groups. */
+/** The element's submission, as its exportWork() gives it: its crop at 24 px, its groups. */
 async function sentOf(element: NovatrailCanvas): Promise<SheetSubmission> {
   return (await sheetWork(element)).submission;
 }

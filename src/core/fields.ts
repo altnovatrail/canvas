@@ -13,7 +13,7 @@ export function record(value: unknown, path: string): Record<string, unknown> {
 }
 
 /**
- * The fields of an object closed as the module format closes its objects (R32), read once into a
+ * The fields of an object closed as the module format closes its objects, read once into a
  * record of their own: a field it does not name is a TypeError at that field's path. A field left
  * out by `undefined` is no field, and is not in the record.
  */

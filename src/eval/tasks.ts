@@ -1,12 +1,12 @@
-// The tasks the synthetic samples and the samples page answer (R49, R62): the open views of a file
+// The tasks the synthetic samples and the samples page answer: the open views of a file
 // of open tasks of a release of tutor, which the tree holds as it came and ci-licenses verifies by
-// spec's release-verify (R77 spec). A sample names its task without its key (R93 spec): the
+// spec's release-verify. A sample names its task without its key: the
 // release's tag, the file's digest, the bank, the bank's digest as the file gives it, the task's
 // ID, and the digest of its open view, as the module format takes a digest. The file is of the
 // version of the module format the element reads, or it is refused. A task holds the fields of the
-// open view alone, at every depth, or the file is refused (R62): what a sample or the samples page
+// open view alone, at every depth, or the file is refused: what a sample or the samples page
 // takes of it is open. Of a task, the samples take only its ID, its kind of canvas and a
-// workbook's items, which have the shape the layout of a page reads (R35).
+// workbook's items, which have the shape the layout of a page reads.
 
 import type { TaskReferenceSchema } from "@altnovatrail/contracts/novatrail/eval/v1/sample_pb.js";
 import type * as open from "@altnovatrail/spec/formatv0/open";
@@ -38,10 +38,10 @@ export type OpenTasks = ReadonlyMap<string, readonly OpenTask[]>;
 
 /**
  * The tasks of a file of open tasks of tutor, given as its parsed JSON, of the release `tag`, with
- * the SHA-256 of its bytes in hexadecimal. `sha256` gives that of a text's UTF-8 bytes: the caller's,
- * as the DOM-free part has no hash of its own. A file of another format, of tasks of a version of
- * the module format other than the element's (FORMAT), or a task with neither a sheet nor a
- * workbook, is a TypeError.
+ * the SHA-256 of its bytes in hexadecimal. `sha256` gives that of a text's UTF-8 bytes: the
+ * caller's, as the DOM-free part has no hash of its own. A file of another format, of tasks of a
+ * version of the module format other than the element's (FORMAT), or a task with neither a sheet
+ * nor a workbook, is a TypeError.
  */
 export function openTasksOf(
   file: unknown,
@@ -58,7 +58,7 @@ export function openTasksOf(
   if (format !== "tutor-open-tasks" || version !== 0 || !Array.isArray(banks)) {
     throw new TypeError("a file of open tasks is tutor-open-tasks of the version 0, with banks");
   }
-  // The platform reads the current version of the module format alone (R44 spec).
+  // The platform reads the current version of the module format alone.
   if (module_format_version !== FORMAT) {
     throw new TypeError(`a file of open tasks is of the module format ${FORMAT}, the element's`);
   }
@@ -92,11 +92,11 @@ export function openTasksOf(
 }
 
 /**
- * The open views of tasks of modules the samples page carries (R71): what module-kit open
+ * The open views of tasks of modules the samples page carries: what module-kit open
  * wrote of a release of modules, with the seeds of the templates' instances, as a copy in
- * tasks/modules-<tag>/ that ci-licenses holds to what module-kit writes anew, and the SHA-256 of its
- * open-views.json. A new release of modules or new seeds come in by raising these, the justfile's
- * and the copy together.
+ * tasks/modules-<tag>/ that ci-licenses holds to what module-kit writes anew, and the SHA-256 of
+ * its open-views.json. A new release of modules or new seeds come in by raising these, the
+ * justfile's and the copy together.
  */
 export const MODULES_FILE = Object.freeze({
   tag: "v0.2.7",
@@ -108,7 +108,7 @@ export const MODULES_FILE = Object.freeze({
 export interface ModuleViews {
   readonly module: string;
   readonly version: string;
-  /** The open view of its manifest, which the element reads the height of a digit of (R32). */
+  /** The open view of its manifest, which the element reads the height of a digit of. */
   readonly manifest: Readonly<Record<string, unknown>>;
   /** Its tasks and their instances, in module-kit's order: each open view, and a sample's view. */
   readonly tasks: readonly {
@@ -122,9 +122,9 @@ const SEED = /^(0|[1-9]\d*)$/;
 
 /**
  * The tasks of modules of the open views module-kit open wrote, given as the text of its
- * open-views.json (R43 module-kit). Each task holds the fields of the open view alone, or the file is
+ * open-views.json. Each task holds the fields of the open view alone, or the file is
  * refused, as tutor's is, and its digest has to be the one the open view's canonical text gives: so
- * a sample's digest is module-kit's, which modules' eval-match holds it to (R25 modules). The
+ * a sample's digest is module-kit's, which modules' eval-match holds it to. The
  * source of a sample is the release of modules that published the package, whose index holds it
  * (ModuleSource of the contracts), and a template's instance names its seed. A file of another
  * format, of another version of the module format than the element's, or a task of another digest
@@ -212,7 +212,7 @@ const MODULE_ID = /^[a-z][a-z0-9]*(-[a-z0-9]+)*\/[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const TAG = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
-/** The tasks of a module's package, as the synthetic samples of its eval set take them (R63). */
+/** The tasks of a module's package, as the synthetic samples of its eval set take them. */
 export interface ModuleTasks {
   /** The module's ID, its version and the digest of its package. */
   readonly module: string;
@@ -231,7 +231,7 @@ export interface RefusedTask {
 
 /**
  * The tasks of a module's package as `module-kit build` writes it, given the texts of its
- * inventory.json and server.json, for samples that name the release of modules `tag` (R110 spec).
+ * inventory.json and server.json, for samples that name the release of modules `tag`.
  * The inventory is of the module format the element reads, and names server.json by its digest
  * and size; the package's digest is that of the inventory's text. Of the canonical view the
  * samples take each task's open view alone, which the walk of the open view projects from it, as
@@ -404,10 +404,10 @@ function isLeaf(value: unknown): boolean {
 type Closed = "refuse" | "drop";
 
 /**
- * The open view of an object, by its shape, at every depth. A field of another name is closed, or no
- * field of the format: a walk that refuses names where it is in a TypeError, and one that drops
- * leaves it out, as the open view does. A field of the shape that holds what the shape does not
- * say — an object for a leaf — is a TypeError either way, since a closed field could hide in it.
+ * The open view of an object, by its shape, at every depth. A field of another name is closed, or
+ * no field of the format: a walk that refuses names where it is in a TypeError, and one that drops
+ * leaves it out, as the open view does. A field of the shape that holds what the shape does not say
+ * — an object for a leaf — is a TypeError either way, since a closed field could hide in it.
  */
 function openOf(
   value: unknown,

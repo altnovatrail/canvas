@@ -1,14 +1,14 @@
-// The tracing paper of a task from paper (R87): the task's crop over the dotted sheet, on a layer
+// The tracing paper of a task from paper: the task's crop over the dotted sheet, on a layer
 // of its own between the author's demo and the learner's ink, in sheet units, so that it moves with
 // the sheet as it scrolls and zooms. The crop is multiplied over the sheet: the white of its paper
 // lets the dots and the strokes under it show, and its print stays dark. Its grip "Move the task",
 // a bar above its top edge, moves it by the pointer — a drag, kept to the sheet — and by the arrow
 // keys, a step at a time, Shift a leap (WCAG 2.1.1); a drag is the pointer's one way, as the sheet
-// moves under the hand (R90 spec). The grip's tooltip says its name on the hover of a pointer that
+// moves under the hand. The grip's tooltip says its name on the hover of a pointer that
 // hovers and on the keyboard's focus, and Escape dismisses it, as the bar's do (WCAG 1.4.13). The
 // crop's picture is read once, to its grey pixels, for the crop of the work.
 //
-// Its scale (R89), as the mockup's `Zadacha-masshtab` has it: the grip's press, or its focus,
+// Its scale, as the mockup's `Zadacha-masshtab` has it: the grip's press, or its focus,
 // chooses the paper — a blue frame round it with a handle at each corner, which a drag scales from
 // the corner across, and under it the bar of scale: smaller, the percentage, which sets it back to
 // its own size, larger, and fit to the window —; a press on the sheet lets it go. The bar's buttons
@@ -603,9 +603,9 @@ export class TracingPaper {
   }
 
   /**
-   * The scale a corner's drag gives, as the mockup's: the larger of the pointer's two moves outward,
-   * each over the paper's own size on the screen, added to the scale it began at; the corner across
-   * stays where it was.
+   * The scale a corner's drag gives, as the mockup's: the larger of the pointer's two moves
+   * outward, each over the paper's own size on the screen, added to the scale it began at; the
+   * corner across stays where it was.
    */
   #cornerMove(event: PointerEvent): void {
     const drag = this.#corner;
@@ -658,8 +658,8 @@ export class TracingPaper {
   }
 
   /**
-   * "Recognise" offers the reading, waits for it, and gives the photo back once the statements show;
-   * statements that came show again with no new reading.
+   * "Recognise" offers the reading, waits for it, and gives the photo back once the statements
+   * show; statements that came show again with no new reading.
    */
   #pressMode(): void {
     const reading = this.#reading;

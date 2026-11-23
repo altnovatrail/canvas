@@ -1,5 +1,5 @@
 // The tasks, worked examples and manifests of the tests and of the demo page: open views of the
-// module format 0.4 that the element takes (R32, R42), each changed only where its test needs it,
+// module format 0.4 that the element takes, each changed only where its test needs it,
 // so that the tests say one thing about the format and change together when it does. A module of
 // the tests alone: the build leaves it out, as it leaves out the tests (tsconfig.build.json), and
 // the package check holds to that (scripts/package.ts).
@@ -135,9 +135,9 @@ export function workedExample(change: ExampleChange = {}): CheckedExample {
 }
 
 /**
- * The worked example on a workbook of the format's lesson of remainders (spec/format/examples/lesson/
- * valid/remainders-on-a-workbook.yaml at v0.14.0): 23 ÷ 4 = [5] r [3], its demo a paragraph and the
- * two boxes filled.
+ * The worked example on a workbook of the format's lesson of remainders
+ * (spec/format/examples/lesson/ valid/remainders-on-a-workbook.yaml at v0.14.0): 23 ÷ 4 = [5] r
+ * [3], its demo a paragraph and the two boxes filled.
  */
 export const REMAINDERS = {
   statement: [{ text: "Share the apples into equal heaps, and say how many are left over." }],

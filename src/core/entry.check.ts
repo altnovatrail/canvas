@@ -1,9 +1,9 @@
-// Type-checked by ci-lint and never built: what the entry point @altnovatrail/canvas/core gives
-// (R27). The types of the data and the fold of a history are there; the rules of the groups, the
-// crop, the snapping and the boxes are not, though the eval protocol has taken them (R94 spec),
+// Type-checked by ci-lint and never built: what the entry point @altnovatrail/canvas/core gives.
+// The types of the data and the fold of a history are there; the rules of the groups, the
+// crop, the snapping and the boxes are not, though the eval protocol has taken them,
 // nor is the workbook's layout. Were the entry to give one of them, the directive over it would go
-// unused, and that would be the error. The data's types of the contract are spec's, the same types
-// (R27; R74 spec), and the tutor's marks are among them (R83 spec).
+// unused, and that would be the error. The data's types of the contract are spec's, the same types,
+// and the tutor's marks are among them.
 
 import type * as spec from "@altnovatrail/spec/canvas";
 import type * as open from "@altnovatrail/spec/formatv0/open";
@@ -80,19 +80,19 @@ export const groups = core.groupsOf;
 export const crop = core.cropOf;
 // @ts-expect-error Nor the snapping.
 export const snap = core.snapOf;
-// @ts-expect-error The element's own check of a task is no part of the entry (R32).
+// @ts-expect-error The element's own check of a task is no part of the entry.
 export const task = core.taskOf;
 // @ts-expect-error Nor what the sheet makes of one.
 export const template = core.templateOf;
-// @ts-expect-error Nor its check of a worked example (R42).
+// @ts-expect-error Nor its check of a worked example.
 export const example = core.exampleOf;
 // @ts-expect-error Nor of the state of its demo.
 export const demoState = core.demoStateOf;
 // @ts-expect-error Nor its reading of a manifest.
 export const settings = core.settingsOf;
-// @ts-expect-error Nor the layout of a workbook's page, which spec's page and its vectors pin (R60).
+// @ts-expect-error Nor the layout of a workbook's page, which spec's page and its vectors pin.
 export const page = core.pageOf;
-// @ts-expect-error Nor the rule of its boxes, which spec's test vectors pin (R37; R94 spec).
+// @ts-expect-error Nor the rule of its boxes, which spec's test vectors pin.
 export const box = core.cellOf;
-// @ts-expect-error Nor the element's own shape of a task it checked: a task is of spec's type (R41).
+// @ts-expect-error Nor the element's own shape of a task it checked: a task is of spec's type.
 export type Checked = types.SheetTask;

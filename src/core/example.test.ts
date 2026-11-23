@@ -21,8 +21,8 @@ import { DEMO, pathOf, REMAINDERS, refusal, under, workedExample } from "./tasks
 // v0.14.0 (spec/format/examples/lesson/, spec/format/vectors/open-view/lesson/ and
 // spec/format/vectors/rules/: lesson.areas/, lesson.example-fills/ and lesson.workbook-page/): code
 // and tests read nothing of spec/, so a move to a new tag compares them with
-// `git -C spec diff <old> <new> -- format/` (R32). The element takes one segment of a lesson, its
-// worked example (R42): the rest of a lesson is app's, and so are the faults of the invalid
+// `git -C spec diff <old> <new> -- format/`. The element takes one segment of a lesson, its
+// worked example: the rest of a lesson is app's, and so are the faults of the invalid
 // examples that lie outside a worked example.
 
 /** The worked example the lesson examples of gaps and posts share. */

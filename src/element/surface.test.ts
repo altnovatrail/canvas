@@ -10,7 +10,7 @@ import type { NovatrailCanvas } from "./index.js";
 import { placed, settle } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
-// The picture of the work (R83): the PNG of the strokes the surface shows, with no condition — a
+// The picture of the work: the PNG of the strokes the surface shows, with no condition — a
 // sheet's, or a workbook's whole page with its draft — before the work is sent and after, and the
 // same drawing as the surface's own canvas.
 

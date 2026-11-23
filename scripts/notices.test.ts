@@ -1,4 +1,4 @@
-// The license notices a file of a release carries (R55, R68): which packages a bundle carries, and
+// The license notices a file of a release carries: which packages a bundle carries, and
 // the text of each one's license, or why the build stops.
 
 import { mkdirSync, writeFileSync } from "node:fs";

@@ -24,11 +24,11 @@ interface Press {
 const NONE: ReadonlySet<number> = new Set();
 
 /**
- * The eraser (R22): one press of a pointer takes off the sheet, whole, every stroke its path comes
- * near — a tap is a path of one point. The strokes it comes near are pending while it is down, and
- * when it lifts they go to the handler the eraser is made with, in one action, with the page's
- * time of the lift: one undo brings them all back. `pointercancel` drops the press and erases
- * nothing. One pointer erases at a time, with the primary button or a pen's eraser.
+ * The eraser: one press of a pointer takes off the sheet, whole, every stroke its path comes
+ * near — a tap is a path of one point (R22). The strokes it comes near are pending while it is
+ * down, and when it lifts they go to the handler the eraser is made with, in one action, with the
+ * page's time of the lift: one undo brings them all back. `pointercancel` drops the press and
+ * erases nothing. One pointer erases at a time, with the primary button or a pen's eraser.
  */
 export class Eraser {
   readonly #near: (from: Point, to: Point, reach: number) => readonly Stroke[];
@@ -104,7 +104,7 @@ export class Eraser {
     return this.#finish(sample.time);
   }
 
-  /** `pointercancel`: the device took the touch for an accident, and nothing is erased (R05). */
+  /** `pointercancel`: the device took the touch for an accident, and nothing is erased. */
   cancel(pointerId: number): boolean {
     if (this.#press?.pointerId !== pointerId) return false;
     this.#press = undefined;

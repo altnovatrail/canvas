@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The samples page's run in the iPad Simulator on a runner of macOS (R54), with the image's own
+# The samples page's run in the iPad Simulator on a runner of macOS, with the image's own
 # Xcode: a switch by xcode-select, even to the same version, leaves safaridriver without
 # Simulator.app. A fresh iPad simulator of the iOS runtime IOS names (emulators/simulator.sh), with
 # Safari's remote automation switched on before its boot, after the server of the page, with the
@@ -16,9 +16,9 @@ mkdir -p "$out"
 phase() { echo "$(date -u +%H:%M:%S) $*" | tee -a "$out/phases.txt" >&2; }
 
 # The page with the watch in it before its own script (emulators/watch.ts), served as pages; the
-# test build beside it on a port of its own, its server's log in its own run's folder (R65). Both
+# test build beside it on a port of its own, its server's log in its own run's folder. Both
 # before the simulator: once it has booted it holds the runner's cores, and after the boot the
-# copies took 16 s of a run (R80).
+# copies took 16 s of a run.
 phase "the pages' copies with the watch"
 page=$(basename build/page/samples-page_v*.html)
 node emulators/watch.ts build/page build/page-watched > /dev/null
@@ -31,7 +31,7 @@ nohup node emulators/serve.ts build/page-test-watched 8081 --inline > "$out-test
 # The keys of the settings Safari's Develop pane writes, remote inspection and remote automation,
 # set before the simulator's one boot; then Safari, launched before safaridriver connects: without
 # it, sessions time out "connecting to a Safari instance". Its own window beside the session's
-# takes no stroke of the run, which the page's own events draw (emulators/page-ipad.ts; R65).
+# takes no stroke of the run, which the page's own events draw (emulators/page-ipad.ts).
 udid=$(SETTINGS="com.apple.webinspectord:RemoteInspectorEnabled \
     com.apple.webinspectord:RemoteAutomationEnabled \
     com.apple.mobilesafari:WebKitDeveloperExtrasEnabledPreferenceKey \

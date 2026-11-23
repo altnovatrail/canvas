@@ -1,4 +1,4 @@
-// A module's package for the tests (R63): grade-3-math 0.2.0, a copy from the release of modules
+// A module's package for the tests: grade-3-math 0.2.0, a copy from the release of modules
 // v0.2.0, whose index ci-licenses verifies by release-verify; and the same package with its
 // canonical view changed, its inventory naming the view anew, as module-kit build would write it.
 // english-essays 0.2.0 of the same release too, whose essays and choices the generator draws none

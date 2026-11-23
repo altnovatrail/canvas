@@ -15,8 +15,8 @@ import { type Anchor, SHEET } from "../core/index.js";
 import { type Marks, NovatrailCanvas, type Task } from "./index.js";
 import { rest } from "./mouse.fixture.js";
 
-// The trial consumer (R27, R28, R32, R38, R39, R41, R42, R83): a page that takes the element as app
-// is to take it. The types of the contract it takes from spec's package, as app does (R74 spec),
+// The trial consumer: a page that takes the element as app
+// is to take it. The types of the contract it takes from spec's package, as app does,
 // and only the element's own from the package: the tutor's marks, the task with its tools and the
 // picture of the work. It gives the task and the module's manifest, of spec's types as app holds
 // them, the media and the language, keeps the history of writing as historychange tells it and
@@ -35,7 +35,7 @@ import { rest } from "./mouse.fixture.js";
 const made: HTMLElement[] = [];
 // The mouse an earlier test or file left where an element now stands would show a button's
 // tooltip on its own, and the tooltip's words would change the element's text, by which WebKit's
-// locator of an element finds it: the locator would then find nothing (R84). So each test starts
+// locator of an element finds it: the locator would then find nothing. So each test starts
 // with the mouse on the window's corner, where no element stands.
 beforeEach(rest);
 afterEach(() => {
@@ -48,16 +48,16 @@ async function settle(): Promise<void> {
   await frame();
 }
 
-/** What the task's statement gives and asks: app's chips (R57 spec). */
+/** What the task's statement gives and asks: app's chips. */
 const CHIPS = {
   givens: ["The path is 20 m long.", "A post stands every 4 m, from one end to the other."],
   unknown: "How many posts there are.",
 };
 
 /**
- * The open view of a task, as app is to have it from api, of spec's type (R73 spec): a statement
- * with a picture, what it gives and asks, and the answer anywhere on the sheet. The chips of what it
- * gives and asks are app's to show, and the element shows nothing of them (R57 spec).
+ * The open view of a task, as app is to have it from api, of spec's type: a statement
+ * with a picture, what it gives and asks, and the answer anywhere on the sheet. The chips of what
+ * it gives and asks are app's to show, and the element shows nothing of them.
  */
 const TASK: open.Task = {
   id: "posts-along-a-path",
@@ -91,17 +91,16 @@ const MODULE: open.Manifest = {
 const PATH = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="60"><rect width="200" height="60" fill="#eee"/></svg>`;
 
 /**
- * app gives the files of the pictures through the contract, as spec's CanvasElement has them
- * (R36 spec).
+ * app gives the files of the pictures through the contract, as spec's CanvasElement has them.
  */
 function media(element: CanvasElement): void {
   element.media = async () => new Blob([PATH], { type: "image/svg+xml" });
 }
 
 /**
- * The open view of a lesson's worked example, as app is to have it from api, of spec's type (R73
- * spec): a statement with a picture, a sheet ruled in lines, and the author's demo — a paragraph, a
- * picture on an area of the sheet and a paragraph (R58 spec).
+ * The open view of a lesson's worked example, as app is to have it from api, of spec's type: a
+ * statement with a picture, a sheet ruled in lines, and the author's demo — a paragraph, a
+ * picture on an area of the sheet and a paragraph.
  */
 const EXAMPLE: open.WorkedExample = {
   statement: [
@@ -121,8 +120,7 @@ const EXAMPLE: open.WorkedExample = {
 };
 
 /**
- * The open view of a workbook's task: two lines of one box, and one of two, «47 ÷ 6 = [ ] r [ ]»
- * (R51 spec).
+ * The open view of a workbook's task: two lines of one box, and one of two, «47 ÷ 6 = [ ] r [ ]».
  */
 const BOOK: Task = {
   id: "tables-of-seven",
@@ -301,14 +299,14 @@ test("app's path: write, erase, undo and clear with the sheet's buttons, keep th
     expect(sheet.filled).toEqual([[false]]);
     expect(await sheet.exportWork()).toBeNull();
     // What the statement gives and asks the element takes, and shows nothing of: app shows the
-    // chips (R57 spec).
+    // chips.
     const shown = sheet.shadowRoot?.textContent ?? "";
     for (const chip of [...CHIPS.givens, CHIPS.unknown]) {
       expect(shown).not.toContain(chip);
     }
     expect(shown).toContain("How many posts stand along a path");
 
-    // «A», two lines 40 units apart, and «B» far off: a group is strokes within 50 units (R24).
+    // «A», two lines 40 units apart, and «B» far off: a group is strokes within 50 units.
     write(sheet, 100, 100, 300);
     write(sheet, 140, 100, 300);
     write(sheet, 600, 500, 800);
@@ -343,7 +341,7 @@ test("app's path: write, erase, undo and clear with the sheet's buttons, keep th
     expect(store).toEqual(sheet.history);
 
     // Check: the crop as a PNG and the context of its submission, which app keeps. The answer
-    // anywhere holds strokes now, so the step's exit condition holds (R42).
+    // anywhere holds strokes now, so the step's exit condition holds.
     expect(sheet.filled).toEqual([[true]]);
     const work = await check(sheet);
     const crop = await read(work);
@@ -446,7 +444,7 @@ test("app's path through a lesson: after a task, its worked example on a new ele
   const { sheet, store } = await app();
   write(sheet, 100, 100, 300);
   expect(store).toHaveLength(1);
-  // The lesson's next segment, its worked example: a new element in place of the task's (R20, R42).
+  // The lesson's next segment, its worked example: a new element in place of the task's.
   const example = document.createElement("novatrail-canvas");
   example.style.width = "500px";
   example.style.height = "400px";
@@ -454,7 +452,7 @@ test("app's path through a lesson: after a task, its worked example on a new ele
   example.manifest = MODULE;
   media(example);
   example.workedExample = EXAMPLE;
-  // app's own button, which ends the segment, in the element's row after its Next and Demo (R84).
+  // app's own button, which ends the segment, in the element's row after its Next and Demo.
   const proceed = document.createElement("button");
   proceed.type = "button";
   proceed.slot = "actions";
@@ -468,7 +466,7 @@ test("app's path through a lesson: after a task, its worked example on a new ele
   sheet.replaceWith(example);
   await settle();
   const within = page.elementLocator(example);
-  // A worked example has no tools of writing, and so no bar (R84).
+  // A worked example has no tools of writing, and so no bar.
   expect(within.getByRole("toolbar").elements()).toHaveLength(0);
   const words = (found: Element[]) => found.map((each) => each.textContent);
   // The element's own buttons, and app's, which the locator finds first as a child of the element.
@@ -504,7 +502,7 @@ test("app's path through a worked example's demo: it keeps how far the learner h
     element.style.height = "400px";
     element.lang = "ru";
     element.manifest = MODULE;
-    // The example before its state, as the JSX of app's React is to have them (R42).
+    // The example before its state, as the JSX of app's React is to have them.
     element.workedExample = EXAMPLE;
     if (state !== undefined) element.demoState = state;
     element.addEventListener("demochange", ({ detail }) => {
@@ -529,7 +527,7 @@ test("app's path through a worked example's demo: it keeps how far the learner h
   expect(kept).toEqual({ opened: 2, hidden: true });
   expect(within.getByRole("listitem").elements()).toHaveLength(0);
   expect(told).toBe(3);
-  // The next time the learner comes to the segment: a new element, as app gives every one (R20).
+  // The next time the learner comes to the segment: a new element, as app gives every one.
   first.remove();
   const again = await lesson(kept);
   expect(told).toBe(3);
@@ -625,7 +623,7 @@ test("app's path on a workbook: write in its boxes and beside them, read which a
     expect(crop.type).toBe("image/png");
     expect(crop.signature).toEqual(SIGNATURE);
     expect(crop.decoded).toEqual(crop.size);
-    // The box's stroke alone, in the middle of a crop of the least side, and paper round it (R25).
+    // The box's stroke alone, in the middle of a crop of the least side, and paper round it.
     expect(crop.size).toEqual([200, 200]);
     expect(Math.min(crop.grey(100, 99), crop.grey(100, 100))).toBeLessThan(128);
     expect(crop.grey(100, 60)).toBe(255);
@@ -636,7 +634,7 @@ test("app's path on a workbook: write in its boxes and beside them, read which a
   ]);
   expect(JSON.parse(JSON.stringify(work.submission))).toEqual(work.submission);
   // The work app puts on the server while the profile's storage is on has the picture of the whole
-  // page, its draft too, by the agreement's method (R83; R36 spec).
+  // page, its draft too, by the agreement's method.
   const picture = await decoded(await sheet.exportPicture());
   expect([picture.type, picture.signature, picture.size]).toEqual([
     "image/png",

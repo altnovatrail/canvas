@@ -16,7 +16,7 @@ import {
 import { probe } from "./probe.js";
 import { PAGE_ZOOM, PEN_MODE } from "./session.js";
 
-// The page's zoom of the sheet in a browser (R73): Zoom in and Zoom out step it by quarters from
+// The page's zoom of the sheet in a browser: Zoom in and Zoom out step it by quarters from
 // half the page's fit to twice it, for every sheet of the page, about the middle of what is in
 // sight, and two fingers pinch it about their middle. The canvas stays as small as the container,
 // the statement as wide as the fit, and the input and the work for checking in units of the sheet.

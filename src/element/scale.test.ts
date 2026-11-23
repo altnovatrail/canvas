@@ -4,7 +4,7 @@ import { NovatrailCanvas, type TracingState } from "./index.js";
 import { at, buttonOf, paperCrop, settle } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
-// The tracing paper's scale and the reading of its statement (R89), as the mockup's
+// The tracing paper's scale and the reading of its statement, as the mockup's
 // `Zadacha-masshtab` has them: the grip chooses the paper, its corners and its bar scale it, Ctrl
 // with the wheel too, and "Recognise" puts the statements read in place of the crop.
 

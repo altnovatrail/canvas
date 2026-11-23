@@ -1,4 +1,4 @@
-// The choice of the iPad simulator for the probe and the samples page (R54).
+// The choice of the iPad simulator for the probe and the samples page.
 
 import { expect, test } from "vitest";
 import { deviceOf, IPAD, runtimeOf } from "./simulator.ts";

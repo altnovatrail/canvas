@@ -1,8 +1,8 @@
 /**
- * A pointer as the hands on the sheet see it (R29): where it is on the screen, how big its contact
- * is, and when. The DOM-free part sees no DOM (R12), so the element hands it this much of each
+ * A pointer as the hands on the sheet see it: where it is on the screen, how big its contact
+ * is, and when (R29). The DOM-free part sees no DOM, so the element hands it this much of each
  * pointer event. The contact's size decides only what the pointer may do: it goes into no stroke,
- * no history and no sample (R09).
+ * no history and no sample.
  */
 export interface Contact {
   /** The event's `pointerId`. */
@@ -23,20 +23,20 @@ export interface Contact {
 }
 
 /**
- * A touch wider or taller than this, in CSS pixels, is a palm (R29). WebKit on iPadOS gives a touch
+ * A touch wider or taller than this, in CSS pixels, is a palm. WebKit on iPadOS gives a touch
  * twice its contact's radius, a fingertip's 40–60 px by one report, so canvas-api's 30 px would
  * take most fingers there for palms. No tablet has measured it.
  */
 export const PALM_PX = 100;
 
 /**
- * Two touches that come down at most this many milliseconds apart are two fingers of one gesture
- * (R29): Android's tap timeout, 100 ms, with a margin for children's fingers.
+ * Two touches that come down at most this many milliseconds apart are two fingers of one gesture:
+ * Android's tap timeout, 100 ms, with a margin for children's fingers.
  */
 export const PAIR_MS = 150;
 
 /**
- * How far a touch may wander, in CSS pixels, before it is going somewhere (R29): Android's touch
+ * How far a touch may wander, in CSS pixels, before it is going somewhere: Android's touch
  * slop, 8 dp. A finger that has gone further is writing, and two fingers scroll once their middle
  * has gone further.
  */
@@ -44,16 +44,17 @@ export const SLOP_PX = 8;
 
 /**
  * Two fingers that have gone this many times further along one axis than along the other, when
- * they pass the slop, scroll along that axis alone for the rest of the gesture (R73): a scroll
+ * they pass the slop, scroll along that axis alone for the rest of the gesture: a scroll
  * down a sheet does not wander sideways, nor one across it up and down. Between, they go
  * both ways.
  */
 export const RAIL = 2;
 
 /**
- * The pen mode (R29): on from a pen's touch on a sheet, till the page goes, with no button that
- * turns it off: while it is on, a finger neither writes nor erases, and moves the sheet (R84). One is shared by every sheet of a page, and
- * it lives in memory alone: nothing is stored or sent, and a new page starts without it.
+ * The pen mode: on from a pen's touch on a sheet, till the page goes, with no button that
+ * turns it off: while it is on, a finger neither writes nor erases, and moves the sheet. One is
+ * shared by every sheet of a page, and it lives in memory alone: nothing is stored or sent, and a
+ * new page starts without it.
  *
  * It knows, too, whether any sheet of the page is written on, and tells its sheets when the last
  * stroke ends: each bar shows the mode as it is then.
@@ -122,11 +123,11 @@ export interface HandsSheet {
   scroll(dx: number, dy: number, fresh: boolean): void;
   /**
    * Two fingers drew apart, or together, by `ratio` of the span between them: the sheet's zoom
-   * goes by it, the point of the sheet at `x` and `y` on the screen, their middle, standing (R73).
+   * goes by it, the point of the sheet at `x` and `y` on the screen, their middle, standing.
    */
   zoom(ratio: number, x: number, y: number): void;
   /**
-   * Whether the sheet scrolls across at all now: one wider than its container does (R73). A
+   * Whether the sheet scrolls across at all now: one wider than its container does. A
    * gesture on a sheet that does not goes by its travel down alone.
    */
   across(): boolean;
@@ -136,7 +137,7 @@ export interface HandsSheet {
  * What a pointer down on the sheet does:
  * - "writes": it may write or erase, and does while the sheet says it is the writer;
  * - "waits": a finger in pen mode, waiting for a second to scroll with, or to go past the slop
- *   and drag the sheet alone (R84);
+ *   and drag the sheet alone;
  * - "scrolls": the finger that drags the sheet, or one of the two fingers of a gesture;
  * - "palm": too big for a finger, it does nothing until it lifts;
  * - "idle": it does nothing until it lifts.
@@ -175,7 +176,7 @@ interface Gesture {
   down: boolean;
   /**
    * Two fingers' span on the screen when the gesture began, and at the last step of their pinch,
-   * once it has gone past the slop (R73).
+   * once it has gone past the slop.
    */
   readonly span0: number;
   span: number | undefined;
@@ -187,9 +188,9 @@ interface Gesture {
 }
 
 /**
- * The hands on a sheet (R29): which pointer may write, which is a palm, and which two fingers
+ * The hands on a sheet: which pointer may write, which is a palm, and which two fingers
  * scroll, for a pen, fingers and a mouse on one screen.
- * - One pointer writes at a time (R18), and the sheet's recorder and eraser say which.
+ * - One pointer writes at a time, and the sheet's recorder and eraser say which.
  * - A pen's touch puts the page in pen mode and takes away the stroke of a touch under way: it was
  *   a palm. While a pen or a mouse writes, a touch does nothing until it lifts.
  * - A touch wider or taller than `PALM_PX`, at its `pointerdown` or at any move, is a palm: it does
@@ -199,13 +200,13 @@ interface Gesture {
  *   comes later does nothing.
  * - In pen mode a finger writes nothing, and two that come down within `PAIR_MS` scroll. One that
  *   goes further than `SLOP_PX` alone, before a second comes, drags the sheet: the second does
- *   nothing then (R84; R90 spec).
+ *   nothing then.
  * - A third finger does nothing. When one of the two lifts, the other does nothing until it lifts.
  * - Two fingers scroll by the travel of their middle on the screen, and one by its own, past its
  *   first `SLOP_PX`: along one axis alone if it went `RAIL` times further along it than along the
  *   other, or else both.
  * - Two fingers whose span has changed by more than `SLOP_PX` pinch too: the zoom goes by the
- *   span's ratio from there, about their middle (R73).
+ *   span's ratio from there, about their middle.
  * - Any other pointer, a mouse or one of no type, writes when nothing does, whatever the mode.
  */
 export class Hands {
@@ -257,7 +258,7 @@ export class Hands {
     hand.x = contact.x;
     hand.y = contact.y;
     hand.travel = Math.max(hand.travel, Math.hypot(contact.x - hand.x0, contact.y - hand.y0));
-    // A finger of pen mode that has gone past the slop with no second drags the sheet alone (R84),
+    // A finger of pen mode that has gone past the slop with no second drags the sheet alone,
     // but not while a sheet of the page is written on: nothing moves under the pen. Another finger
     // that waits then does nothing until it lifts, and takes no drag over from where it came down.
     if (
@@ -434,8 +435,8 @@ export class Hands {
   }
 
   /**
-   * The two fingers' span has changed: past the slop, the zoom goes by its ratio to the last step's,
-   * from the slop on, without a jump, about their middle (R73).
+   * The two fingers' span has changed: past the slop, the zoom goes by its ratio to the last
+   * step's, from the slop on, without a jump, about their middle.
    */
   #pinch(gesture: Gesture, span: number, middle: At): void {
     if (gesture.span === undefined) {

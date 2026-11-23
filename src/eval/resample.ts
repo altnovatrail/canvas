@@ -1,9 +1,9 @@
-// The final geometry of a sample (R09): the strokes a sheet shows, without the time, the pressure,
+// The final geometry of a sample: the strokes a sheet shows, without the time, the pressure,
 // the order and the direction they were written in. Each stroke runs in its canonical direction,
 // its points go along it a step apart, and the strokes are numbered by their place. The step keeps
 // every point that holds the stroke's box, so the box, the bundles and h_med — every number of a
-// crop — are the same as of the points as they came (R25): only the pixels move, and too little to
-// see (R48).
+// crop — are the same as of the points as they came: only the pixels move, and too little to
+// see.
 
 import { type Box, tenths } from "../core/geometry.js";
 import type { Point } from "../core/screen.js";
@@ -11,14 +11,14 @@ import type { Point } from "../core/screen.js";
 /**
  * The step of the final geometry along a stroke, in units: the largest of 0.25, 0.5 and 1 at which
  * no pixel of a crop, at any height of eval, moves by more than a quarter of the grey scale on the
- * synthetic sheets (R48; resample.test.ts). At the largest scale a crop draws at, 3.2 px to a unit,
+ * synthetic sheets (resample.test.ts). At the largest scale a crop draws at, 3.2 px to a unit,
  * the points are 0.8 px apart. At 0.5 the edge of a line moves by up to half the scale, on small
  * letters drawn at 48 px.
  */
 export const STEP = 0.25;
 
 /**
- * The points of a stroke in its canonical direction (R09): of the points and their reverse, the one
+ * The points of a stroke in its canonical direction: of the points and their reverse, the one
  * that comes first by its points in whole tenths, each down then across. A stroke written from its
  * bottom, or from its right, runs the other way; a closed one, from the same point either way,
  * goes the way of its smaller second point.
@@ -30,7 +30,7 @@ export function canonical(points: readonly Point[]): Point[] {
 }
 
 /**
- * A stroke's points along its length, `step` units apart, to a tenth (R09): its first and its last
+ * A stroke's points along its length, `step` units apart, to a tenth: its first and its last
  * point, every point that holds its box — the first that reaches each edge —, and between them
  * points at every `step` of the length, on the segments as they were written. A point on a segment
  * lies within the box, and rounding it to a tenth keeps it there, for the box's edges are tenths:
@@ -109,7 +109,7 @@ function between(
 }
 
 /**
- * The points of a stroke in the final geometry (R09): along it, `step` units apart, from one end or
+ * The points of a stroke in the final geometry: along it, `step` units apart, from one end or
  * from the other, each in its canonical direction, and of the two the one whose points come first.
  * The direction is chosen on the points the file keeps, so a reader that compares them finds it
  * the same, and a stroke written the other way gives the same points.
@@ -133,7 +133,7 @@ function order(a: readonly Point[], b: readonly Point[]): number {
 }
 
 /**
- * The order of strokes by their place (R09): by the box of each stroke's points in whole tenths —
+ * The order of strokes by their place: by the box of each stroke's points in whole tenths —
  * its top, then its left, its bottom and its right —, then by its points in their canonical
  * direction, and last by the ID it had, which only strokes alike in all of it reach. The final
  * geometry numbers them from 1 in this order, so the numbers tell no order of writing.

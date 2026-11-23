@@ -1,4 +1,4 @@
-// The width table of the workbook's layout against the fonts of the image the tests run in (R35):
+// The width table of the workbook's layout against the fonts of the image the tests run in:
 // its numbers are the canvas's own, each the mean of Liberation Sans and Liberation Serif, and the
 // text SVG fits to them keeps its shape — what the fitting stretches or squeezes stays within an
 // eighth in either font. A font of another width, as Liberation Mono, is fitted all the same: its
@@ -74,7 +74,7 @@ test("fitting the corpus's texts to the table stretches or squeezes them by an e
     }
   }
   // A font of another width is fitted all the same: Mono's half of the texts squeezed by more than
-  // two fifths, and a lone «.» the most, to less than half its own width (R35).
+  // two fifths, and a lone «.» the most, to less than half its own width.
   expect(Math.max(...(ratios[MONO] ?? []))).toBeLessThanOrEqual(2.5);
   expect(ratios[SANS]?.length).toBeGreaterThan(100);
 });

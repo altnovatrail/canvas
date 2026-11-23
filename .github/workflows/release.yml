@@ -1,6 +1,6 @@
-# NovaTrail's shared release (R18 .github), pinned to a release of .github by SHA with its version
+# NovaTrail's shared release, pinned to a release of .github by SHA with its version
 # beside it. RELEASE_LINE is the line the releases are numbered in; paths, what they are built from:
-# all a consumer gets of the package (R08). A run after CI on main, and the button, publish the
+# all a consumer gets of the package. A run after CI on main, and the button, publish the
 # release and the same archive to npm, through trusted publishing, with no token kept anywhere; a
 # pull request tries it, publishing nothing: it builds the files, signs them and checks them, the
 # npm package's archive too.
@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 env:
-  # The element reads the module format 0.4 and refuses a manifest of 0.3 (R08).
+  # The element reads the module format 0.4 and refuses a manifest of 0.3.
   RELEASE_LINE: "0.3"
 
 jobs:
@@ -42,14 +42,14 @@ jobs:
       # bytes, as a path cannot name a stage —, and this file, so that a change of the line gives a
       # release. The synthetic samples too: their generator is src/eval/, which src/*.ts takes, and
       # its script, its build, the archive's script, tutor's file of open tasks and the lock file,
-      # whose packages write each sample's JSON (R50). The lock file is no part of the package's
+      # whose packages write each sample's JSON. The lock file is no part of the package's
       # archive, and its compiler is pinned in package.json. The samples page too: its own code,
       # template and kept notices — the part for tests goes into no release — its builder, the
-      # reader of spec's file of the legal texts, which tasks/* takes (R69), its policy, and
+      # reader of spec's file of the legal texts, which tasks/* takes, its policy, and
       # the programs whose options Vite's transform reads for the files it bundles, the element's
-      # and the DOM-free part's, through tsconfig.json (R55, R66). The generator of a module's eval
+      # and the DOM-free part's, through tsconfig.json. The generator of a module's eval
       # set too: its script, its entry, its builder, the notices' helpers both builders share, and
-      # the program of the scripts, whose options Vite's transform reads for scripts/ (R68).
+      # the program of the scripts, whose options Vite's transform reads for scripts/.
       paths: |
         src/*.ts
         :(exclude)src/*.test.ts
@@ -88,7 +88,7 @@ jobs:
       npm-package: "@altnovatrail/canvas"
 
   # The notes of a release that carries the samples page say first what downloading it shows
-  # GitHub (R11, R66). The shared release.yml writes its notes from the pull requests alone
+  # GitHub. The shared release.yml writes its notes from the pull requests alone
   # (--generate-notes) and takes no text of its own; the notes of an immutable release stay open
   # to edits, its files and tag do not. So this job, after it, finds the release of the commit, by
   # the SHA the shared job makes it at, and puts the paragraph first, between two marks: a run

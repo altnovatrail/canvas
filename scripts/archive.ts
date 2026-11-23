@@ -1,4 +1,4 @@
-// The archive of the synthetic samples in a release, synthetic-samples_v<X.Y.Z>.tar.gz (R50): a
+// The archive of the synthetic samples in a release, synthetic-samples_v<X.Y.Z>.tar.gz: a
 // flat tar of one JSON file to a sample, gzipped, the same bytes for the same files whenever it is
 // built in a toolchain stage — toolchain-core or toolchain, of one Node —, since tutor's CI pins
 // its sum. Written here rather than by GNU tar and gzip, whose bytes follow their versions and
@@ -11,7 +11,8 @@
 //   node scripts/archive.ts <folder> <archive>
 //
 // It takes every file of the folder, each a .json file, and refuses a folder that holds anything
-// else, or nothing, so that the archive is the set and only the set. Run from the repository's root.
+// else, or nothing, so that the archive is the set and only the set. Run from the repository's
+// root.
 
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";

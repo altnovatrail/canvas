@@ -1,10 +1,10 @@
-// axe-core over the element's shadow tree, in the tests in a browser (R70): app's CI does not look
-// into the canvas's element, so canvas's own does (R90 spec). The rules are those of WCAG 2.0, 2.1
+// axe-core over the element's shadow tree, in the tests in a browser: app's CI does not look
+// into the canvas's element, so canvas's own does (R70). The rules are those of WCAG 2.0, 2.1
 // and 2.2 at levels A and AA (wcag.fixture.ts). Its target-size measures WCAG 2.5.8,
-// 24 × 24 CSS px; the 44 × 44 of WCAG 2.5.5, which R90 spec asks of canvas too, is the bar's own
-// test (R28). What axe cannot tell it leaves incomplete: a test names those it expects of its kind
-// of canvas, so that a new one does not pass in silence. Like the tests, the build leaves this
-// module out, and the package never has it.
+// 24 × 24 CSS px; the 44 × 44 of WCAG 2.5.5, which spec's standard of UI packages asks of canvas
+// too, is the bar's own test. What axe cannot tell it leaves incomplete: a test names those it
+// expects of its kind of canvas, so that a new one does not pass in silence. Like the tests, the
+// build leaves this module out, and the package never has it.
 
 import axe from "axe-core";
 import { expect, vi } from "vitest";
@@ -31,7 +31,7 @@ export type Pair = readonly [foreground: string, background: string];
  * Run axe over a root — the element, whose open shadow root it enters — and throw, naming each rule
  * and node, on any violation, and on incomplete rules other than those named. A node of
  * color-contrast in one of the system's pairs is none of the element's: in forced colours its text
- * and background are the system's, of a pair it defines for the node's role (R70).
+ * and background are the system's, of a pair it defines for the node's role.
  */
 export async function axeOf(
   root: Element,
@@ -102,7 +102,7 @@ export const WORKBOOK_INCOMPLETE: readonly string[] = ["color-contrast"];
 
 /** What axe leaves incomplete on a worked example on a sheet: the contrast of the labels of Next
  * and Demo, and of the consumer's buttons after them, whose row stands over the sheet's canvas and
- * pictures, which axe takes for images, so that it cannot tell their background (R84). a11y.test.ts
+ * pictures, which axe takes for images, so that it cannot tell their background. a11y.test.ts
  * measures Next's and Demo's against the glass over the paper. */
 export const EXAMPLE_INCOMPLETE: readonly string[] = ["color-contrast"];
 
@@ -127,7 +127,7 @@ const media = () => vi.fn(() => quarters());
  * The pictures an element shows once their files have come: as many images, HTML and SVG, as
  * given, and the frames they were drawn in. It waits for the files and their decodes themselves,
  * not for a time: under load a file of the consumer's can take longer than any time a test would
- * guess (R75). The decodes are those a spy on `HTMLImageElement.prototype.decode` records, which
+ * guess. The decodes are those a spy on `HTMLImageElement.prototype.decode` records, which
  * the test's file puts before each test, as arrive() asks.
  */
 async function pictured(element: NovatrailCanvas, images: number): Promise<void> {
@@ -168,7 +168,7 @@ function example(given: WorkedExample, images = 0, actions = false) {
 }
 
 /** A task from paper on a new element, its tracing paper read, a stroke on it, and the tutor's
- * verdict and wavy line over it (R87). */
+ * verdict and wavy line over it. */
 async function fromPaper(made: HTMLElement[]) {
   const { element, root, canvas, view } = await placed(made, 400);
   element.paper = { statement: await paperCrop() };

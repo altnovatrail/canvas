@@ -1,11 +1,11 @@
-// The boxes of a workbook's page and the strokes in them (R34, R37). Each visible stroke is in one
-// box or in none: the rule takes it alone, in whole numbers, with no DOM and no time, and what is in
-// no box is the draft. A stroke is a box's if the middle of the box of its points lies in the box
-// widened by 120 thousandths of its size — 12 units of a box of 100, short of the 16 to halfway to
-// the next box — and it is no wider and no taller than the box and 30 units on each side: a
+// The boxes of a workbook's page and the strokes in them (R37). Each visible stroke is in one
+// box or in none: the rule takes it alone, in whole numbers, with no DOM and no time, and what is
+// in no box is the draft. A stroke is a box's if the middle of the box of its points lies in the
+// box widened by 120 thousandths of its size — 12 units of a box of 100, short of the 16 to halfway
+// to the next box — and it is no wider and no taller than the box and 30 units on each side: a
 // fraction's bar wider than the box is its own, and a line through the whole line is not. The
 // core's entry point does not give the rule. It is the eval protocol's too, and spec's test vectors
-// pin it (R94 spec).
+// pin it.
 
 import type { Filled, Filling } from "@altnovatrail/spec/canvas";
 import { extentOf, tenths } from "./geometry.js";
@@ -20,7 +20,7 @@ export interface Cell {
 }
 
 /**
- * The rule of boxes (R37), in thousandths of a box's width across and of its height down: how far
+ * The rule of boxes, in thousandths of a box's width across and of its height down: how far
  * the box is widened for the middle of a stroke's points, and how wide and how tall the box of its
  * points may be.
  */
@@ -29,22 +29,22 @@ export interface BoxRule {
   readonly limit: number;
 }
 
-/** The rule the workbook has (R37). */
+/** The rule the workbook has. */
 export const BOX_RULE: BoxRule = Object.freeze({ margin: 120, limit: 1600 });
 
 /**
  * Which answer slots the learner's strokes fill, per item, per slot, in the task's order: a
- * workbook's boxes, each whether it holds a stroke (R34, R37), or a sheet's one answer anywhere on
- * it or the whole sheet, whether the sheet holds one (R42). spec's type (R74 spec; R07).
+ * workbook's boxes, each whether it holds a stroke, or a sheet's one answer anywhere on
+ * it or the whole sheet, whether the sheet holds one. spec's type.
  */
 export type { Filled };
 
-/** A sheet's one answer slot, filled and not: the same frozen arrays for every sheet (R42). */
+/** A sheet's one answer slot, filled and not: the same frozen arrays for every sheet. */
 const STROKED: Filled = Object.freeze([Object.freeze([true])]);
 const BLANK: Filled = Object.freeze([Object.freeze([false])]);
 
 /**
- * What a sheet's one answer slot — anywhere on it, or the whole sheet — is filled with (R42): a
+ * What a sheet's one answer slot — anywhere on it, or the whole sheet — is filled with: a
  * stroke on the sheet, or none. The same array each time, as a workbook's filling stays the same
  * until a box changes.
  */
@@ -106,11 +106,11 @@ export function cellOf(stroke: Stroke, cells: readonly Cell[], rule: BoxRule = B
   return chosen;
 }
 
-/** A filled box and the IDs of its strokes, in ascending order: spec's type (R74 spec; R07). */
+/** A filled box and the IDs of its strokes, in ascending order: spec's type. */
 export type { Filling };
 
 /**
- * The table of the boxes the strokes fill (R34): each box that holds a stroke, in the order of
+ * The table of the boxes the strokes fill: each box that holds a stroke, in the order of
  * `cells`, with the IDs of its strokes. A stroke ID twice is a TypeError.
  */
 export function tableOf(

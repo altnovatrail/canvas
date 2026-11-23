@@ -1,4 +1,4 @@
-// The probe of a page opened from a file in Safari on macOS (R54), on a runner of macOS. It runs
+// The probe of a page opened from a file in Safari on macOS, on a runner of macOS. It runs
 // once safaridriver, which the system brings and the workflow enables, listens and
 // emulators/serve.ts hands the probe's files out:
 //

@@ -1,7 +1,7 @@
-// The markup the samples page makes (R56): what a form gives and what it still lacks, by the
+// The markup the samples page makes: what a form gives and what it still lacks, by the
 // rules spec's sample-check holds a file to, and three example samples written by it, a sheet's,
 // an essay's and a workbook's, which ci-licenses checks by sample-check as it checks those of
-// src/eval/ (R48). Their strokes are the code's: the synthetic sheets and pages of the tests of
+// src/eval/. Their strokes are the code's: the synthetic sheets and pages of the tests of
 // the groups and the boxes.
 
 import { PartKind } from "@altnovatrail/contracts/novatrail/eval/v1/sample_pb.js";
@@ -229,7 +229,7 @@ describe("an essay's markup (T21)", () => {
 
 describe("the examples of the page", () => {
   // A sample as the page saves it: an adult's measurement, a person's, of the measurement's set in
-  // force (R69), with a fixed ID and code, so that the file is the same at each run.
+  // force, with a fixed ID and code, so that the file is the same at each run.
   const page = { purpose: Purpose.MEASUREMENT, writer: Writer.ADULT, writerCode: "PAGE2345" };
   const origin = { person: { textSetVersion: "measure-2", canvasVersion: "0.0.0" } };
   // The digests of each bank of tutor v0.1.1 and of its first task's open view, as spec's examples

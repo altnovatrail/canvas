@@ -1,4 +1,4 @@
-// The volunteer's way through the samples page, the same on every device (R54): the page opened
+// The volunteer's way through the samples page, the same on every device: the page opened
 // with the watch of emulators/watch.ts in it, a stroke on the sheet, its markup and its sample
 // saved, the workbook's page, a stroke there, its markup and its sample saved, and what the page
 // did all along. A device — emulators/page-android.ts, emulators/page-ipad.ts — gives the ways of
@@ -9,9 +9,8 @@
 // Two builds, two ways (R65). The release's goes an adult's measurement with the moves of the
 // emulators' checklist on the sheet — a stroke the browser cancels, the eraser and undo, two
 // fingers that scroll — and the workbook written as an adult imitating a child; then the page is
-// opened anew and the sheet's file opened in it (R64). The test build's goes its start, the eval
-// set closed and a child's session begun with the form's code, and the child's sheet and workbook
-// (R59).
+// opened anew and the sheet's file opened in it. The test build's goes its start, the eval
+// set closed and a child's session begun with the form's code, and the child's sheet and workbook.
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -45,7 +44,7 @@ import {
   WORKBOOK,
 } from "./watch.ts";
 
-/** Which build a pass goes through, and so its way: the release's or the test's (R65). */
+/** Which build a pass goes through, and so its way: the release's or the test's. */
 export type Way = "release" | "test";
 
 /** What a device does on the volunteer's way. A step it cannot do it records as the device's and
@@ -167,7 +166,7 @@ async function handed(
  * asked for, its form filled in. Whether the page will save the sample then; or undefined when the
  * driver could not reach the form — a page that no longer answers is the device's failure, which
  * this records. In a child's session the form's flag of a part written illegibly is the adult's to
- * say, and the page labels it so (R59). */
+ * say, and the page labels it so. */
 async function markUp(
   run: Run,
   device: Device,
@@ -206,9 +205,9 @@ async function json<T>(device: Device, expression: string): Promise<T> {
   return JSON.parse(String(await device.evaluate(expression))) as T;
 }
 
-/** The start of the way: under the release's sets in force, an adult's measurement (R58, R72);
+/** The start of the way: under the release's sets in force, an adult's measurement;
  * under the test set, every purpose open and a child's session begun with the form's code, a new
- * code beginning none (R59). Whether the sheet is there then. */
+ * code beginning none. Whether the sheet is there then. */
 async function begin(run: Run, device: Device, way: Way): Promise<boolean> {
   if (way === "release") {
     const started = (await device.evaluate(START)) === true;
@@ -258,7 +257,7 @@ async function begin(run: Run, device: Device, way: Way): Promise<boolean> {
   return true;
 }
 
-/** The moves of the emulators' checklist on the sheet, after its first stroke (R65): a stroke the
+/** The moves of the emulators' checklist on the sheet, after its first stroke: a stroke the
  * browser cancels leaves nothing; the row's eraser takes the stroke off, and undo puts it back; a
  * second stroke, erased, stays in the history apart; the pen comes back; two fingers scroll and
  * write nothing. Whether the way goes on: a move the device could not make stops it, as its
@@ -347,7 +346,7 @@ async function checked(run: Run, device: Device, when: string): Promise<void> {
 }
 
 /** The page opened anew, as a person does to begin again, and the sheet's file opened in it, as the
- * organizer of an eval set looks in a sample before it goes on (R64): its strokes, those the
+ * organizer of an eval set looks in a sample before it goes on: its strokes, those the
  * history did not show apart, its crops; then what the page did since it opened anew. */
 async function opening(run: Run, device: Device, text: string, clock: Clock): Promise<void> {
   await device.evaluate(REOPEN);
@@ -426,7 +425,7 @@ export async function volunteer(
           "",
           "page",
         );
-        // The release's workbook is an adult's imitating a child's hand (R09): the page asks it of
+        // The release's workbook is an adult's imitating a child's hand: the page asks it of
         // each sample, and a child's session asks it of none.
         if (way === "release") {
           run.record(
@@ -471,7 +470,7 @@ export async function volunteer(
 /** Passes of a run: one, and one more when the device failed it, after the device's recovery. A
  * pass that throws is the device's failure: the page's own are steps it records. A recovery that
  * throws still leaves the second pass to run: a device it could not reset may answer anyway, and
- * one gone fails that pass by itself (R54). */
+ * one gone fails that pass by itself. */
 export async function passes(
   run: Run,
   pass: () => Promise<void>,
@@ -503,7 +502,7 @@ export interface Ways {
   readonly broken?: () => void;
 }
 
-/** A build's run (R65): its passes, what the device checks after a pass that went right, and
+/** A build's run: its passes, what the device checks after a pass that went right, and
  * its journal closed and its verdict written whatever came — a build's file the device could not
  * find too, which prepare finds inside. */
 export async function build(run: Run, title: string, prepare: () => Ways): Promise<void> {

@@ -1,19 +1,19 @@
-// The width table of the workbook's layout (R35): how wide each character of a line is, in whole
+// The width table of the workbook's layout: how wide each character of a line is, in whole
 // hundredths of the type size, so that the layout puts the boxes where it puts them on any device,
-// whatever its fonts, and the text is fitted to its width by SVG (R34). The numbers are the
+// whatever its fonts, and the text is fitted to its width by SVG. The numbers are the
 // canvas's own: each the mean of Liberation Sans and Liberation Serif, the fonts of the image the
 // tests run in, rounded to a hundredth — no font's table. Which character is which comes from
 // explicit ranges of code points alone, never from the engine's Unicode tables — no `\p{…}`, no
 // `\s`, no `Intl.Segmenter` — for those follow each engine's version of Unicode, and the layout
-// must be the same in every engine and in Node, as the crop is (R25).
+// must be the same in every engine and in Node, as the crop is.
 
-/** A digit: they are all as wide, and the page asks for figures of one width (R35). */
+/** A digit: they are all as wide, and the page asks for figures of one width. */
 export const DIGIT = 53;
 
 /** A sign of an operation or a comparison: one width for all of them, the mean of theirs. */
 export const SIGN = 56;
 
-/** The signs of operations and comparisons, one width for all (R35). */
+/** The signs of operations and comparisons, one width for all. */
 export const SIGNS = "+−×÷=<>≤≥≠±≈";
 
 /** The space between two words, which the layout sets itself. */

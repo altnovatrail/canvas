@@ -1,4 +1,4 @@
-// What the drivers of the samples page watch in it (R54), in Chrome on Android and in Safari in the
+// What the drivers of the samples page watch in it, in Chrome on Android and in Safari in the
 // iPad Simulator alike: the policy's violations, the page's errors, the requests it made and the
 // files it handed to a download. The watch is a script that runs before the page's own: on Android
 // DevTools puts it into the page, and for Safari, which no WebDriver lets a script into before the
@@ -15,16 +15,16 @@ import { hash } from "../scripts/csp.ts";
 export const TITLE = "NovaTrail — страница образцов";
 /** The save button's text, as the screen shows it. */
 export const SAVE = "Сохранить образец";
-/** The tasks the build offers before the start — every task of tutor's file (R62), then the 769 of
- * modules the copy of their open views gives a kind (R71) — and the first of the workbook among
+/** The tasks the build offers before the start — every task of tutor's file, then the 769 of
+ * modules the copy of their open views gives a kind — and the first of the workbook among
  * them, after the banks of sheets of tutor's file (scripts/page.ts). */
 export const TASKS = 825;
 export const WORKBOOK = "16";
 
 /** The build the workflow's build job wrote with scripts/page.ts. */
 export const BUILD = "build/page";
-/** The test build, with the legal texts' part for tests alone (R59, R69), as the workflow serves
- * it: its file named apart, for Chrome keeps both downloads in one list (R65). */
+/** The test build, with the legal texts' part for tests alone, as the workflow serves
+ * it: its file named apart, for Chrome keeps both downloads in one list. */
 export const TEST_BUILD = "build/page-test-served";
 
 /** The page's one file among a build's. */
@@ -125,7 +125,7 @@ export function blobAt(index: number): string {
 
 /** A script that draws a stroke on the element by pointer events of the page's own, from one point
  * of the window to another, of a pointer's type: what the iPad's driver draws with, for WebDriver's
- * actions in Safari of the simulator reached a window other than the session's, or hung (R65). The
+ * actions in Safari of the simulator reached a window other than the session's, or hung. The
  * element takes them as it takes a finger's; what a real pen or palm does is the hardware's to
  * show. It gives the strokes the sheet holds then. */
 export function strokeBy(
@@ -140,7 +140,7 @@ export function strokeBy(
 /** A script that moves pointers of the page's own over the element together, each from its point
  * to its own, and ends them all with one kind of event: one pointer is a stroke, ended by
  * pointerup or, as a browser that takes the touch back ends it, by pointercancel; two of a touch
- * are the fingers that scroll the sheet (R29, R65). It gives the strokes the sheet holds then. */
+ * are the fingers that scroll the sheet. It gives the strokes the sheet holds then. */
 export function pointersBy(
   paths: readonly (readonly [readonly [number, number], readonly [number, number]])[],
   type: "touch" | "pen" | "mouse",
@@ -164,7 +164,7 @@ export function pointersBy(
 })()`;
 }
 
-/** The box of a button of the element's own row, by its label as the screen shows it (R46): the
+/** The box of a button of the element's own row, by its label as the screen shows it: the
  * label is the button's text, after its icon. As JSON, null when the row has none such. */
 export function buttonBox(label: string): string {
   return `JSON.stringify((() => {
@@ -183,7 +183,7 @@ function rowButton(label: string): string {
 }
 
 /** A script that presses a button of the element's row by its own click(), as the iPad's driver
- * presses the page's buttons (R65); whether there was one. */
+ * presses the page's buttons; whether there was one. */
 export function clickButton(label: string): string {
   return `(() => {
   const button = ${rowButton(label)};
@@ -200,7 +200,7 @@ export const UNDO = "Отменить";
 
 /** What the sheet holds now, as JSON: how many events its history has, the kind of the last, the
  * tool in use and how far the sheet and the page are scrolled — the viewport of the element and
- * the window together, for two fingers scroll whichever can go (R29). */
+ * the window together, for two fingers scroll whichever can go. */
 export const SHEET = `JSON.stringify((() => {
   const host = document.querySelector("novatrail-canvas");
   const history = host && Array.isArray(host.history) ? host.history : [];
@@ -222,16 +222,16 @@ export interface SheetNow {
 }
 
 /** A script that has the writer say they imitate a child's hand: the page writes the sample as
- * an adult's imitating a child's (R09). */
+ * an adult's imitating a child's. */
 export const AS_CHILD = `(() => {
   const radio = document.querySelector('input[name="writer"][value="child"]');
   radio?.click();
   return radio?.checked === true;
 })()`;
 
-/** A script that reads the test build's start before anything is chosen (R58, R59, R65): the eval
+/** A script that reads the test build's start before anything is chosen: the eval
  * set open with no note, for the part for tests has its set in force and the build the tasks of
- * modules (R71), and the measurement and a child's session open, as JSON. */
+ * modules, and the measurement and a child's session open, as JSON. */
 export const TEST_START = `JSON.stringify((() => {
   const radio = (value) => document.querySelector('input[name="purpose"][value="' + value + '"]');
   return {
@@ -242,11 +242,11 @@ export const TEST_START = `JSON.stringify((() => {
   };
 })())`;
 
-/** A child's code as the form of the test would hold it: what the adult types (R59). */
+/** A child's code as the form of the test would hold it: what the adult types. */
 export const CHILD_CODE = "T22CHILD";
 
-/** A script that goes through the start of a child's session as the adult who leads it would
- * (R59): the session chosen, the statements ticked, a new code asked — which the page shows for a
+/** A script that goes through the start of a child's session as the adult who leads it would:
+ * the session chosen, the statements ticked, a new code asked — which the page shows for a
  * form and begins nothing with — and then the form's code typed, and «Начать». What came of each,
  * as JSON. */
 export const CHILD_START = `JSON.stringify((() => {
@@ -277,18 +277,18 @@ export const CHILD_START = `JSON.stringify((() => {
 })())`;
 
 /** Whether the form of a child's sheet labels the flag of a part illegible as the adult can say
- * it: unread by the child's words too, not on purpose (R59). */
+ * it: unread by the child's words too, not on purpose. */
 export const CHILD_FLAG = `(document.querySelector('[data-part="0"] input[data-flag="illegible"]')?.parentElement?.textContent ?? "").includes("со слов ребёнка")`;
 
-/** A script that opens the page anew, as a person does to begin again (R11): the start, with the
- * section that opens a file below it (R64). */
+/** A script that opens the page anew, as a person does to begin again: the start, with the
+ * section that opens a file below it. */
 export const REOPEN = "(setTimeout(() => location.reload(), 0), 0)";
 
 /** Whether the page shows its start and the section that opens a sample file. */
 export const OPEN_SHOWN = `document.getElementById("start")?.hidden === false && document.getElementById("open")?.hidden === false`;
 
-/** A script that gives the section of the page that opens a file a sample's text as a file chosen
- * (R64): the page's own way to read it, not the system's picker, which only hardware shows (R65).
+/** A script that gives the section of the page that opens a file a sample's text as a file chosen:
+ * the page's own way to read it, not the system's picker, which only hardware shows.
  * The text is the script's first argument where the driver passes one, or else in it. */
 export function chooseFile(text?: string): string {
   const given = text === undefined ? "arguments[0]" : JSON.stringify(text);
@@ -302,7 +302,7 @@ export function chooseFile(text?: string): string {
 })()`;
 }
 
-/** What the page shows of a sample file it opened (R64), as JSON: whether the view is there, how
+/** What the page shows of a sample file it opened, as JSON: whether the view is there, how
  * many strokes it draws as shown and as not shown at the end, whether its checkbox of those is
  * there, and how many crops it shows and how many of them the browser has decoded. */
 export const VIEWED = `JSON.stringify((() => {
@@ -338,7 +338,7 @@ export const SHOW_HIDDEN = `(() => {
 })()`;
 
 /** A script that goes through the page's start as an adult would under the measurement's set in
- * force (R58, R72): the measurement, a new writer's code, every statement ticked, and «Начать».
+ * force: the measurement, a new writer's code, every statement ticked, and «Начать».
  * Whether the sheet is there then: false while the start lacks something. */
 export const START = `(() => {
   document.querySelector('input[name="purpose"][value="measurement"]').click();
@@ -420,7 +420,7 @@ export interface Box {
 
 /** A stroke inside the part of an element the window shows: from a point a fifth into it to one
  * a little lower and to the right, as in the build's own test; the second stroke of a sheet to the
- * right of the first, apart from it (R65). None when the window shows less than a strip of it. */
+ * right of the first, apart from it. None when the window shows less than a strip of it. */
 export function strokeIn(
   box: Box,
   second = false,
@@ -448,7 +448,7 @@ function shownOf(
 }
 
 /** Two fingers inside the part of an element the window shows, side by side a fifth of it apart,
- * each moving up a third of what the window shows: the content goes on with them (R29). None when
+ * each moving up a third of what the window shows: the content goes on with them. None when
  * the window shows less than a strip of it. */
 export function fingersIn(
   box: Box,

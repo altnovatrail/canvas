@@ -1,8 +1,8 @@
 // What a test sees of an element beyond its interface: its strokes, the stroke under way, what the
 // eraser is about to take, its view of the sheet, how many outlines it has drawn, the tutor's
-// marks it shows and what each pointer down on it does (R29). The history of writing is not here:
-// it is the element's own property (R27). This module is no entry point of the package, so the
-// element's interface stays what its decisions make it (R07, R12, R19, R22, R27, R29).
+// marks it shows and what each pointer down on it does. The history of writing is not here:
+// it is the element's own property. This module is no entry point of the package, so the
+// element's interface stays what its decisions make it.
 
 import type { Box } from "../core/geometry.js";
 import type { Role } from "../core/hands.js";
@@ -24,14 +24,14 @@ export interface Probe {
   /**
    * The tutor's marks the sheet shows, in their order: each one's name, the strokes it holds on to
    * and its frame as last drawn, in sheet units — null while none of its strokes is on the screen.
-   * A mark without a place is not among them (R26).
+   * A mark without a place is not among them.
    */
   readonly marks: readonly {
     readonly name: string;
     readonly ids: readonly number[];
     readonly frame: Box | null;
   }[];
-  /** What each pointer down on the sheet does, by its `pointerId` (R29). */
+  /** What each pointer down on the sheet does, by its `pointerId`. */
   readonly roles: ReadonlyMap<number, Role>;
 }
 

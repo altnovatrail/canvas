@@ -6,11 +6,10 @@ import { moduleManifest, pathOf, refusal, under } from "./tasks.fixture.js";
 // (spec/format/examples/manifest/), and of its vectors of a manifest — the open view
 // (spec/format/vectors/open-view/manifest/) and the rule manifest.format-version
 // (spec/format/vectors/rules/manifest.format-version/): code and tests read nothing of spec/, so a
-// move to a new tag compares them with `git -C spec diff <old> <new> -- format/` (R32). Each is
-// written as a change to what the examples or the vectors share, and a valid one is of spec's type
-// (R73 spec; R41).
+// move to a new tag compares them with `git -C spec diff <old> <new> -- format/`. Each is
+// written as a change to what the examples or the vectors share, and a valid one is of spec's type.
 
-/** The places of a manifest the element reads (R32). */
+/** The places of a manifest the element reads. */
 const READ = ["#/module_format_version", "#/languages", "#/canvas"];
 
 /** What most examples share: the module of olympiad mathematics. */
@@ -137,7 +136,7 @@ const VALID: readonly (readonly [string, Manifest, { digit: number; lang: string
 /**
  * The vectors of the rule manifest.format-version: while the format is v0, a reader reads only
  * its current version, and refuses a module of the one before, of the one after and of one the
- * format never had (R44 spec).
+ * format never had.
  */
 const VERSIONS: readonly (readonly [string, Manifest])[] = [
   ["next-minor", { ...VECTOR, module_format_version: "0.5" }],

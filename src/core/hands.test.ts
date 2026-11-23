@@ -42,7 +42,7 @@ class Bench {
   readonly zooms: { readonly ratio: number; readonly x: number; readonly y: number }[] = [];
   readonly hands: Hands;
   readonly mode: PenMode;
-  /** Whether the sheet scrolls across: a zoomed one does (R73). */
+  /** Whether the sheet scrolls across: a zoomed one does. */
   across = true;
 
   constructor(mode = new PenMode()) {

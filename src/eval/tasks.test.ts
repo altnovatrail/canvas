@@ -111,7 +111,7 @@ function changed(...changes: readonly (readonly [Place, unknown])[]): unknown {
 const opened = (file: unknown) => () =>
   openTasksOf(file, TUTOR_FILE.tag, TUTOR_FILE.sha256, sha256);
 
-// Closed fields of a task of the module format, and what is no field at all (R62).
+// Closed fields of a task of the module format, and what is no field at all.
 test.each<readonly [string, Place, unknown, string]>([
   ["solution", ["solution"], "5", "workbook-01: solution is no field"],
   ["traps", ["traps"], [], "workbook-01: traps is no field"],
@@ -234,7 +234,7 @@ test("the essays and choices of english-essays 0.2.0 are refused with the digest
   expect(digests).toEqual(MODULE_KIT_ESSAYS);
 });
 
-// What the generator draws no sample of (R63): each kept, with why, and with the digest of its
+// What the generator draws no sample of: each kept, with why, and with the digest of its
 // open view, which a person's sample of it names, but a template, which has none.
 test.each([
   ["a template", (task: Json) => (task.template = { parameters: {} }), "a template"],
@@ -318,7 +318,7 @@ test("a sheet of one answer slot anywhere drops its closed fields, and a package
   );
 });
 
-/** The copy of the open views of modules the samples page carries (R71). */
+/** The copy of the open views of modules the samples page carries. */
 const views = readFileSync(
   new URL(`../../tasks/modules-${MODULES_FILE.tag}/open-views.json`, import.meta.url),
 );

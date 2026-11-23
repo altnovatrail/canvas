@@ -6,7 +6,7 @@ import { at, devtools, input, level } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
 
-// The sheet's input in a browser (R18): events that a script makes, with their coalesced points,
+// The sheet's input in a browser: events that a script makes, with their coalesced points,
 // and real input through the DevTools protocol — a mouse, and a pen with its pressure.
 
 const made: HTMLElement[] = [];
@@ -132,7 +132,7 @@ test.runIf(devtools)("a real pen writes with its pressure", async () => {
 
 test("a sheet taller than the element scrolls, and input lands where its visible part shows", async () => {
   const { element, canvas, viewport, view } = await sheet(400, 200);
-  // The container takes the element's whole height: the bar of buttons stands over it (R84).
+  // The container takes the element's whole height: the bar of buttons stands over it.
   expect(viewport.getBoundingClientRect().height).toBeCloseTo(200, 6);
   expect(canvas.getBoundingClientRect().height).toBeCloseTo(200, 6);
   viewport.scrollTop = 100;
@@ -301,8 +301,8 @@ test("a stroke under way stays through undo() and lands after the strokes left",
   expect(inkAt(canvas, view(), 200, 600)).toBeGreaterThan(0);
 });
 
-// A consumer stops the writing with a style of its own, as the board would while it checks
-// (R20): pointer-events inherits into the shadow tree, and a real pointer then hits nothing of it.
+// A consumer stops the writing with a style of its own, as the board would while it checks:
+// pointer-events inherits into the shadow tree, and a real pointer then hits nothing of it.
 test.runIf(devtools)(
   "pointer-events: none on the element lets no real pointer write, and one historychange comes for each stroke",
   async () => {
@@ -359,7 +359,7 @@ test("the work for checking outlines no stroke: its crop is a raster of its own 
   expect(probe(element).outlines).toBe(1);
 });
 
-// The eraser (R22): a press takes off the sheet, whole, every stroke its way comes near — with the
+// The eraser: a press takes off the sheet, whole, every stroke its way comes near — with the
 // primary button when the tool is the eraser, and with a pen's eraser whatever the tool.
 
 /**

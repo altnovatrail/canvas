@@ -11,9 +11,9 @@ import { NovatrailCanvas } from "./index.js";
 import { at, level, screenshot, sheetWork } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
-// The sheet's layers in a browser (R23): the stack in its order, one view for every layer at any
-// width and scroll — the author's demo too (R42) — the cap of k, the task's grid, the theme, and
-// the task as a property. A worked example's canvas takes no pointer (R42).
+// The sheet's layers in a browser: the stack in its order, one view for every layer at any
+// width and scroll — the author's demo too — the cap of k, the task's grid, the theme, and
+// the task as a property. A worked example's canvas takes no pointer.
 
 const made: HTMLElement[] = [];
 afterEach(() => {
@@ -50,7 +50,7 @@ function viewOf(element: HTMLElement): View {
   return view;
 }
 
-/** How far the sheet goes as laid out, in whole units, past the page (R73). */
+/** How far the sheet goes as laid out, in whole units, past the page. */
 function extentOf(element: HTMLElement): { width: number; height: number } {
   const box = element.shadowRoot?.querySelector(".sheet")?.getBoundingClientRect();
   const { k } = viewOf(element);
@@ -70,7 +70,7 @@ test("the sheet is a stack of layers in the order of concepts 8 spec, and of the
   const { element, root, canvas, stage, viewport } = await sheet(400);
   // Over the tracing paper, under the ink, its cover of the statements read; over the layers its
   // frame, its sign, its grip and tooltip and its bar of scale: they and the paper's layer show on
-  // a task from paper alone (R87; R89).
+  // a task from paper alone.
   const parts = ".tracing-cover, .tracing-frame, .tracing-sign, .grip, .tip, .tracing-scale";
   const layers = [...stage.children].filter((each) => !each.matches(parts));
   expect(layers.map((layer) => layer.getAttribute("class") ?? layer.localName)).toEqual([
@@ -110,7 +110,7 @@ test("the sheet is a stack of layers in the order of concepts 8 spec, and of the
       ]);
     }
     if (layer !== canvas) expect(getComputedStyle(layer).pointerEvents).toBe("none");
-    // The marks' layer is no picture of its own: a screen reader reads each mark by its name (R26).
+    // The marks' layer is no picture of its own: a screen reader reads each mark by its name.
     if (layer.classList.contains("marks")) {
       expect(layer.getAttribute("role")).toBe("none");
       expect(layer.hasAttribute("aria-hidden")).toBe(false);
@@ -120,10 +120,10 @@ test("the sheet is a stack of layers in the order of concepts 8 spec, and of the
   }
   const sheetBox = root.querySelector(".sheet");
   if (!sheetBox) throw new Error("the element has no sheet");
-  // The bar of the element's own buttons sets no pointer-events of its own either (R28), the
-  // hand (R88), a task from paper's buttons (R87) and a worked example's row of Next and Demo (R42,
-  // R84) too. The rail it stands in, as tall as the element in sight, is as wide as
-  // nothing: the bar stands out of it, and beside the bar the pointer is on the sheet (R84).
+  // The bar of the element's own buttons sets no pointer-events of its own either, the
+  // hand, a task from paper's buttons and a worked example's row of Next and Demo
+  // too. The rail it stands in, as tall as the element in sight, is as wide as
+  // nothing: the bar stands out of it, and beside the bar the pointer is on the sheet.
   const bar = root.querySelector(".tools");
   const row = root.querySelector(".tools.row");
   const rail = root.querySelector(".rail");
@@ -175,8 +175,8 @@ test("a worked example's canvas alone takes no pointer, the stage keeps the menu
 test("every layer shows the sheet by one view, whatever the width and the scroll, and the page is at most 1000 CSS pixels wide, at the sheet's left (R73)", async () => {
   for (const width of [400, 1000, 1400]) {
     const { element, root, canvas, viewport, view } = await sheet(width, 300);
-    // The template, the author's demo (R42), the tutor's sketch and the marks; the tracing paper's
-    // layer shows a task from paper's alone (R87).
+    // The template, the author's demo, the tutor's sketch and the marks; the tracing paper's
+    // layer shows a task from paper's alone.
     const svgs = [...root.querySelectorAll<SVGSVGElement>('.stage > svg:not([display="none"])')];
     expect(svgs.map((svg) => svg.getAttribute("class"))).toEqual([
       "template",
@@ -224,7 +224,7 @@ test("a new width puts the layers on the new k in the frame it is laid out in, b
   const { element, root, viewport } = await sheet(400, 200);
   const template = root.querySelector<SVGSVGElement>(".template");
   if (!template) throw new Error("the element has no template");
-  // The sheet shows in the element's whole height: the bar of buttons stands over it (R84).
+  // The sheet shows in the element's whole height: the bar of buttons stands over it.
   expect(template.viewBox.baseVal.height).toBeCloseTo(viewport.clientHeight / 0.4, 3);
   element.style.width = "300px";
   // An observer made after the element's own reports after it, in the same frame, before paint.
@@ -306,7 +306,7 @@ test("an element the page scales writes its strokes in the sheet's own units, it
 
 test("the task rules the sheet by its grid, and a task of the same template writes nothing", async () => {
   const { element, grid } = await sheet(400);
-  // The grid rules the whole sheet, past the page as far as it goes (R73).
+  // The grid rules the whole sheet, past the page as far as it goes.
   expect(grid.getAttribute("d")).toBe(gridPath({ kind: "squares", step: 50 }, extentOf(element)));
   expect(grid.classList.contains("dots")).toBe(false);
 
@@ -436,7 +436,7 @@ test("the consumer's custom properties colour the paper, the grid, the ink and t
   expect(getComputedStyle(paper).backgroundColor).toBe("rgb(10, 20, 30)");
   expect(getComputedStyle(grid).stroke).toBe("rgb(200, 0, 0)");
   // The bar of buttons in the glass, or the paper where nothing blurs, its icons in the ink, and
-  // the tool in use filled with the accent at an eighth, its icon in the accent (R28, R84).
+  // the tool in use filled with the accent at an eighth, its icon in the accent.
   const bar = root.querySelector(".tools");
   const inUse = root.querySelector<HTMLElement>('.tools [aria-checked="true"]');
   const other = root.querySelector('.tools [aria-checked="false"] svg');
@@ -479,7 +479,7 @@ test("the consumer's custom properties colour the paper, the grid, the ink and t
   await settle();
   expect(near(rgbaAt(canvas, view(), 200, 300), [0, 128, 0, 255])).toBe(true);
 
-  // The crop for checking is the sheet's own raster, ink on white whatever the theme (R25).
+  // The crop for checking is the sheet's own raster, ink on white whatever the theme.
   const work = await sheetWork(element);
   const own = workForCheck(probe(element).strokes, CROP.digit);
   if (own === null) throw new Error("the sheet gave no work for checking");
@@ -490,7 +490,7 @@ test("a workbook that does not fit is a TypeError at its item, and so is an answ
   const { element, root, grid } = await sheet(400);
   const dots = sheetTask({ grid: "dots", statement: [{ text: "Count the dots." }] });
   element.task = dots;
-  // A workbook whose lines do not fit is refused at its item (R35).
+  // A workbook whose lines do not fit is refused at its item.
   const crowded = {
     id: "tables-1",
     statement: [{ text: "Write the missing numbers." }],
@@ -510,7 +510,7 @@ test("a workbook that does not fit is a TypeError at its item, and so is an answ
   expect(root.querySelector(".statement")?.textContent).toBe("Count the dots.");
 });
 
-/** The extent of an empty sheet: the page and one view of the window past it right, two down (R73). */
+/** The extent of an empty sheet: the page and one view of the window past it right, two down. */
 function empty(): { width: number; height: number } {
   const fit = Math.min(innerWidth / SHEET.width, 1);
   return reachOf(undefined, { width: innerWidth / fit, height: (2 * innerHeight) / fit });

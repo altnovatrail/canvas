@@ -1,5 +1,5 @@
-// What the samples page shows of a sample file it opens (R64), on the synthetic examples of every
-// composition in examples/ (R48): the strokes the file holds and those a history erased, a
+// What the samples page shows of a sample file it opens, on the synthetic examples of every
+// composition in examples/: the strokes the file holds and those a history erased, a
 // workbook's boxes, the crops and the markup in words.
 
 import { readFileSync } from "node:fs";

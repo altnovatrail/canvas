@@ -1,4 +1,4 @@
-// A client of W3C WebDriver, for the safaridriver of a runner of macOS (R54): Safari on macOS in
+// A client of W3C WebDriver, for the safaridriver of a runner of macOS: Safari on macOS in
 // the probe, and Safari in the iPad Simulator for the samples page. safaridriver answers on port
 // 4444 of the runner, which the workflow starts it on.
 

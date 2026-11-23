@@ -6,13 +6,13 @@ import type { Stroke } from "./ink.js";
 import { Sets } from "./sets.js";
 
 /**
- * The crop's rule in its numbers (R25): sizes on the crop in pixels, heights on the sheet in units.
- * The rule counts in whole numbers — places in tenths of a unit, as the groups do (R24) — and each
+ * The crop's rule in its numbers: sizes on the crop in pixels, heights on the sheet in units (R25).
+ * The rule counts in whole numbers — places in tenths of a unit, as the groups do — and each
  * number it hands out that is not whole is one division of two whole numbers, so that tutor's
  * runner, which crops by the same rule, gets the same numbers to the bit.
  */
 export const CROP = Object.freeze({
-  /** The margin around the work, px (R06). */
+  /** The margin around the work, px. */
   margin: 12,
   /**
    * A stroke lower than this, in units, is a line, not writing — a dot, a minus, a bar, an
@@ -34,7 +34,7 @@ export const CROP = Object.freeze({
   digit: 24,
   /**
    * The heights of digits a sample's crops are drawn at, px, as the eval protocol names them,
-   * beside the module's own (R09; R93 spec).
+   * beside the module's own.
    */
   heights: Object.freeze([16, 24, 32, 48] as const),
   /** The tallest digit a crop takes, px: its ink then still stays within the margin. */
@@ -43,14 +43,14 @@ export const CROP = Object.freeze({
 
 /**
  * A group's frame on a crop: its label, and its ink in fractions 0–1000 of the crop, [ymin, xmin,
- * ymax, xmax] — every pixel the ink of its strokes touches lies within it. spec's type (R74 spec).
+ * ymax, xmax] — every pixel the ink of its strokes touches lies within it. spec's type.
  */
 export type { Frame };
 
 /**
- * The crop of a sheet for checking (R25), all but its pixels: what lies where, at what scale. Its
+ * The crop of a sheet for checking, all but its pixels: what lies where, at what scale. Its
  * numbers the marks are placed by — D′, the size, the margins, `sheet_box`, the frames and the
- * whole numbers they come from — are spec's CropNumbers (R74 spec), and the rest the crop's own.
+ * whole numbers they come from — are spec's CropNumbers, and the rest the crop's own.
  */
 export interface Crop extends CropNumbers {
   /** D, the height of a digit asked for, px. */
@@ -64,7 +64,7 @@ export interface Crop extends CropNumbers {
 }
 
 /**
- * The bundles of the strokes on a sheet (R25): strokes no lower than `CROP.flat`, joined by a chain
+ * The bundles of the strokes on a sheet: strokes no lower than `CROP.flat`, joined by a chain
  * of boxes that touch or overlap, whenever each was written. Each bundle by its IDs ascending, the
  * bundles by their smallest ID.
  */
@@ -74,16 +74,16 @@ export function bundlesOf(strokes: readonly Stroke[]): number[][] {
     .sort((a, b) => (a[0] ?? 0) - (b[0] ?? 0));
 }
 
-/** h_med (R25): the lower median of the heights of the bundles, in units; `CROP.flat` if none. */
+/** h_med: the lower median of the heights of the bundles, in units; `CROP.flat` if none. */
 export function medianOf(strokes: readonly Stroke[]): number {
   return medianTenths(extentsOf(strokes)) / 10;
 }
 
 /**
  * The crop of the strokes on a sheet with its digits `digit` px high, and the frames of their
- * groups (R25): the strokes the sheet shows, and their groups by the sheet's rule (R24). A sheet
+ * groups: the strokes the sheet shows, and their groups by the sheet's rule. A sheet
  * without strokes has no crop: it goes to no check (H3). On a task from paper the crop takes in
- * `also` too, the tracing paper's rectangle in whole tenths, at the same scale (R87).
+ * `also` too, the tracing paper's rectangle in whole tenths, at the same scale.
  */
 export function cropOf(
   strokes: readonly Stroke[],
@@ -143,9 +143,9 @@ export function cropOf(
 }
 
 /**
- * Where a crop with its margins lies on the sheet, its `sheet_box` (R25): [ymin, xmin, ymax, xmax]
+ * Where a crop with its margins lies on the sheet, its `sheet_box`: [ymin, xmin, ymax, xmax]
  * in units, each one division of two whole numbers, from the whole numbers of the crop. A
- * submission's `sheet_box` is checked by it when the tutor's marks come back with it (R26).
+ * submission's `sheet_box` is checked by it when the tutor's marks come back with it.
  */
 export function sheetBoxOf(
   crop: Pick<Crop, "drawn" | "width" | "height" | "margins" | "exact">,

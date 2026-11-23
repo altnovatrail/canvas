@@ -1,6 +1,6 @@
 import { formulaic, type Piece, piecesOf } from "../core/notation.js";
 
-// A statement read, drawn as the page prints it (R89): its text as text, a box an answer goes in
+// A statement read, drawn as the page prints it: its text as text, a box an answer goes in
 // as a dashed box, and a fraction or a power as MathML, which the browser lays out itself, a
 // fraction full size on the line and those within it smaller, as a book sets them. In a statement
 // with no word its lone letters are its unknowns, in italics as MathML sets a letter.

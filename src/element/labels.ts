@@ -1,30 +1,29 @@
 // The labels of the element's own buttons, of a workbook's boxes and of the parts of a worked
-// example's demo, in the languages of the interface, English and Russian (R92 spec), by the shared
-// rules of the packages' translations (R91 spec; R28, R29, R33, R36, R37, R42):
+// example's demo, in the languages of the interface, English and Russian, by the shared
+// rules of the packages' translations:
 // - the language is the element's own `lang`, looked up as RFC 4647 does it, and English stands for
 //   any other, under a `lang` of its own;
 // - a label with a number or a word in it is one string with named places, «Часть {n} из {total}.»,
 //   never pieces glued together: languages put their words in other orders;
 // - no label counts a thing, so none has forms of number yet. The first that does takes CLDR's
 //   categories, `other` always among them, chosen by `Intl.PluralRules` of the label's language;
-// - no label tells the learner's gender (R70 spec) or speaks as the AI in the first person (П-15);
-// - the buttons' words are those of spec's table of words, the two of the page's zoom among them
-//   (R91 spec); no button scrolls the sheet, which the hand moves, so no label says a direction
-//   (R84; R88).
+// - no label tells the learner's gender or speaks as the AI in the first person;
+// - the buttons' words are those of spec's table of words, the two of the page's zoom among them;
+//  no button scrolls the sheet, which the hand moves, so no label says a direction.
 // This module is no entry point of the package.
 
 /**
  * What the element says: its scroll container the canvas kind's name, or a worked example's, and
- * the row of buttons a name of its own, that of the kind's buttons (R28), the name of the group of
+ * the row of buttons a name of its own, that of the kind's buttons, the name of the group of
  * tools and each button, a workbook's box its name, and the number of a part of a demo the element
  * tells of. A label with places names them in braces.
  */
 export interface Labels {
   readonly sheet: string;
   readonly workbook: string;
-  /** A task from the learner's paper, its crop as tracing paper over a sheet (R87). */
+  /** A task from the learner's paper, its crop as tracing paper over a sheet. */
   readonly paper: string;
-  /** A lesson's worked example, whose row has no tools of writing (R42). */
+  /** A lesson's worked example, whose row has no tools of writing. */
   readonly example: string;
   /** The row of buttons of each: not the name of the container, which a screen reader shows too. */
   readonly sheetButtons: string;
@@ -38,25 +37,25 @@ export interface Labels {
   readonly eraser: string;
   readonly undo: string;
   readonly clear: string;
-  /** The tool that moves the sheet and writes nothing (R88). */
+  /** The tool that moves the sheet and writes nothing. */
   readonly hand: string;
-  /** The buttons of the page's zoom of the sheet, a step larger and a step smaller (R73). */
+  /** The buttons of the page's zoom of the sheet, a step larger and a step smaller. */
   readonly zoomIn: string;
   readonly zoomOut: string;
   /**
    * The button of a task from paper's grid, by the grid the sheet shows now: a press turns it to
-   * the next (R88).
+   * the next.
    */
   readonly gridDots: string;
   readonly gridLines: string;
   readonly gridBlank: string;
   readonly gridSquares: string;
-  /** The tracing paper's grip, and the button atop the tools that hides it or shows it (R87). */
+  /** The tracing paper's grip, and the button atop the tools that hides it or shows it. */
   readonly moveTask: string;
   readonly hideTask: string;
   readonly showTask: string;
   /**
-   * The tracing paper's bar of scale (R89): its name, smaller, larger, the scale as a percentage,
+   * The tracing paper's bar of scale: its name, smaller, larger, the scale as a percentage,
    * {percent}, which a press sets back to its own size, and fit to the window.
    */
   readonly scaleButtons: string;
@@ -65,7 +64,7 @@ export interface Labels {
   readonly scaleReset: string;
   readonly fit: string;
   /**
-   * The reading of the statement in clean print (R89): its button, as it offers it, waits and
+   * The reading of the statement in clean print: its button, as it offers it, waits and
    * offers the photo back, and the sign above the paper of what it shows.
    */
   readonly recognise: string;
@@ -73,17 +72,17 @@ export interface Labels {
   readonly original: string;
   readonly photoShown: string;
   readonly readingShown: string;
-  /** A box of a workbook's line, alone in it (R36). */
+  /** A box of a workbook's line, alone in it. */
   readonly box: string;
-  /** A box among several of its line, by its slot: {slot} (R36). */
+  /** A box among several of its line, by its slot: {slot}. */
   readonly boxAt: string;
-  /** A box a demo fills, by its line and its slot in it: {line} and {slot} (R42). */
+  /** A box a demo fills, by its line and its slot in it: {line} and {slot}. */
   readonly boxIn: string;
-  /** A box's {name} when the box is filled (R37). */
+  /** A box's {name} when the box is filled. */
   readonly filled: string;
-  /** A box's {name} and the {value} a demo wrote in it (R42). */
+  /** A box's {name} and the {value} a demo wrote in it. */
   readonly valued: string;
-  /** The part of a demo the element tells of, {n}, of so many, {total} (R42). */
+  /** The part of a demo the element tells of, {n}, of so many, {total}. */
   readonly part: string;
 }
 
@@ -202,7 +201,7 @@ export function labelsFor(tag: string | null): Labelled {
 
 /**
  * Whether the table has labels in the language of a tag, as `labelsFor` looks it up: the English
- * that stands for a tag it has not is in no language of the tag's (R74).
+ * that stands for a tag it has not is in no language of the tag's.
  */
 export function knows(tag: string | null): boolean {
   return lookup(tag) !== undefined;
@@ -244,7 +243,7 @@ export function say(label: string, values: Readonly<Record<string, string | numb
 
 /**
  * A label with its places filled by name but one, which it is cut at: what comes before that place
- * and what comes after it, for a node of its own to stand between them (R61). A label that names
+ * and what comes after it, for a node of its own to stand between them. A label that names
  * the place not once is a TypeError, and so is a place the values do not give, as with `say`.
  */
 export function sayAround(

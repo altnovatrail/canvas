@@ -1,8 +1,8 @@
 // The synthetic hand: a pen that writes characters, lines and words through the recorder onto the
-// work, on the sheet's one clock, and erases, clears and undoes on that clock too (R22), as the
-// element hands a pen's events over. Code draws every stroke of it, and no hand wrote any (R15):
+// work, on the sheet's one clock, and erases, clears and undoes on that clock too, as the
+// element hands a pen's events over. Code draws every stroke of it, and no hand wrote any:
 // its characters are its own, boxes 10 by 10 of points scaled to a font. The synthetic samples
-// draw with it (R49), and so do the synthetic sheets and pages of the tests.
+// draw with it, and so do the synthetic sheets and pages of the tests.
 
 import { Clock } from "../core/clock.js";
 import { type PointerSample, Recorder } from "../core/recorder.js";

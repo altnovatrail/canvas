@@ -1,8 +1,8 @@
-// The open view of a task of the module format 0.4 (R51 spec). What a consumer gives is of spec's
-// type, from its npm package at the version of the spec/ submodule (R73 spec; R41), with one field
-// of the element's own, `canvas.tools`, until the format has one (R28). The element checks a task as
+// The open view of a task of the module format 0.4. What a consumer gives is of spec's
+// type, from its npm package at the version of the spec/ submodule, with one field
+// of the element's own, `canvas.tools`, until the format has one. The element checks a task as
 // the schema does, every object closed: a field the open view has not — an old name, a closed field
-// — is a TypeError (R32). What the check gives is the element's own shape of the same task, its
+// — is a TypeError. What the check gives is the element's own shape of the same task, its
 // canvas kinds apart, which the rest of the element reads.
 
 import type { Tool } from "@altnovatrail/spec/canvas";
@@ -24,9 +24,9 @@ export const SHEET_KIND = "handwriting_sheet";
 export const WORKBOOK_KIND = "workbook";
 
 /**
- * What a press of the primary button does on the sheet: the pen writes, the eraser erases (R22),
- * the hand moves the sheet (R84). A pen's eraser erases whatever the tool, if the task allows the
- * eraser (R28). spec's type (R74 spec).
+ * What a press of the primary button does on the sheet: the pen writes, the eraser erases,
+ * the hand moves the sheet. A pen's eraser erases whatever the tool, if the task allows the
+ * eraser. spec's type.
  */
 export type { Tool };
 
@@ -36,7 +36,7 @@ export type { Tool };
  */
 export const TOOLS: readonly Tool[] = Object.freeze(["pen", "eraser"]);
 
-/** The tool that moves the sheet and writes nothing (R84). */
+/** The tool that moves the sheet and writes nothing. */
 export const HAND: Tool = "hand";
 
 export function isTool(value: unknown): value is Tool {
@@ -104,7 +104,7 @@ export interface SheetCanvas {
   /** The grid's step in sheet units, a whole number from 20 to 500: 50 unless given. */
   readonly grid_step?: number;
   /**
-   * The tools the task allows (R28), the element's own field until the format has one: the canvas
+   * The tools the task allows, the element's own field until the format has one: the canvas
    * takes "pen" and "eraser", and passes over the names it does not know — a ruler, a calculator —
    * which are app's to show or come with new versions of the canvas. The pen and the eraser unless
    * given; a list without the pen is a TypeError, for the canvas writes with it.
@@ -119,7 +119,7 @@ export interface WorkbookCanvas {
 }
 
 /**
- * The canvas of a task as a consumer gives it: spec's, and the tools the task allows (R28), the
+ * The canvas of a task as a consumer gives it: spec's, and the tools the task allows, the
  * element's own field until the format has one.
  */
 export interface Canvas extends open.Canvas {
@@ -127,8 +127,8 @@ export interface Canvas extends open.Canvas {
 }
 
 /**
- * The open view of a task as a consumer gives it, what the learner's app receives: spec's type
- * (R73 spec), its canvas with the element's own tools. A type gives the shape and nothing more: the
+ * The open view of a task as a consumer gives it, what the learner's app receives: spec's type,
+ * its canvas with the element's own tools. A type gives the shape and nothing more: the
  * element checks the value itself.
  */
 export interface Task extends open.Task {
@@ -143,7 +143,7 @@ interface CheckedFields {
   readonly statement: readonly StatementPart[];
   /**
    * What the statement gives, short texts all different, and what the task asks to find: the chips
-   * the learner ticks at a solving step, which app shows, not the element (R57 spec).
+   * the learner ticks at a solving step, which app shows, not the element.
    */
   readonly givens?: readonly string[];
   readonly unknown?: string;
@@ -164,8 +164,8 @@ export interface WorkbookTask extends CheckedFields {
 /**
  * A task as the element checked it, of either canvas kind: its ID, its statement, what the
  * statement gives and asks, its canvas and its items — no key, solution or trap, nor its skills,
- * band, difficulty and age categories, nor the task template it may be an instance of (R05 spec;
- * R51 spec; R60 spec). It is a Task too, which task.check.ts holds to.
+ * band, difficulty and age categories, nor the task template it may be an instance of. It is a Task
+ * too, which task.check.ts holds to.
  */
 export type CheckedTask = SheetTask | WorkbookTask;
 
@@ -180,7 +180,7 @@ export interface SheetTemplate {
 }
 
 /**
- * What the workbook makes of a task: the layout of its lines on the page (R35), the statement above
+ * What the workbook makes of a task: the layout of its lines on the page, the statement above
  * it and the tools it allows.
  */
 export interface WorkbookTemplate {
@@ -199,7 +199,7 @@ export const NO_TASK: SheetTemplate = Object.freeze({
   tools: TOOLS,
 });
 
-/** The fields of a task's open view (R57 spec): the rest of a task is closed. */
+/** The fields of a task's open view: the rest of a task is closed. */
 const OPEN = ["id", "statement", "givens", "unknown", "canvas", "items"];
 
 /**
@@ -223,7 +223,7 @@ export function taskOf(value: unknown): CheckedTask {
 
 /**
  * What the statement gives and what the task asks to find, as the task has them: the element checks
- * them and shows neither, for the chips are app's to show (R57 spec).
+ * them and shows neither, for the chips are app's to show.
  */
 function askedOf({
   givens,
@@ -246,7 +246,7 @@ export function isSheet(task: CheckedTask): task is SheetTask {
 
 /**
  * Whether a task's one answer slot is anywhere on the sheet or the whole sheet, which the strokes
- * on the sheet fill (R42): not a sheet of choices, whose options app marks, nor a workbook.
+ * on the sheet fill: not a sheet of choices, whose options app marks, nor a workbook.
  */
 export function wholeSheet(task: CheckedTask | undefined): boolean {
   return (
@@ -263,9 +263,10 @@ function isWhole({ binding }: AnswerSlot): boolean {
 
 /**
  * The template of a task `taskOf` gave, or of no task for `undefined`. A workbook's lines are laid
- * out on its page, and a task whose lines do not fit is a TypeError at the first item that does not
- * (R34, R35). A zone on the sheet is a TypeError until an epic of its own; a choice the sheet passes
- * over, and an item's text too: app shows them (R32).
+ * out on its page, and a task whose lines do not fit is a TypeError at the first item that does
+ * not.
+ * A zone on the sheet is a TypeError until an epic of its own; a choice the sheet passes
+ * over, and an item's text too: app shows them.
  */
 export function templateOf(task: CheckedTask | undefined): Template {
   if (task === undefined) return NO_TASK;
@@ -293,7 +294,7 @@ export function isWorkbook(template: Template): template is WorkbookTemplate {
   return "page" in template;
 }
 
-/** The tools a task allows, of those the canvas has, in the order of TOOLS (R28). */
+/** The tools a task allows, of those the canvas has, in the order of TOOLS. */
 function allowedOf({ tools }: SheetCanvas | WorkbookCanvas): readonly Tool[] {
   return tools === undefined ? TOOLS : TOOLS.filter((tool) => tools.includes(tool));
 }
@@ -452,7 +453,7 @@ export function gridOf(
 }
 
 /**
- * The names of the tools a task allows (R28): strings, the pen among them. A name the canvas does
+ * The names of the tools a task allows: strings, the pen among them. A name the canvas does
  * not know it passes over when it makes its template.
  */
 function toolsOf(value: unknown, path: string): string[] {

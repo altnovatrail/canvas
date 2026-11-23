@@ -1,7 +1,7 @@
-// The server of the page to try the element on by hand, just demo (R20): Vite's dev server, on
+// The server of the page to try the element on by hand, just demo: Vite's dev server, on
 // the loopback of this machine alone. It serves the page, the element's sources and the packages
 // they import, and nothing else of the repository: without a list of its own Vite serves the whole
-// workspace (R15). It builds nothing.
+// workspace. It builds nothing.
 
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";

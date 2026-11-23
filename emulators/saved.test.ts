@@ -1,6 +1,6 @@
-// The check of the files the samples page saved in the emulators (R54, R55), on the example samples
-// of examples/, which the code wrote (R48), made the page's own: by a person, of its measurement's
-// set in force and of one opening's code; and, of the test build, a child's session (R59, R65).
+// The check of the files the samples page saved in the emulators, on the example samples
+// of examples/, which the code wrote, made the page's own: by a person, of its measurement's
+// set in force and of one opening's code; and, of the test build, a child's session.
 
 import { readFileSync } from "node:fs";
 import { PersonSchema, Writer } from "@altnovatrail/contracts/novatrail/eval/v1/sample_pb.js";
@@ -22,7 +22,7 @@ function asPage(sample: Sample, code = "ABCD2345", texts = RELEASE_TEXTS): Sampl
   return sample;
 }
 
-/** The example of a child's workbook, as a child's session of the test build saves it (R59). */
+/** The example of a child's workbook, as a child's session of the test build saves it. */
 function child(): Sample {
   return asPage(
     readSample(readFileSync("examples/workbook-child.json", "utf8")),
@@ -72,7 +72,7 @@ test("a test build's folder holds a child's session: by a child, its final geome
     "release",
   ]);
   expect(problemsOf(child(), "0.0.0", "test")).toEqual([]);
-  // A child's workbook whose strokes fell in the draft holds none in its final geometry (R53).
+  // A child's workbook whose strokes fell in the draft holds none in its final geometry.
   const draft = child();
   if (draft.ink.case === "geometry") draft.ink.value.strokes = [];
   expect(problemsOf(draft, "0.0.0", "test")).toEqual([]);

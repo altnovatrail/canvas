@@ -1,4 +1,4 @@
-// The parts of a worked example's demo the learner has opened (R42): a numbered list above the
+// The parts of a worked example's demo the learner has opened: a numbered list above the
 // sheet, under the statement, in the element's own scrolling, and a polite region that tells a
 // screen reader of the part just opened. A part opens at the list's end, and an item, once built,
 // stays as it is while the demo is the same: hidden, the list keeps its open parts out of sight. A
@@ -6,9 +6,9 @@
 // picture is, which shows the picture once the element's pictures have its file and what it shows
 // in words till then. A picture on an area of the sheet is read by its words here, while the
 // picture itself stands on the layer of the author's demo, stretched over its area, the later part
-// over the earlier, and nothing stands there till its file is decoded (R42). A box of a workbook
+// over the earlier, and nothing stands there till its file is decoded. A box of a workbook
 // the demo fills is read as the box, in the labels' language, and its value, a node of its own in
-// the parts' language, which the element writes in the box itself too (R61). This module is
+// the parts' language, which the element writes in the box itself too. This module is
 // no entry point of the package.
 
 import {
@@ -36,7 +36,7 @@ export interface Told {
 
 /**
  * What a part that fills a box says: the box, in the labels' language, around the value the demo
- * wrote in it, which is in the parts' own (R61). Without a value the box is `before` alone.
+ * wrote in it, which is in the parts' own. Without a value the box is `before` alone.
  */
 export interface FillWords {
   /** The labels' words before the value: "Box 1.2: ". */
@@ -145,7 +145,7 @@ export class Parts {
   }
 
   /**
-   * What the `n`th part, from 1, comes into sight by once it is open (R42): its item, or for a
+   * What the `n`th part, from 1, comes into sight by once it is open: its item, or for a
    * picture on an area of the sheet the spot, which it places on that area, in shares of the sheet,
    * which keeps its proportions.
    */
@@ -202,7 +202,7 @@ export class Parts {
   }
 
   /**
-   * What a part that fills a box says, as nodes (R61; WCAG 3.1.2): the labels' words, each run a
+   * What a part that fills a box says, as nodes (WCAG 3.1.2): the labels' words, each run a
    * span in their language, and the value a span of its own between them, in the language given,
    * or with none, the one it inherits.
    */
@@ -234,7 +234,7 @@ export class Parts {
       this.#fills.set(item, part);
       this.#sayFill(item, part);
     } else if ("text" in part) {
-      // Text, never markup: a module is data (R02 spec).
+      // Text, never markup: a module is data.
       item.textContent = part.text;
     } else if (!onSheet(part)) {
       const { frame, off } = framed(this.#pictures, part);

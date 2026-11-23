@@ -1,4 +1,4 @@
-// The server of files for the emulators (R54): the headers of a release asset of GitHub or of a
+// The server of files for the emulators: the headers of a release asset of GitHub or of a
 // page, nothing but the files directly in its folder, and a line of its log for each request.
 
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";

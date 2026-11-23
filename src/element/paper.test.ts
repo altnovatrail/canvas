@@ -8,8 +8,8 @@ import { type ExportedPaper, NovatrailCanvas, type TracingState } from "./index.
 import { at, buttonOf, paperCrop, settle, upgraded } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
-// A task from paper in a browser (R87): the crop as tracing paper over a sheet of the learner's
-// grid, dots as it comes (R88), its grip and its button atop the tools, a stroke on it from its
+// A task from paper in a browser: the crop as tracing paper over a sheet of the learner's
+// grid, dots as it comes, its grip and its button atop the tools, a stroke on it from its
 // corner, and the work for checking with the task's crop beside it. The grid's button is
 // tools.test.ts's.
 
@@ -142,7 +142,7 @@ test("hides and shows the tracing paper by its button, which tells", async () =>
   // The consumer's state tells nothing.
   element.tracing = { at: [100, 200], hidden: false };
   expect(told).toHaveLength(2);
-  // Past the page it lies on the sheet still, which goes on as far as its reach (R73).
+  // Past the page it lies on the sheet still, which goes on as far as its reach.
   element.tracing = { at: [2000, 0], hidden: false };
   expect(element.tracing).toEqual({ at: [2000, 0], hidden: false, scale: 1 });
   expect(() => {

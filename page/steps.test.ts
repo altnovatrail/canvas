@@ -1,4 +1,4 @@
-// The steps before writing (R58, R59, R69): the purposes the build's texts open, a child's session
+// The steps before writing: the purposes the build's texts open, a child's session
 // among them, the statements asked, the writer's code typed, and what the start lacks.
 
 import { expect, test } from "vitest";
@@ -76,7 +76,7 @@ test("each purpose asks the age and its own statement: the form of its version",
     /родителя или опекуна этого ребёнка версии child-sample-1/,
   );
   expect(statements(adults, "child")).toEqual([STATEMENTS.adult]);
-  // The age, and the right to make the agreement where the adult lives (R124 spec).
+  // The age, and the right to make the agreement where the adult lives.
   expect(STATEMENTS.adult).toContain(
     "18 лет или больше, и по законам места, где я живу, я вправе заключить этот договор.",
   );

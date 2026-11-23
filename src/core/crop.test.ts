@@ -36,7 +36,7 @@ import {
   whole,
 } from "./sheets.fixture.js";
 
-// The crop's rule (R25) on strokes code draws, as every test's strokes are (R15): the
+// The crop's rule on strokes code draws, as every test's strokes are: the
 // synthetic sheets, each with the median a teacher sees on it, set down before any run; crowded
 // sheets of a seeded generator, places to hundredths, which the rule rounds; and a few strokes of a
 // test's own. The rule's numbers are checked against the rule written out once more in BigInt,
@@ -46,7 +46,7 @@ const SHEETS_OF_THE_CROP: readonly (() => CropSheet)[] = [...SHEETS, ...CROP_SHE
 
 const DIGITS = CROP.heights;
 
-/** The crop of the strokes on a sheet, with their groups by the sheet's rule (R24). */
+/** The crop of the strokes on a sheet, with their groups by the sheet's rule. */
 function cropAt(strokes: readonly Stroke[], digit?: number): Crop {
   const crop = cropOf(strokes, groupsOf(strokes), digit);
   if (crop === null) throw new Error("the sheet has no crop");
@@ -255,7 +255,7 @@ describe("the crop", () => {
       const read: Stroke[] = JSON.parse(JSON.stringify(strokes));
       for (const digit of DIGITS) {
         const crop = cropAt(strokes, digit);
-        // Labels go by place (R24), so the same frames come under the same labels.
+        // Labels go by place, so the same frames come under the same labels.
         expect(cropAt(moved, digit)).toEqual(crop);
         expect(cropAt(read, digit)).toEqual(crop);
       }
@@ -287,7 +287,7 @@ describe("the crop", () => {
     expect(
       cropOf([stroke(1, [0, 0, 0], [1000, 1400, 10])], [{ label: "A", ids: [1] }]),
     ).not.toBeNull();
-    // Past the page the sheet goes on, as far as its reach (R73).
+    // Past the page the sheet goes on, as far as its reach.
     expect(
       cropOf([stroke(1, [1000.1, 1400.1, 0], [10000, 14000, 10])], [{ label: "A", ids: [1] }]),
     ).not.toBeNull();
@@ -318,7 +318,7 @@ describe("the crop", () => {
   });
 });
 
-// The rule written out once more, from its own words (R25), in BigInt: every pair of strokes
+// The rule written out once more, from its own words, in BigInt: every pair of strokes
 // against every other for the bundles, and a division only where the rule divides.
 
 const big = (values: readonly bigint[], pick: (a: bigint, b: bigint) => boolean): bigint =>
@@ -467,7 +467,7 @@ describe("the rule written out once more", () => {
   });
 });
 
-/** A case of spec's test vectors of the crop (R94 spec). */
+/** A case of spec's test vectors of the crop. */
 interface CropCase {
   readonly name: string;
   readonly strokes: readonly FinalStroke[];
