@@ -2,6 +2,11 @@ import { isDeepStrictEqual } from "node:util";
 import { describe, expect, test } from "vitest";
 import { budget } from "./budget.fixture.js";
 import { Clock } from "./clock.js";
+import {
+  type ProtocolEvent,
+  historyOf as protocolHistoryOf,
+  vectorsOf,
+} from "./contracts.fixture.js";
 import { type HistoryEvent, replay } from "./history.js";
 import type { Stroke } from "./ink.js";
 import { type PointerSample, Recorder } from "./recorder.js";
@@ -235,11 +240,12 @@ describe("near", () => {
     ],
   };
 
-  test("takes a stroke whose line comes within the reach, and not one just beyond", () => {
+  test("takes a stroke whose ink comes within the radius, and not one just beyond", () => {
     const work = new Work();
     work.write(ell);
-    expect(idsOf(work.near({ x: 105, y: 200 }, { x: 105, y: 200 }, 5))).toEqual([1]);
-    expect(idsOf(work.near({ x: 105.01, y: 200 }, { x: 105.01, y: 200 }, 5))).toEqual([]);
+    // The ink of a stroke without a style reaches INK_REACH, 3 units, past its line.
+    expect(idsOf(work.near({ x: 105, y: 200 }, { x: 105, y: 200 }, 2))).toEqual([1]);
+    expect(idsOf(work.near({ x: 105.01, y: 200 }, { x: 105.01, y: 200 }, 2))).toEqual([]);
     // A segment that crosses the line takes it, however small the reach.
     expect(idsOf(work.near({ x: 50, y: 250 }, { x: 150, y: 250 }, 0.1))).toEqual([1]);
   });
@@ -254,8 +260,8 @@ describe("near", () => {
   test("takes a stroke of one point by that point", () => {
     const work = new Work();
     work.write(stroke(2));
-    expect(idsOf(work.near({ x: 100, y: 57 }, { x: 100, y: 57 }, 7))).toEqual([2]);
-    expect(idsOf(work.near({ x: 100, y: 58 }, { x: 100, y: 58 }, 7))).toEqual([]);
+    expect(idsOf(work.near({ x: 100, y: 57 }, { x: 100, y: 57 }, 4))).toEqual([2]);
+    expect(idsOf(work.near({ x: 100, y: 58 }, { x: 100, y: 58 }, 4))).toEqual([]);
   });
 
   test("finds what is on the sheet after every action, and nothing else", () => {
@@ -554,7 +560,7 @@ describe("a history given to the sheet", () => {
       ],
       [null, /^history: a list of events/],
       [[null], /^history\[0\]: an object/],
-      [[{ kind: "draw", t: 0 }], /^history\[0\]\.kind: "write", "erase", "clear" or "undo"/],
+      [[{ kind: "draw", t: 0 }], /^history\[0\]\.kind: "write", "erase", "cut", "clear" or "undo"/],
       [[write(stroke([point]), Number.NaN)], /^history\[0\]\.t: .*not NaN$/],
       [[write(stroke([point]), -1)], /^history\[0\]\.t: .*from 0, not -1$/],
       [[one(1, 20), one(2, 10)], /^history\[1\]\.t: 10, earlier than the event before it, at 20$/],
@@ -666,5 +672,177 @@ describe("a history given to the sheet", () => {
       },
     ];
     expect(Work.restore(overlapping, new Clock()).strokes.map((each) => each.id)).toEqual([2, 1]);
+  });
+});
+
+describe("a cut", () => {
+  /** A level line in liner at y = 10 × id, from x 0 to 40, its points 10 apart, written at `t`. */
+  function level(id: number, t = id): Stroke {
+    return {
+      id,
+      kind: "touch",
+      style: { pen: "liner", color: "#0a63d6", width: 2, opacity: 100 },
+      points: [0, 10, 20, 30, 40].map((x) => ({ x, y: 10 * id, t, p: 0.5 })),
+    };
+  }
+  /** A piece of a level line: its points from the first to the last place given, of its own. */
+  function piece(of: Stroke, id: number, from: number, to: number): Stroke {
+    return { ...of, id, points: of.points.slice(from, to) };
+  }
+  /** A sheet of the lines 1 to 3, its clock at 0 at the page's 1000. */
+  function sheet() {
+    const clock = new Clock();
+    clock.at(1000);
+    const work = new Work(clock);
+    const lines = [1, 2, 3].map((id) => level(id));
+    for (const line of lines) work.write(line);
+    return { work, lines };
+  }
+
+  test("takes the strokes it crossed off and leaves their pieces where they stood, in one action", () => {
+    const { work, lines } = sheet();
+    const [one, , three] = lines as [Stroke, Stroke, Stroke];
+    const pieces = [piece(three, 4, 0, 2), piece(three, 5, 3, 5)];
+    // Named against the sheet's order, and one stroke covered whole: no piece of it.
+    expect(
+      work.cut(
+        [
+          { id: 3, pieces },
+          { id: 1, pieces: [] },
+        ],
+        1050,
+      ),
+    ).toBe(true);
+    expect(ids(work)).toEqual([2, 4, 5]);
+    expect(work.history.at(-1)).toEqual({
+      kind: "cut",
+      t: 50,
+      ids: [1, 3],
+      pieces: pieces.map((stroke) => ({ of: 3, stroke })),
+    });
+    expect(Object.isFrozen(work.history.at(-1))).toBe(true);
+    expect(work.cutFrom(5)).toEqual([3]);
+    expect(work.cutFrom(3)).toEqual([]);
+    expect(work.cutFrom(99)).toEqual([]);
+    // The eraser finds the pieces, not the strokes cut.
+    expect(idsOf(everything(work)).sort()).toEqual([2, 4, 5]);
+    // A piece cut again: the strokes it was cut of, the nearest first.
+    expect(work.cut([{ id: 5, pieces: [piece(three, 6, 4, 5)] }], 1060)).toBe(true);
+    expect(ids(work)).toEqual([2, 4, 6]);
+    expect(work.cutFrom(6)).toEqual([5, 3]);
+    expect(nextIdOf(work.history)).toBe(7);
+    // Undone, the pieces go and the strokes cut come back to their places.
+    expect(work.undo(1070)).toBe(true);
+    expect(work.history.at(-1)).toEqual({ kind: "undo", t: 70, removed: [6], restored: [5] });
+    expect(work.undo(1080)).toBe(true);
+    expect(work.history.at(-1)).toEqual({ kind: "undo", t: 80, removed: [4, 5], restored: [1, 3] });
+    expect(work.strokes).toEqual(lines);
+    expect(work.strokes[0]).toBe(one);
+  });
+
+  test("of strokes no longer on the sheet is no action, and leaves out those of them it names", () => {
+    const { work, lines } = sheet();
+    const [, two] = lines as [Stroke, Stroke, Stroke];
+    work.erase([2], 1010);
+    const events = work.history.length;
+    expect(work.cut([{ id: 2, pieces: [piece(two, 4, 0, 2)] }], 1020)).toBe(false);
+    expect(work.cut([], 1020)).toBe(false);
+    expect(work.history).toHaveLength(events);
+    expect(
+      work.cut(
+        [
+          { id: 2, pieces: [] },
+          { id: 1, pieces: [] },
+        ],
+        1030,
+      ),
+    ).toBe(true);
+    expect(work.history.at(-1)).toEqual({ kind: "cut", t: 30, ids: [1], pieces: [] });
+    expect(ids(work)).toEqual([3]);
+  });
+
+  test("of the tracing paper's stroke leaves pieces of the tracing paper", () => {
+    const work = new Work();
+    work.write(level(1), "tracing");
+    work.write(level(2));
+    work.cut(
+      [
+        { id: 1, pieces: [piece(level(1), 3, 0, 2)] },
+        { id: 2, pieces: [piece(level(2), 4, 0, 2)] },
+      ],
+      10,
+    );
+    expect([3, 4].map((id) => work.onTracing(id))).toEqual([true, false]);
+    expect(idsOf(work.near({ x: 0, y: 0 }, { x: 50, y: 50 }, 50, "tracing"))).toEqual([3]);
+  });
+
+  test("of a history given to the sheet is replayed and checked as the sheet records one", () => {
+    const { work, lines } = sheet();
+    const [, two, three] = lines as [Stroke, Stroke, Stroke];
+    work.cut(
+      [
+        { id: 2, pieces: [piece(two, 4, 0, 2)] },
+        { id: 3, pieces: [] },
+      ],
+      1050,
+    );
+    work.undo(1060);
+    work.cut([{ id: 3, pieces: [piece(three, 5, 1, 3)] }], 1070);
+    const given = JSON.parse(JSON.stringify(work.history)) as HistoryEvent[];
+    const restored = Work.restore(given, new Clock());
+    expect(restored.strokes).toEqual(work.strokes);
+    expect(restored.history).toEqual(work.history);
+    expect(replay(given)).toEqual(work.strokes);
+    expect(restored.cutFrom(5)).toEqual([3]);
+    expect(restored.undo(2000)).toBe(true);
+    expect(ids(restored)).toEqual([1, 2, 3]);
+    // A piece of the tracing paper's stroke is the tracing paper's after a history too.
+    const clock = new Clock();
+    clock.at(0);
+    const paper = new Work(clock);
+    paper.write(level(1), "tracing");
+    paper.cut([{ id: 1, pieces: [piece(level(1), 2, 0, 2)] }], 10);
+    expect(Work.restore(paper.history, new Clock(), true).onTracing(2)).toBe(true);
+    // A cut of strokes the sheet does not show, or not in its order, is not what the sheet records.
+    const at = given.slice(0, 3);
+    const cases: [HistoryEvent, RegExp][] = [
+      [
+        { kind: "cut", t: 50, ids: [3, 2], pieces: [] },
+        /^history\[3\]: strokes \[3,2\] cut into \[\], where the sheet takes off \[2,3\], in its order$/,
+      ],
+      [
+        { kind: "erase", t: 50, ids: [2] },
+        /^history\[4\]: strokes \[2\] cut into \[\], but none of them is on the sheet$/,
+      ],
+    ];
+    const [first, second] = cases as [[HistoryEvent, RegExp], [HistoryEvent, RegExp]];
+    expect(() => Work.restore([...at, first[0]], new Clock())).toThrow(first[1]);
+    expect(() =>
+      Work.restore([...at, second[0], { kind: "cut", t: 60, ids: [2], pieces: [] }], new Clock()),
+    ).toThrow(second[1]);
+  });
+
+  test("of spec's vectors is replayed as the sheet records it", () => {
+    for (const { name, history } of vectorsOf<{
+      name: string;
+      history: { events: ProtocolEvent[] };
+    }>("groups").cases) {
+      const events = protocolHistoryOf(history.events);
+      const restored = Work.restore(events, new Clock());
+      expect(restored.strokes, name).toEqual(replay(events));
+    }
+  });
+
+  test("finds a stroke by how far its style's ink reaches", () => {
+    const work = new Work();
+    const marker: Stroke = {
+      ...level(1),
+      style: { pen: "marker", color: "#ffcc00", width: 28, opacity: 40 },
+    };
+    work.write(marker);
+    // A marker 28 wide reaches 14 past its line, at y 10.
+    expect(idsOf(work.near({ x: 20, y: 25 }, { x: 20, y: 25 }, 1))).toEqual([1]);
+    expect(idsOf(work.near({ x: 20, y: 25.01 }, { x: 20, y: 25.01 }, 1))).toEqual([]);
+    expect(idsOf(work.near({ x: 54, y: 10 }, { x: 54, y: 10 }, 0))).toEqual([1]);
   });
 });

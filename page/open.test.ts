@@ -138,6 +138,48 @@ describe("a history", () => {
     expect(view.shown[0]?.points).toEqual([[4, 4]]);
   });
 
+  test("is folded as the sheet folds it: a cut takes its strokes off and shows its pieces", () => {
+    const points = (...xs: number[]) => xs.map((x) => ({ x, y: 10, tMs: x }));
+    const stroke = (id: number, ...xs: number[]) => ({
+      id,
+      pointer: "mouse",
+      points: points(...xs),
+    });
+    const sample = create(SampleSchema, {
+      ink: {
+        case: "history",
+        value: {
+          events: [
+            { tMs: 40, event: { case: "write", value: stroke(1, 10, 20, 30, 40) } },
+            { tMs: 50, event: { case: "write", value: stroke(2, 50) } },
+            {
+              tMs: 60,
+              event: {
+                case: "cut",
+                value: {
+                  ids: [1],
+                  pieces: [
+                    { of: 1, stroke: stroke(3, 10, 15) },
+                    { of: 1, stroke: stroke(4, 25, 30, 40) },
+                  ],
+                },
+              },
+            },
+            { tMs: 70, event: { case: "cut", value: { ids: [2], pieces: [] } } },
+          ],
+        },
+      },
+    });
+    const view = viewOf(sample);
+    expect(view.shown.map(({ id }) => id)).toEqual([3, 4]);
+    expect(view.hidden.map(({ id }) => id)).toEqual([1, 2]);
+    expect(view.shown[1]?.points).toEqual([
+      [25, 10],
+      [30, 10],
+      [40, 10],
+    ]);
+  });
+
   test("a stroke beyond the sheet, or a file with no sheet, is taken into the picture: none is cut off", () => {
     const sample = create(SampleSchema, {
       ink: {

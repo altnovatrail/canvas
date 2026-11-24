@@ -205,3 +205,29 @@ test("a pressure beyond 0 to 1, as an event a script makes may give it, is kept 
   recorder.up(up(30, 10, 20));
   expect(strokes[0]?.points.map((point) => point.p)).toEqual([1, 0, 0]);
 });
+
+describe("a style and the IDs", () => {
+  test("a stroke keeps the style it began in, and one begun in none has none", () => {
+    const { recorder, strokes } = recording();
+    const style = { pen: "marker", color: "#ffcc00", width: 18, opacity: 40 } as const;
+    recorder.down(down(100, 200, 0), style);
+    expect(recorder.live?.style).toBe(style);
+    recorder.up(up(110, 200, 10));
+    recorder.down(down(100, 300, 20));
+    recorder.up(up(110, 300, 30));
+    expect(strokes.map((stroke) => stroke.style)).toEqual([style, undefined]);
+    expect("style" in (strokes[1] ?? {})).toBe(false);
+  });
+
+  test("IDs taken for the pieces of a cut are never a stroke's", () => {
+    const { recorder, strokes } = recording();
+    recorder.down(down(100, 200, 0));
+    // Taken while a stroke is under way: it keeps its own, and the next stroke comes after them.
+    expect(recorder.reserve(2)).toBe(2);
+    recorder.up(up(110, 200, 10));
+    expect(recorder.reserve(0)).toBe(4);
+    recorder.down(down(100, 300, 20));
+    recorder.up(up(110, 300, 30));
+    expect(strokes.map(({ id }) => id)).toEqual([1, 4]);
+  });
+});

@@ -68,15 +68,16 @@ function rulesOf(rules: CSSRuleList): CSSStyleRule[] {
 }
 
 test.runIf(devtools)(
-  "the element's style animates nothing but the wait for a reading, and that only with no preference for less motion, asks for no smooth scrolling, and its one transition is the canvas's colour, which moves nothing",
+  "the element's style animates nothing but the wait for a reading and a popover of the pen or the eraser as it opens, and those only with no preference for less motion, asks for no smooth scrolling, and its one transition is the canvas's colour, which moves nothing",
   async () => {
     const { root } = await placed(made, 400, undefined, { task: sheetTask() });
     const sheets = root.adoptedStyleSheets;
     expect(sheets.length).toBeGreaterThan(0);
     const all = sheets.flatMap((sheet) => [...sheet.cssRules]);
-    // Its keyframes are the wait's alone, and only a query of no preference names them.
+    // Its keyframes are the wait's and the popover's alone, and only a query of no preference
+    // names them.
     expect(all.filter((rule) => rule instanceof CSSKeyframesRule).map((rule) => rule.name)).toEqual(
-      ["novatrail-scan", "novatrail-spin"],
+      ["novatrail-scan", "novatrail-spin", "novatrail-pop"],
     );
     const waits = all.filter(
       (rule): rule is CSSMediaRule =>
@@ -86,7 +87,7 @@ test.runIf(devtools)(
       waits.flatMap((rule) =>
         [...rule.cssRules].map((each) => (each as CSSStyleRule).selectorText),
       ),
-    ).toEqual([".scan i", ".spinner, .tracing-scale .mode.busy::before"]);
+    ).toEqual([".scan i", ".spinner, .tracing-scale .mode.busy::before", ".pop:not([hidden])"]);
     const rules = sheets.flatMap((sheet) => rulesOf(sheet.cssRules));
     expect(rules.length).toBeGreaterThan(0);
     const moving: string[] = [];

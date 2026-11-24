@@ -244,6 +244,30 @@ export function at(canvas: HTMLCanvasElement, view: View, x: number, y: number) 
 }
 
 /**
+ * A pointer on the canvas, made by a script, at points of the sheet: a mouse's, or as given. Each
+ * event is sent to the canvas alone: `pointerleave` does not bubble.
+ */
+export function hand(canvas: HTMLCanvasElement, view: () => View, init: PointerEventInit = {}) {
+  const pointer = { pointerId: 1, pointerType: "mouse", isPrimary: true, bubbles: true, ...init };
+  const send = (type: string, x: number, y: number, state: PointerEventInit) =>
+    canvas.dispatchEvent(
+      new PointerEvent(type, { ...pointer, ...at(canvas, view(), x, y), ...state }),
+    );
+  return {
+    down: (x: number, y: number) =>
+      send("pointerdown", x, y, { button: 0, buttons: 1, pressure: 0.5 }),
+    move: (x: number, y: number) =>
+      send("pointermove", x, y, { button: -1, buttons: 1, pressure: 0.5 }),
+    up: (x: number, y: number) => send("pointerup", x, y, { button: 0, buttons: 0, pressure: 0 }),
+    cancel: (x: number, y: number) => send("pointercancel", x, y, { button: 0, buttons: 0 }),
+    /** A move with no button held: a pen hovering over the screen. */
+    hover: (x: number, y: number) =>
+      send("pointermove", x, y, { button: -1, buttons: 0, pressure: 0 }),
+    leave: (x: number, y: number) => send("pointerleave", x, y, { button: -1, buttons: 0 }),
+  };
+}
+
+/**
  * A level press at `y`, from `from` to `to`, made by a script — a mouse's, pointerId 1 — not yet
  * lifted: `lift()` ends it there.
  */

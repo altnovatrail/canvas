@@ -176,6 +176,20 @@ describe("the tracing paper's size and place", () => {
       [10000, 14000],
     ]);
     expect(moved.id).toBe(3);
+    // A style goes with it, its width as large as the paper's scale draws it, within its bounds.
+    const styled = { pen: "marker", color: "#ffcc00", width: 18, opacity: 40 } as const;
+    const widths = [2, 0.4, 4].map(
+      (scale) => onSheet({ ...stroke(6, [10, 20, 5]), style: styled }, [0, 0], scale).style,
+    );
+    expect(widths).toEqual([
+      { ...styled, width: 36 },
+      { ...styled, width: 7.2 },
+      { ...styled, width: 50 },
+    ]);
+    expect(
+      onSheet({ ...stroke(7, [1, 1, 0]), style: { ...styled, width: 0.1 } }, [0, 0], 0.4).style
+        ?.width,
+    ).toBe(0.1);
     // The box moved with the paper is the moved stroke's, kept to the sheet as its points are.
     const traced = stroke(4, [10, 20, 5], [990, 30, 9], [-5, 13995, 12]);
     for (const at of [
@@ -273,6 +287,18 @@ describe("the work of a task from paper for checking", () => {
     expect(ink.includes(128)).toBe(true);
     expect(ink[0]).toBe(255);
     expect(Object.isFrozen(work.submission.tracing.at)).toBe(true);
+  });
+
+  test("is RGB where a stroke has a style, the picture multiplied into each channel", () => {
+    const liner = { pen: "liner", color: "#e5322d", width: 2, opacity: 100 } as const;
+    const styled = [onSheet(onPaper, at), { ...below, style: liner }];
+    const work = paperWorkForCheck(styled, paper, tracing, rectOf(at, size), plain(8, 2, 128), 24);
+    if (work === null) throw new Error("no work");
+    // IHDR's colour type, after the signature, its length and type, and width, height and depth.
+    expect(work.png[8 + 8 + 9]).toBe(2);
+    const crop = cropOf(styled, groupsOf(styled), 24, tenthsOf(rectOf(at, size)));
+    if (crop === null) throw new Error("no crop");
+    expect(work.submission.crop.frames).toEqual(crop.frames);
   });
 
   test("has a digest that holds where the paper lay and its strokes", () => {
@@ -443,6 +469,13 @@ describe("the crop's picture", () => {
     const picture = { gray: Uint8Array.from([100, 200, 100, 200]), width: 4, height: 1 };
     layOver(ink, 4, picture, { left: 0, top: 0, right: 2, bottom: 1 });
     expect([...ink]).toEqual([0, 150, 255, 255, 255, 255, 255, 255]);
+  });
+
+  test("lies over each channel of RGB alike", () => {
+    const ink = Uint8Array.from([255, 255, 255, 10, 99, 214]);
+    const picture = { gray: Uint8Array.from([100, 200]), width: 2, height: 1 };
+    layOver(ink, 2, picture, { left: 0, top: 0, right: 2, bottom: 1 }, 3);
+    expect([...ink]).toEqual([100, 100, 100, 8, 78, 168]);
   });
 
   test("grows by the pixel nearest each centre", () => {

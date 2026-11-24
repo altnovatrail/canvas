@@ -228,6 +228,50 @@ test("strokes under the eraser take the frame off at once; a cancelled press bri
   expectNear(probe(element).marks[0]?.frame, around(element, [1, 2]));
 });
 
+test("the frame follows the pieces an eraser cuts of its strokes, cut after cut, stays while the eraser is down, and comes back whole with undo; marks given after a cut hold on to the pieces", async () => {
+  const { element, canvas, view } = await sheet(500);
+  twoGroups(canvas, view);
+  await settle();
+  element.marks = { submission: await sentOf(element), marks: [frameOf("This", { group: "A" })] };
+  await settle();
+  element.tool = "eraser";
+  element.pens = { ...element.pens, eraser: "part", eraserSize: 8 };
+  const eraser = press(canvas, view);
+  eraser.down([150, 80]);
+  eraser.move([150, 120]);
+  await settle();
+  expectNear(probe(element).marks[0]?.frame, around(element, [1, 2]));
+  eraser.up([150, 120]);
+  await settle();
+  expect(probe(element).strokes.map(({ id }) => id)).toEqual([4, 5, 2, 3]);
+  expectNear(probe(element).marks[0]?.frame, around(element, [2, 4, 5]));
+  // The left end of the first stroke's left piece, and then the whole second stroke, go.
+  eraser.down([104, 80]);
+  eraser.move([104, 120]);
+  eraser.up([104, 120]);
+  eraser.down([100, 140]);
+  eraser.move([200, 140]);
+  eraser.up([200, 140]);
+  await settle();
+  expect(probe(element).strokes.map(({ id }) => id)).toEqual([6, 5, 3]);
+  expectNear(probe(element).marks[0]?.frame, around(element, [5, 6]));
+  element.undo();
+  element.undo();
+  element.undo();
+  await settle();
+  expectNear(probe(element).marks[0]?.frame, around(element, [1, 2]));
+  // Cut again, and checked again: the marks of the new work hold on to its pieces.
+  eraser.down([150, 80]);
+  eraser.move([150, 120]);
+  eraser.up([150, 120]);
+  await settle();
+  const pieces = probe(element).strokes.map(({ id }) => id);
+  element.marks = { submission: await sentOf(element), marks: [frameOf("This", { group: "A" })] };
+  await settle();
+  expect(pieces).toEqual([7, 8, 2, 3]);
+  expectNear(probe(element).marks[0]?.frame, around(element, [2, 7, 8]));
+});
+
 test("new strokes inside a frame do not move it, and marks given after clear() show their strokes when undo brings them back", async () => {
   const { element, canvas, view } = await sheet(500);
   twoGroups(canvas, view);

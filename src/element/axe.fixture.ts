@@ -13,6 +13,7 @@ import { DEMO, REMAINDERS, sheetTask, workbookTask, workedExample } from "../cor
 import type { ExportedPaper, NovatrailCanvas, WorkedExample } from "./index.js";
 import {
   arrive,
+  buttonOf,
   consumerButton,
   level,
   paperCrop,
@@ -117,6 +118,11 @@ export interface Kind {
    * example's row stands over the text of its open parts rather than over the sheet.
    */
   readonly clear?: readonly string[];
+  /**
+   * What axe leaves incomplete on an element 300 CSS px tall, if not `clear`: there an open
+   * popover stands over the statement's text, whose background axe cannot see through it.
+   */
+  readonly low?: readonly string[];
 }
 
 /** The consumer's media, a new one for each element: every picture the same file of four colours,
@@ -151,6 +157,28 @@ async function written(made: HTMLElement[]) {
   level(canvas, view(), 200, 100, 300);
   await settle();
   return element;
+}
+
+/**
+ * A sheet `width` CSS px wide in `lang` with a stroke, the popover of its pen or of its eraser
+ * open, and the pen's other colours shown, its pop-in played out: a press of the chosen tool opens
+ * its popover, and the eraser is chosen by a first.
+ */
+function popover(which: "Pen" | "Eraser", width: number, lang = "en") {
+  return async (made: HTMLElement[]) => {
+    const { element, canvas, view } = await placed(made, width, undefined, { task: sheetTask() });
+    level(canvas, view(), 200, 100, 300);
+    const tool = buttonOf(element, which);
+    element.lang = lang;
+    if (which === "Eraser") tool.click();
+    tool.click();
+    const pop = element.shadowRoot?.querySelector<HTMLElement>('[role="dialog"]:not([hidden])');
+    if (!pop) throw new Error(`no popover of the ${which} opened`);
+    pop.querySelector<HTMLElement>("[aria-expanded]")?.click();
+    await settle();
+    await Promise.all(pop.getAnimations().map((animation) => animation.finished));
+    return element;
+  };
 }
 
 /** A worked example on a new element — it shows one only before it shows a task —, every part of
@@ -190,8 +218,8 @@ async function fromPaper(made: HTMLElement[]) {
 
 /** Every kind of canvas the element shows: a sheet with its task and a stroke, a statement with
  * pictures, a workbook, marks on a sheet, a worked example on a sheet with pictures beside it and
- * on its sheet, without the consumer's button in its row and with it, one on a workbook, and a
- * task from paper with the tutor's marks. */
+ * on its sheet, without the consumer's button in its row and with it, one on a workbook, a task
+ * from paper with the tutor's marks, and a sheet with the popover of its pen or its eraser open. */
 export const KINDS: readonly Kind[] = [
   { name: "a sheet with its task and a stroke", put: written, incomplete: [] },
   {
@@ -253,5 +281,17 @@ export const KINDS: readonly Kind[] = [
     name: "a task from paper, with a stroke, a verdict and a wavy line",
     put: fromPaper,
     incomplete: [],
+  },
+  {
+    name: "a sheet with the pen's popover open right of the bar, its other colours shown",
+    put: popover("Pen", 800),
+    incomplete: [],
+    low: ["color-contrast"],
+  },
+  {
+    name: "a sheet with the eraser's popover open in Russian, along the element's bottom",
+    put: popover("Eraser", 400, "ru"),
+    incomplete: [],
+    low: ["color-contrast"],
   },
 ];

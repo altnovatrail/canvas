@@ -1,6 +1,7 @@
 /**
- * The PNG of a grey image, a byte to a pixel, row by row from the top: own code, so that the
- * same pixels give the same bytes in every browser and in Node, as no browser's canvas promises.
+ * The PNG of an image row by row from the top, grey, a byte to a pixel, or RGB, three bytes to a
+ * pixel, as `channels` says: own code, so that the same pixels give the same bytes in every browser
+ * and in Node, as no browser's canvas promises.
  * The file is the least PNG holds: its signature, the header, one chunk of data and the end,
  * no ancillary chunk, for a decoder may ignore them (PNG Third Edition, 11.3). The data is a zlib
  * stream of one deflate block with the fixed Huffman codes (RFC 1950, RFC 1951): every row
@@ -8,9 +9,10 @@
  * white, and the row above, which takes the rows a stroke runs straight down through.
  */
 export function encodePNG(
-  gray: Uint8Array,
+  pixels: Uint8Array,
   width: number,
   height: number,
+  channels: 1 | 3 = 1,
 ): Uint8Array<ArrayBuffer> {
   for (const [name, side] of [
     ["width", width],
@@ -20,22 +22,28 @@ export function encodePNG(
       throw new RangeError(`the image's ${name} is ${side}, not a whole number from 1 to ${MOST}`);
     }
   }
-  if (gray.length !== width * height) {
-    throw new RangeError(`${gray.length} pixels are no image ${width} × ${height}`);
+  if (channels !== 1 && channels !== 3) {
+    throw new RangeError(`an image of ${channels} channels: grey has 1, RGB 3`);
+  }
+  const across = width * channels;
+  if (pixels.length !== across * height) {
+    throw new RangeError(
+      `${pixels.length} bytes are no image ${width} × ${height} of ${channels} channels`,
+    );
   }
   // Each row after its filter, 0: none.
-  const stride = width + 1;
+  const stride = across + 1;
   const rows = new Uint8Array(stride * height);
   for (let row = 0; row < height; row++) {
-    rows.set(gray.subarray(row * width, (row + 1) * width), row * stride + 1);
+    rows.set(pixels.subarray(row * across, (row + 1) * across), row * stride + 1);
   }
   const header = new Uint8Array(13);
   const view = new DataView(header.buffer);
   view.setUint32(0, width);
   view.setUint32(4, height);
-  // A depth of 8 bits, the colour type of grey, and the one method of compression, of filtering
-  // and of no interlacing there is.
-  header.set([8, 0, 0, 0, 0], 8);
+  // A depth of 8 bits, the colour type of grey, 0, or of RGB, 2, and the one method of compression,
+  // of filtering and of no interlacing there is.
+  header.set([8, channels === 1 ? 0 : 2, 0, 0, 0], 8);
   const stream = deflate(rows, stride);
   const zlib = new Uint8Array(2 + stream.length + 4);
   // The deflate method with a window of 32 KiB, and the fastest algorithm; FCHECK makes 0x7801 a

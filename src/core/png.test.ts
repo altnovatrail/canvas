@@ -226,5 +226,25 @@ describe("the PNG", () => {
       );
     }
     expect(() => encodePNG(new Uint8Array(5), 2, 3)).toThrow(RangeError);
+    expect(() => encodePNG(new Uint8Array(6), 2, 3, 3)).toThrow(RangeError);
+    expect(() => encodePNG(new Uint8Array(12), 2, 3, 2 as 3)).toThrow(RangeError);
+  });
+
+  test("of RGB is of colour type 2, its rows three bytes a pixel, read back by both readers", () => {
+    const rgb = noise(3 * 29, 17, 7);
+    const png = encodePNG(rgb, 29, 17, 3);
+    const [header] = chunksOf(png);
+    expect([...(header?.data.subarray(8) ?? [])]).toEqual([8, 2, 0, 0, 0]);
+    expect(chunksOf(png).map(({ type }) => type)).toEqual(["IHDR", "IDAT", "IEND"]);
+    const stride = 3 * 29 + 1;
+    const rows = inflateSync(streamOf(png));
+    expect(rows).toHaveLength(17 * stride);
+    expect(readFixed(streamOf(png)).bytes).toEqual([...rows]);
+    for (let row = 0; row < 17; row++) {
+      expect(rows[row * stride]).toBe(0);
+      expect([...rows.subarray(row * stride + 1, (row + 1) * stride)]).toEqual([
+        ...rgb.subarray(row * (stride - 1), (row + 1) * (stride - 1)),
+      ]);
+    }
   });
 });

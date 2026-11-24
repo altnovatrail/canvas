@@ -38,3 +38,22 @@ test("the picture of a work is the page at a pixel a unit, the ink past it too, 
     expect((picture.width + 2) * (picture.height + 1)).toBeGreaterThan(PICTURE_BYTES);
   }
 });
+
+test("an RGB picture, three bytes a pixel, is scaled down to hold its rows within the same bytes, the page alone too", () => {
+  for (const ink of [
+    undefined,
+    { maxX: 1500, maxY: 200 },
+    { maxX: REACH.width, maxY: REACH.height },
+  ]) {
+    const picture = pictureOf(ink, 3);
+    expect((3 * picture.width + 1) * picture.height).toBeLessThanOrEqual(PICTURE_BYTES);
+    expect(picture.scale).toBeLessThan(1);
+    const extent = extentOf(ink, { width: 0, height: 0 });
+    expect(Math.abs(picture.width - extent.width * picture.scale)).toBeLessThan(1);
+    expect(Math.abs(picture.height - extent.height * picture.scale)).toBeLessThan(1);
+    // Not a pixel short: one more row would be past the bound.
+    expect((3 * (picture.width + 1) + 1) * (picture.height + 1)).toBeGreaterThan(PICTURE_BYTES);
+  }
+  // Grey is as it was, a byte a pixel.
+  expect(pictureOf({ maxX: 1500, maxY: 200 }, 1)).toEqual(pictureOf({ maxX: 1500, maxY: 200 }));
+});

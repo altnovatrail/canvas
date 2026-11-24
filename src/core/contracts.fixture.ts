@@ -8,7 +8,14 @@ import boxes from "@altnovatrail/contracts/vectors/eval/v1/boxes.json" with { ty
 import crops from "@altnovatrail/contracts/vectors/eval/v1/crops.json" with { type: "json" };
 import groups from "@altnovatrail/contracts/vectors/eval/v1/groups.json" with { type: "json" };
 import snaps from "@altnovatrail/contracts/vectors/eval/v1/snaps.json" with { type: "json" };
-import type { Box, Group, HistoryEvent, Stroke } from "@altnovatrail/spec/canvas";
+import type {
+  Box,
+  Group,
+  HistoryEvent,
+  PenKind,
+  Stroke,
+  StrokeStyle,
+} from "@altnovatrail/spec/canvas";
 import type { Crop } from "./crop.js";
 import { tenths } from "./geometry.js";
 
@@ -41,21 +48,38 @@ export interface ProtocolGroup {
   readonly stroke_ids: readonly number[];
 }
 
-/** A stroke of the final geometry, `FinalStroke`: its ID and its points, with no time. */
+/** A stroke's style, `StrokeStyle`: its kind of pen by the enum's name, its colour, width, opacity. */
+export interface ProtocolStyle {
+  readonly pen: "PEN_KIND_PEN" | "PEN_KIND_LINER" | "PEN_KIND_MARKER";
+  readonly color: string;
+  readonly width: number;
+  readonly opacity: number;
+}
+
+/** A stroke of the final geometry, `FinalStroke`: its ID, its points, with no time, and its style. */
 export interface FinalStroke {
   readonly id: number;
   readonly points: readonly { readonly x: number; readonly y: number }[];
+  readonly style?: ProtocolStyle;
+}
+
+/** A stroke of a history, `Stroke`: its ID, its pointer, its points and its style. */
+export interface ProtocolStroke {
+  readonly id: number;
+  readonly pointer: string;
+  readonly points: readonly { readonly x: number; readonly y: number; readonly t_ms: number }[];
+  readonly style?: ProtocolStyle;
 }
 
 /** An event of the history of writing, `HistoryEvent`: its time and the field it sets. */
 export interface ProtocolEvent {
   readonly t_ms: number;
-  readonly write?: {
-    readonly id: number;
-    readonly pointer: string;
-    readonly points: readonly { readonly x: number; readonly y: number; readonly t_ms: number }[];
-  };
+  readonly write?: ProtocolStroke;
   readonly erase?: { readonly ids: readonly number[] };
+  readonly cut?: {
+    readonly ids: readonly number[];
+    readonly pieces: readonly { readonly of: number; readonly stroke: ProtocolStroke }[];
+  };
   readonly clear?: { readonly ids: readonly number[] };
   readonly undo?: { readonly removed: readonly number[]; readonly restored: readonly number[] };
 }
@@ -66,19 +90,40 @@ export interface ProtocolEvent {
  */
 const PRESSURE = 0.5;
 
+/** A protocol's kinds of pen as the sheet's. */
+const PEN_KINDS: Readonly<Record<ProtocolStyle["pen"], PenKind>> = {
+  PEN_KIND_PEN: "pen",
+  PEN_KIND_LINER: "liner",
+  PEN_KIND_MARKER: "marker",
+};
+
+/** A protocol's style as the sheet's: its `pen` is `PEN_KIND_` and its kind in capitals. */
+export function styleFrom({ pen, color, width, opacity }: ProtocolStyle): StrokeStyle {
+  return { pen: PEN_KINDS[pen], color, width, opacity };
+}
+
+/** A stroke of a protocol's history as the sheet's: its kind is its pointer, a point's `t` its `t_ms`. */
+function strokeFrom({ id, pointer, points, style }: ProtocolStroke): Stroke {
+  const ink = points.map(({ x, y, t_ms }) => ({ x, y, t: t_ms, p: PRESSURE }));
+  return style === undefined
+    ? { id, kind: pointer, points: ink }
+    : { id, kind: pointer, style: styleFrom(style), points: ink };
+}
+
 /**
  * A protocol's history as the element keeps it: an event's kind is the field it sets, its `t` is
- * `t_ms`, a stroke's kind is its pointer and a point's `t` its `t_ms`.
+ * `t_ms`, a stroke's kind is its pointer, a style's `pen` its kind, a piece's `of` and `stroke` its
+ * own and a point's `t` its `t_ms`.
  */
 export function historyOf(events: readonly ProtocolEvent[]): HistoryEvent[] {
   return events.map((event): HistoryEvent => {
     const t = event.t_ms;
-    if (event.write !== undefined) {
-      const { id, pointer, points } = event.write;
-      const ink = points.map(({ x, y, t_ms }) => ({ x, y, t: t_ms, p: PRESSURE }));
-      return { kind: "write", t, stroke: { id, kind: pointer, points: ink } };
-    }
+    if (event.write !== undefined) return { kind: "write", t, stroke: strokeFrom(event.write) };
     if (event.erase !== undefined) return { kind: "erase", t, ids: event.erase.ids };
+    if (event.cut !== undefined) {
+      const pieces = event.cut.pieces.map(({ of, stroke }) => ({ of, stroke: strokeFrom(stroke) }));
+      return { kind: "cut", t, ids: event.cut.ids, pieces };
+    }
     if (event.clear !== undefined) return { kind: "clear", t, ids: event.clear.ids };
     if (event.undo !== undefined) return { kind: "undo", t, ...event.undo };
     throw new Error(`an event at ${t} ms sets no field`);
@@ -86,15 +131,17 @@ export function historyOf(events: readonly ProtocolEvent[]): HistoryEvent[] {
 }
 
 /**
- * The final geometry's strokes as the sheet's: a pen's, each point at time 0 — the crop, the
+ * The final geometry's strokes as the sheet's, each in its style if it has one: a pen's, each point
+ * at time 0 — the crop, the
  * snapping and the boxes read no time.
  */
 export function strokesOf(strokes: readonly FinalStroke[]): Stroke[] {
-  return strokes.map(({ id, points }) => ({
-    id,
-    kind: "pen",
-    points: points.map(({ x, y }) => ({ x, y, t: 0, p: PRESSURE })),
-  }));
+  return strokes.map(({ id, points, style }) => {
+    const ink = points.map(({ x, y }) => ({ x, y, t: 0, p: PRESSURE }));
+    return style === undefined
+      ? { id, kind: "pen", points: ink }
+      : { id, kind: "pen", style: styleFrom(style), points: ink };
+  });
 }
 
 /** A protocol's groups as the sheet's. */

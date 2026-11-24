@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { Clock } from "./clock.js";
-import { ERASER_BUTTON, Eraser } from "./eraser.js";
+import { ERASER_BUTTON, Eraser, type Erasure } from "./eraser.js";
 import type { Stroke } from "./ink.js";
 import type { PointerSample } from "./recorder.js";
 import { Work } from "./work.js";
@@ -186,5 +186,54 @@ describe("the buttons", () => {
     expect(eraser.up(up(300, 1025, { pointerId: 2 }))).toBe(false);
     expect(eraser.pointer).toBe(1);
     expect([...eraser.pending]).toEqual([]);
+  });
+});
+
+describe("a press that takes a part", () => {
+  test("keeps its path in sight, readable while it is down, and hands it over with its radius", () => {
+    const clock = new Clock();
+    clock.at(1000);
+    const work = new Work(clock);
+    for (const id of [1, 2]) work.write(stroke(id));
+    const lifted: { ids: readonly number[]; erasure: Erasure }[] = [];
+    const eraser = new Eraser(
+      (from, to, reach) => work.near(from, to, reach),
+      (ids, _, erasure) => lifted.push({ ids, erasure }),
+    );
+    expect(eraser.erasure).toBeUndefined();
+    eraser.down(down(150, 1010), REACH, "part");
+    eraser.move(move(250, 1020));
+    // Out of sight it goes nowhere: the path goes on from where it was last seen.
+    eraser.move(move(400, 1030), false);
+    expect(eraser.erasure).toEqual({
+      mode: "part",
+      reach: REACH,
+      path: [
+        { x: 150, y: 200 },
+        { x: 250, y: 200 },
+      ],
+    });
+    expect([...eraser.pending]).toEqual([2]);
+    eraser.up(up(50, 1040));
+    expect(lifted).toEqual([
+      {
+        ids: [2, 1],
+        erasure: {
+          mode: "part",
+          reach: REACH,
+          path: [
+            { x: 150, y: 200 },
+            { x: 250, y: 200 },
+            { x: 50, y: 200 },
+          ],
+        },
+      },
+    ]);
+    expect(eraser.erasure).toBeUndefined();
+    // A press of the eraser that takes strokes whole says so.
+    eraser.down(down(100, 1050), REACH);
+    expect(eraser.erasure?.mode).toBe("stroke");
+    // It keeps no way: only a cut reads one.
+    expect(eraser.erasure?.path).toEqual([]);
   });
 });

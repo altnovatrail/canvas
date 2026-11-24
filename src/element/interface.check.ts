@@ -12,6 +12,7 @@ import type {
   CanvasEventMap,
   DemoChangeEvent,
   DemoState,
+  EraserMode,
   ExportedCell,
   ExportedPaper,
   ExportedSheet,
@@ -31,7 +32,12 @@ import type {
   PaperGrid,
   PaperSubmission,
   PaperTask,
+  PenChangeEvent,
+  PenKind,
+  PenSettings,
+  Piece,
   SheetSubmission,
+  StrokeStyle,
   Tool,
   ToolChange,
   ToolChangeEvent,
@@ -51,6 +57,7 @@ export type Contract = All<
     Same<CanvasElement, spec.CanvasElement>,
     Same<CanvasEventMap, spec.CanvasEventMap>,
     Same<DemoChangeEvent, spec.DemoChangeEvent>,
+    Same<EraserMode, spec.EraserMode>,
     Same<ExportedCell, spec.ExportedCell>,
     Same<ExportedPaper, spec.ExportedPaper>,
     Same<ExportedSheet, spec.ExportedSheet>,
@@ -66,6 +73,11 @@ export type Contract = All<
     Same<PaperGrid, spec.PaperGrid>,
     Same<PaperSubmission, spec.PaperSubmission>,
     Same<PaperTask, spec.PaperTask>,
+    Same<PenChangeEvent, spec.PenChangeEvent>,
+    Same<PenKind, spec.PenKind>,
+    Same<PenSettings, spec.PenSettings>,
+    Same<Piece, spec.Piece>,
+    Same<StrokeStyle, spec.StrokeStyle>,
     Same<ToolChange, spec.ToolChange>,
     Same<ToolChangeEvent, spec.ToolChangeEvent>,
     Same<TracingChangeEvent, spec.TracingChangeEvent>,
@@ -77,6 +89,7 @@ export type Contract = All<
     Same<GlobalEventHandlersEventMap["demochange"], CanvasEventMap["demochange"]>,
     Same<GlobalEventHandlersEventMap["tracingchange"], CanvasEventMap["tracingchange"]>,
     Same<GlobalEventHandlersEventMap["gridchange"], CanvasEventMap["gridchange"]>,
+    Same<GlobalEventHandlersEventMap["penchange"], CanvasEventMap["penchange"]>,
   ]
 >;
 export const contract: Contract = true;
@@ -182,6 +195,28 @@ document.addEventListener("gridchange", (event) => {
   const chosen: GridChange = event.detail;
   sheet.grid = chosen.grid;
 });
+/**
+ * The settings of the pen and the eraser, which a penchange tells and the consumer gives back to
+ * the next element; undefined changes nothing.
+ */
+export const pens: PenSettings = sheet.pens;
+sheet.pens = pens;
+sheet.pens = undefined;
+sheet.pens = { ...pens, pen: "marker", eraser: "part", eraserSize: 44 };
+sheet.addEventListener("penchange", (event: PenChangeEvent) => event.detail.pen);
+document.addEventListener("penchange", (event) => {
+  const kept: PenSettings = event.detail;
+  const style: StrokeStyle = kept.styles[kept.pen];
+  sheet.pens = kept;
+  return style.color;
+});
+/** A stroke keeps its style, and a cut its pieces, each of the stroke it was cut of. */
+export const styled: StrokeStyle | undefined = sheet.history.flatMap((event) =>
+  event.kind === "write" ? [event.stroke] : [],
+)[0]?.style;
+export const pieces: readonly Piece[] = sheet.history.flatMap((event) =>
+  event.kind === "cut" ? event.pieces : [],
+);
 export const beside: Blob | undefined = "statement" in done ? done.statement : undefined;
 export const laid: TracingState = fromPaper.submission.tracing;
 sheet.marks = { submission: fromPaper.submission, marks: [] };
@@ -287,6 +322,14 @@ sheet.grid = null;
 document.addEventListener("gridchange", (event) => {
   // @ts-expect-error The grid told is the learner's choice, to read.
   event.detail.grid = "dots";
+});
+// @ts-expect-error A kind of pen the popover has not is no kind of pen.
+sheet.pens = { ...pens, pen: "brush" };
+// @ts-expect-error null is no settings: undefined, and undefined alone, changes nothing.
+sheet.pens = null;
+document.addEventListener("penchange", (event) => {
+  // @ts-expect-error The settings told are the learner's, to read.
+  event.detail.pen = "pen";
 });
 // @ts-expect-error Marks whose submission has no digest are no marks of a submission.
 sheet.marks = { submission: { crop, groups: [] }, marks: [] };

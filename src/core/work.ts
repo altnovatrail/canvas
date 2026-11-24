@@ -3,18 +3,35 @@ import { Clock } from "./clock.js";
 import { shown } from "./fields.js";
 import { type Box, boxOf, segmentBox, segmentDistance } from "./geometry.js";
 import { GROUP_RULE } from "./groups.js";
-import { frozen, type HistoryEvent, historyOf, sameEvent } from "./history.js";
+import { frozen, type HistoryEvent, historyOf, type Piece, sameEvent } from "./history.js";
 import type { Stroke } from "./ink.js";
 import type { Point } from "./screen.js";
+import { reachOf } from "./style.js";
 
 /**
  * An action on the sheet, the thing undo takes back: a stroke written; strokes erased,
- * each with the place it had on the sheet; or the sheet cleared, with the strokes that were on it.
+ * each with the place it had on the sheet; strokes cut, with the sheet as it was before and the
+ * pieces left; or the sheet cleared, with the strokes that were on it.
  */
 type Action =
   | { readonly kind: "write"; readonly stroke: Stroke }
   | { readonly kind: "erase"; readonly erased: readonly Erased[] }
+  | {
+      readonly kind: "cut";
+      readonly before: readonly Stroke[];
+      readonly ids: readonly number[];
+      readonly pieces: readonly Piece[];
+    }
   | { readonly kind: "clear"; readonly strokes: readonly Stroke[] };
+
+/**
+ * What one press of the eraser that takes a part left of a stroke it crossed: the stroke's ID,
+ * and its pieces along it, new strokes with their own IDs — none when it covered the stroke whole.
+ */
+export interface Cutting {
+  readonly id: number;
+  readonly pieces: readonly Stroke[];
+}
 
 /** An erased stroke, with its place among the strokes on the sheet before the erasing. */
 interface Erased {
@@ -22,7 +39,7 @@ interface Erased {
   readonly stroke: Stroke;
 }
 
-/** A stroke in the index: the box around its points. */
+/** A stroke in the index: the box around its points, widened by how far its ink reaches. */
 interface Entry extends Box {
   readonly stroke: Stroke;
 }
@@ -51,8 +68,10 @@ export class Work {
   #index = new RBush<Entry>();
   #indexed: readonly Stroke[] = this.#strokes;
   readonly #entries = new WeakMap<Stroke, Entry>();
-  /** The IDs of the strokes written on the tracing paper of a task from paper. */
+  /** The IDs of the strokes written on the tracing paper of a task from paper, and their pieces. */
   readonly #tracing = new Set<number>();
+  /** The stroke each piece was cut of, by the piece's ID. */
+  readonly #cutOf = new Map<number, number>();
 
   constructor(clock = new Clock()) {
     this.#clock = clock;
@@ -63,7 +82,7 @@ export class Work {
    * actions for undo and the history itself, in frozen objects of the work's own. The events are
    * checked as `historyOf` checks them, then replayed by the work's own rules, each at its own
    * time, and each must be what the work records for it: an erasing takes off strokes on the sheet,
-   * in the sheet's order; a clearing clears a sheet with strokes, all of them; an undo takes back
+   * in the sheet's order, and so does a cut, which leaves its pieces at their places; a clearing clears a sheet with strokes, all of them; an undo takes back
    * the last action still in force and says what the stack says. A history the sheet could not have
    * written is a TypeError that names the event. The clock is not asked: it goes on as the sheet
    * that takes the work tells it (`Clock.resume`). On a task from paper, `paper`, a stroke may be
@@ -82,8 +101,9 @@ export class Work {
   }
 
   /**
-   * The strokes on the sheet, in the order they were written. Every action gives a new array, and
-   * undoing a clearing gives back the very one it cleared.
+   * The strokes on the sheet, in the order they were written, each piece of a cut stroke at the
+   * place the stroke had. Every action gives a new array, and undoing a clearing or a cut gives back
+   * the very one it took off.
    */
   get strokes(): readonly Stroke[] {
     return this.#strokes;
@@ -108,6 +128,17 @@ export class Work {
   /** Whether any stroke was written on the tracing paper, erased or not. */
   get traced(): boolean {
     return this.#tracing.size > 0;
+  }
+
+  /**
+   * The strokes a stroke was cut of, by their IDs: the stroke it is a piece of, the stroke that one
+   * is a piece of, and on to a stroke written whole. None for a stroke written whole, or an ID the
+   * work does not know.
+   */
+  cutFrom(id: number): readonly number[] {
+    const from: number[] = [];
+    for (let of = this.#cutOf.get(id); of !== undefined; of = this.#cutOf.get(of)) from.push(of);
+    return from;
   }
 
   /**
@@ -140,8 +171,21 @@ export class Work {
   }
 
   /**
+   * One press of the eraser that takes a part, in one action: each stroke it crossed, by its ID,
+   * goes off the sheet, and its pieces come on at the place it had, so the strokes keep their order.
+   * The event names the strokes in the sheet's order, and their pieces in that order and along
+   * each. A stroke no longer on the sheet is left out, with its pieces; if none is on it, nothing is
+   * done. The pieces' IDs are the caller's, new ones the history never had, and the pieces are the
+   * cut stroke's layer's: a piece of the tracing paper's stroke is the tracing paper's.
+   */
+  cut(cuts: readonly Cutting[], time: number): boolean {
+    return this.#cut(cuts, () => this.#clock.at(time));
+  }
+
+  /**
    * Takes back the last action: a written stroke goes, erased strokes come back to their places, a
-   * clearing brings its strokes back. On a sheet without actions nothing changes.
+   * cut takes its pieces off and puts its strokes back, a clearing brings its strokes back. On a
+   * sheet without actions nothing changes.
    */
   undo(time: number): boolean {
     return this.#undo(() => this.#clock.at(time));
@@ -153,17 +197,18 @@ export class Work {
   }
 
   /**
-   * The strokes on the sheet whose line comes within `reach` of the segment from `from` to `to`, in
-   * sheet units: the index finds those whose box is near enough, and the distance to each segment
-   * of their points decides. A segment whose ends are one point is that point. On a task from
-   * paper an erasing takes the strokes of one layer alone, `layer`: the tracing paper's, its
-   * points from its corner, or the sheet's.
+   * The strokes on the sheet whose ink comes within `radius` of the segment from `from` to `to`,
+   * in sheet units: whose line — the segments between its points — comes within `radius` and the
+   * reach of its ink (`reachOf`). The index finds those whose box, widened by that reach, is near
+   * enough, and the distance to each segment of their points decides. A segment whose ends are one
+   * point is that point. On a task from paper an erasing takes the strokes of one layer alone,
+   * `layer`: the tracing paper's, its points from its corner, or the sheet's.
    */
-  near(from: Point, to: Point, reach: number, layer?: "tracing" | "sheet"): Stroke[] {
+  near(from: Point, to: Point, radius: number, layer?: "tracing" | "sheet"): Stroke[] {
     const hits: Stroke[] = [];
-    for (const { stroke } of this.#indexOf().search(segmentBox(from, to, reach))) {
+    for (const { stroke } of this.#indexOf().search(segmentBox(from, to, radius))) {
       if (layer !== undefined && this.#tracing.has(stroke.id) !== (layer === "tracing")) continue;
-      if (lineDistance(stroke, from, to) <= reach) hits.push(stroke);
+      if (lineDistance(stroke, from, to) <= radius + reachOf(stroke)) hits.push(stroke);
     }
     return hits;
   }
@@ -200,6 +245,34 @@ export class Work {
     return true;
   }
 
+  #cut(cuts: readonly Cutting[], at: () => number): boolean {
+    const byId = new Map(cuts.map((cut) => [cut.id, cut.pieces]));
+    const before = this.#strokes;
+    const ids: number[] = [];
+    const pieces: Piece[] = [];
+    const strokes: Stroke[] = [];
+    for (const stroke of before) {
+      const left = byId.get(stroke.id);
+      if (left === undefined) {
+        strokes.push(stroke);
+        continue;
+      }
+      ids.push(stroke.id);
+      const traced = this.#tracing.has(stroke.id);
+      for (const piece of left) {
+        strokes.push(piece);
+        pieces.push({ of: stroke.id, stroke: piece });
+        this.#cutOf.set(piece.id, stroke.id);
+        if (traced) this.#tracing.add(piece.id);
+      }
+    }
+    if (ids.length === 0) return false;
+    this.#strokes = strokes;
+    this.#done.push({ kind: "cut", before, ids, pieces });
+    this.#record({ kind: "cut", t: at(), ids, pieces });
+    return true;
+  }
+
   #undo(at: () => number): boolean {
     const action = this.#done.pop();
     if (action === undefined) return false;
@@ -216,6 +289,11 @@ export class Work {
       this.#strokes = strokes;
       const restored = action.erased.map(({ stroke }) => stroke.id);
       this.#record({ kind: "undo", t, removed: [], restored });
+    } else if (action.kind === "cut") {
+      // The sheet is as the cut left it, so it goes back to the very sheet before the cut.
+      this.#strokes = action.before;
+      const removed = action.pieces.map(({ stroke }) => stroke.id);
+      this.#record({ kind: "undo", t, removed, restored: [...action.ids] });
     } else {
       this.#strokes = action.strokes;
       const restored = action.strokes.map((stroke) => stroke.id);
@@ -242,6 +320,7 @@ export class Work {
     let done = true;
     if (event.kind === "write") this.#write(event.stroke, event.t, event.on);
     else if (event.kind === "erase") done = this.#erase(event.ids, at);
+    else if (event.kind === "cut") done = this.#cut(cuttingsOf(event), at);
     else if (event.kind === "clear") done = this.#clear(at);
     else done = this.#undo(at);
     const recorded = this.#events.at(-1);
@@ -266,20 +345,42 @@ export class Work {
   #entryOf(stroke: Stroke): Entry {
     let entry = this.#entries.get(stroke);
     if (entry === undefined) {
-      entry = { ...boxOf(stroke.points), stroke };
+      const reach = reachOf(stroke);
+      const { minX, minY, maxX, maxY } = boxOf(stroke.points);
+      entry = {
+        minX: minX - reach,
+        minY: minY - reach,
+        maxX: maxX + reach,
+        maxY: maxY + reach,
+        stroke,
+      };
       this.#entries.set(stroke, entry);
     }
     return entry;
   }
 }
 
-/** The ID the next stroke takes after a history: one past the highest written, or 1. */
+/**
+ * The ID the next stroke takes after a history: one past the highest written, a piece a cut left
+ * too, or 1.
+ */
 export function nextIdOf(history: readonly HistoryEvent[]): number {
   let highest = 0;
   for (const event of history) {
     if (event.kind === "write") highest = Math.max(highest, event.stroke.id);
+    else if (event.kind === "cut") {
+      for (const { stroke } of event.pieces) highest = Math.max(highest, stroke.id);
+    }
   }
   return highest + 1;
+}
+
+/** A cut of a history as the work takes one: each stroke it names, with its pieces. */
+function cuttingsOf(event: HistoryEvent & { kind: "cut" }): Cutting[] {
+  return event.ids.map((id) => ({
+    id,
+    pieces: event.pieces.filter(({ of }) => of === id).map(({ stroke }) => stroke),
+  }));
 }
 
 /**
@@ -299,6 +400,8 @@ function what(event: HistoryEvent): string {
       return `stroke ${event.stroke.id} written`;
     case "erase":
       return `strokes ${shown(event.ids)} erased`;
+    case "cut":
+      return `strokes ${shown(event.ids)} cut into ${shown(event.pieces.map(({ stroke }) => stroke.id))}`;
     case "clear":
       return `strokes ${shown(event.ids)} cleared`;
     case "undo":
@@ -310,6 +413,7 @@ function what(event: HistoryEvent): string {
 function instead(recorded: HistoryEvent | undefined): string {
   switch (recorded?.kind) {
     case "erase":
+    case "cut":
       return `where the sheet takes off ${shown(recorded.ids)}, in its order`;
     case "clear":
       return `where the sheet clears ${shown(recorded.ids)}`;
@@ -324,6 +428,7 @@ function instead(recorded: HistoryEvent | undefined): string {
 function unable(event: HistoryEvent): string {
   switch (event.kind) {
     case "erase":
+    case "cut":
       return "but none of them is on the sheet";
     case "clear":
       return "but the sheet is empty";
