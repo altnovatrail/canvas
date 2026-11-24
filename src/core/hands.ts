@@ -117,6 +117,11 @@ export interface HandsSheet {
   /** The stroke or the erasing of a pointer goes, as on `pointercancel`. */
   drop(pointerId: number): void;
   /**
+   * The stroke or the erasing of a pointer ends where it was, its `pointerup` never to come: as on
+   * a lost capture.
+   */
+  end(pointerId: number): void;
+  /**
    * Two fingers moved right on the screen by `dx` CSS pixels and down it by `dy`, or left and up
    * for negative ones: the sheet goes with them. `fresh` marks a gesture's first step.
    */
@@ -193,6 +198,8 @@ interface Gesture {
  * - One pointer writes at a time, and the sheet's recorder and eraser say which.
  * - A pen's touch puts the page in pen mode and takes away the stroke of a touch under way: it was
  *   a palm. While a pen or a mouse writes, a touch does nothing until it lifts.
+ * - A pen's touch while another pen is down ends what that one writes or erases where it was, and
+ *   the new pen writes: a screen has one pen, and the other lost its way up.
  * - A touch wider or taller than `PALM_PX`, at its `pointerdown` or at any move, is a palm: it does
  *   nothing until it lifts, and what it was writing goes.
  * - Without pen mode the first finger writes. A second that comes down within `PAIR_MS`, before the
@@ -300,6 +307,14 @@ export class Hands {
 
   #pen(contact: Contact): boolean {
     this.#mode.on = true;
+    // A pen still down when a pen comes lost its way up: the system took its touch and told the
+    // page nothing, as an iPad's selection did (measurements 1.8). What it wrote ends where it
+    // was, or the sheet would wait for its lift for good.
+    for (const [id, hand] of this.#hands) {
+      if (hand.kind !== "pen") continue;
+      if (this.#sheet.writer() === id) this.#sheet.end(id);
+      this.#hands.delete(id);
+    }
     // A touch writing when a pen comes was a palm, and its stroke goes. A gesture under way ends,
     // and every touch down now does nothing until it lifts.
     const writer = this.#sheet.writer();

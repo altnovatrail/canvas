@@ -528,6 +528,52 @@ test("a pointer that comes down again under its ID lands the stroke it lost on i
   expect(probe(element).roles.size).toBe(0);
 });
 
+test("a pen that comes down while another pen is down lands that one's stroke where it was, and writes, a finger in pen mode still does not, and the hand lets the lost pen go", async () => {
+  const { element, canvas, view } = await sheet();
+  const send = (pointerId: number, kind: string, type: string, x: number, y: number) => {
+    const down = type !== "pointerup";
+    canvas.dispatchEvent(
+      new PointerEvent(type, {
+        pointerId,
+        pointerType: kind,
+        isPrimary: true,
+        bubbles: true,
+        button: type === "pointermove" ? -1 : 0,
+        buttons: down ? 1 : 0,
+        pressure: down ? 0.5 : 0,
+        ...at(canvas, view(), x, y),
+      }),
+    );
+  };
+  send(5, "pen", "pointerdown", 100, 100);
+  send(5, "pen", "pointermove", 300, 100);
+  // The system took the pen's touch, and nothing of its lift came: the next touch of the pen comes
+  // under another ID.
+  send(6, "pen", "pointerdown", 100, 400);
+  expect(ids(element)).toEqual([1]);
+  expect(probe(element).strokes[0]?.points.at(-1)?.x).toBeCloseTo(300, 0);
+  send(6, "pen", "pointermove", 300, 400);
+  send(6, "pen", "pointerup", 300, 400);
+  expect(ids(element)).toEqual([1, 2]);
+  expect(probe(element).roles.size).toBe(0);
+  // A late lift of the first takes nothing, and a finger writes nothing in pen mode.
+  send(5, "pen", "pointerup", 300, 100);
+  send(7, "touch", "pointerdown", 100, 600);
+  send(7, "touch", "pointermove", 300, 600);
+  send(7, "touch", "pointerup", 300, 600);
+  expect(ids(element)).toEqual([1, 2]);
+
+  // A pen that moves the sheet by the hand and loses its way up lets go when the pen comes again.
+  element.tool = "hand";
+  send(8, "pen", "pointerdown", 100, 100);
+  send(9, "pen", "pointerdown", 100, 100);
+  send(9, "pen", "pointerup", 100, 100);
+  // The new pen took the hand over: the sheet is no longer held, so a third press takes it again.
+  send(10, "mouse", "pointerdown", 100, 100);
+  send(10, "mouse", "pointerup", 100, 100);
+  expect(canvas.closest(".sheet")?.classList.contains("panning")).toBe(false);
+});
+
 test.runIf(devtools)(
   "a pen that came down writing nothing and lifted beyond the element leaves the hands nothing",
   async () => {

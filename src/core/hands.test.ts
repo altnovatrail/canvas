@@ -13,6 +13,8 @@ import {
 
 const PEN = 1;
 const MOUSE = 2;
+/** A pen's next touch, which comes under an ID of its own. */
+const PEN_AGAIN = 6;
 const A = 11;
 const B = 12;
 const C = 13;
@@ -28,7 +30,7 @@ function contact(
 }
 
 const kindOf = (pointerId: number) =>
-  pointerId === PEN ? "pen" : pointerId === MOUSE ? "mouse" : "touch";
+  pointerId === PEN || pointerId === PEN_AGAIN ? "pen" : pointerId === MOUSE ? "mouse" : "touch";
 
 /**
  * A sheet as the hands see it, as the element drives them: a pointer the hands let write begins a
@@ -38,6 +40,7 @@ const kindOf = (pointerId: number) =>
 class Bench {
   writing: number | undefined;
   readonly dropped: number[] = [];
+  readonly ended: number[] = [];
   readonly steps: { readonly dx: number; readonly dy: number; readonly fresh: boolean }[] = [];
   readonly zooms: { readonly ratio: number; readonly x: number; readonly y: number }[] = [];
   readonly hands: Hands;
@@ -58,6 +61,14 @@ class Bench {
           this.dropped.push(pointerId);
           this.writing = undefined;
         },
+        end: (pointerId) => {
+          // Only the pointer writing, and only a pen, ever ends with no lift.
+          if (pointerId !== this.writing || kindOf(pointerId) !== "pen") {
+            throw new Error(`pointer ${pointerId} ended while ${this.writing} writes`);
+          }
+          this.ended.push(pointerId);
+          this.writing = undefined;
+        },
         scroll: (dx, dy, fresh) => this.steps.push({ dx, dy, fresh }),
         zoom: (ratio, x, y) => this.zooms.push({ ratio, x, y }),
         across: () => this.across,
@@ -71,6 +82,8 @@ class Bench {
     time: number,
     at: { x?: number; y?: number; size?: number } = {},
   ): boolean {
+    // A pointer that comes down again lost its way up, and the element ends its stroke first.
+    if (this.writing === pointerId) this.writing = undefined;
     const writes = this.hands.down(contact(pointerId, kindOf(pointerId), time, at));
     if (writes) this.writing = pointerId;
     return writes;
@@ -179,6 +192,45 @@ describe("who writes", () => {
     other.move(A, 70, { y: 200 });
     other.move(B, 70, { y: 200 });
     expect(other.steps).toEqual([]);
+  });
+});
+
+describe("a pen that lost its way up", () => {
+  test("a pen that comes down while another is down ends that one's stroke where it was, and writes", () => {
+    const bench = new Bench();
+    expect(bench.down(PEN, 0)).toBe(true);
+    expect(bench.move(PEN, 10, { y: 130 })).toBe(true);
+    // The system took the first touch, and no lift of it came.
+    expect(bench.down(PEN_AGAIN, 20)).toBe(true);
+    expect(bench.ended).toEqual([PEN]);
+    expect(bench.dropped).toEqual([]);
+    expect(bench.writing).toBe(PEN_AGAIN);
+    expect(bench.hands.knows(PEN)).toBe(false);
+    // A late move of the first does nothing, and its lift takes nothing from the second.
+    expect(bench.move(PEN, 30, { y: 140 })).toBe(false);
+    bench.up(PEN);
+    expect(bench.move(PEN_AGAIN, 40, { y: 150 })).toBe(true);
+  });
+
+  test("a pen that stayed down idle is forgotten too, and a finger in pen mode still writes nothing", () => {
+    const bench = new Bench();
+    expect(bench.down(MOUSE, 0)).toBe(true);
+    expect(bench.down(PEN, 10)).toBe(false);
+    bench.up(MOUSE);
+    // The idle pen wrote nothing, so nothing ends, and the next pen writes.
+    expect(bench.down(PEN_AGAIN, 20)).toBe(true);
+    expect(bench.ended).toEqual([]);
+    expect(bench.hands.knows(PEN)).toBe(false);
+    bench.up(PEN_AGAIN);
+    expect(bench.down(A, 30)).toBe(false);
+    expect(bench.role(A)).toBe("waits");
+  });
+
+  test("a pen that comes while a mouse writes leaves the mouse's stroke as it is", () => {
+    const bench = new Bench();
+    expect(bench.down(MOUSE, 0)).toBe(true);
+    expect(bench.down(PEN, 10)).toBe(false);
+    expect([bench.ended, bench.writing]).toEqual([[], MOUSE]);
   });
 });
 
@@ -659,11 +711,12 @@ describe("one finger in pen mode", () => {
 });
 
 test("every sequence of five touches, pens, mice and switches keeps the rules of the hands", {
-  timeout: budget(1_855),
+  timeout: budget(2_800),
 }, () => {
   const steps = [
     ["pen down", PEN],
     ["pen up", PEN],
+    ["next pen down", PEN_AGAIN],
     ["mouse down", MOUSE],
     ["mouse up", MOUSE],
     ["A down", A],
@@ -703,15 +756,16 @@ test("every sequence of five touches, pens, mice and switches keeps the rules of
         spent.delete(pointerId);
         const writes = bench.down(pointerId, time);
         const touch = kindOf(pointerId) === "touch";
-        if (
-          writes &&
-          writing !== undefined &&
-          !(pointerId === PEN && kindOf(writing) === "touch")
-        ) {
+        const pen = kindOf(pointerId) === "pen";
+        const other = writing !== undefined && writing !== pointerId ? writing : undefined;
+        if (writes && other !== undefined && !(pen && kindOf(other) !== "mouse")) {
           breaks("it writes where another pointer writes");
         }
         if (writes && touch && penMode) breaks("a finger writes in pen mode");
-        if (pointerId === PEN && !bench.mode.on) breaks("a pen leaves no pen mode");
+        if (pen && !bench.mode.on) breaks("a pen leaves no pen mode");
+        if (pen && other !== undefined && kindOf(other) === "pen" && !writes) {
+          breaks("a pen writes nothing while another pen holds the sheet");
+        }
       } else if (step.endsWith("up")) {
         bench.up(pointerId);
         y.delete(pointerId);
@@ -734,7 +788,12 @@ test("every sequence of five touches, pens, mice and switches keeps the rules of
         if (role === "idle" || role === "palm") spent.add(id);
         if (role === "scrolls") scrolling++;
         // After a pen came down, no touch down does anything.
-        if (step === "pen down" && kindOf(id) === "touch" && role !== "idle" && role !== "palm") {
+        if (
+          step.endsWith("pen down") &&
+          kindOf(id) === "touch" &&
+          role !== "idle" &&
+          role !== "palm"
+        ) {
           breaks("a touch goes on after a pen came down");
         }
       }
@@ -758,6 +817,6 @@ test("every sequence of five touches, pens, mice and switches keeps the rules of
       }
     }
   }
-  // All 248,832 sequences, a check for each rule and one expect: the time is the hands' own.
+  // All 371,293 sequences, a check for each rule and one expect: the time is the hands' own.
   expect(broken).toEqual([]);
 });

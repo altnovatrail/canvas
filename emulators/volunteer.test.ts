@@ -72,6 +72,7 @@ function device(
     eraser?: boolean;
     scroll?: boolean;
     view?: boolean;
+    select?: boolean;
   } = {},
 ): Device & { closed: number } {
   const page = {
@@ -106,7 +107,9 @@ function device(
     read: async () => seen(),
     evaluate: async (expression: string) => {
       const { strokes: events, last, tool, scrolled } = page;
-      if (expression === SHEET) return JSON.stringify({ events, last, tool, scrolled });
+      if (expression === SHEET) {
+        return JSON.stringify({ events, last, tool, scrolled, selectable: fails.select === true });
+      }
       if (expression === TEST_START) {
         return JSON.stringify({ evalSetOpen: true, measurementOpen: true, childOpen: true });
       }
@@ -211,6 +214,7 @@ test("a page that does what it should passes each step, and its files are kept w
     "the start lets an adult begin the measurement",
     "read the page after the stroke on the sheet",
     "the sheet holds the stroke drawn",
+    "no text of the element is selected, nor does a long press open a menu over it",
     "a stroke the browser cancels leaves nothing on the sheet",
     "the row's eraser takes the presses after it",
     "the eraser takes the stroke off",
@@ -307,6 +311,7 @@ test("a page that hands no file over is the page's failure", async () => {
 });
 
 test.each([
+  ["select", "no text of the element is selected, nor does a long press open a menu over it"],
   ["cancel", "a stroke the browser cancels leaves nothing on the sheet"],
   ["scroll", "two fingers scroll the sheet or the page, and write nothing"],
   [

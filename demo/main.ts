@@ -6,9 +6,9 @@
 // height of digits; the dark theme by the element's custom properties; a workbook's
 // page of the layout's corpus, its filled boxes and their crops; a worked
 // example, whose progress it gives back to the next element as app is to, with the page's picture
-// from one call of its media. Under the sheet it draws the stroke groups and the crop for
-// checking at every height of eval, and a box dragged over the crop, a group or a box
-// picked comes back to the element as a tutor's mark, which holds on to its strokes.
+// from one call of its media. Above the settings it shows the pressure of the pen's last strokes.
+// Under the sheet it draws the stroke groups and the crop for checking at every height of eval,
+// and a box dragged over the crop, a group or a box picked comes back to the element as a tutor's mark, which holds on to its strokes.
 // The page reads what the element made of the marks through the probe of the tests. Its tasks are
 // its own, made up, and it keeps nothing once it is closed.
 
@@ -63,6 +63,7 @@ const tools = part("tools", HTMLSelectElement);
 const buttons = ["check", "reopen", "next"].map((id) => part(id, HTMLButtonElement));
 const preview = part("groups", SVGSVGElement);
 const table = part("table", HTMLTableSectionElement);
+const pressure = part("pressure", HTMLTableSectionElement);
 const pause = part("pause", HTMLInputElement);
 const across = part("across", HTMLInputElement);
 const down = part("down", HTMLInputElement);
@@ -341,6 +342,7 @@ function showGroups(): void {
   });
   preview.replaceChildren(...shapes);
   table.replaceChildren(...rows);
+  showPressure(strokes);
   // The groups stand whatever becomes of the crop.
   try {
     showCrop(strokes, groups);
@@ -720,6 +722,42 @@ function regrid(): void {
   if (submission !== undefined && sentFor !== pageKey()) forget();
   showGroups();
   count();
+}
+
+/** How many of the last pen strokes the table of the pen's pressure shows, each on a row. */
+const PRESSURES = 8;
+
+/**
+ * The pen's pressure in the strokes on the sheet, as the pointer gave it: a row for each of the last
+ * pen strokes, and one for them all, with the share of their points below 0.1, the tenth, the
+ * median, the ninetieth and the highest. The curve of the pen's width is set by them, and the page
+ * keeps none of it.
+ */
+function showPressure(strokes: readonly Stroke[]): void {
+  const pens = strokes.filter((stroke) => stroke.kind === "pen");
+  const row = (label: string, pressures: readonly number[]) => {
+    const sorted = [...pressures].sort((a, b) => a - b);
+    const at = (share: number) =>
+      (sorted[Math.min(sorted.length - 1, Math.floor(share * sorted.length))] ?? 0).toFixed(3);
+    const light = sorted.filter((p) => p < 0.1).length / Math.max(sorted.length, 1);
+    const tr = document.createElement("tr");
+    for (const cell of [
+      label,
+      String(sorted.length),
+      `${Math.round(light * 100)} %`,
+      at(0.1),
+      at(0.5),
+      at(0.9),
+      at(1),
+    ]) {
+      tr.insertCell().textContent = cell;
+    }
+    return tr;
+  };
+  const pointsOf = (stroke: Stroke) => stroke.points.map(({ p }) => p);
+  const rows = pens.slice(-PRESSURES).map((stroke) => row(`#${stroke.id}`, pointsOf(stroke)));
+  if (pens.length > 0) rows.push(row(`all ${pens.length}`, pens.flatMap(pointsOf)));
+  pressure.replaceChildren(...rows);
 }
 
 /** What historychange tells, added to the history the page keeps, as app is to add it. */

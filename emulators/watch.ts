@@ -205,11 +205,17 @@ export const SHEET = `JSON.stringify((() => {
   const host = document.querySelector("novatrail-canvas");
   const history = host && Array.isArray(host.history) ? host.history : [];
   const viewport = host?.shadowRoot?.querySelector(".viewport");
+  const parts = host?.shadowRoot ? [host, ...host.shadowRoot.querySelectorAll("*")] : [];
   return {
     events: history.length,
     last: history.at(-1)?.kind ?? "",
     tool: host?.tool ?? "",
     scrolled: Math.round((viewport?.scrollTop ?? 0) + scrollY),
+    selectable: parts.length === 0 || parts.some((part) => {
+      const style = getComputedStyle(part);
+      return (style.webkitUserSelect || style.userSelect) !== "none"
+        || (style.webkitTouchCallout ?? "none") !== "none";
+    }),
   };
 })())`;
 
@@ -219,6 +225,10 @@ export interface SheetNow {
   readonly last: string;
   readonly tool: string;
   readonly scrolled: number;
+  /** Whether the element's text may be selected, or a long press over it open the system's menu:
+   * the engine's own styles say, as it computes them on the host and on every element of its shadow
+   * tree, `-webkit-touch-callout` where it has one. */
+  readonly selectable: boolean;
 }
 
 /** A script that has the writer say they imitate a child's hand: the page writes the sample as
