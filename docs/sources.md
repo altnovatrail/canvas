@@ -38,47 +38,13 @@ It came from the author and is not in the repository. It was written by a model 
 - "The Software includes technical measures to verify License Key validity, detect deployment environments, enforce usage restrictions based on license type, and ensure proper watermark display. The Software may collect and transmit usage data to tldraw for license compliance purposes";
 - in the npm registry, [`tldraw`](https://registry.npmjs.org/tldraw) is 5.5.2 of 2026-10-02, `"license": "SEE LICENSE IN LICENSE.md"`; GitHub's API determines the repository's license as `NOASSERTION`.
 
-### 2.2. tldraw Agent starter kit
-
-[`templates/agent`](https://github.com/tldraw/tldraw/tree/e8eb1cf5635d28a2d516f0c0d823ed35f3ea9dc9/templates/agent), the same commit, read 2026-10-21: its `LICENSE.md` is "MIT License … Copyright (c) 2024 tldraw Inc."; `package.json` has the dependencies `tldraw`, `@ai-sdk/anthropic`, `@ai-sdk/google`, `@ai-sdk/openai` and `@google/generative-ai`; the README — "This starter kit demonstrates how to build an agent that can manipulate the tldraw canvas", and among the agent's actions are "Create, update and delete shapes" and "Draw freehand pen strokes".
-
-### 2.3. The npm registry
-
-Read 2026-10-21: [`konva`](https://registry.npmjs.org/konva) — 10.9.0 of 2026-10-15, MIT, no dependencies; [`perfect-freehand`](https://registry.npmjs.org/perfect-freehand) — 1.2.3 of 2026-02-01, MIT, no dependencies; [`rbush`](https://registry.npmjs.org/rbush) — 4.0.1 of 2024-08-21, MIT, one dependency — `quickselect` `^3.0.0`, and [`quickselect`](https://registry.npmjs.org/quickselect) 3.0.0 is ISC.
-
-### 2.4. Konva
-
-The documentation [konvajs/site](https://github.com/konvajs/site/tree/04f3b66143ef9733662c8b2d86c6be61b2827a7b), commit 04f3b66 "Update to konva 10.9.0: batch updates docs" of 2026-10-15, and the package [konvajs/konva](https://github.com/konvajs/konva/tree/d95eed6d46e785efba6ab5e9eaf5a1d6bbb528c6), tag 10.9.0, commit d95eed6; read 2026-10-21:
-
-- `content/docs/overview.md`: "Each layer has two `<canvas>` renderers: a scene renderer and a hit graph renderer";
-- the README of [react-konva-utils](https://github.com/konvajs/react-konva-utils/blob/15b6009acbaf37c913c722a460664e1c2c98e3af/README.md), commit 15b6009: "Konva is a canvas library. It can't render DOM elements directly. `<Html>` creates an absolutely positioned div over the canvas";
-- `content/docs/posts/Canvas_vs_SVG.mdx`: "Konva does not create accessible DOM elements for canvas shapes. Keep essential controls and content in HTML";
-- `content/docs/sandbox/Free_Drawing.mdx`: the eraser draws a line with `globalCompositeOperation` `'destination-out'`, and the demo removes no strokes;
-- `content/api/Konva.Node.mdx`: the handler gets "`evt` as native browser event"; the words `pressure` and `getCoalescedEvents` are not in the documentation of this commit;
-- the package's README: "In order to run `konva` in nodejs environment you also need to install `canvas` or `skia-canvas` package manually for rendering backend".
-
-### 2.5. perfect-freehand
-
-[README](https://github.com/steveruizok/perfect-freehand/blob/f56f097e0e211fffa1601b93883e4d9f9dccf122/packages/perfect-freehand/README.md), tag v1.2.3, commit f56f097, read 2026-10-21: "The `getStroke` function will return a new array of outline points. These outline points will form a polygon (called a "stroke") that surrounds the input points"; "To use real pressure, such as that from a pen or stylus, provide the pressure as the third number for each input point, and set the `simulatePressure` option to `false`". The README suggests passing the path of the outline to `Path2D`.
-
-### 2.6. rbush
-
-[README](https://github.com/mourner/rbush/blob/c3f6ad06f1e47ccec58998461f3383aa90066ecd/README.md), tag v4.0.1, commit c3f6ad0, read 2026-10-21: "RBush is a high-performance JavaScript library for 2D spatial indexing of points and rectangles"; the search "Returns an array of data items (points or rectangles) that the given bounding box intersects"; "RBush v4+ is published as a ES module and no longer supports CommonJS environments". The package 4.0.1 on jsdelivr holds `index.js`, `rbush.js`, `rbush.min.js`, the README and LICENSE, with no file of types; `@types/rbush` 4.0.0 in the npm registry is MIT.
-
 ### 2.7. Other drawing libraries
 
-The npm registry and the sources at the tags, read 2026-10-21:
+Pages with no version, read 2026-10-21:
 
-- Fabric.js 7.4.0 of 2026-05-18, MIT. No pressure: asked about the width along a stroke, the maintainer answered "no it does not, that would need a special class, derived from path probably" ([#4885](https://github.com/fabricjs/fabric.js/issues/4885#issuecomment-378188602)). The eraser is moved out to [`@erase2d/fabric`](https://github.com/ShaMan123/erase2d) 1.2.2: it draws a path with `destination-out` and changes the clip path of the object being erased. In Node — "Fabric.js depends on node-canvas for a canvas implementation (`HTMLCanvasElement` replacement) and jsdom for a `window` implementation on node" ([README](https://github.com/fabricjs/fabric.js/blob/v740/README.md));
-- Paper.js 0.14.0 of 2026-10-19, MIT. After 0.12.18 of 2024-07-17 the next release is 0.12.19 of 2026-10-18; the word "pressure" is not in `dist/paper-full.js`. In Node — "Paper.js relies on Node-Canvas for rendering, which in turn relies on the native libraries Cairo and Pango" ([README](https://github.com/paperjs/paper.js/blob/v0.14.0/README.md));
-- PixiJS 8.22.0 of 2026-10-01, MIT: it draws with WebGL, WebGPU or a canvas, the eraser is the blend `erase`, and [accessibility](https://pixijs.com/8.x/guides/components/accessibility) is "PixiJS includes built-in accessibility support through a DOM-based overlay system". Pressure is the field `pressure` of `FederatedPointerEvent`: "Pressure applied by the pointing device during the event" ([source](https://github.com/pixijs/pixijs/blob/v8.22.0/src/events/FederatedPointerEvent.ts));
-- Two.js 0.8.24 of 2026-08-29, MIT: "renderer agnostic enabling the same api to render in multiple contexts: webgl, canvas2d, and svg" ([README](https://github.com/jonobr1/two.js/blob/v0.8.24/README.md)); the build has no input handlers;
-- Excalidraw 0.18.1 of 2026-04-20, MIT: 31 dependencies, peer `react` and `react-dom` `^17.0.2 || ^18.2.0 || ^19.0.0`; the eraser marks an element deleted whole. A freehand stroke has `pressures: readonly number[]` ([`element/types.ts`](https://github.com/excalidraw/excalidraw/blob/v0.18.1/packages/excalidraw/element/types.ts)), and it is drawn by `getStroke` of perfect-freehand ([`renderer/renderElement.ts`](https://github.com/excalidraw/excalidraw/blob/v0.18.1/packages/excalidraw/renderer/renderElement.ts)); "Since Excalidraw doesn't support server side rendering so it should be rendered only on client" ([documentation](https://docs.excalidraw.com/docs/@excalidraw/excalidraw/integration));
-- tldraw 5.5.2: peer `react` and `react-dom` `^18.2.0 || ^19.2.1`; the license — the record "tldraw" above;
-- signature_pad 5.1.4 of 2026-07-31 and Atrament 5.1.0 of 2025-09-26, both MIT: the eraser is `destination-out`. signature_pad — "It's HTML5 canvas based and uses variable width Bézier curve interpolation" ([README](https://github.com/szimek/signature_pad/blob/v5.1.4/README.md)), and its width depends on the speed alone. Atrament — "Atrament does not store the stroke paths itself - instead, it draws directly onto the canvas bitmap" ([README](https://github.com/jakubfiala/atrament/blob/v5.1.0/README.md)), and outside a browser it throws an error;
-- drauu 1.0.0 of 2026-01-13, MIT: "SVG-based drawing tool in browser" ([README](https://github.com/antfu/drauu/blob/v1.0.0/README.md)); the eraser removes an SVG path whole, and inside it is perfect-freehand 1.2.2.
-
-The size compared when the drawing engine was chosen is the main file of the build from jsdelivr, compressed by `gzip -9`, 2026-10-21, in bytes: `konva.min.js` — 58,317; perfect-freehand `dist/esm/index.mjs` — 1,999; `rbush.min.js` with `quickselect` inside — 2,327; fabric `dist/index.min.mjs` — 91,558; `paper-core.min.js` — 74,297; `pixi.min.mjs` — 236,793; `two.min.js` — 49,680; Excalidraw `dist/prod/index.js` — 154,698; `signature_pad.min.js` — 4,660; Atrament `dist/esm/index.js` — 2,601; `@drauu/core` `dist/index.mjs` without minification — 8,096.
+- Fabric.js: asked about the width along a stroke, the maintainer answered "no it does not, that would need a special class, derived from path probably" ([#4885](https://github.com/fabricjs/fabric.js/issues/4885#issuecomment-378188602));
+- PixiJS, [accessibility](https://pixijs.com/8.x/guides/components/accessibility): "PixiJS includes built-in accessibility support through a DOM-based overlay system";
+- Excalidraw, [documentation](https://docs.excalidraw.com/docs/@excalidraw/excalidraw/integration): "Since Excalidraw doesn't support server side rendering so it should be rendered only on client".
 
 ## 3. The browser's platform
 
@@ -87,9 +53,8 @@ The size compared when the drawing engine was chosen is the main file of the bui
 Read 2026-10-21:
 
 - [Pointer Events Level 3](https://www.w3.org/TR/2026/REC-pointerevents3-20260630/), a W3C Recommendation of 30 June 2026. On `pressure`: "For hardware and platforms that do not support pressure, the value MUST be 0.5 when in the active buttons state and 0 otherwise". On `width` and `height`: "in cases where the actual geometry of the input is not detected by the hardware, the user agent MUST return a default value of 1". On palm rejection by the device: "Currently, it is not possible for authors to suppress this behavior", and `pointercancel` comes when "The user agent interprets the input as accidental (for example, the hardware supports palm rejection)". `getCoalescedEvents()` is declared with `[SecureContext]`. On an iframe: "Note touch-action does not apply/cascade through to embedded browsing contexts", and MDN, [`<iframe>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe): "Each embedded browsing context has its own document and allows URL navigations";
-- [MDN browser-compat-data](https://github.com/mdn/browser-compat-data/blob/v8.1.6/api/PointerEvent.json), release v8.1.6: `getCoalescedEvents` is in Safari and Safari on iOS since 18.2, and for Firefox for Android — "The method always returns an empty array, regardless of the user's actions"; `pressure` is in Safari since 13, `altitudeAngle` since 18.2;
 - WebKit, [Private Browsing 2.0](https://webkit.org/blog/15697/private-browsing-2-0/), 2024-07-16: "Safari injects noise into various APIs: namely, during 2D canvas and WebGL readback, and when reading AudioBuffer samples using WebAudio"; "The amount of noise injected is extremely small, and (mostly) should not result in observable differences or artifacts". Apple, [iOS 26](https://www.apple.com/newsroom/2025/06/apple-elevates-the-iphone-experience-with-ios-26/), 2025-06-09: "Browsing in Safari gets even more private with advanced fingerprinting protection extending to all browsing by default". Whether in ordinary browsing noise is put into any canvas, or only into reading by known tracking scripts, is not checked;
-- Firefox, the release notes of [120](https://www.firefox.com/en-US/firefox/120.0/releasenotes/): "Firefox’s private windows and ETP-Strict privacy configuration now enhance the Canvas APIs with Fingerprinting Protection"; of [151](https://www.firefox.com/en-US/firefox/151.0/releasenotes/): "Firefox now strengthens protection against fingerprinting in Standard Enhanced Tracking Protection". In [`RFPTargetsDefaultBaseline.inc`](https://github.com/mozilla-firefox/firefox/blob/cc4ebb2adcb7/toolkit/components/resistfingerprinting/RFPTargetsDefaultBaseline.inc) of the branch `release`, version 158.0.2, — `DESKTOP_DEFAULT(EfficientCanvasRandomization)`, and for Android only under `#ifdef NIGHTLY_BUILD`;
+- Firefox, the release notes of [120](https://www.firefox.com/en-US/firefox/120.0/releasenotes/): "Firefox’s private windows and ETP-Strict privacy configuration now enhance the Canvas APIs with Fingerprinting Protection"; of [151](https://www.firefox.com/en-US/firefox/151.0/releasenotes/): "Firefox now strengthens protection against fingerprinting in Standard Enhanced Tracking Protection";
 - Brave, [Fingerprinting defenses 2.0](https://brave.com/privacy-updates/4-fingerprinting-defenses-2.0/), 2020-05-18: "The default setting for farbling-based fingerprinting is to add small amounts of randomness to semi-identifying endpoints"; the table of these APIs has `toDataURL`, `toBlob` and `getImageData`;
 - [HTML Standard, canvas](https://html.spec.whatwg.org/multipage/canvas.html), Last Updated 20 October 2026: "Authors should not use the canvas element in a document when a more suitable element is available". On serialization "User agents must support PNG ("image/png")", and the section has no rules on the bytes of the file themselves — compression, filters, ancillary chunks. The mode `desynchronized` belongs to the canvas context: "the user agent may optimize the rendering of the canvas to reduce the latency";
 - MDN, [Canvas API](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API): "Canvas content is not exposed to accessibility tools like semantic HTML is"; MDN, [`<title>` in SVG](https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Element/title): "The `<title>` SVG element provides an accessible, short-text description of any SVG container element or graphics element";
@@ -112,7 +77,6 @@ Read 2026-10-21:
   - [the blog](https://react.dev/blog/2024/12/05/react-19#support-for-custom-elements): "React 19 adds full support for custom elements and passes all tests on Custom Elements Everywhere"; "props that match a property on the Custom Element instance will be assigned as properties, otherwise they will be assigned as attributes";
   - [the reference](https://react.dev/reference/react-dom/components#custom-html-elements): "React will, however, recognize an custom element's property as one that it may pass arbitrary values to if the property name shows up on the class during construction"; "You can listen for these events using an `on` prefix when binding to the event via JSX"; "Events are case-sensitive and support dashes (`-`)";
   - [upgrade guide](https://react.dev/blog/2024/04/25/react-19-upgrade-guide#the-jsx-namespace-in-typescript): "You'll now need to wrap module augmentation of the JSX namespace in `declare module "....":`", and the example has `declare module "react"`;
-  - the sources — the tag [v19.3.1](https://github.com/facebook/react/tree/v19.3.1), the last release of React 19, commit `61aa00df822d0eb76d0362eb8b6fdd3527693efe`, read 2026-11-01; the code in the quotes is brought into one line. [`ReactDOMComponent.js`](https://github.com/facebook/react/blob/v19.3.1/packages/react-dom-bindings/src/client/ReactDOMComponent.js), lines 1961–1976: for a custom element, React passes a property that the new render lacks on as `undefined` — "`!nextProps.hasOwnProperty(propKey)`" and then "`setPropOnCustomElement(domElement, tag, propKey, undefined, nextProps, lastProp)`". Lines 1979–1986: the changed properties come after the removed ones, in the order of `for (const propKey in nextProps)`, if "`nextProp !== lastProp && (nextProp !== undefined || lastProp !== undefined)`". Lines 1463–1471: on mounting, also in the order of the properties, and "`if (propValue === undefined) { continue; }`". [`DOMPropertyOperations.js`](https://github.com/facebook/react/blob/v19.3.1/packages/react-dom-bindings/src/client/DOMPropertyOperations.js), lines 231–232: "`if (name in (node as any)) { (node as any)[name] = value;`" — a property if the element knows it, and an attribute otherwise. So React writes `null` into a property only if the consumer wrote it, and before the element is registered the value goes into an attribute;
 - Preact, [Web Components](https://preactjs.com/guide/v10/web-components/): "Preact fully supports Web Components"; "When a Custom Element defines a setter for a given property, Preact detects its existence and will use the setter instead of an attribute"; on events — "unrecognized event handler props passed to a DOM Element are registered using their casing exactly as specified";
 - TypeScript, [DOM Manipulation](https://www.typescriptlang.org/docs/handbook/dom-manipulation.html): "The map interface contains every specified HTML tag name and its corresponding type interface" — this is `HTMLElementTagNameMap`, by which `createElement` and `querySelector` infer the type of the element;
 - MDN:
@@ -139,31 +103,22 @@ Read 2026-10-21:
 
 ### 3.6. Browsers and a page from a file
 
-Read 2026-10-22. These are findings of the planning of the probe of the build opened from a file on devices, which was then put off: there were no probes on devices yet. The sources of the engines are at tags: Chromium 156.0.8078.47 — [chromium/src](https://chromium.googlesource.com/chromium/src/+/refs/tags/156.0.8078.47/), Firefox 158.0.1 — [mozilla-firefox/firefox](https://github.com/mozilla-firefox/firefox/tree/FIREFOX_158_0_1_RELEASE), WebKit — [WebKit/WebKit](https://github.com/WebKit/WebKit/tree/WebKit-7625.1.29.18.27):
+Read 2026-10-22. These are findings of the planning of the probe of the build opened from a file on devices, which was then put off: there were no probes on devices yet.
 
 - **GitHub**, the headers first-hand, `curl -sIL`, 2026-10-22, 01:14–01:17 UTC:
   - `report-7.0.11.html` of the release v0.4 of `adamws/kicad-via-patterns`, which has `content_type: text/html` in the API, comes through a 302 to `release-assets.githubusercontent.com`, and there it is `content-type: application/octet-stream` and `content-disposition: attachment; filename=report-7.0.11.html`. The same holds for three more `.html` files from releases. GitHub's documentation does not promise this;
   - raw.githubusercontent.com and gist.githubusercontent.com serve HTML as `text/plain; charset=utf-8`, with `content-security-policy: default-src 'none'; style-src 'unsafe-inline'; sandbox` and `x-content-type-options: nosniff`;
-  - GitHub Pages: "When a GitHub Pages site is visited, the visitor's IP address is logged and stored for security purposes, regardless of whether the visitor has signed into GitHub or not" ([What is GitHub Pages?](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages#data-collection), github/docs 5815d11);
 - **a secure context**:
-  - [Secure Contexts](https://w3c.github.io/webappsec-secure-contexts/): "If origin's scheme is "file", return "Potentially Trustworthy"". The engines do the same: in Chromium — `net/base/is_potentially_trustworthy.cc`, in Firefox — `URI_IS_POTENTIALLY_TRUSTWORTHY` of the protocol `file` in `netwerk/build/components.conf`, in WebKit — `page/SecurityOrigin.cpp`;
-  - `getCoalescedEvents()` is `[SecureContext]` in [Pointer Events](https://w3c.github.io/pointerevents/), in Chromium (`pointer_event.idl`) and in WebKit (`PointerEvent.idl`), and in Firefox it is held by the same check, `nsContentUtils::IsSecureContextOrWebExtension`;
-- **storage on `file:`**:
-  - Chromium: "'file' URLs all parse as ("file", "", 0)" (`url/origin.h`) and "file: origins all serialize to "file://"" — all pages from `file:` share one storage, and "file:// URLs should become unique opaque origins at some point" (`url/origin_unittest.cc`);
-  - Firefox — one per file: `security.fileuri.strict_origin_policy` is `true` (`StaticPrefList.yaml`; `caps/tests/unit/test_origin.js`);
-  - WebKit — only while the host application keeps `needsStorageAccessFromFileURLsQuirk` on, and what Safari does is not visible;
-  - MDN writes "each `file:` URL seems to have its own unique local-storage area" ([Window: localStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage)) — this differs from Chromium's sources;
-- **a policy in `<meta>` on `file:`** — with no exception for `file:` in Chromium (`http_equiv.cc`), Firefox (`nsCSPUtils.cpp`) and WebKit (`Document.cpp`). **`<a download>` with a blob of its own page** works in Chromium (`html_anchor_element.cc`) and Gecko (`nsContentUtils.cpp`);
+  - [Secure Contexts](https://w3c.github.io/webappsec-secure-contexts/): "If origin's scheme is "file", return "Potentially Trustworthy"";
+  - `getCoalescedEvents()` is `[SecureContext]` in [Pointer Events](https://w3c.github.io/pointerevents/);
+- **storage on `file:`**: MDN writes "each `file:` URL seems to have its own unique local-storage area" ([Window: localStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage)), and Chromium does otherwise: all its pages from `file:` share one storage (measurements 1.1);
 - **iPadOS and Safari**:
   - "Released September 14, 2026 — 27.0 … Safari 27 is available for iOS 27, iPadOS 27" ([Safari 27 Release Notes](https://developer.apple.com/documentation/safari-release-notes/safari-27-release-notes));
   - the Files app: "If you haven’t installed the app that created a file, a preview of the file opens in Quick Look" ([iPad User Guide](https://support.apple.com/guide/ipad/ipadb3b759ed/26/ipados/26)). The guide here and below is for iPadOS 26, and for iPadOS 27 it has not been read;
   - Safari's downloads: "iCloud Drive: Select this option to save downloads to the Downloads folder in iCloud Drive" or "On My iPad" ([Customize your Safari settings](https://support.apple.com/guide/ipad/customize-your-safari-settings-ipad54f3cde6/26/ipados/26)), and which is the default is not said;
   - whether Quick Look runs the scripts of HTML and whether Safari opens `file:`, Apple's documentation does not say. Only forums say "no": thread 710001 (2022, above) and [Apple Discussions, thread 256102223](https://discussions.apple.com/thread/256102223), July 2025, — "Quick Look is as close as you can get and it will not run JavaScript";
-  - `getCoalescedEvents` since Safari 18.2: "New PointerEvent methods getPredictedEvents() and getCoalescedEvents() are now supported" ([WebKit Features in Safari 18.2](https://webkit.org/blog/16301/webkit-features-in-safari-18-2/)). Pointer Events with Apple Pencil since Safari 13: "Added support for the Pointer Events API enabling consistent access to mouse, trackpad, touch, and Apple Pencil events" ([Safari 13 Release Notes](https://developer.apple.com/documentation/safari-release-notes/safari-13-release-notes)). The pen comes as `pen` with pressure: `TouchType::Stylus ? penPointerEventType() : touchPointerEventType()` and `m_pressure(event.forceAtIndex(index))` (`dom/ios/PointerEventIOS.cpp` of WebKit);
-- **Android**:
-  - Chrome opens HTML from its own downloads window itself, as `content://` in the built-in viewer (`DownloadUtils.java`, `MediaViewerUtils.java`), and accepts `content://` with the type `text/html` from the Files app (`AndroidManifest.xml`);
-  - a direct `file://` to the downloads it will most likely refuse: on `READ_EXTERNAL_STORAGE` — "Starting in API level 33, this permission has no effect" ([Manifest.permission](https://developer.android.com/reference/android/Manifest.permission));
-  - that scripts run there is not confirmed, and on Samsung Internet there are no primary sources;
+  - `getCoalescedEvents` since Safari 18.2: "New PointerEvent methods getPredictedEvents() and getCoalescedEvents() are now supported" ([WebKit Features in Safari 18.2](https://webkit.org/blog/16301/webkit-features-in-safari-18-2/)). Pointer Events with Apple Pencil since Safari 13: "Added support for the Pointer Events API enabling consistent access to mouse, trackpad, touch, and Apple Pencil events" ([Safari 13 Release Notes](https://developer.apple.com/documentation/safari-release-notes/safari-13-release-notes));
+- **Android**: a direct `file://` to the downloads Chrome will most likely refuse: on `READ_EXTERNAL_STORAGE` — "Starting in API level 33, this permission has no effect" ([Manifest.permission](https://developer.android.com/reference/android/Manifest.permission)); on Samsung Internet there are no primary sources;
 - **Scorecard**, Signed-Releases: it looks at "the project's last five release assets" and searches them for signatures ([checks.md](https://github.com/ossf/scorecard/blob/main/docs/checks.md)).
 
 ## 4. AI providers
@@ -179,166 +134,28 @@ Read 2026-10-21:
 
 ## 7. Tools, packages and CI
 
-### 7.1. GitHub Packages
-
-GitHub Docs, [Working with the npm registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-npm-registry), read 2026-10-19: "You need an access token to publish, install, and delete private, internal, and public packages". Read again 2026-10-21 in the sources of the documentation, [github/docs](https://github.com/github/docs/blob/cca0c9d7299f760587d6601bd96acfd2f5cb8929/data/reusables/package_registry/authenticate-packages.md), commit cca0c9d: the phrase is the same, and [beside it](https://github.com/github/docs/blob/cca0c9d7299f760587d6601bd96acfd2f5cb8929/data/reusables/package_registry/packages-classic-pat-only.md) — "GitHub Packages only supports authentication using a personal access token (classic)".
-
 ### 7.2. npm
 
-Read 2026-10-21:
+The registry, the npm site and the issue of its CLI:
 
-- the CLI — [npm/cli](https://github.com/npm/cli/tree/ae98c62586b6fea44114f72e249e246a2981de70), the release v12.2.1 of 2026-10-15, commit ae98c62:
-  - `allow-remote` in `workspaces/config/lib/definitions/definitions.js`: "As of npm 12 the default is `none`. Tarballs that share a hostname with the configured registry (the typical case for the npm registry, GitHub Packages, and most private registries) are still installed normally"; "`root` only allows urls defined in your project's package.json to be installed". In npm 11.19.0, which is in the container together with Node 24.21.0, the default value is `'all'`;
-  - `npm-install.md`: a folder outside the project — "it will create a symlink to `<folder>`"; `npm-link.md`: "First, `npm link` in a package folder with no arguments will create a symlink in the global folder…";
-  - `npm-audit.md`: "The `audit signatures` command will also verify the provenance attestations of downloaded packages". pacote 22.0.0 from the same build (`node_modules/pacote/lib/registry.js`) checks the package's name and version and its sha512, and calls `sigstore.verify` with no rule on who signed. The workflow and the repository that built the package are not checked;
-  - `npm-cache.md`: "All data that passes through the cache is fully verified for integrity on both insertion and extraction";
-  - the name of the archive in `workspaces/libnpmpack/lib/index.js` is `${manifest.name}-${manifest.version}.tgz`, without `@` and with `-` instead of `/`;
-  - `npm-stage.md`: "Staged publishing allows users to have their automated workflows stage a package without a 2FA prompt, deferring the act of 2FA, allowing the maintainer to approve the staged package and publish at a later point";
-  - the parameter `access` has the default value "'public' for new packages, existing packages it will not change the current level";
-- the documentation — [npm/documentation](https://github.com/npm/documentation/tree/4e8e03b978033529bf8f50d74305b29939eb022c), commit 4e8e03b of 2026-10-16:
-  - `trusted-publishers.mdx`:
-    - "Trusted publishing requires npm CLI version 11.5.1 or later and Node version 22.14.0 or higher";
-    - "Some GitHub Actions workflows use `workflow_call` to invoke other workflows that run `npm publish` … validation checks the calling workflow's name instead of the workflow that actually contains the publish command, which can cause configuration mismatches. The `id-token: write` permission must also be given to both parent and child workflows";
-    - "npm automatically generates and publishes provenance attestations for your package";
-    - "A newly created trusted publisher configuration must complete its first successful publish within 2 days";
-    - the setting "Require two-factor authentication and disallow tokens";
-    - "your package's `repository.url` field in `package.json` must exactly match your GitHub repository";
-  - `npm-trust.mdx` (v12): "Package must exist: The package you're configuring must already exist on the npm registry";
-  - `downloading-and-installing-packages-locally.mdx`: "Scoped public packages can be downloaded and installed by anyone". In `creating-and-publishing-scoped-public-packages.mdx` — "By default, scoped packages are published with private visibility. To publish a scoped package with public visibility, use `npm publish --access public`": this differs from the CLI's parameter `access`;
-  - `organizations/index.mdx`: "Organizations are free when they publish public packages";
-  - `policies/unpublish.mdx`: "Registry data is immutable, meaning once published, a package cannot change"; "Once `package@version` has been used, you can never use it again";
-  - `about-access-tokens.mdx`: "As of November 2025, only Granular access tokens are supported"; "The ability to publish new package versions directly with a granular access token will be removed in January 2027";
-  - `about-two-factor-authentication.mdx`: publishing needs "Two-factor authentication (2FA) enabled on your account, OR A granular access token with bypass 2FA enabled";
-- the registry: `https://registry.npmjs.org/-/org/altnovatrail/package` answers 404 `{"error":"Scope not found"}`, and `@altnovatrail/canvas` — 404 `{"error":"Not found"}`. The registry answers a made-up name the same way, so the answer does not prove whether the name is free. The same day the author created the organization `altnovatrail`. After that `-/org/altnovatrail/package` answers 200 `{}`, a made-up name still 404 "Scope not found", and `@altnovatrail/canvas` 404 "Not found": there is no package yet.
-
-Read 2026-10-22:
-- `trusted-publishers.mdx` in npm/documentation, commit [7e98ab4](https://github.com/npm/documentation/tree/7e98ab4d9c17afad7157be171a684bbeffbaa53f) of 2026-10-22: "Configurations created after Sep 03, 2026 are automatically set to allow `npm stage publish`, and you can choose whether to also permit direct publishing with `npm publish`"; "If the configuration is not validated within 2 days, it expires and can no longer be used or edited";
-- `npm-trust.md` in npm/cli, tag [v11.19.0](https://github.com/npm/cli/blob/v11.19.0/docs/lib/content/commands/npm-trust.md): "`--allow-publish`: Allows the trusted publisher to run `npm publish` for the package"; "At least one of these flags is required when creating a trust configuration". It needs "`npm@11.15.0` or above" — the container has 11.19.0 — and "2FA enabled on account";
-- the issue [npm/cli#9969](https://github.com/npm/cli/issues/9969) of 2026-09-14 — "OIDC trusted publishing fails with "package not found" for GitHub repos that use immutable OIDC subject claims" — is open, with the labels "Needs Triage", "Priority 1" and "oidc", last changed 2026-10-13. Its author and the second commenter write of repositories created after 2026-07-15, where `use_immutable_subject: true` cannot be turned off; the author refers to GitHub's changelog. These are users' reports, not npm's answer;
-- `canvas` has `"use_immutable_subject":true` (`gh api repos/altnovatrail/canvas/actions/oidc/customization/sub`), and it was created 2026-10-19 (GitHub's API).
-
-Read 2026-11-02:
-- the settings page of the package `@altnovatrail/canvas` on the npm site, by the author's screenshot: under "Publishing access" — "Require two-factor authentication and disallow bypass 2fa tokens (recommended)" and "Require two-factor authentication or a granular access token with bypass 2fa enabled", and below them — "Note about trusted publishers: All publishing access options above are compatible with OIDC trusted publishers. If you have configured trusted publishers for this package, they will continue to work regardless of which option you select";
-- the output of `npm trust github @altnovatrail/canvas --file release.yml --repository altnovatrail/canvas --allow-publish` at the author's: "Trust configuration created successfully", "permissions: publish, stage publish";
-- the registry, `npm view @altnovatrail/canvas --json`: the version `0.0.0-stage` of 05:13:54Z — "Temporary package placeholder for staged publishing", published by the author's account with the first publication, — 0.1.0 of 05:15:11Z and 0.1.1 of 05:39:38Z, whose `_npmUser` is "GitHub Actions <npm-oidc-no-reply@github.com>", and the tag `latest` is 0.1.1;
-- the attestations of 0.1.1, `https://registry.npmjs.org/-/npm/v1/attestations/@altnovatrail%2fcanvas@0.1.1`: «https://github.com/npm/attestation/tree/main/specs/publish/v0.1» and «https://slsa.dev/provenance/v1». The second's `workflow` is `.github/workflows/release.yml` of `altnovatrail/canvas` on `refs/heads/main`, commit fd032f1, and the certificate has `altnovatrail/.github/.github/workflows/release.yml@09443e1027ef24197439dfe60a072d14c3626cc3`; `npm audit signatures` in a trial project — "2 packages have verified attestations";
-- npm/cli#9969 is still open, last changed 2026-10-28 (`gh api repos/npm/cli/issues/9969`).
-
-### 7.3. Node.js
-
-[dist/index.json](https://nodejs.org/dist/index.json), read 2026-10-21: v24.21.0 has `"npm": "11.19.0"`.
-
-### 7.4. Docker
-
-The documentation, [docker/docs](https://github.com/docker/docs/blob/226023fc89bdeb3f051c4c8c697d04ed5f5bcd2c/content/manuals/engine/network/_index.md), commit 226023f, read 2026-10-21: "Containers have networking enabled by default, and they can make outgoing connections"; "When you run a container without the `--network` option, it is connected to the default bridge"; "Containers attached to the default bridge have access to network services outside the Docker host".
-
-### 7.5. Playwright
-
-[microsoft/playwright](https://github.com/microsoft/playwright/tree/v1.64.1), tag v1.64.1, read 2026-10-21:
-
-- [`docs/src/docker.md`](https://github.com/microsoft/playwright/blob/v1.64.1/docs/src/docker.md): "It is recommended to always pin your Docker image to a specific version if possible. If the Playwright version in your Docker image does not match the version in your project/tests, Playwright will be unable to locate browser executables"; of the image, "This image includes the Playwright browsers and browser system dependencies. The Playwright package/dependency is not included in the image and should be installed separately"; of the flags, "Using `--init` Docker flag is recommended to avoid special treatment for processes with PID=1" and "Using `--ipc=host` is recommended when using Chromium. Without it, Chromium can run out of memory and crash";
-- [`nativeDeps.ts`](https://github.com/microsoft/playwright/blob/v1.64.1/packages/playwright-core/src/server/registry/nativeDeps.ts): the entry `ubuntu24.04-x64` has 21 packages for `chromium`, from `libasound2t64` to `libxrandr2`, with no versions.
+- read 2026-11-02 — the settings page of the package `@altnovatrail/canvas` on the npm site, by the author's screenshot: under "Publishing access" — "Require two-factor authentication and disallow bypass 2fa tokens (recommended)" and "Require two-factor authentication or a granular access token with bypass 2fa enabled", and below them — "Note about trusted publishers: All publishing access options above are compatible with OIDC trusted publishers. If you have configured trusted publishers for this package, they will continue to work regardless of which option you select";
+- read 2026-11-02 — the output of `npm trust github @altnovatrail/canvas --file release.yml --repository altnovatrail/canvas --allow-publish` at the author's: "Trust configuration created successfully", "permissions: publish, stage publish";
+- read 2026-11-02 — the registry, `npm view @altnovatrail/canvas --json`: the version `0.0.0-stage` of 05:13:54Z — "Temporary package placeholder for staged publishing", published by the author's account with the first publication, — 0.1.0 of 05:15:11Z and 0.1.1 of 05:39:38Z, whose `_npmUser` is "GitHub Actions <npm-oidc-no-reply@github.com>";
+- read 2026-11-02 — the attestations of 0.1.1, `https://registry.npmjs.org/-/npm/v1/attestations/@altnovatrail%2fcanvas@0.1.1`: «https://github.com/npm/attestation/tree/main/specs/publish/v0.1» and «https://slsa.dev/provenance/v1». The second's `workflow` is `.github/workflows/release.yml` of `altnovatrail/canvas` on `refs/heads/main`, commit fd032f1, and the certificate has `altnovatrail/.github/.github/workflows/release.yml@09443e1027ef24197439dfe60a072d14c3626cc3`; `npm audit signatures` in a trial project — "2 packages have verified attestations";
+- read 2026-11-24 — the issue [npm/cli#9969](https://github.com/npm/cli/issues/9969) of 2026-09-14, "OIDC trusted publishing fails with "package not found" for GitHub repos that use immutable OIDC subject claims", is open, with the labels "Priority 1" and "feat:oidc", last changed 2026-10-28 (`gh api repos/npm/cli/issues/9969`). Its author and the second commenter write of repositories created after 2026-07-15, where `use_immutable_subject: true` cannot be turned off; the author refers to GitHub's changelog. These are users' reports, not npm's answer. `canvas` has `"use_immutable_subject":true` (`gh api repos/altnovatrail/canvas/actions/oidc/customization/sub`), and it was created 2026-10-19 (GitHub's API).
 
 ### 7.6. GitHub releases
 
-The sources of GitHub Docs, [github/docs](https://github.com/github/docs/tree/cca0c9d7299f760587d6601bd96acfd2f5cb8929), commit cca0c9d, read 2026-10-21:
+Read 2026-11-24:
 
-- `about-releases.md`, with the values of its variables filled in: "Up to 1000 release assets may be associated with a single release. Each file included in a release must be under 2 GiB";
-- `immutable-releases.md`: "Immutable releases are releases where the assets and associated Git tag cannot be changed after publication"; "Release assets cannot be modified or deleted". Along with it, a "release attestation, which is a cryptographically verifiable record of a release containing the release tag, commit SHA, and release assets" is created;
-- `immutable-releases.md`, read again 2026-11-10 on docs.github.com: "Only the assets and tag are locked. You can still edit the title and release notes of a published immutable release, and change whether it is marked as a pre-release or as the latest release";
-- `verify-release-integrity.md`: "To verify a local artifact is an exact match for a release asset" — `gh release verify-asset RELEASE-TAG ARTIFACT-PATH`;
-- `oidc-with-reusable-workflows.md`: "If that job is part of a reusable workflow, the token will include the standard claims that contain information about the calling workflow, and will also include a custom claim called `job_workflow_ref` that contains information about the called workflow";
-- the GitHub API, 2026-10-21: `altnovatrail/canvas` has `immutable-releases` at `{"enabled":false,"enforced_by_owner":false}`, and it has one ruleset, `main` (25506234). Read again the same day, `repos/altnovatrail/canvas/rulesets/25506234`: the required checks are "Secrets / gitleaks", "DCO / sign-off", "Documents / docs-check-repo" and "CodeQL / analyze (actions)" with `integration_id` 15368, and "SonarCloud Code Analysis" with 12526. It has no "TypeScript / …" checks. Read again after the merge of pull request #18 and its step in the ruleset, 2026-10-21: the required checks are ten — to these five were added "TypeScript / lint", "TypeScript / test", "TypeScript / vuln", "TypeScript / licenses" and "CodeQL / analyze (javascript-typescript)", all with `integration_id` 15368, and `repos/altnovatrail/canvas/rules/branches/main` applies them to `main`.
+- GitHub Docs, [Immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases): "Only the assets and tag are locked. You can still edit the title and release notes of a published immutable release, and change whether it is marked as a pre-release or as the latest release";
+- the GitHub API: `repos/altnovatrail/canvas/immutable-releases` answers `{"enabled":true,"enforced_by_owner":false}`, and the repository has two rulesets, `main` (25506234) and `v-tags` (26336827). The required checks of `main` (`repos/altnovatrail/canvas/rulesets/25506234`) are thirteen: "Secrets / gitleaks", "DCO / sign-off", "Documents / docs-check-repo", "CodeQL / analyze (actions)", "TypeScript / lint", "TypeScript / test", "TypeScript / vuln", "TypeScript / licenses", "CodeQL / analyze (javascript-typescript)", "Samples page" and "TypeScript / engines" with `integration_id` 15368, "SonarCloud Code Analysis" with 12526 and `codecov/patch` with 254; `repos/altnovatrail/canvas/rules/branches/main` applies them to `main`.
 
 ### 7.7. Code and tools
 
-Read 2026-10-21:
-
-- the npm registry, `npm view <package> time`:
-  - Biome 2.5.15 — 2026-09-30, and 2.6.0, 2.6.1 and 2.6.2 — 2026-10-21, at 09:51, 10:28 and 11:08 UTC;
-  - Vite 8.3.4 — 2026-10-08, and 8.3.5 — 2026-10-21;
-  - Vitest 5.0.5 — 2026-10-15, Playwright 1.64.1 — 2026-10-14, TypeScript 7.0.2 — 2026-07-08, `@types/node` 24.19.2 — 2026-10-09;
-  - vitest 5.0.5's peer `vite`, "^6.4.0 || ^7.0.0 || ^8.0.0", is not marked optional, and the peer `vitest` of `@vitest/browser-playwright` 5.0.5 is "5.0.5";
-  - typescript-eslint 8.72.0 requires `typescript` ">=4.8.4 <6.1.0";
-  - the `exports` of the package `typescript` 7.0.2 are `./lib/version.cjs` and `./unstable/*`, and `bin/tsc` runs the native binary of the platform's package `@typescript/typescript-<platform>`;
-- npm 11.19.0 in the container, `@npmcli/config`, `definitions.js`, of `before`: "If passed to `npm install`, will rebuild the npm tree such that only versions that were available **on or before** the given date are installed";
-- TypeScript 7.0.2 on the build of this package: `rewriteRelativeImportExtensions` rewrote `./sheet.ts` to `./sheet.js` in the JavaScript, and left `./sheet.ts` in the `.d.ts`. Hence the imports with `.js` in `src/`;
-- Node 24.21.0 in the container: `process.features.typescript` is `strip`, and a `.ts` file with types runs with no flags and no warning; `import.meta.main` is declared in `@types/node` 24.19.2;
-- Biome: the schema of its settings 2.5.15, `linter.rules.preset`: "recommended", "all", "none". The extension for VS Code is [biomejs/biome-vscode](https://github.com/biomejs/biome-vscode/tree/v3.7.1), tag v3.7.1, commit cd61440:
-  - README: "dual-licensed under the MIT License and the Apache License, Version 2.0";
-  - `src/locator.ts` looks for Biome first in the settings, then: "Check the project's `node_modules` directory for a Biome binary";
-  - in the Marketplace the stable versions are 3.8.0 of 2026-10-21 and 3.7.1 of 2026-06-18, and the versions with a date in their number are pre-releases;
-- Playwright: [microsoft/playwright](https://github.com/microsoft/playwright/tree/v1.64.1), tag v1.64.1, commit cfe490d:
-  - `packages/playwright-core/browsers.json`: `chromium-headless-shell` has `"revision": "1248"`, `"browserVersion": "156.0.8078.4"`, `"title": "Chrome Headless Shell"`;
-  - `packages/playwright-core/src/server/registry/index.ts`: for `ubuntu24.04-x64`, "`cftUrl('linux64/chrome-headless-shell-linux64.zip')`", that is, `builds/cft/${browserVersion}/…` on `https://cdn.playwright.dev`;
-  - `docs/src/browsers.md`: "by default, Playwright uses open source Chromium builds" and "Playwright ships a regular Chromium build for headed operations and a separate chromium headless shell for headless mode";
-  - `nativeDeps.ts` for `ubuntu24.04-x64`: `chromium` has 21 packages, `firefox` 25, `webkit` 52;
-  - `lib/coreBundle.js` of the package playwright-core 1.64.1: `chromiumSwitches` holds `"--disable-dev-shm-usage"`;
-- the image `mcr.microsoft.com/playwright:v1.64.1-noble`, index `sha256:7852dc5…`, amd64 manifest `sha256:bdfda2a…` (the MCR registry):
-  - the layer `sha256:e20e5ef…`, 314,299,253 bytes compressed, is `playwright-core install chromium`: `chromium-1248` with `WidevineCdm/LICENSE`, `chromium_headless_shell-1248` and `ffmpeg-1013`. Firefox and WebKit are separate layers, of 122,076,107 and 113,748,815 bytes, and they hold no license files;
-  - `chromium_headless_shell-1248/chrome-headless-shell-linux64/ABOUT`: "Google Chrome … Copyright 2026 Google LLC. All rights reserved. Chrome is made possible by the Chromium open source project (https://www.chromium.org/) and other open source software (chrome://credits). See the Terms of Service at chrome://terms". `LICENSE.headless_shell` beside it begins with "The Chromium Project" and BSD-3-Clause;
-  - in the rebuilt container `chrome-headless-shell --version` answers "Google Chrome for Testing 156.0.8078.4", and the folder takes 273 MB;
-- Chrome's terms: [Chrome/ChromeOS/GooglebookOS Additional Terms of Service](https://www.google.com/chrome/terms/), the edition "Last modified: 30 September, 2025": "By using Chrome or ChromeOS, you agree to the Google Terms of Service located at https://policies.google.com/terms and these Google Chrome and ChromeOS Additional Terms of Service. These Google Chrome and ChromeOS Additional Terms of Service apply to the executable code version of Chrome and ChromeOS. Most source code for Chrome is available free of charge under open source software license agreements at chrome://credits". The page [Chrome for Testing](https://developer.chrome.com/docs/automation-and-testing/chrome-for-testing), updated 2023-06-12, and the README of [GoogleChromeLabs/chrome-for-testing](https://github.com/GoogleChromeLabs/chrome-for-testing) at commit b9cf0a2 say nothing of the terms of their builds;
-- apt 2.8.3 of the base image: its `changelog` has "Initial support for snapshot servers, apt --snapshot option" and "Automatically enable snapshots where supported". `apt-config dump` names snapshot servers for `archive.ubuntu.com` and `security.ubuntu.com`. On empty lists `apt-get update --snapshot 20261021T000000Z` took `noble`, `noble-updates`, `noble-backports` and `noble-security` from `https://snapshot.ubuntu.com/ubuntu/20261021T000000Z`, and `apt-get install -s` of 24 packages gave "0 upgraded, 61 newly installed, 0 to remove";
-- Dependabot: [dependabot-core](https://github.com/dependabot/dependabot-core/blob/fda701f/docker/lib/dependabot/docker/file_parser.rb), commit fda701f: the parser of a Dockerfile takes a line only if it matches `FROM_LINE`, `^FROM\s+…`. Groups across several ecosystems: [github/docs](https://github.com/github/docs/tree/1696b2d/content/code-security), commit 1696b2d: "Multi-ecosystem updates allow Dependabot to group dependency updates across different package ecosystems … into a single pull request per group", and `patterns` are required for them. What then happens to the entry's other packages, the documentation does not say;
-- Claude Code: [Permissions](https://code.claude.com/docs/en/permissions): "`/path` Path relative to the settings source", and in the project's settings that is `<primary working directory>/path`; "A `*` in a Bash rule matches any text, including spaces"; of a Bash rule, "isn't a security boundary around the program"; read again 2026-11-20: "`//path` Absolute path from filesystem root", "In gitignore patterns, `*` matches within a single path segment and can appear at any position in the pattern, while `**` matches across directories";
-- SonarQube Cloud: [Automatic analysis](https://docs.sonarsource.com/sonarqube-cloud/analyzing-source-code/automatic-analysis): of `.sonarcloud.properties`, "Below are the supported optional settings for the `.sonarcloud.properties` file. Wildcard patterns are not allowed". The list of settings itself was not read in the page's text;
-- `tutor`: its pull request #13, merged as f501412: the section `samples/` in CLAUDE.md, `/samples/` in `.gitignore`, and in `.claude/settings.json` `Read(/samples)`, `Read(/samples/**)`, `Edit(/samples)`, `Edit(/samples/**)` and `Bash(*samples*)`.
-
-### 7.8. Test coverage
-
-Read 2026-11-01:
-
-- Vitest, [docs/guide/coverage.md](https://github.com/vitest-dev/vitest/blob/v5.0.5/docs/guide/coverage.md) at the tag v5.0.5: of v8, "This provider requires Javascript runtime that's implemented on top of V8 engine, such as NodeJS, Deno or any Chromium based browsers such as Google Chrome" and "User's source files can be executed as-is without any pre-instrumentation steps"; of istanbul, "Source code is transformed to add instrumentation before running" and "Execution speed is slower than V8 due to instrumentation overhead"; of what the report covers, "By default Vitest will show only files that were imported during test run";
-- in the same place, [docs/guide/projects.md](https://github.com/vitest-dev/vitest/blob/v5.0.5/docs/guide/projects.md): "the root configuration will only influence global options such as `reporters` and `coverage`";
-- the npm registry (`npm view`): `@vitest/coverage-v8` 5.0.5 is under MIT, of 2026-10-15, its peers are `vitest` and `@vitest/browser` 5.0.5, and of the versions 5 the only newer one is 5.1.0-beta.1;
-- a probe here: the module `src/core/`, which no test loads, entered the report with `LH:0`, and the run of all the tests with coverage took 16.0 s against 15.4 without it.
-
-### 7.9. Vite 8.3.4 for `just demo`
-
-Read 2026-10-22:
-
-- the npm registry, `npm view vite time`: 8.3.4 came out 2026-10-08, 8.3.5 on 2026-10-21. Vitest 5.0.5 has in its `peerDependencies` `"vite": "^6.4.0 || ^7.0.0 || ^8.0.0"`;
-- `dist/node/chunks/node.js` of the package `vite`:
-  - with no list of its own: `allow: raw?.fs?.allow ?? [workspaceRoot]`;
-  - `isFileLoadingAllowed` makes no exception for the page's root: a file passes only if `fs.allow.some((uri) => isFileInTargetPath(uri, filePath))`;
-  - Vite adds its own client to the list itself: `if (!allowDirs.some((dir) => isParentDirectory(dir, resolvedClientDir))) allowDirs.push(resolvedClientDir)`;
-  - CSS by default is `transformer: "postcss"`, and `lightningcss` is taken for minification in the build, `cssMinify`;
-- a probe 2026-10-22, in the working tree of the task that added `demo/` and `just demo`:
-  - `just demo` answers 200 on `/` and `/main.ts`;
-  - on `/@fs/<tree>/package.json` and `RUN.md`, 403, and the server's log has exactly three allowed folders: `demo`, `src` and `node_modules`;
-  - on `/package.json`, `/../package.json` and `/%2e%2e/package.json` it answers with the page itself, `index.html`.
-
-### 7.10. WebDriverAgent v16.15.3: the app a read of the tree takes
-
-Read 2026-11-16 — [appium/WebDriverAgent](https://github.com/appium/WebDriverAgent/tree/v16.15.3), tag v16.15.3, commit 02cb92f of 2026-10-16:
-
-- `WebDriverAgentLib/Commands/FBDebugCommands.m`: the tree answers with and without a session, `[[FBRoute GET:@"/source"] respondWithTarget:self action:@selector(handleGetSourceCommand:)]` and `[[FBRoute GET:@"/source"].withoutSession respondWithTarget:self action:@selector(handleGetSourceCommand:)]`, and takes `XCUIApplication *application = request.session.activeApplication ?: XCUIApplication.fb_activeApplication;`. `WebDriverAgentLib/Routing/FBRoute.m` sets `request.session = session;` only on a route that requires a session;
-- `WebDriverAgentLib/Categories/XCUIApplication+FBHelpers.m`: `fb_activeApplication` is `[self fb_activeApplicationWithDefaultBundleId:nil]`, which begins with `NSArray<id<FBXCAccessibilityElement>> *activeApplicationElements = [FBXCAXClientProxy.sharedClient activeApplications];` and, where it cannot tell the app on the screen, logs "Cannot precisely detect the current application. Will use the system's recently active one" and "Consider changing the 'defaultActiveApplication' setting to the bundle identifier of the desired application under test";
-- `WebDriverAgentLib/Routing/FBSession.m`, `activeApplication`: `if (nil != defaultBundleId && [self applicationStateWithBundleId:defaultBundleId] >= XCUIApplicationStateRunningForeground)`, then `return [self makeApplicationWithBundleId:defaultBundleId];`, before the session's own app and before `fb_activeApplicationWithDefaultBundleId:`;
-- the setting: `[[FBRoute POST:@"/appium/settings"] respondWithTarget:self action:@selector(handleSetSettings:)]` in `WebDriverAgentLib/Commands/FBSessionCommands.m`, which reads `request.arguments[@"settings"]`, and `NSString* const FB_SETTING_DEFAULT_ACTIVE_APPLICATION = @"defaultActiveApplication";` in `WebDriverAgentLib/Utilities/FBSettings.m`.
-
-### 7.11. adb: a device offline, its reconnection and its forwards
-
-Read 2026-11-17 — [platform/packages/modules/adb](https://android.googlesource.com/platform/packages/modules/adb/+/1cf2f017d312f73b3dc53bda85ef2610e35a80e9), branch `main` at commit 1cf2f017d312f73b3dc53bda85ef2610e35a80e9 (`git ls-remote`):
-
-- `client/commandline.cpp`, the help: " get-state                print offline | bootloader | device", " wait-for[-TRANSPORT]-STATE...", "     wait for device to be in a given state" and " reconnect offline        reset offline/unauthorized devices to force reconnect"; `adb reconnect offline` sends `host:reconnect-offline`;
-- `adb_listeners.cpp`: a forward's listener is installed with `transport->AddDisconnect(&listener->disconnect);`, and its function, "Called as a transport disconnect function", does `listener_list.erase(iter);` — a forward goes with the connection it was set on. That the reverses go too is not read: the driver sets them again either way.
-
-### 7.12. `@iconify-json/material-symbols` 1.2.99
-
-Read 2026-11-18 — the npm registry, `npm view @iconify-json/material-symbols`:
-
-- `time`: 1.2.98 — 2026-11-07T07:04:35Z, 1.2.99 — 2026-11-12T06:12:51Z, 1.2.100 — 2026-11-14T16:45:07Z, 1.2.101 — 2026-11-17T07:17:19Z; `dist-tags.latest` is 1.2.101;
-- 1.2.99: `license` is `Apache-2.0`, `dependencies` is `{ '@iconify/types': '*' }`, `dist.integrity` is `sha512-c7CBI249CmvZDeT7sml1iwKEjsbiB8NUG2Bg1KPd7jnvLQ/8iQv7TQWnqq9a2357SkPjnyVTxxTgkWO2rlUtCw==`, the same as `package-lock.json`; its `info.json` — "Material Symbols", 15,810 icons, license "Apache 2.0", `Apache-2.0`.
-
-### 7.13. `picomatch` and GHSA-fc5q-39xc-vjpf
-
-Read 2026-11-18:
-
-- [OSV, GHSA-fc5q-39xc-vjpf](https://osv.dev/vulnerability/GHSA-fc5q-39xc-vjpf): "picomatch vulnerable to ReDoS through single-branch repeated extglobs", npm `picomatch`, `introduced` 0, `last_affected` 4.0.7, severity HIGH, CWE-1333, reviewed by GitHub 2026-11-17T15:56:42Z;
-- `npm view picomatch versions` ends with 4.0.5, 4.0.6, 4.0.7; `npm ls picomatch --all`: 4.0.7, under `vite` 8.3.6 — itself and through `tinyglobby` 0.2.17 and `fdir` 6.5.0 — and `vitest` 5.1.0, marked `dev` in `package-lock.json`;
-- code scanning, alert #35 of Scorecard, created 2026-11-17T16:19:17Z: "score is 9: 1 existing vulnerabilities detected: Warn: Project is vulnerable to: https://osv.dev/GHSA-fc5q-39xc-vjpf".
+- Chrome's terms, read 2026-10-21: [Chrome/ChromeOS/GooglebookOS Additional Terms of Service](https://www.google.com/chrome/terms/), the edition "Last modified: 30 September, 2025": "By using Chrome or ChromeOS, you agree to the Google Terms of Service located at https://policies.google.com/terms and these Google Chrome and ChromeOS Additional Terms of Service. These Google Chrome and ChromeOS Additional Terms of Service apply to the executable code version of Chrome and ChromeOS. Most source code for Chrome is available free of charge under open source software license agreements at chrome://credits". The page [Chrome for Testing](https://developer.chrome.com/docs/automation-and-testing/chrome-for-testing), updated 2023-06-12, and the README of [GoogleChromeLabs/chrome-for-testing](https://github.com/GoogleChromeLabs/chrome-for-testing) at commit b9cf0a2 say nothing of the terms of their builds;
+- Claude Code, [Permissions](https://code.claude.com/docs/en/permissions), read 2026-11-24: "`/path` Path relative to the settings source", and in the project's settings that is `<primary working directory>/path`; "`//path` Absolute path from filesystem root"; "A `*` in a Bash rule matches any text, including spaces"; "In gitignore patterns, `*` matches within a single path segment and can appear at any position in the pattern, while `**` matches across directories"; of a Bash rule, "isn't a security boundary around the program";
+- SonarQube Cloud, [Automatic analysis](https://docs.sonarsource.com/sonarqube-cloud/analyzing-source-code/automatic-analysis), read 2026-10-21: of `.sonarcloud.properties`, "Below are the supported optional settings for the `.sonarcloud.properties` file. Wildcard patterns are not allowed". The list of settings itself was not read in the page's text.
 
 ## 8. Licenses and contribution
 
@@ -349,10 +166,6 @@ This repository's [LICENSE](../LICENSE), section 2, read 2026-10-21: "each Contr
 ### 8.2. Developer Certificate of Origin 1.1
 
 (П-18) — [developercertificate.org](https://developercertificate.org/), read 2026-10-21: (c) "The contribution was provided directly to me by some other person who certified (a), (b) or (c) and I have not modified it"; (d) "a record of the contribution (including all personal information I submit with it, including my sign-off) is maintained indefinitely".
-
-### 8.3. GitHub Docs: removing data from a repository
-
-[github/docs](https://github.com/github/docs/blob/efd4783/content/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository.md), commit efd4783, read 2026-10-21: "If you only rewrite your history and force push it, the commits with sensitive data may still be accessible elsewhere", among other places "Through any pull requests that reference them". And of GitHub Support: it "won't remove non-sensitive data".
 
 ## 9. Decisions of the element and the page
 

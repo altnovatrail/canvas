@@ -140,3 +140,29 @@ The times GitHub gives each job and step, `gh api repos/altnovatrail/canvas/acti
 - **The entries** of the cache are 5.7–6.3 MB each.
 - **Not measured apart:** the runners' own spread is as large as a gain of tens of seconds — the boot of the simulator took 95–179 s in these runs, the build of WebDriverAgent 157–513 s, and the samples page's iPad job came out no faster within it. The Android job of `emulators.yml` failed in the first two attempts of run 43812391731 on "System UI isn't responding" in the emulator and passed in the third, 352 s; neither it nor its files changed with the cache.
 - **A loaded runner.** In run [43816134598](https://github.com/altnovatrail/canvas/actions/runs/43816134598), on the code with the cache, a hit, iPad 27 failed in 1112 s: the simulator booted in 179 s, `xcodebuild -xctestrun` wrote its first line 8 min after it — 83 s in the hit before —, and `simctl io screenshot` failed in the probe. Hence the start's wait is ten minutes by the clock, not 120 tries.
+
+## 4. Probes of packages and tools
+
+### 4.1. The size of the drawing libraries, 2026-10-21
+
+When the drawing engine was chosen: the main file of each library's build from jsdelivr, compressed by `gzip -9`, in bytes — `konva.min.js` of Konva 10.9.0, 58,317; perfect-freehand 1.2.3 `dist/esm/index.mjs`, 1,999; `rbush.min.js` of rbush 4.0.1 with `quickselect` inside, 2,327; Fabric.js 7.4.0 `dist/index.min.mjs`, 91,558; `paper-core.min.js` of Paper.js 0.14.0, 74,297; `pixi.min.mjs` of PixiJS 8.22.0, 236,793; `two.min.js` of Two.js 0.8.24, 49,680; Excalidraw 0.18.1 `dist/prod/index.js`, 154,698; `signature_pad.min.js` 5.1.4, 4,660; Atrament 5.1.0 `dist/esm/index.js`, 2,601; `@drauu/core` 1.0.0 `dist/index.mjs`, without minification, 8,096.
+
+### 4.2. The Playwright image v1.64.1-noble, 2026-10-21
+
+The image `mcr.microsoft.com/playwright:v1.64.1-noble`, index `sha256:7852dc5…`, amd64 manifest `sha256:bdfda2a…` (the MCR registry):
+
+- the layer `sha256:e20e5ef…`, 314,299,253 bytes compressed, is `playwright-core install chromium`: `chromium-1248` with `WidevineCdm/LICENSE`, `chromium_headless_shell-1248` and `ffmpeg-1013`. Firefox and WebKit are separate layers, of 122,076,107 and 113,748,815 bytes, and they hold no license files;
+- `chromium_headless_shell-1248/chrome-headless-shell-linux64/ABOUT`: "Google Chrome … Copyright 2026 Google LLC. All rights reserved. Chrome is made possible by the Chromium open source project (https://www.chromium.org/) and other open source software (chrome://credits). See the Terms of Service at chrome://terms". `LICENSE.headless_shell` beside it begins with "The Chromium Project" and BSD-3-Clause;
+- in the rebuilt container `chrome-headless-shell --version` answers "Google Chrome for Testing 156.0.8078.4", and the folder takes 273 MB.
+
+### 4.3. The coverage of a module no test loads, 2026-11-01
+
+Vitest 5.0.5 with `@vitest/coverage-v8` 5.0.5, here: the module `src/core/`, which no test loads, entered the report with `LH:0`, and the run of all the tests with coverage took 16.0 s against 15.4 without it.
+
+### 4.4. The server of `just demo`, 2026-10-22
+
+Vite 8.3.4, in the working tree of the task that added `demo/` and `just demo`:
+
+- `just demo` answers 200 on `/` and `/main.ts`;
+- on `/@fs/<tree>/package.json` and `RUN.md`, 403, and the server's log has exactly three allowed folders: `demo`, `src` and `node_modules`;
+- on `/package.json`, `/../package.json` and `/%2e%2e/package.json` it answers with the page itself, `index.html`.
