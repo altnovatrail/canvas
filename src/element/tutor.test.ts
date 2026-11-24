@@ -15,11 +15,11 @@ afterEach(() => {
   for (const element of made.splice(0)) element.remove();
 });
 
-test("sends one event of the tutor's act at once, its strokes on the shown tracing paper, and resolves once they are drawn", async () => {
+test("sends one event of the tutor's act at once, its strokes on the shown tracing paper that holds them, and resolves once they are drawn", async () => {
   const { element, submission } = await paper(made);
   const told: HistoryChange[] = [];
   element.addEventListener("historychange", (event) => told.push(event.detail));
-  const done = element.drawTutor(submission, { ...lines(submission, 300, 2), erase: [1] });
+  const done = element.drawTutor(submission, { ...lines(submission, 150, 2), erase: [1] });
   expect(told).toHaveLength(1);
   const [event] = told[0]?.events ?? [];
   if (event?.kind !== "tutor") throw new Error("no act of the tutor");
@@ -30,16 +30,16 @@ test("sends one event of the tutor's act at once, its strokes on the shown traci
   expect(event.strokes[0]?.style).toMatchObject({ pen: "liner", color: "#ff3b30", opacity: 100 });
   // On the tracing paper from its corner, at [180, 60].
   expect(event.strokes[0]?.points[0]?.x).toBeCloseTo(220 - 180, 1);
-  expect(event.strokes[0]?.points[0]?.y).toBeCloseTo(300 - 60, 1);
+  expect(event.strokes[0]?.points[0]?.y).toBeCloseTo(150 - 60, 1);
   expect(element.history.at(-1)).toBe(event);
   await done;
   await settle();
-  expect(inkAt(element, 350, 300)).toBe(true);
+  expect(inkAt(element, 350, 150)).toBe(true);
   expect(inkAt(element, 320, 850)).toBe(false);
   // The strokes the crop shows now are the tutor's, where the act put them.
   const seen = element.cropStrokes(submission);
   expect(seen.map(({ id }) => id)).toEqual([2, 3]);
-  const first = lines(submission, 300, 1).strokes[0]?.points ?? [];
+  const first = lines(submission, 150, 1).strokes[0]?.points ?? [];
   for (const [k, value] of first.entries()) expect(seen[0]?.points[k]).toBeCloseTo(value, 1);
   // The work for checking holds them, as any stroke the sheet shows.
   const again = (await element.exportWork()) as ExportedPaper | null;
@@ -50,7 +50,7 @@ test("sends one event of the tutor's act at once, its strokes on the shown traci
     { kind: "undo", t: expect.any(Number), removed: [2, 3], restored: [1] },
   ]);
   await settle();
-  expect(inkAt(element, 350, 300)).toBe(false);
+  expect(inkAt(element, 350, 150)).toBe(false);
   expect(inkAt(element, 320, 850)).toBe(true);
 });
 
@@ -200,6 +200,37 @@ async function pixelOf(png: Blob, x: number, y: number): Promise<number[]> {
   return [...context.getImageData(Math.floor(x), Math.floor(y), 1, 1).data.slice(0, 3)];
 }
 
+/** The right edge of the element's bar of buttons, its panels', in CSS px from the element's left. */
+function railRight(element: HTMLElement): number {
+  const rail = element.shadowRoot?.querySelector<HTMLElement>(".rail");
+  if (rail === null || rail === undefined) throw new Error("no bar of buttons");
+  const right = Math.max(
+    ...Array.from(rail.children, (panel) => panel.getBoundingClientRect())
+      .filter((box) => box.width > 0)
+      .map((box) => box.right),
+  );
+  return Math.max(right - element.getBoundingClientRect().left, 0);
+}
+
+test("leaves the host's cover out of the drawing's crop, with a margin, takes the whole part in sight when too little is left, and takes a bad side as a TypeError", async () => {
+  const { element } = await paper(made, []);
+  const { view } = probe(element);
+  if (view === undefined) throw new Error("the element is not laid out");
+  const free = (await element.exportForDrawing()).submission.crop.sheetBox;
+  const covered = (await element.exportForDrawing({ top: 40, right: 200, bottom: 50 })).submission
+    .crop.sheetBox;
+  expect(covered[1]).toBeCloseTo(free[1], 1);
+  expect(covered[0] - free[0]).toBeCloseTo((40 + 16) / view.k, 0);
+  expect(covered[3]).toBeCloseTo(view.vx + (600 - 200 - 16) / view.k, 0);
+  expect(covered[2]).toBeCloseTo(view.vy + (600 - 50 - 16) / view.k, 0);
+  // A cover that leaves too little: the whole part in sight, the bar of buttons too.
+  const whole = (await element.exportForDrawing({ right: 500 })).submission.crop.sheetBox;
+  expect(whole[1]).toBeCloseTo(Math.max(0, view.vx), 1);
+  for (const cover of [{ right: -1 }, { top: Number.NaN }, { left: "8" }, 5]) {
+    expect(() => element.exportForDrawing(cover as never)).toThrow(TypeError);
+  }
+});
+
 test("gives the drawing's crop of a blank sheet in sight, and an act in its blank part lands where it was put", async () => {
   const { element } = await paper(made, []);
   expect(await element.exportWork()).toBeNull();
@@ -209,17 +240,17 @@ test("gives the drawing's crop of a blank sheet in sight, and an act in its blan
   expect(drawing.png.type).toBe("image/png");
   expect(submission.groups).toEqual([]);
   expect(Math.max(submission.crop.width, submission.crop.height)).toBeLessThanOrEqual(1568);
-  // The part of the sheet in sight.
+  // The part of the sheet in sight, right of the bar of buttons by a margin of 16 px.
   const { view } = probe(element);
   if (view === undefined) throw new Error("the element is not laid out");
   const [ymin, xmin] = submission.crop.sheetBox;
-  expect(xmin).toBeCloseTo(Math.max(0, view.vx), 1);
+  expect(xmin).toBeCloseTo(view.vx + (railRight(element) + 16) / view.k, 0);
   expect(ymin).toBeCloseTo(Math.max(0, view.vy), 1);
   const bitmap = await createImageBitmap(drawing.png);
   expect([bitmap.width, bitmap.height]).toEqual([submission.crop.width, submission.crop.height]);
   expect(element.cropStrokes(submission)).toEqual([]);
-  // Left of the tracing paper, which starts at x 180: on the tracing paper all the same, the paper
-  // shown, from its corner.
+  // Left of the tracing paper, which starts at x 180: on the sheet, where it was put, the paper
+  // shown or not — not pressed to the paper's left edge.
   const from = toCrop({ x: 60, y: 900 }, submission);
   const to = toCrop({ x: 150, y: 900 }, submission);
   await element.drawTutor(submission, {
@@ -228,9 +259,10 @@ test("gives the drawing's crop of a blank sheet in sight, and an act in its blan
   });
   const event = element.history.at(-1);
   if (event?.kind !== "tutor") throw new Error("no act of the tutor");
-  expect(event.on).toBe("tracing");
+  expect(event.on).toBeUndefined();
+  expect(event.strokes[0]?.points[0]?.x).toBeCloseTo(60, 1);
   await settle();
-  expect(inkAt(element, 100, 900)).toBe(false);
+  expect(inkAt(element, 100, 900)).toBe(true);
   // The paper hidden, the act goes on the sheet, where it was put.
   element.tracing = { ...submission.tracing, hidden: true };
   const hidden = (await element.exportForDrawing()).submission;

@@ -61,6 +61,7 @@
 import type {
   CanvasElement,
   CanvasEventMap,
+  DrawingCover,
   ExportedPaper,
   ExportedWork,
   GridChange,
@@ -211,6 +212,7 @@ export type {
   CanvasEventMap,
   CropStroke,
   DemoChangeEvent,
+  DrawingCover,
   EraserMode,
   ExportedCell,
   ExportedPaper,
@@ -1007,6 +1009,31 @@ function verdictAt(box: Box, k: number): Box {
   const minX = Math.min(Math.max(box.maxX + VERDICT_GAP_PX / k, 0), REACH.width - size);
   const minY = Math.min(Math.max((box.minY + box.maxY - size) / 2, 0), REACH.height - size);
   return { minX, minY, maxX: minX + size, maxY: minY + size };
+}
+
+/**
+ * The margin, in CSS px, the drawing's crop keeps from a control over the sheet, and the least it
+ * leaves free across and down before it takes the whole part in sight instead.
+ */
+const COVER_GAP = 16;
+const COVER_LEAST = 160;
+
+/** The sides of a host's cover, checked: each a finite number of CSS px, 0 or more, 0 if absent. */
+function coverOf(cover: DrawingCover | undefined): Required<DrawingCover> {
+  const sides = { top: 0, right: 0, bottom: 0, left: 0 };
+  if (cover === undefined) return sides;
+  if (typeof cover !== "object" || cover === null) {
+    throw new TypeError(`cover: the sides the host covers, not ${String(cover)}`);
+  }
+  for (const side of ["top", "right", "bottom", "left"] as const) {
+    const value: unknown = cover[side];
+    if (value === undefined) continue;
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+      throw new TypeError(`cover.${side}: CSS pixels, 0 or more, not ${String(value)}`);
+    }
+    sides[side] = value;
+  }
+  return sides;
 }
 
 /** An HTML layer of the sheet, for the module's widget from stage 4: empty till then. */
@@ -2164,30 +2191,61 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * The work of a task from paper for the drawing of grown-up mode, as the sheet is when it is
-   * called: the crop of the part of the sheet in sight — the page, should the element not be laid
-   * out —, with room to write in, its longer edge 1568 px at most and its visual tokens within
+   * called: the crop of the part of the sheet in sight that is free — the element's bar of buttons,
+   * while shown, and the host's controls of `cover` left out, each with a margin of `COVER_GAP`
+   * CSS px, the whole part in sight should they leave too little —, or the page, should the element
+   * not be laid out, with room to write in, its longer edge 1568 px at most and its visual tokens within
    * the crop's bound, RGB, on white with no grid: every stroke there in its style, and the tracing
    * paper where it lies, while it is shown, its picture laid in grey and multiplied and its strokes
    * over it. With the task's crop and the context: the crop's numbers, no groups, where the tracing
-   * paper lay and the digest. A sheet with no stroke gives it too. Without a task from paper it is a
-   * TypeError, thrown at once.
+   * paper lay and the digest. A sheet with no stroke gives it too. Without a task from paper, or
+   * with a side of `cover` that is not a finite number of 0 or more, it is a TypeError, thrown at
+   * once.
    */
-  exportForDrawing(): Promise<ExportedPaper> {
+  exportForDrawing(cover?: DrawingCover): Promise<ExportedPaper> {
     const paper = this.#paper;
     const tracing = this.#tracing;
     if (paper === undefined || tracing === undefined) {
       throw new TypeError(`<${TAG}> shows no task from paper: the drawing's crop is one's alone`);
     }
+    const sides = coverOf(cover);
     const screen = this.#view();
-    const region: Box =
-      screen === undefined || !(screen.width > 0 && screen.height > 0)
-        ? { minX: 0, minY: 0, maxX: SHEET.width, maxY: SHEET.height }
-        : {
-            minX: Math.max(0, screen.vx),
-            minY: Math.max(0, screen.vy),
-            maxX: Math.min(REACH.width, screen.vx + screen.width / screen.k),
-            maxY: Math.min(REACH.height, screen.vy + screen.height / screen.k),
-          };
+    if (screen === undefined || !(screen.width > 0 && screen.height > 0)) {
+      const page = { minX: 0, minY: 0, maxX: SHEET.width, maxY: SHEET.height };
+      return this.#drawingOf(paper, tracing, this.#work, page);
+    }
+    const { k, vx, vy, width, height } = screen;
+    const inSight = (left: number, top: number, right: number, bottom: number): Box => ({
+      minX: Math.max(0, vx + left / k),
+      minY: Math.max(0, vy + top / k),
+      maxX: Math.min(REACH.width, vx + (width - right) / k),
+      maxY: Math.min(REACH.height, vy + (height - bottom) / k),
+    });
+    const rail = this.#tools.rail;
+    // The bar is of no width itself, its panels standing out of it, over the sheet's left edge or
+    // beside it: a margin from the rightmost shown, either way.
+    const right = rail.hidden
+      ? undefined
+      : Math.max(
+          ...Array.from(rail.children, (panel) => panel.getBoundingClientRect())
+            .filter((box) => box.width > 0)
+            .map((box) => box.right),
+        );
+    const bar =
+      right === undefined || !Number.isFinite(right)
+        ? 0
+        : Math.max(right - screen.left, 0) + COVER_GAP;
+    const margin = (side: number) => (side > 0 ? side + COVER_GAP : 0);
+    const free = inSight(
+      Math.max(margin(sides.left), bar),
+      margin(sides.top),
+      margin(sides.right),
+      margin(sides.bottom),
+    );
+    // Too little left free to write in: the whole part in sight, as the grown-up sees it.
+    const roomy =
+      (free.maxX - free.minX) * k >= COVER_LEAST && (free.maxY - free.minY) * k >= COVER_LEAST;
+    const region = roomy ? free : inSight(0, 0, 0, 0);
     return this.#drawingOf(paper, tracing, this.#work, region);
   }
 
@@ -2289,7 +2347,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * The tutor's act in grown-up mode put on the sheet, by the context of the submission whose crop
    * the drawing read, in one action that an undo takes back whole: the strokes it takes off, and
    * its strokes after every other, new IDs, liners of its colours, laid from the crop's pixels
-   * onto the sheet, or onto the tracing paper from its corner when the context's paper was shown.
+   * onto the sheet, or onto the tracing paper from its corner when the context's paper was shown
+   * and every point of the act lies on it.
    * It sends `historychange` at once. Its strokes are drawn one after another, each along its
    * length at a hand's speed, all of it within 3 s, and at once with reduced motion or off the
    * page; the promise resolves once the last is drawn. An undo, a clearing, an eraser, a new
@@ -2302,7 +2361,12 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   drawTutor(submission: PaperSubmission, act: TutorAct): Promise<void> {
     const context = this.#paperContextOf(submission);
     const work = this.#work;
-    const plan = tutorPlanOf(act, context, new Set(work.strokes.map(({ id }) => id)));
+    const plan = tutorPlanOf(
+      act,
+      context,
+      new Set(work.strokes.map(({ id }) => id)),
+      this.#tracingPaper.ready ? this.#tracingPaper.size : undefined,
+    );
     this.#endDrawing();
     const first = this.#recorder.reserve(plan.strokes.length);
     const drafts = plan.strokes.map((stroke, k) => ({ id: first + k, ...stroke }));

@@ -6,7 +6,7 @@ import type { InkPoint, Stroke } from "./ink.js";
 import type { Point } from "./screen.js";
 import { REACH } from "./sheet.js";
 import { reachOf, STYLE_BOUNDS, type StrokeStyle } from "./style.js";
-import { onSheet, tracingFieldsOf } from "./tracing.js";
+import { onSheet, onTracing, type Size, scaled, tracingFieldsOf } from "./tracing.js";
 
 /**
  * A stroke a crop of a task from paper shows, and the tutor's act on such a crop in grown-up mode:
@@ -252,7 +252,8 @@ export interface TutorStroke {
 
 /**
  * The tutor's act on the sheet, checked: its strokes where they go, on the tracing paper, `on`,
- * when the submission's was shown — from the paper's corner, in its units —, else on the sheet,
+ * when the submission's was shown and holds every point of them — from the paper's corner, in its
+ * units —, else on the sheet,
  * and the IDs it takes off, in the order given, each once.
  */
 export interface TutorPlan {
@@ -265,23 +266,25 @@ export interface TutorPlan {
  * The tutor's act on a crop of the submission, checked and laid on the sheet: each stroke of two
  * points at least, in pairs of finite crop pixels that lie on the sheet, a colour `#rrggbb` and a
  * width of px above 0, a liner of that colour at full opacity and its width in the layer's units to
- * a tenth, within a style's bounds; and the IDs to take off, each a stroke of `showing`. On the
- * tracing paper a point is kept to the reach of the paper's own units, which a corner of the crop
- * past the paper's top left corner would otherwise leave. Anything else is a TypeError.
+ * a tenth, within a style's bounds; and the IDs to take off, each a stroke of `showing`. The act
+ * goes on the tracing paper, of `paper`'s size at its scale, only when every point of it lies on
+ * the paper shown, as a pen's stroke does that begins there: an act written beside the photo of the
+ * task stays on the sheet, where the paper's own units would press it to the paper's edge. With no
+ * `paper`, its size not yet read, the act is the sheet's. Anything else is a TypeError.
  */
 export function tutorPlanOf(
   value: unknown,
   submission: DrawingContext,
   showing: ReadonlySet<number>,
+  paper?: Size,
 ): TutorPlan {
   const act = record(value, "act");
   if (!Array.isArray(act.strokes)) {
     throw new TypeError(`act.strokes: a list of strokes, not ${shown(act.strokes)}`);
   }
-  const tracing = submission.tracing.hidden ? undefined : submission.tracing;
-  const scale = tracing?.scale ?? 1;
+  const laid = submission.tracing.hidden || paper === undefined ? undefined : submission.tracing;
   const map = mappingOf(submission);
-  const strokes = Array.from(act.strokes, (item: unknown, n): TutorStroke => {
+  const drafts = Array.from(act.strokes, (item: unknown, n) => {
     const path = `act.strokes[${n}]`;
     const stroke = record(item, path);
     const flat = stroke.points;
@@ -303,14 +306,7 @@ export function tutorPlanOf(
           `${path}.points[${k}]: a point of the crop on the sheet, not one off it at ${shown([point.x, point.y])}`,
         );
       }
-      points.push(
-        tracing === undefined
-          ? point
-          : {
-              x: clamp((point.x - tracing.at[0]) / scale, 0, REACH.width),
-              y: clamp((point.y - tracing.at[1]) / scale, 0, REACH.height),
-            },
-      );
+      points.push(point);
     }
     const color = stroke.color;
     if (typeof color !== "string" || !COLOUR.test(color)) {
@@ -320,6 +316,25 @@ export function tutorPlanOf(
     if (typeof width !== "number" || !Number.isFinite(width) || width <= 0) {
       throw new TypeError(`${path}.width: crop pixels above 0, not ${shown(width)}`);
     }
+    return { points, color, width };
+  });
+  const tracing =
+    laid !== undefined &&
+    paper !== undefined &&
+    drafts.every(({ points }) =>
+      points.every((point) => onTracing(point, laid.at, scaled(paper, laid.scale ?? 1))),
+    )
+      ? laid
+      : undefined;
+  const scale = tracing?.scale ?? 1;
+  const strokes = drafts.map(({ points: onSheetPoints, color, width }): TutorStroke => {
+    const points =
+      tracing === undefined
+        ? onSheetPoints
+        : onSheetPoints.map((point) => ({
+            x: clamp((point.x - tracing.at[0]) / scale, 0, REACH.width),
+            y: clamp((point.y - tracing.at[1]) / scale, 0, REACH.height),
+          }));
     const [thinnest, widest] = STYLE_BOUNDS.width;
     const units = Math.round((width / map.across / scale) * 10) / 10;
     const style = Object.freeze({

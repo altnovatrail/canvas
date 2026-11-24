@@ -260,7 +260,7 @@ describe("the crop's pixels and the sheet", () => {
         strokes: [{ points: [40, 50, 80.5, 90.25, 120, 60], color: "#FF3B30", width: 3 }],
         erase: [2, 2],
       };
-      const plan = tutorPlanOf(act, submission, new Set([1, 2]));
+      const plan = tutorPlanOf(act, submission, new Set([1, 2]), { width: 400, height: 300 });
       expect(plan.on).toBe(hidden ? undefined : "tracing");
       expect(plan.erase).toEqual([2]);
       const style = plan.strokes[0]?.style;
@@ -369,16 +369,34 @@ describe("the drawing's crop", () => {
     expect(submission.groups).toEqual([]);
     expect(submission.digest).toBe(digestOf([], crop, [], paper));
     const context = drawingContextOf(JSON.parse(JSON.stringify(submission)), "submission");
+    const size = { width: 800, height: 600 };
+    const actAt = (...points: { x: number; y: number }[]) => ({
+      strokes: points.map((p) => {
+        const { x, y } = toCrop(p, context);
+        return { points: [x, y, x + 50, y], color: "#000000", width: 2 };
+      }),
+      erase: [],
+    });
+    // On the tracing paper shown, every point of it: on the paper, from its corner.
+    const onPaper = { x: 300, y: 200 };
+    const traced = tutorPlanOf(actAt(onPaper), context, new Set(), size);
+    expect(traced.on).toBe("tracing");
+    expect(traced.strokes[0]?.points[0]?.x).toBeCloseTo(onPaper.x - at[0], 6);
+    expect(traced.strokes[0]?.points[0]?.y).toBeCloseTo(onPaper.y - at[1], 6);
+    // Below the tracing paper, or partly beside it, or with the paper's size unread: the sheet's,
+    // where it was put, not pressed to the paper's edge.
     const blank = { x: 500, y: 1200 };
-    const { x, y } = toCrop(blank, context);
-    const act = { strokes: [{ points: [x, y, x + 50, y], color: "#000000", width: 2 }], erase: [] };
-    // Below the tracing paper, shown: on the tracing paper, from its corner.
-    const plan = tutorPlanOf(act, context, new Set());
-    expect(plan.on).toBe("tracing");
-    expect(plan.strokes[0]?.points[0]?.x).toBeCloseTo(blank.x - at[0], 6);
-    expect(plan.strokes[0]?.points[0]?.y).toBeCloseTo(blank.y - at[1], 6);
+    const act = actAt(blank);
+    const beside = tutorPlanOf(actAt(onPaper, { x: 60, y: 200 }), context, new Set(), size);
+    expect(beside.on).toBeUndefined();
+    expect(beside.strokes[1]?.points[0]?.x).toBeCloseTo(60, 6);
+    expect(tutorPlanOf(actAt(onPaper), context, new Set()).on).toBeUndefined();
+    const plan = tutorPlanOf(act, context, new Set(), size);
+    expect(plan.on).toBeUndefined();
+    expect(plan.strokes[0]?.points[0]?.x).toBeCloseTo(blank.x, 6);
+    expect(plan.strokes[0]?.points[0]?.y).toBeCloseTo(blank.y, 6);
     const sheet = { ...context, tracing: { ...tracing, hidden: true } };
-    const onSheetPlan = tutorPlanOf(act, sheet, new Set());
+    const onSheetPlan = tutorPlanOf(act, sheet, new Set(), size);
     expect(onSheetPlan.on).toBeUndefined();
     expect(onSheetPlan.strokes[0]?.points[0]?.x).toBeCloseTo(blank.x, 6);
     expect(onSheetPlan.strokes[0]?.points[0]?.y).toBeCloseTo(blank.y, 6);
