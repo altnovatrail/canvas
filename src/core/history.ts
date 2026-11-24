@@ -188,17 +188,21 @@ function cutOf(
   return { kind: "cut", t, ids, pieces };
 }
 
+/** Where a piece of a stroke ends along it: the place of its last point of the stroke's, and its time. */
+interface Along {
+  readonly index: number;
+  readonly time: number;
+}
+
+/** Where the first piece of a stroke may begin: anywhere along it. */
+const ALONG_START: Along = Object.freeze({ index: -1, time: Number.NEGATIVE_INFINITY });
+
 /**
  * What a piece must be of the stroke it was cut of: its pointer and its style, and a run of its
  * points with one point of its own at most at each end, past the piece of it before, `after`, at
  * times within the stroke's, and not the whole stroke. Where it ends along the stroke.
  */
-function pieceOf(
-  piece: Stroke,
-  source: Stroke,
-  path: string,
-  after = { index: -1, time: Number.NEGATIVE_INFINITY },
-): { readonly index: number; readonly time: number } {
+function pieceOf(piece: Stroke, source: Stroke, path: string, after: Along = ALONG_START): Along {
   if (piece.kind !== source.kind) {
     throw new TypeError(
       `${path}.kind: ${shown(source.kind)}, the pointer of the stroke ${source.id} it was cut of, not ${shown(piece.kind)}`,
