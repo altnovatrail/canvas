@@ -12,9 +12,12 @@ import {
   type GeometrySchema,
   type HistoryEventSchema,
   MarkupSchema,
+  PenKind,
   Purpose,
   type Sample,
   SampleSchema,
+  type StrokeSchema,
+  type StrokeStyleSchema,
   type TaskReferenceSchema,
   Writer,
 } from "@altnovatrail/contracts/novatrail/eval/v1/sample_pb.js";
@@ -34,6 +37,7 @@ import type { Stroke } from "../core/ink.js";
 import { pictureOf } from "../core/raster.js";
 import type { Point } from "../core/screen.js";
 import { SHEET } from "../core/sheet.js";
+import type { StrokeStyle } from "../core/style.js";
 import { byPlace, finalPoints } from "./resample.js";
 
 /** The protocol a sample file is written in: the package of its message. */
@@ -264,24 +268,45 @@ const toTenth = (value: number) => tenths(value) / 10;
 /** A time in whole milliseconds, half up. */
 const toMs = (t: number) => Math.round(t);
 
+/** The kinds of pen as the protocol names them. */
+const PEN_KINDS = { pen: PenKind.PEN, liner: PenKind.LINER, marker: PenKind.MARKER } as const;
+
+/** A stroke's style as a sample keeps it, or no field for a stroke without one. */
+function styleField(style: StrokeStyle | undefined): {
+  style?: MessageInitShape<typeof StrokeStyleSchema>;
+} {
+  if (style === undefined) return {};
+  const { pen, color, width, opacity } = style;
+  return { style: { pen: PEN_KINDS[pen], color, width, opacity } };
+}
+
+/** A stroke of the history as a sample keeps it: its points to a tenth and in whole ms. */
+function strokeField(stroke: Stroke): MessageInitShape<typeof StrokeSchema> {
+  const { id, kind: pointer, points } = stroke;
+  const ink = points.map(({ x, y, t }) => ({ x: toTenth(x), y: toTenth(y), tMs: toMs(t) }));
+  return { id, pointer, ...styleField(stroke.style), points: ink };
+}
+
 /**
  * The history of writing as a sample keeps it: each event at its time in whole
  * milliseconds, a stroke's points to a tenth of a unit and in whole milliseconds, without the
- * pressure. Rounding keeps the order of times, so a stroke still lands no sooner than its last
- * point. Its strokes are those the history shows at the end, as the file holds them.
+ * pressure, and its style. Rounding keeps the order of times, so a stroke still lands no sooner
+ * than its last point, and a piece's times stay within its stroke's. Its strokes are those the
+ * history shows at the end, as the file holds them.
  */
 function historyInk(history: readonly HistoryEvent[], shown: readonly Stroke[]): Ink {
   const events = history.map((event): MessageInitShape<typeof HistoryEventSchema> => {
     const tMs = toMs(event.t);
     switch (event.kind) {
-      case "write": {
-        const { id, kind: pointer, points } = event.stroke;
-        const ink = points.map(({ x, y, t }) => ({ x: toTenth(x), y: toTenth(y), tMs: toMs(t) }));
-        return { tMs, event: { case: "write", value: { id, pointer, points: ink } } };
-      }
+      case "write":
+        return { tMs, event: { case: "write", value: strokeField(event.stroke) } };
       case "erase":
       case "clear":
         return { tMs, event: { case: event.kind, value: { ids: [...event.ids] } } };
+      case "cut": {
+        const pieces = event.pieces.map(({ of, stroke }) => ({ of, stroke: strokeField(stroke) }));
+        return { tMs, event: { case: "cut", value: { ids: [...event.ids], pieces } } };
+      }
       default: {
         const { removed, restored } = event;
         return {
@@ -304,8 +329,8 @@ function historyInk(history: readonly HistoryEvent[], shown: readonly Stroke[]):
 
 /**
  * The final geometry of the strokes a sheet shows: each in its canonical direction, its
- * points along it a step apart, the strokes numbered by place from 1. Its points have no time and
- * no pressure, and the crops are drawn from them.
+ * points along it a step apart, with its style, the strokes numbered by place from 1. Its points
+ * have no time and no pressure, and the crops are drawn from them.
  */
 function geometryInk(shown: readonly Stroke[]): Ink {
   const placed = shown
@@ -313,22 +338,28 @@ function geometryInk(shown: readonly Stroke[]): Ink {
       id: stroke.id,
       box: extentOf(stroke),
       points: finalPoints(stroke.points),
+      style: stroke.style,
     }))
     .sort(byPlace);
   const numbers = new Map(placed.map(({ id }, n) => [id, n + 1]));
-  const strokes = placed.map(({ points }, n) => finalStroke(n + 1, points));
+  const strokes = placed.map(({ points, style }, n) => finalStroke(n + 1, points, style));
   const value: MessageInitShape<typeof GeometrySchema> = {
-    strokes: strokes.map(({ id, points }) => ({
+    strokes: strokes.map(({ id, points, style }) => ({
       id,
       points: points.map(({ x, y }) => ({ x, y })),
+      ...styleField(style),
     })),
   };
   return { message: { case: "geometry", value }, strokes, numbers };
 }
 
-/** A stroke of the final geometry as the sheet's rules take one: they read no time or pressure. */
-function finalStroke(id: number, points: readonly Point[]): Stroke {
-  return { id, kind: "", points: points.map(({ x, y }) => ({ x, y, t: 0, p: 0 })) };
+/**
+ * A stroke of the final geometry as the sheet's rules take one, in its style: they read no time
+ * or pressure.
+ */
+function finalStroke(id: number, points: readonly Point[], style?: StrokeStyle): Stroke {
+  const ink = points.map(({ x, y }) => ({ x, y, t: 0, p: 0 }));
+  return style === undefined ? { id, kind: "", points: ink } : { id, kind: "", style, points: ink };
 }
 
 /** The strokes of a workbook its boxes hold: the draft goes nowhere. */

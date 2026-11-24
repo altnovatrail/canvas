@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { describe, expect, test } from "vitest";
 import type { Stroke } from "./ink.js";
 import {
   followsPressure,
@@ -8,6 +8,7 @@ import {
   PEN_THINNEST,
   PEN_WIDEST,
   penWidth,
+  SPEED_FINEST,
 } from "./outline.js";
 
 // A level stroke from x 100 to 200 at y 100, of one pointer and one pressure all along.
@@ -116,4 +117,86 @@ test("a stroke of one point is a round dot as wide as the line, where the point 
   for (const [x, y] of dot) expect(Math.hypot(x - 300, y - 400)).toBeCloseTo(INK_WIDTH / 2, 5);
   expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(INK_WIDTH, 1);
   expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(INK_WIDTH, 1);
+});
+
+describe("a stroke in a style", () => {
+  const style = (pen: "pen" | "liner" | "marker", width: number) =>
+    ({ pen, color: "#1c1c1e", width, opacity: 100 }) as const;
+  /** A level stroke from x 100 to 200 at y 100 in a style, its points `every` ms apart. */
+  function styled(
+    kind: string,
+    pressure: number,
+    pen: "pen" | "liner" | "marker",
+    width: number,
+    every = 5,
+  ) {
+    const stroke = level(kind, pressure);
+    const points = stroke.points.map((point, k) => ({ ...point, t: k * every }));
+    return { ...stroke, points, style: style(pen, width) };
+  }
+  /** How wide an outline is across a level stroke where it passes x. */
+  function widthAt(polygon: readonly (readonly [number, number])[], x: number): number {
+    const ys = polygon.filter(([px]) => Math.abs(px - x) < 1.5).map(([, y]) => y);
+    return Math.max(...ys) - Math.min(...ys);
+  }
+
+  test("of a liner or a marker is as wide as its width all along, whatever the pointer's pressure", () => {
+    for (const kind of ["pen", "mouse"]) {
+      for (const pressure of [0, 1]) {
+        expect(extent(outline(styled(kind, pressure, "liner", 7), true)).width).toBeCloseTo(7, 5);
+        expect(extent(outline(styled(kind, pressure, "marker", 28), true)).width).toBeCloseTo(
+          28,
+          5,
+        );
+      }
+    }
+    // A liner as wide as the line without a style draws a finger's very line.
+    expect(outline(styled("mouse", 0.5, "liner", INK_WIDTH), true)).toEqual(
+      outline(level("mouse", 0.5), true),
+    );
+  });
+
+  test("of the kind pen with a pen's pressure is its width times the pen's curve, finer at its ends", () => {
+    for (const pressure of [0.1, 1]) {
+      const width = 4.5 * penWidth(pressure);
+      const polygon = outline(styled("pen", pressure, "pen", 4.5), true);
+      expect(extent(polygon).width).toBeCloseTo(width, 5);
+      expect(widthAt(polygon, 150)).toBeCloseTo(width, 5);
+      // Finer at its start and its end, by less than half at the very ends.
+      for (const end of [102, 198]) expect(widthAt(polygon, end)).toBeLessThan(0.7 * width);
+    }
+    // Under way, its end is as wide as its pressure makes it: only a complete stroke ends finer.
+    const live = outline(styled("pen", 1, "pen", 4.5), false);
+    expect(widthAt(live, 197)).toBeGreaterThan(0.9 * 4.5 * PEN_WIDEST);
+    // A dot and a dash of two points keep their width.
+    const dot = outline(
+      { ...styled("pen", 1, "pen", 4.5), points: [{ x: 300, y: 400, t: 0, p: 1 }] },
+      true,
+    );
+    for (const [x, y] of dot) expect(Math.hypot(x - 300, y - 400)).toBeCloseTo(4.5, 5);
+  });
+
+  test("of the kind pen without a pen's pressure is wider slow and finer fast, by its points' times", () => {
+    // Points 5 units apart: 100 ms apart is slow, 1 ms fast, past SPEED_FINEST.
+    const slow = outline(styled("touch", 0.5, "pen", 3, 100), false);
+    const fast = outline(styled("mouse", 0.5, "pen", 3, 1), false);
+    expect(5 / 1).toBeGreaterThan(SPEED_FINEST);
+    // Near its end the share has gone most of the way from 0.45 to 0.75 slow, and to 0.15 fast; the
+    // library's outline lags a little behind the points.
+    const near = (polygon: typeof slow, from: number, to: number) => {
+      const width = widthAt(polygon, 190);
+      expect(width).toBeGreaterThan(3 * penWidth(Math.min(from, to)));
+      expect(width).toBeLessThanOrEqual(3 * penWidth(Math.max(from, to)) + 1e-9);
+    };
+    near(slow, 0.7, 0.75);
+    near(fast, 0.15, 0.2);
+    // Its first point starts from the middle of the range, whatever the pointer's pressure.
+    const pressed = outline(styled("touch", 1, "pen", 3, 100), false);
+    expect(pressed).toEqual(slow);
+    // Points at one time change nothing of the width.
+    const still = styled("touch", 0.5, "pen", 3, 0);
+    expect(widthAt(outline(still, false), 190)).toBeCloseTo(3 * penWidth(0.45), 1);
+    // The pressure the stroke keeps is the pointer's.
+    expect(still.points.every(({ p }) => p === 0.5)).toBe(true);
+  });
 });

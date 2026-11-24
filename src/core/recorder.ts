@@ -1,5 +1,6 @@
 import { Clock } from "./clock.js";
 import type { InkPoint, Stroke } from "./ink.js";
+import type { StrokeStyle } from "./style.js";
 
 /**
  * What the recorder takes of a pointer event, and of each event coalesced into it. The DOM-free
@@ -39,6 +40,7 @@ export const PRIMARY_HELD = 1;
 interface Live {
   readonly id: number;
   readonly kind: string;
+  readonly style?: StrokeStyle;
   readonly points: InkPoint[];
   readonly pointerId: number;
   /** The pointer's latest place, recorded or not: the stroke ends there. */
@@ -73,17 +75,21 @@ export class Recorder {
     return this.#live?.pointerId;
   }
 
-  /** `pointerdown`: a stroke begins here, if none is under way and the primary button went down. */
-  down(sample: PointerSample): boolean {
+  /**
+   * `pointerdown`: a stroke begins here, if none is under way and the primary button went down,
+   * in the style given, which it keeps; without one it has none.
+   */
+  down(sample: PointerSample, style?: StrokeStyle): boolean {
     if (this.#live !== undefined || sample.button !== PRIMARY) return false;
     const point = this.#point(sample, sample.pressure);
-    this.#live = {
+    const live: Live = {
       id: this.#nextId++,
       kind: sample.kind,
       points: [point],
       pointerId: sample.pointerId,
       latest: point,
     };
+    this.#live = style === undefined ? live : { ...live, style };
     return true;
   }
 
@@ -143,13 +149,26 @@ export class Recorder {
     this.#nextId = nextId;
   }
 
+  /**
+   * `count` IDs in a row for strokes the recorder does not write — the pieces of a cut, numbered
+   * when the eraser lifts —, the first of them given: the next stroke takes the ID after them, so
+   * the sheet's IDs have one source and none is used twice. A stroke under way keeps the ID it
+   * took when it began.
+   */
+  reserve(count: number): number {
+    const first = this.#nextId;
+    this.#nextId += count;
+    return first;
+  }
+
   #finish(): boolean {
     const live = this.#live;
     if (live === undefined) return false;
     if (live.latest !== live.points[live.points.length - 1]) live.points.push(live.latest);
     // The stroke is no longer under way by the time the handler has it.
     this.#live = undefined;
-    this.#finished({ id: live.id, kind: live.kind, points: live.points });
+    const { id, kind, style, points } = live;
+    this.#finished(style === undefined ? { id, kind, points } : { id, kind, style, points });
     return true;
   }
 

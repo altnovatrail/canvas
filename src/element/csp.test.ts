@@ -1,7 +1,16 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { line } from "../core/pages.fixture.js";
 import { sheetTask, workbookTask, workedExample } from "../core/tasks.fixture.js";
-import { arrive, file, level, placed, settle, sheetWork } from "./pointer.fixture.js";
+import {
+  arrive,
+  buttonOf,
+  file,
+  hand,
+  level,
+  placed,
+  settle,
+  sheetWork,
+} from "./pointer.fixture.js";
 
 // The element under app's content security policy, in a browser: no inline style,
 // and images only from blob: addresses. The policy goes into this frame's head once the file's
@@ -9,7 +18,7 @@ import { arrive, file, level, placed, settle, sheetWork } from "./pointer.fixtur
 // as app's page; the runner keeps working. Each test file has a frame of its own, so no other file
 // runs under it. Whatever the policy blocks, the page hears of it by a securitypolicyviolation
 // event, and the tests ask that there be none: the row, the statement and its pictures, the grid,
-// the ink, the marks, the workbook's print and a worked example's pictures beside the sheet and on
+// the ink, the marks, the popovers of the pen and the eraser, the circle of a hovering pen, the workbook's print and a worked example's pictures beside the sheet and on
 // it all come under it, styled by the adopted sheet.
 
 /**
@@ -93,6 +102,32 @@ test("a sheet shows its row, its statement with a picture, its grid, the ink and
   const frame = root.querySelector(".marks rect");
   if (frame === null) throw new Error("the mark has no frame");
   expect(getComputedStyle(frame).stroke).toBe("rgb(37, 99, 235)");
+  expect(await heard()).toEqual([]);
+});
+
+test("the popovers of the pen and the eraser and the circle of a hovering pen are placed and styled under the policy, with nothing blocked", async () => {
+  const { element, root, canvas, view } = await placed(made, 800, undefined, { task: sheetTask() });
+  buttonOf(element, "Pen").click();
+  const pen = root.querySelector<HTMLElement>('[role="dialog"]:not([hidden])');
+  if (pen === null) throw new Error("the pen opened no popover");
+  // Placed through the CSSOM, right of the bar, and styled by the adopted sheet.
+  expect(pen.style.getPropertyValue("--pop-x")).not.toBe("");
+  expect(getComputedStyle(pen).position).toBe("absolute");
+  expect(getComputedStyle(pen).borderTopLeftRadius).toBe("22px");
+  const wheel = pen.querySelector<HTMLElement>("[aria-expanded]");
+  wheel?.click();
+  expect(wheel?.getAttribute("aria-expanded")).toBe("true");
+  const swatch = pen.querySelector<HTMLElement>(".swatch");
+  if (swatch === null) throw new Error("the popover has no colours");
+  expect(getComputedStyle(swatch, "::before").backgroundColor).toBe("rgb(28, 28, 30)");
+  buttonOf(element, "Eraser").click();
+  buttonOf(element, "Eraser").click();
+  expect(pen.hidden).toBe(true);
+  expect(root.querySelectorAll('[role="dialog"]:not([hidden])')).toHaveLength(1);
+  hand(canvas, view, { pointerType: "pen" }).hover(300, 300);
+  const ring = root.querySelector<HTMLElement>(".hover");
+  expect(ring?.hidden).toBe(false);
+  expect(Number.parseFloat(getComputedStyle(ring as HTMLElement).width)).toBeGreaterThan(4);
   expect(await heard()).toEqual([]);
 });
 

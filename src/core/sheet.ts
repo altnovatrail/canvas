@@ -46,16 +46,21 @@ export const PICTURE_BYTES = (SHEET.width + 1) * SHEET.height;
 /**
  * The picture of a work: the page, and the ink past it, right and down, with no room past the
  * ink, at a pixel a unit while its rows hold no more than `PICTURE_BYTES`, and scaled down to hold
- * them otherwise. `scale` is pixels a unit.
+ * them otherwise. `bytes` is what a pixel takes, 1 in grey and 3 in RGB, and each row takes one
+ * byte more, its filter's. `scale` is pixels a unit.
  */
-export function pictureOf(ink: { readonly maxX: number; readonly maxY: number } | undefined): {
+export function pictureOf(
+  ink: { readonly maxX: number; readonly maxY: number } | undefined,
+  bytes: 1 | 3 = 1,
+): {
   readonly width: number;
   readonly height: number;
   readonly scale: number;
 } {
   const { width, height } = extentOf(ink, { width: 0, height: 0 });
-  // The scale s whose rows, (width s + 1) × height s, are PICTURE_BYTES: the root of a quadratic.
-  const area = width * height;
+  // The scale s whose rows, (bytes × width s + 1) × height s, are PICTURE_BYTES: the root of a
+  // quadratic.
+  const area = bytes * width * height;
   const fit = (Math.sqrt(height * height + 4 * area * PICTURE_BYTES) - height) / (2 * area);
   const scale = Math.min(1, fit);
   return {

@@ -48,6 +48,15 @@
 // as on the sheet: a stroke begun on the paper is the paper's and moves with it, and an erasing
 // begun on it takes the paper's strokes alone. The work for checking is the crop of the paper and
 // of the sheet's strokes, with the task's crop beside it.
+//
+// The learner's settings of the pen and the eraser, `pens`, come and go with `penchange`: a second
+// press of the chosen pen or eraser opens its popover. Each stroke takes the style of the kind of
+// pen in use — its colour, width and opacity —, which the screen, the crop for checking and the
+// picture of the work draw it in. The eraser takes strokes whole, or in the mode "part" only what
+// it passes over, cutting the strokes it crosses into pieces, new strokes, and the tutor's marks
+// hold on to the pieces as to the strokes they were cut of. The attribute `unstyled` writes without
+// styles, each stroke 3 units wide in the theme's ink: no popover opens, and the eraser takes
+// whole strokes.
 
 import type {
   CanvasElement,
@@ -65,7 +74,8 @@ import type {
 import type { Vec2 } from "perfect-freehand";
 import { type Cell, cellOf, cellsOf, type Filled, filledOf, sheetFilledOf } from "../core/boxes.js";
 import { Clock } from "../core/clock.js";
-import { ERASER_BUTTON, Eraser } from "../core/eraser.js";
+import { Cut, cutOf } from "../core/cut.js";
+import { ERASER_BUTTON, Eraser, type Erasure } from "../core/eraser.js";
 import {
   type CheckedExample,
   DEMO_START,
@@ -87,7 +97,7 @@ import { begins, type HistoryEvent, sameHistory } from "../core/history.js";
 import type { InkPoint, Stroke } from "../core/ink.js";
 import { type Manifest, NO_MANIFEST, type Settings, settingsOf } from "../core/manifest.js";
 import { type Marks, marksOf, type Placed, placesOf, shownOf } from "../core/marks.js";
-import { INK_REACH, outline } from "../core/outline.js";
+import { outline } from "../core/outline.js";
 import {
   isBox,
   LAYOUT,
@@ -99,8 +109,16 @@ import {
 } from "../core/page.js";
 import { encodePNG } from "../core/png.js";
 import { type PointerSample, Recorder } from "../core/recorder.js";
-import { fitScale, K_MAX, scaleFor, toSheet, type View } from "../core/screen.js";
+import { fitScale, K_MAX, type Point, scaleFor, toSheet, type View } from "../core/screen.js";
 import { extentOf, pictureOf, REACH, SHEET, type Size } from "../core/sheet.js";
+import {
+  type EraserMode,
+  PALETTE,
+  PEN_SETTINGS,
+  type PenSettings,
+  penSettingsOf,
+  reachOf,
+} from "../core/style.js";
 import { cellsForCheck, paperWorkForCheck, workForCheck } from "../core/submission.js";
 import {
   HAND,
@@ -138,11 +156,12 @@ import {
   tracingStateOf,
   whollyOff,
 } from "../core/tracing.js";
-import { nextIdOf, resumeOf, Work } from "../core/work.js";
+import { type Cutting, nextIdOf, resumeOf, Work } from "../core/work.js";
 import { ZOOM_MIN, ZOOM_STEP } from "../core/zoom.js";
 import { placeOver, SVG, write } from "./attributes.js";
 import { knows, labelsFor, say, sayAround } from "./labels.js";
 import { Parts } from "./parts.js";
+import { pensStyle, samePens, screenColourOf } from "./pens.js";
 import { Pictures } from "./pictures.js";
 import { attachProbe } from "./probe.js";
 import { PAGE_ZOOM, PEN_MODE } from "./session.js";
@@ -163,6 +182,7 @@ export type {
   CanvasElement,
   CanvasEventMap,
   DemoChangeEvent,
+  EraserMode,
   ExportedCell,
   ExportedPaper,
   ExportedSheet,
@@ -175,6 +195,10 @@ export type {
   Media,
   PaperGrid,
   PaperTask,
+  PenChangeEvent,
+  PenKind,
+  PenSettings,
+  StrokeStyle,
   ToolChange,
   ToolChangeEvent,
   TracingChangeEvent,
@@ -187,7 +211,7 @@ export type { Crop, Frame } from "../core/crop.js";
 export type { DemoState, WorkedExample } from "../core/example.js";
 export type { GridKind } from "../core/grid.js";
 export type { Group } from "../core/groups.js";
-export type { HistoryEvent } from "../core/history.js";
+export type { HistoryEvent, Piece } from "../core/history.js";
 export type { InkPoint, Stroke } from "../core/ink.js";
 export type { Manifest } from "../core/manifest.js";
 export type {
@@ -227,6 +251,8 @@ const TRACING_CHANGE = "tracingchange";
 const TRACING_READ = "tracingread";
 /** The event the element sends when the learner turns a task from paper's grid with its button. */
 const GRID_CHANGE = "gridchange";
+/** The event the element sends when the learner changes a setting of the pen or the eraser. */
+const PEN_CHANGE = "penchange";
 /**
  * A task from paper's template: no statement, the pen and the eraser, and a dotted sheet, as the
  * task comes, whose grid the learner turns.
@@ -303,7 +329,9 @@ const ERASER_RADIUS_PX = 10;
 // a button in focus shows a ring in the accent; an unavailable one is paler by its colour, not its
 // opacity, which would pale the ring too (WCAG 2.4.7, 1.4.11). A button's tooltip stands beside it,
 // white on near-black, as the mockup has it. Nothing in the element moves but the scrolling, which
-// jumps, and no tooltip fades (WCAG 2.3.3). The element is as tall as the statement and the sheet
+// jumps, and, only to whom motion is no harm, the sign of a wait and a popover as it opens; no
+// tooltip fades (WCAG 2.3.3). A pen that hovers over the sheet shows a circle as wide as its line,
+// in its colour, or the eraser's circle, white seen through within a dark edge. The element is as tall as the statement and the sheet
 // unless it is given a height: then the statement and the sheet scroll in it, under the bar. A
 // consumer whose own bars float over the element's top and bottom says how far by
 // --novatrail-canvas-pad-top and -bottom: the statement starts below the first, and the sheet
@@ -607,7 +635,8 @@ canvas {
   border: 2px solid color-mix(in srgb, currentColor 25%, transparent); border-top-color: currentColor;
 }
 .tracing-scale .mode.back { background: #f2f2f7; color: var(--novatrail-canvas-ink, ${INK}); }
-/* The one motion: a wait for the reading the learner asked for, and only to whom it is no harm. */
+/* The motions: a wait for the reading the learner asked for, and the pop-in of a popover of the
+   pen or the eraser (pens.ts), only to whom they are no harm. */
 @media (prefers-reduced-motion: no-preference) {
   .scan i { animation: novatrail-scan 1s ease-in-out infinite; }
   .spinner, .tracing-scale .mode.busy::before { animation: novatrail-spin 0.8s linear infinite; }
@@ -670,8 +699,23 @@ canvas {
   :is(.tools, .tracing-scale) button:focus-visible, .viewport:focus-visible + .ring {
     outline-color: Highlight;
   }
+  .stage > .hover { background: CanvasText; }
+  .stage > .hover.erasing { background: Canvas; border-color: CanvasText; }
 }
-`;
+.stage > .hover {
+  inset: auto; left: var(--hover-x, 0px); top: var(--hover-y, 0px);
+  width: var(--hover-size, 4px); height: var(--hover-size, 4px);
+  margin: calc(var(--hover-size, 4px) / -2) 0 0 calc(var(--hover-size, 4px) / -2);
+  box-sizing: border-box; border-radius: 50%; pointer-events: none;
+  background: var(--hover-colour, var(--novatrail-canvas-ink, ${INK}));
+  opacity: var(--hover-opacity, 1);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9), 0 0 0 2px rgba(0, 0, 0, 0.25);
+}
+.stage > .hover.erasing {
+  background: rgba(255, 255, 255, 0.4); border: 1px solid rgba(0, 0, 0, 0.45); opacity: 1;
+}
+.stage > .hover[hidden] { display: none; }
+${pensStyle(INK, PAPER, ACCENT)}`;
 
 /** The sheet of STYLE that the elements of a document adopt, made by the first of them there. */
 const sheets = new WeakMap<Document, CSSStyleSheet>();
@@ -920,6 +964,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       next: () => this.#openNext(),
       toggle: () => this.#toggleDemo(),
       trace: () => this.#trace(),
+      pens: (settings) => this.#choosePens(settings),
     },
     DEMO_IDS,
   );
@@ -964,13 +1009,36 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#work.write(stroke, this.#writeOn);
     this.#changed();
   }, this.#clock);
-  /** The eraser: what a press came near leaves the work when it lifts, if still on the sheet. */
+  /**
+   * The eraser: what a press came near leaves the work when it lifts, if still on the sheet,
+   * whole, or in the mode "part" cut into the pieces it leaves.
+   */
   readonly #eraser = new Eraser(
     (from, to, reach) => this.#work.near(from, to, reach, this.#eraseOn),
-    (ids, time) => {
-      if (this.#work.erase(ids, time)) this.#changed();
-    },
+    (ids, time, erasure) => this.#erased(ids, time, erasure),
   );
+  /**
+   * What the eraser that takes a part, while it is down, leaves of each stroke it crossed, by the
+   * stroke's ID: its cut, fed the eraser's path as far as `fed`, and the pieces the screen shows
+   * in the stroke's place.
+   */
+  readonly #cutting = new Map<
+    number,
+    { readonly cut: Cut; fed: number; pieces: readonly Stroke[] }
+  >();
+  /** The learner's settings of the pen and the eraser, frozen. */
+  #pens: PenSettings = PEN_SETTINGS;
+  /** Whether the strokes take a style and the popovers open: not under `unstyled`. */
+  #styled = true;
+  /** Whether the colours are forced, where every stroke is the ink on the screen. */
+  #forced = false;
+  /** The circle a pen hovering over the sheet shows. */
+  readonly #hover = document.createElement("div");
+  /** The strokes on the sheet cut of each stroke, by its ID, kept while the strokes are the same. */
+  #piecesById: {
+    readonly strokes: readonly Stroke[];
+    readonly of: ReadonlyMap<number, readonly Stroke[]>;
+  } = { strokes: [], of: new Map() };
   /**
    * The hands on the sheet: which pointer may write, which is a palm, and which two fingers
    * scroll, in the page's pen mode. The recorder and the eraser say which pointer writes.
@@ -1000,6 +1068,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   readonly #resized = (): void => {
     this.#region();
     this.#fit();
+    this.#tools.pens.place();
   };
   readonly #page = new ResizeObserver(this.#resized);
   /** A window of another size has another view: the sheet goes as far past the ink by it. */
@@ -1098,9 +1167,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       if (box !== undefined) this.#area = { width: box.inlineSize, height: box.blockSize };
     }
     // The container's new size, the statement's or that of the list of a demo's parts: each moves
-    // the sheet, and the first is the room of a worked example's row.
+    // the sheet, and the first is the room of a worked example's row and of a popover.
     this.#layout();
     this.#fit();
+    this.#tools.pens.place();
   });
   /** The size of the container's visible part, in CSS pixels as laid out, before any transform. */
   #area: { readonly width: number; readonly height: number } | undefined;
@@ -1149,6 +1219,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       band.firstElementChild?.setAttribute("class", "grid");
     }
     this.#print.setAttribute("class", "print");
+    this.#hover.className = "hover";
+    this.#hover.setAttribute("aria-hidden", "true");
+    this.#hover.hidden = true;
     // The constructor reads no attribute: the labels of a demo's boxes are English till `lang`
     // comes.
     this.#nameBoxes(null);
@@ -1165,6 +1238,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       this.#tracingPaper.cover,
       this.#sketch,
       this.#canvas,
+      this.#hover,
       this.#marksLayer,
       this.#tracingPaper.frame,
       this.#tracingPaper.sign,
@@ -1195,6 +1269,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#canvas.addEventListener("pointerdown", (event) => this.#down(event));
     this.#canvas.addEventListener("pointermove", (event) => this.#move(event));
     this.#canvas.addEventListener("pointerup", (event) => this.#up(event));
+    for (const type of ["pointerleave", "pointerout"] as const) {
+      this.#canvas.addEventListener(type, () => this.#unhover());
+    }
     this.#canvas.addEventListener("pointercancel", (event) => {
       this.#drop(event.pointerId);
       this.#lifted(event.pointerId);
@@ -1243,6 +1320,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       roles: this.#hands.roles,
     }));
 
+    this.#adopt("pens");
     this.#adopt("tool");
     this.#adopt("task");
     this.#adopt("workedExample");
@@ -1259,8 +1337,33 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#adopt("marks");
   }
 
-  /** The element follows its own `lang`: its buttons are labelled in it. */
-  static readonly observedAttributes = ["lang", "tools-hidden"];
+  /**
+   * The element follows its own `lang`, its buttons labelled in it, `tools-hidden`, and
+   * `unstyled`, under which the strokes take no style.
+   */
+  static readonly observedAttributes = ["lang", "tools-hidden", "unstyled"];
+
+  /**
+   * The settings of the pen and the eraser, frozen: canvas's as the element comes — a pen, black
+   * and three units wide, a blue liner, a yellow marker, and an eraser of strokes whole, 16 units
+   * across. The learner changes them in the popovers of the pen and the eraser, which a `penchange`
+   * tells; the consumer keeps them and gives them back to the next element, which tells nothing.
+   * The next stroke takes the style of the kind in use, and the eraser its mode and its size: a
+   * stroke written keeps its own. Settings not of `PenSettings` are a TypeError that names the
+   * field, and leave the settings as they were; `undefined` changes nothing. Under the attribute
+   * `unstyled` they are kept and given all the same, and the strokes take none of them.
+   */
+  get pens(): PenSettings {
+    return this.#pens;
+  }
+
+  set pens(settings: PenSettings | undefined) {
+    if (settings === undefined) return;
+    const checked = penSettingsOf(settings);
+    if (samePens(checked, this.#pens)) return;
+    this.#pens = checked;
+    this.#refresh();
+  }
 
   /**
    * What a press of the primary button does: "pen" writes, as the element starts, "eraser" erases,
@@ -1768,12 +1871,21 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * `tools-hidden` did: while the element has it, the bar is out of sight and of the accessibility
    * tree, as `app` hides it on a phone under its tutor's sheet. An attribute the
    * element had before it was defined comes here just after the constructor, which reads no
-   * attribute.
+   * attribute. Or `unstyled` did: while the element has it, a stroke takes no style, 3 units wide
+   * in the theme's ink, no popover opens, and the eraser takes whole strokes as near as it
+   * always took them — the samples page writes so, while its texts say nothing of a style.
    */
   attributeChangedCallback(name: string): void {
     if (name === "tools-hidden") {
       this.#tools.rail.hidden = this.hasAttribute("tools-hidden");
+      this.#tools.pens.close();
       this.#fit();
+      return;
+    }
+    if (name === "unstyled") {
+      this.#styled = !this.hasAttribute("unstyled");
+      this.#unhover();
+      this.#refresh();
       return;
     }
     this.#tools.label(this.getAttribute("lang"));
@@ -1888,26 +2000,42 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * The picture of the work, for the `picture` of a stored work that app puts on the server, a
    * method of the agreement with app: the PNG of the strokes the surface shows,
    * with no condition — the sheet's page, or the workbook's whole page with its draft, and the ink
-   * past the page, right and down, with the tracing paper where it lies: one pixel a unit,
-   * 1000 × 1400 for the page alone, and scaled down past the page to hold no more pixels than it,
-   * its size in its PNG's header —, whatever is filled and whether the work was sent to be checked
-   * or not; an empty surface, and a worked example's, is white. The strokes are those
-   * `exportWork()` takes, as the history has them: not the stroke under way, but those under an
-   * eraser not yet lifted. Each is the outline the screen fills, black on white with no theme and
-   * no template — on a task from paper the strokes of both layers, the tracing paper's where it
-   * lies, hidden or not, with the crop's picture laid in grey and multiplied —, and the pixels go
-   * through the crop's encoder, grey a byte each: so the picture looks as the sheet does, and holds
-   * at most 1,576,640 bytes, for the encoder spends at most 9 bits on a byte of a row, under the 4
-   * MiB of a stored work.
+   * past the page, right and down, with the tracing paper where it lies —, whatever is filled and
+   * whether the work was sent to be checked or not; an empty surface, and a worked example's, is
+   * white. The strokes are those `exportWork()` takes, as the history has them: not the stroke
+   * under way, but those under an eraser not yet lifted. Each is the outline the screen fills, on
+   * white with no theme and no template, in its style — its own colour, the palette's black too,
+   * at its opacity, a marker multiplied —, and a stroke without one black; on a task from paper
+   * the strokes of both layers, the tracing paper's where it lies, hidden or not, with the crop's
+   * picture laid in grey and multiplied. While every stroke is grey — black, and the palette's
+   * black, a hair off grey, among them —, the pixels
+   * are grey, a byte each, one pixel a unit, 1000 × 1400 for the page alone, and scaled down past
+   * the page to hold no more pixels than it; with a colour among them they are RGB, three bytes
+   * each, and scaled down to hold no more bytes. Its size is in its PNG's header. The pixels go
+   * through the crop's encoder: so the picture looks as the sheet does, and holds at most
+   * 1,576,640 bytes, for the encoder spends at most 9 bits on a byte of a row, under the 4 MiB of a
+   * stored work.
    */
   async exportPicture(): Promise<Blob> {
-    // A pixel a unit, the ink 3 px wide as on a screen of a pixel a unit, while the page and the
-    // ink past it hold no more pixels than the page; scaled down to hold them past that.
+    const tracing = this.#tracing;
+    const work = this.#work;
+    const strokes = work.strokes;
+    const channels = strokes.every(({ style }) => style === undefined || isGrey(style.color))
+      ? 1
+      : 3;
+    // A pixel a unit, the ink as wide as on a screen of a pixel a unit, while the page and the ink
+    // past it hold no more bytes than the page in grey; scaled down to hold them past that.
     const reach = this.#inkReach();
-    const { width, height, scale } = pictureOf({
-      maxX: reach.maxX + INK_REACH,
-      maxY: reach.maxY + INK_REACH,
-    });
+    // A stroke of the tracing paper reaches as far as the paper's scale draws it.
+    const by = tracing === undefined ? 1 : scaleIn(tracing);
+    const past = strokes.reduce(
+      (most, stroke) => Math.max(most, reachOf(stroke) * (work.onTracing(stroke.id) ? by : 1)),
+      0,
+    );
+    const { width, height, scale } = pictureOf(
+      { maxX: reach.maxX + past, maxY: reach.maxY + past },
+      channels,
+    );
     const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
@@ -1915,41 +2043,44 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     if (context === null) throw new Error(`<${TAG}> got no 2D context to draw its picture on`);
     context.fillStyle = "#fff";
     context.fillRect(0, 0, width, height);
-    context.fillStyle = "#000";
-    const tracing = this.#tracing;
-    const strokes = this.#work.strokes;
-    const work = this.#work;
     for (const stroke of strokes) {
       const traced = tracing !== undefined && work.onTracing(stroke.id);
       const [x, y] = traced ? tracing.at : [0, 0];
       // A stroke of the tracing paper is as large as the paper's scale draws it.
       const by = traced ? scale * scaleIn(tracing) : scale;
       context.setTransform(by, 0, 0, by, x * scale, y * scale);
+      const { style } = stroke;
+      context.fillStyle = style?.color ?? "#000";
+      context.globalAlpha = style === undefined ? 1 : style.opacity / 100;
+      context.globalCompositeOperation = style?.pen === "marker" ? "multiply" : "source-over";
       context.fill(this.#finished(stroke).path);
     }
     const { data } = context.getImageData(0, 0, width, height);
     // The canvas's memory goes at once, not at a collection: WebKit caps what all canvases hold.
     canvas.width = 0;
     canvas.height = 0;
-    // Black on white: the red of a pixel is its grey. Every index is within the pixels' four bytes
-    // a pixel, so none reads past them.
-    const gray = new Uint8Array(width * height);
-    for (let at = 0; at < gray.length; at++) gray[at] = data[4 * at] as number;
+    // On opaque white, grey ink leaves a pixel's red its grey. Every index is within the pixels'
+    // four bytes a pixel, so none reads past them.
+    const pixels = new Uint8Array(channels * width * height);
+    for (let at = 0; at < width * height; at++) {
+      for (let c = 0; c < channels; c++) pixels[channels * at + c] = data[4 * at + c] as number;
+    }
     // A task from paper's crop lies over it where the tracing paper lies, shown or hidden, at the
     // picture's scale, as the crop of the work has it.
     if (tracing !== undefined) {
       const { size, gray: picture } = await this.#tracingPaper.read;
       if (picture !== null) {
         const rect = tracingRect(tracing.at, scaled(size, scaleIn(tracing)));
-        layOver(gray, width, picture, {
+        const place = {
           left: rect.minX * scale,
           top: rect.minY * scale,
           right: rect.maxX * scale,
           bottom: rect.maxY * scale,
-        });
+        };
+        layOver(pixels, width, picture, place, channels);
       }
     }
-    return blobOf(encodePNG(gray, width, height));
+    return blobOf(encodePNG(pixels, width, height, channels));
   }
 
   disconnectedCallback(): void {
@@ -2003,7 +2134,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       | "manifest"
       | "media"
       | "history"
-      | "marks",
+      | "marks"
+      | "pens",
   ): void {
     if (!Object.hasOwn(this, name)) return;
     const value: unknown = Reflect.get(this, name);
@@ -2028,6 +2160,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   #present(template: Template): void {
     const shown = this.#shownTemplate;
     this.#shownTemplate = template;
+    if (!sameLayer(template, shown) || !sameStatement(template, shown)) this.#tools.pens.close();
     if (!sameLayer(template, shown)) {
       this.#lay(template);
       // A page of other boxes, or of the other kind, puts the marks back or takes them off.
@@ -2171,12 +2304,22 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     }
   }
 
-  /** Every stroke the sheet has known, erased or not, as its history wrote them. */
+  /**
+   * Every stroke the sheet has known, erased or not, as its history wrote them: the strokes
+   * written, and the pieces the eraser cut.
+   */
   #known(): Stroke[] {
     const tracing = this.#tracing;
     return this.#work.history.flatMap((event) => {
-      if (event.kind !== "write") return [];
-      return [tracing === undefined ? event.stroke : this.#onSheet(event.stroke, tracing)];
+      const strokes =
+        event.kind === "write"
+          ? [event.stroke]
+          : event.kind === "cut"
+            ? event.pieces.map(({ stroke }) => stroke)
+            : [];
+      return tracing === undefined
+        ? strokes
+        : strokes.map((stroke) => this.#onSheet(stroke, tracing));
     });
   }
 
@@ -2248,6 +2391,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * recorder takes the primary button alone.
    */
   #down(event: PointerEvent): void {
+    // A press on the sheet closes a popover of the pen or the eraser, and writes or erases as well.
+    this.#tools.pens.close();
+    this.#unhover();
     // A worked example's sheet takes no input: the canvas takes no pointer then, and an event
     // that a script sends it does nothing either, nor puts the page in pen mode.
     if (this.#example !== undefined) return;
@@ -2304,12 +2450,150 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       traced && tracing !== undefined
         ? { ...onSheetSample, ...toTracing(onSheetSample, tracing.at, size, scale) }
         : onSheetSample;
-    // On the tracing paper the eraser reaches as far on the screen, in the paper's own units.
-    const reach = traced ? ERASER_RADIUS_PX / screen.k / scale : ERASER_RADIUS_PX / screen.k;
+    // On the tracing paper the eraser is as large on the screen, in the paper's own units, and a
+    // stroke there keeps its width in them. The work adds how far each stroke's ink reaches past
+    // its points.
+    const { radius, mode } = this.#eraserOf(screen.k);
+    const reach = traced ? radius / scale : radius;
+    if (erases) this.#cutting.clear();
+    const style = this.#styled ? this.#pens.styles[this.#pens.pen] : undefined;
     const began = erases
-      ? this.#eraser.down(sample, reach + INK_REACH)
-      : this.#recorder.down(sample);
+      ? this.#eraser.down(sample, reach, mode)
+      : this.#recorder.down(sample, style);
     if (began) this.#request();
+  }
+
+  /**
+   * The eraser's radius on the sheet, in its units, at a scale of the screen, and its mode. One
+   * that takes strokes whole reaches as far as its size, and never less on the screen than it
+   * always reached; one that takes a part, its size exactly. Without styles, it takes strokes
+   * whole, as near as it always took them, whatever the settings.
+   */
+  #eraserOf(k: number): { readonly radius: number; readonly mode: EraserMode } {
+    const least = ERASER_RADIUS_PX / k;
+    if (!this.#styled) return { radius: least, mode: "stroke" };
+    const half = this.#pens.eraserSize / 2;
+    return this.#pens.eraser === "part"
+      ? { radius: half, mode: "part" }
+      : { radius: Math.max(half, least), mode: "stroke" };
+  }
+
+  /**
+   * A press of the eraser lifted, with what it came near: in the mode "stroke" it erases those
+   * strokes still on the sheet; in the mode "part" each of them its path crossed goes, and its
+   * pieces come in its place, in one cut, numbered in the sheet's order and along each stroke. A
+   * stroke it came near but did not cross stays as it is, and with none crossed nothing is done.
+   */
+  #erased(ids: readonly number[], time: number, erasure: Erasure): void {
+    this.#cutting.clear();
+    if (erasure.mode === "stroke") {
+      if (this.#work.erase(ids, time)) this.#changed();
+      return;
+    }
+    const hit = new Set(ids);
+    const crossed: { readonly stroke: Stroke; readonly pieces: InkPoint[][] }[] = [];
+    for (const stroke of this.#work.strokes) {
+      if (!hit.has(stroke.id)) continue;
+      const pieces = cutOf(stroke, erasure.path, erasure.reach + reachOf(stroke));
+      if (pieces !== null) crossed.push({ stroke, pieces });
+    }
+    if (crossed.length === 0) {
+      this.#request();
+      return;
+    }
+    let id = this.#recorder.reserve(
+      crossed.reduce((count, { pieces }) => count + pieces.length, 0),
+    );
+    const cuts: Cutting[] = crossed.map(({ stroke, pieces }) => ({
+      id: stroke.id,
+      pieces: pieces.map((points) => pieceOf(stroke, id++, points)),
+    }));
+    if (this.#work.cut(cuts, time)) this.#changed();
+  }
+
+  /**
+   * What the eraser that takes a part, still down, leaves of a stroke it came near, for the
+   * screen: its cut fed the path's places it has not had yet, and the pieces anew when they
+   * changed — the stroke whole while the path has not crossed it.
+   */
+  #piecesOf(stroke: Stroke, erasure: Erasure): readonly Stroke[] {
+    let entry = this.#cutting.get(stroke.id);
+    if (entry === undefined || entry.cut.stroke !== stroke) {
+      entry = { cut: new Cut(stroke, erasure.reach + reachOf(stroke)), fed: 0, pieces: [stroke] };
+      this.#cutting.set(stroke.id, entry);
+    }
+    const { path } = erasure;
+    let more = false;
+    for (; entry.fed < path.length; entry.fed++) {
+      const to = path[entry.fed] as Point;
+      more = entry.cut.add(path[entry.fed - 1] ?? to, to) || more;
+    }
+    if (more) {
+      const pieces = entry.cut.pieces();
+      entry.pieces =
+        pieces === null ? [stroke] : pieces.map((points) => pieceOf(stroke, stroke.id, points));
+    }
+    return entry.pieces;
+  }
+
+  /**
+   * The learner made a choice in a popover of the pen or the eraser: the settings are those now,
+   * and whoever listens hears of them, unless they are the same. A consumer that gives the
+   * settings follows them.
+   */
+  #choosePens(settings: PenSettings): void {
+    if (samePens(settings, this.#pens)) return;
+    this.#pens = settings;
+    this.#refresh();
+    this.dispatchEvent(
+      new CustomEvent(PEN_CHANGE, { bubbles: true, composed: true, detail: settings }),
+    );
+  }
+
+  /**
+   * A pen hovering over the sheet, its buttons up, as Apple Pencil Pro does, shows a circle at its
+   * point: the pen's as wide as the line of the kind in use, in its colour, a little seen through
+   * at the least, and the eraser's as large as it erases. None with the hand, without styles, on a
+   * worked example, or with any other pointer.
+   */
+  #hoverAt(event: PointerEvent): void {
+    const screen = this.#view();
+    const eraser = this.#tool === "eraser";
+    if (
+      event.buttons !== 0 ||
+      !this.#styled ||
+      this.#example !== undefined ||
+      this.#tool === HAND ||
+      screen === undefined
+    ) {
+      this.#unhover();
+      return;
+    }
+    // CSS pixels of the stage to a client pixel, under whatever transform the page puts on it.
+    const by = this.#canvas.offsetWidth > 0 ? screen.width / this.#canvas.offsetWidth : 1;
+    const style = this.#pens.styles[this.#pens.pen];
+    const size = eraser
+      ? 2 * this.#eraserOf(screen.k).radius * screen.k
+      : Math.max(4 * by, style.width * screen.k);
+    const hover = this.#hover;
+    hover.classList.toggle("erasing", eraser);
+    hover.style.setProperty("--hover-x", `${(event.clientX - screen.left) / by}px`);
+    hover.style.setProperty("--hover-y", `${(event.clientY - screen.top) / by}px`);
+    hover.style.setProperty("--hover-size", `${size / by}px`);
+    if (eraser) {
+      hover.style.removeProperty("--hover-colour");
+      hover.style.removeProperty("--hover-opacity");
+    } else {
+      const colour = screenColourOf(style, this.#canvasStyle.color, this.#forced);
+      hover.style.setProperty("--hover-colour", colour);
+      hover.style.setProperty("--hover-opacity", String(Math.max(0.35, style.opacity / 100)));
+    }
+    hover.hidden = false;
+  }
+
+  /** The hovering pen's circle goes: the pen came down, or left the sheet. */
+  #unhover(): void {
+    this.#hover.hidden = true;
   }
 
   /** The canvas holds on to a pointer until it lifts. */
@@ -2322,6 +2606,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   #move(event: PointerEvent): void {
+    if (event.pointerType === "pen") this.#hoverAt(event);
     // The sheet goes with the hand, as with two fingers.
     const pan = this.#pan;
     if (pan !== undefined && pan.pointerId === event.pointerId) {
@@ -2400,7 +2685,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /** A pointer's stroke or erasing goes, as on `pointercancel`, and the sheet is drawn anew. */
   #drop(pointerId: number): void {
-    if (this.#recorder.cancel(pointerId) || this.#eraser.cancel(pointerId)) this.#request();
+    if (this.#recorder.cancel(pointerId) || this.#eraser.cancel(pointerId)) {
+      this.#cutting.clear();
+      this.#request();
+    }
   }
 
   /** The input a pointer drives: the recorder while it writes, the eraser while it erases. */
@@ -2818,7 +3106,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    */
   #watchColours(): void {
     const forced = matchMedia("(forced-colors: active)");
-    const changed = (): void => this.#request();
+    this.#forced = forced.matches;
+    const changed = (): void => {
+      this.#forced = forced.matches;
+      this.#request();
+    };
     forced.addEventListener("change", changed);
     this.#unwatchColours = () => forced.removeEventListener("change", changed);
   }
@@ -3199,6 +3491,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       expanded: demo?.hidden !== true,
       traced: this.#tracing?.hidden !== true,
       grid: this.#paperGrid,
+      pens: this.#pens,
+      styled: this.#styled,
     });
     this.#sheet.classList.toggle("hand", this.#tool === HAND);
     this.#nameRegion();
@@ -3299,14 +3593,29 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const tracing = this.#tracing;
     const work = this.#work;
     // A stroke of the tracing paper is where the paper lies, and out of sight while it is hidden.
-    // Its box moves with the paper, and the stroke is not copied for each place of a drag.
-    const onScreen = (id: number): Box | undefined => {
-      const stroke = pending.has(id) ? undefined : byId.get(id);
-      if (stroke === undefined) return undefined;
-      if (tracing === undefined || !work.onTracing(id)) return this.#pointBoxOf(stroke);
+    // Its box moves with the paper, and the stroke is not copied for each place of a drag. An
+    // eraser that takes a part, still down, leaves the frames where they are till it lifts.
+    const hidden = this.#eraser.erasure?.mode === "part" ? new Set<number>() : pending;
+    const boxOn = (stroke: Stroke): Box | undefined => {
+      if (hidden.has(stroke.id)) return undefined;
+      if (tracing === undefined || !work.onTracing(stroke.id)) return this.#pointBoxOf(stroke);
       return tracing.hidden
         ? undefined
         : boxOnSheet(this.#pointBoxOf(stroke), tracing.at, scaleIn(tracing));
+    };
+    // A stroke the eraser cut is where its pieces are, however many times they were cut since.
+    const cut = this.#cutOf();
+    const onScreen = (id: number): Box | undefined => {
+      const stroke = byId.get(id);
+      if (stroke !== undefined) return boxOn(stroke);
+      const boxes = (cut.get(id) ?? []).flatMap((piece) => boxOn(piece) ?? []);
+      if (boxes.length === 0) return undefined;
+      return {
+        minX: Math.min(...boxes.map((box) => box.minX)),
+        minY: Math.min(...boxes.map((box) => box.minY)),
+        maxX: Math.max(...boxes.map((box) => box.maxX)),
+        maxY: Math.max(...boxes.map((box) => box.maxY)),
+      };
     };
     const half = 1 / screen.k;
     for (const mark of this.#shown) {
@@ -3330,8 +3639,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
         const on = this.#writeOn === "tracing" ? this.#tracing : undefined;
         const [dx, dy] = on?.at ?? [0, 0];
         const by = on === undefined ? 1 : scaleIn(on);
+        const reach = reachOf(this.#writing.stroke) * by + half;
         mark.under = points.some((point) =>
-          near({ ...point, x: point.x * by + dx, y: point.y * by + dy }, frame, INK_REACH + half),
+          near({ ...point, x: point.x * by + dx, y: point.y * by + dy }, frame, reach),
         );
       }
       mark.frame = frame;
@@ -3382,6 +3692,26 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     return fresh;
   }
 
+  /**
+   * The strokes on the sheet cut of each stroke, by its ID: the pieces of a stroke the eraser cut,
+   * and the pieces of those pieces. Each action on the work gives a new array of strokes.
+   */
+  #cutOf(): ReadonlyMap<number, readonly Stroke[]> {
+    const strokes = this.#work.strokes;
+    if (this.#piecesById.strokes !== strokes) {
+      const of = new Map<number, Stroke[]>();
+      for (const stroke of strokes) {
+        for (const id of this.#work.cutFrom(stroke.id)) {
+          const pieces = of.get(id);
+          if (pieces === undefined) of.set(id, [stroke]);
+          else pieces.push(stroke);
+        }
+      }
+      this.#piecesById = { strokes, of };
+    }
+    return this.#piecesById.of;
+  }
+
   /** The strokes on the sheet by ID: each action on the work gives a new array of them. */
   #byId(): ReadonlyMap<number, Stroke> {
     const strokes = this.#work.strokes;
@@ -3405,7 +3735,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * by the path it was given once, the stroke under way outlined anew. A stroke whose points lie
    * far out of sight is not outlined till it comes into sight: a history given to the sheet may
    * hold thousands. What the eraser under way has come near is out of sight already, though
-   * still on the sheet until it lifts. The ink's colour is the canvas's, as the theme makes it.
+   * still on the sheet until it lifts — or, for an eraser that takes a part, drawn as the pieces it
+   * would leave. A stroke without a style is in the ink's colour, the canvas's, as the theme makes
+   * it; one with a style in its colour, filled once at its opacity, so that it is one layer
+   * however it crosses itself, and a marker's multiplied with the ink under it. The palette's
+   * black is the theme's ink, and with forced colours every stroke is.
    */
   #draw(): void {
     const screen = this.#view();
@@ -3427,30 +3761,50 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const right = screen.vx + screen.width / screen.k;
     const bottom = screen.vy + screen.height / screen.k;
     const erasing = this.#eraser.pending;
+    const erasure = this.#eraser.erasure;
     // A task from paper's tracing paper: its strokes over the sheet's, moved to where it lies, and
     // none while it is hidden.
     const tracing = this.#tracing;
     const work = this.#work;
     const shown = tracing !== undefined && !tracing.hidden;
+    const fill = (stroke: Stroke, path: Path2D): void => {
+      const { style } = stroke;
+      if (style === undefined) {
+        context.fill(path);
+        return;
+      }
+      context.fillStyle = screenColourOf(style, colour, this.#forced);
+      context.globalAlpha = style.opacity / 100;
+      if (style.pen === "marker") context.globalCompositeOperation = "multiply";
+      context.fill(path);
+      context.fillStyle = colour;
+      context.globalAlpha = 1;
+      context.globalCompositeOperation = "source-over";
+    };
     const draw = (stroke: Stroke, dx: number, dy: number, by = 1): void => {
       // The outline keeps within half the widest line of the points: twice that is out of sight.
       const box = this.#pointBoxOf(stroke);
-      const reach = 2 * INK_REACH * by;
+      const reach = 2 * reachOf(stroke) * by;
       if (box.maxY * by + dy + reach < screen.vy || box.minY * by + dy - reach > bottom) return;
       if (box.maxX * by + dx + reach < screen.vx || box.minX * by + dx - reach > right) return;
       const ink = this.#finished(stroke);
-      if (ink.bottom * by + dy >= screen.vy && ink.top * by + dy <= bottom) context.fill(ink.path);
+      if (ink.bottom * by + dy >= screen.vy && ink.top * by + dy <= bottom) fill(stroke, ink.path);
+    };
+    // A stroke an eraser has come near: out of sight, or the pieces a cut would leave of it.
+    const drawn = (stroke: Stroke): readonly Stroke[] => {
+      if (!erasing.has(stroke.id)) return [stroke];
+      return erasure?.mode === "part" ? this.#piecesOf(stroke, erasure) : [];
     };
     context.setTransform(across, 0, 0, down, -screen.vx * across, -screen.vy * down);
     const traced: Stroke[] = [];
     for (const stroke of work.strokes) {
-      if (erasing.has(stroke.id)) continue;
-      if (tracing === undefined || !work.onTracing(stroke.id)) draw(stroke, 0, 0);
-      else if (shown) traced.push(stroke);
+      if (tracing === undefined || !work.onTracing(stroke.id)) {
+        for (const each of drawn(stroke)) draw(each, 0, 0);
+      } else if (shown) traced.push(...drawn(stroke));
     }
     const live = this.#recorder.live;
     const liveTraced = this.#writeOn === "tracing";
-    if (live !== undefined && !liveTraced) context.fill(pathOf(this.#outline(live, false)));
+    if (live !== undefined && !liveTraced) fill(live, pathOf(this.#outline(live, false)));
     if (!shown) return;
     const [dx, dy] = tracing.at;
     // The paper's strokes are as large as its scale draws it, from its corner.
@@ -3464,7 +3818,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       (dy - screen.vy) * down,
     );
     for (const stroke of traced) draw(stroke, dx, dy, by);
-    if (live !== undefined && liveTraced) context.fill(pathOf(this.#outline(live, false)));
+    if (live !== undefined && liveTraced) fill(live, pathOf(this.#outline(live, false)));
   }
 
   #finished(stroke: Stroke): Ink {
@@ -3548,6 +3902,22 @@ function rectOf(box: PageBox, item: PageItem): SVGRectElement {
   placeOver(rect, { ...box, left: x, top: y });
   rect.setAttribute("role", "img");
   return rect;
+}
+
+/**
+ * Whether a stroke's colour `#rrggbb` is a grey for the picture of the work: its three channels
+ * alike, or the palette's black, a hair off grey, which a picture of black ink keeps at a pixel a
+ * unit: its grey is the red of its pixels.
+ */
+function isGrey(colour: string): boolean {
+  if (colour === PALETTE[0]) return true;
+  return colour.slice(1, 3) === colour.slice(3, 5) && colour.slice(3, 5) === colour.slice(5, 7);
+}
+
+/** A piece of a stroke the eraser cut: a stroke of its own, of the stroke's pointer and style. */
+function pieceOf(stroke: Stroke, id: number, points: readonly InkPoint[]): Stroke {
+  const { kind, style } = stroke;
+  return style === undefined ? { id, kind, points } : { id, kind, style, points };
 }
 
 /** The bytes of a PNG as a Blob, for the consumer to send or show. */

@@ -242,12 +242,18 @@ export function toTracing(
 /**
  * A stroke of the tracing paper where it lies on the sheet: its points scaled by `scale` and moved
  * by `at`, and kept to the sheet, should the paper lie in part beyond it — the rules of the groups
- * and the crop hold on the sheet alone. The same ID, kind and times.
+ * and the crop hold on the sheet alone. The same ID, kind and times, and its style with its width
+ * scaled too, to a tenth and within a style's bounds, as the screen draws it.
  */
 export function onSheet(stroke: Stroke, at: readonly [number, number], scale = 1): Stroke {
+  const { style } = stroke;
+  const width = (value: number) => Math.min(50, Math.max(0.1, Math.round(value * scale * 10) / 10));
   return Object.freeze({
     id: stroke.id,
     kind: stroke.kind,
+    ...(style === undefined
+      ? {}
+      : { style: Object.freeze({ ...style, width: width(style.width) }) }),
     points: Object.freeze(
       stroke.points.map(({ x, y, t, p }) =>
         Object.freeze({
@@ -317,8 +323,9 @@ export function grayOf(rgba: Uint8ClampedArray | Uint8Array, width: number, heig
 
 /**
  * The crop's picture laid into the pixels of a crop of the work, multiplied, as the screen
- * lays the tracing paper over the sheet: `ink` the crop's pixels, `width` px wide, and `rect`
- * where the tracing paper lies on them, in px, which may reach beyond them. Each pixel of the crop
+ * lays the tracing paper over the sheet: `ink` the crop's pixels, `width` px wide, of `channels`
+ * bytes each — grey, or RGB, each channel multiplied alike —, and `rect` where the tracing paper
+ * lies on them, in px, which may reach beyond them. Each pixel of the crop
  * under the paper takes the mean of the picture's pixels whose centres fall within it, or the one
  * nearest its centre when none does, so the crop shrinks or grows by sums of whole numbers alone,
  * the same in every engine. Changes `ink` in place.
@@ -333,8 +340,9 @@ export function layOver(
     readonly right: number;
     readonly bottom: number;
   },
+  channels: 1 | 3 = 1,
 ): void {
-  const height = ink.length / width;
+  const height = ink.length / (width * channels);
   const across = (rect.right - rect.left) / picture.width;
   const down = (rect.bottom - rect.top) / picture.height;
   if (!(across > 0 && down > 0)) return;
@@ -369,9 +377,10 @@ export function layOver(
           count += 1;
         }
       }
-      const at = row * width + firstColumn + c;
+      const at = (row * width + firstColumn + c) * channels;
       const mean = Math.round(sum / count);
-      ink[at] = Math.round(((ink[at] as number) * mean) / 255);
+      for (let k = at; k < at + channels; k++)
+        ink[k] = Math.round(((ink[k] as number) * mean) / 255);
     }
   }
 }

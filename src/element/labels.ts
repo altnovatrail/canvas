@@ -1,6 +1,6 @@
-// The labels of the element's own buttons, of a workbook's boxes and of the parts of a worked
-// example's demo, in the languages of the interface, English and Russian, by the shared
-// rules of the packages' translations:
+// The labels of the element's own buttons, of the popovers of the pen and the eraser, of a
+// workbook's boxes and of the parts of a worked example's demo, in the languages of the
+// interface, English and Russian, by the shared rules of the packages' translations:
 // - the language is the element's own `lang`, looked up as RFC 4647 does it, and English stands for
 //   any other, under a `lang` of its own;
 // - a label with a number or a word in it is one string with named places, «Часть {n} из {total}.»,
@@ -84,6 +84,48 @@ export interface Labels {
   readonly valued: string;
   /** The part of a demo the element tells of, {n}, of so many, {total}. */
   readonly part: string;
+  /** What the pen and the eraser on the bar say of a second press, while chosen. */
+  readonly settingsHint: string;
+  /** The popovers of the pen and of the eraser. */
+  readonly penSettings: string;
+  readonly eraserSettings: string;
+  /** The kinds of pen, and their group. */
+  readonly kindPen: string;
+  readonly kindLiner: string;
+  readonly kindMarker: string;
+  readonly penKind: string;
+  /** The widths of the pen, their group and each, {n} of so many, {total}. */
+  readonly widths: string;
+  readonly widthAt: string;
+  /** The opacity's slider, and its value, {percent}. */
+  readonly opacity: string;
+  readonly percent: string;
+  /** The colours, their group, the palette's five and the disclosure of the others. */
+  readonly colour: string;
+  readonly black: string;
+  readonly blue: string;
+  readonly green: string;
+  readonly yellow: string;
+  readonly red: string;
+  readonly otherColours: string;
+  readonly grey: string;
+  readonly purple: string;
+  readonly orange: string;
+  readonly teal: string;
+  readonly pink: string;
+  readonly brown: string;
+  readonly skyBlue: string;
+  readonly lightGreen: string;
+  readonly amber: string;
+  readonly violet: string;
+  readonly scarlet: string;
+  readonly white: string;
+  /** The eraser's modes and their heading, and its sizes, their heading and each. */
+  readonly wholeStroke: string;
+  readonly partly: string;
+  readonly whatToErase: string;
+  readonly size: string;
+  readonly sizeAt: string;
 }
 
 /** The labels in English, the code's own language: those of any language the table has not. */
@@ -128,6 +170,41 @@ const ENGLISH: Labels = Object.freeze({
   filled: "{name}, filled",
   valued: "{name}: {value}",
   part: "Part {n} of {total}.",
+  settingsHint: "Press again for settings",
+  penSettings: "Pen settings",
+  eraserSettings: "Eraser settings",
+  kindPen: "Pen",
+  kindLiner: "Liner",
+  kindMarker: "Marker",
+  penKind: "Kind of pen",
+  widths: "Width",
+  widthAt: "Width {n} of {total}",
+  opacity: "Opacity",
+  percent: "{percent}%",
+  colour: "Colour",
+  black: "Black",
+  blue: "Blue",
+  green: "Green",
+  yellow: "Yellow",
+  red: "Red",
+  otherColours: "Other colours",
+  grey: "Grey",
+  purple: "Purple",
+  orange: "Orange",
+  teal: "Teal",
+  pink: "Pink",
+  brown: "Brown",
+  skyBlue: "Sky blue",
+  lightGreen: "Light green",
+  amber: "Amber",
+  violet: "Violet",
+  scarlet: "Scarlet",
+  white: "White",
+  wholeStroke: "Whole stroke",
+  partly: "Partly",
+  whatToErase: "What to erase",
+  size: "Size",
+  sizeAt: "Size {n} of {total}",
 });
 
 /**
@@ -179,6 +256,41 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
       filled: "{name}, заполнено",
       valued: "{name}: {value}",
       part: "Часть {n} из {total}.",
+      settingsHint: "Нажмите ещё раз — настройки",
+      penSettings: "Настройки пера",
+      eraserSettings: "Настройки ластика",
+      kindPen: "Ручка",
+      kindLiner: "Линер",
+      kindMarker: "Маркер",
+      penKind: "Вид пера",
+      widths: "Толщина",
+      widthAt: "Толщина {n} из {total}",
+      opacity: "Непрозрачность",
+      percent: "{percent} %",
+      colour: "Цвет",
+      black: "Чёрный",
+      blue: "Синий",
+      green: "Зелёный",
+      yellow: "Жёлтый",
+      red: "Красный",
+      otherColours: "Другие цвета",
+      grey: "Серый",
+      purple: "Фиолетовый",
+      orange: "Оранжевый",
+      teal: "Бирюзовый",
+      pink: "Розовый",
+      brown: "Коричневый",
+      skyBlue: "Голубой",
+      lightGreen: "Салатовый",
+      amber: "Янтарный",
+      violet: "Сиреневый",
+      scarlet: "Алый",
+      white: "Белый",
+      wholeStroke: "Штрих целиком",
+      partly: "Частично",
+      whatToErase: "Что стирать",
+      size: "Размер",
+      sizeAt: "Размер {n} из {total}",
     }),
   ],
 ]);

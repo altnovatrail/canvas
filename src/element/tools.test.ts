@@ -390,9 +390,14 @@ test("a tool the learner chooses with the bar is the element's tool, and toolcha
   await expect.element(found.pen).not.toBeChecked();
   expect(told).toEqual([{ tool: "eraser" }]);
   expect(Object.isFrozen(told[0])).toBe(true);
-  // The tool in use, chosen again, is no change.
+  // The tool in use, chosen again, is no change: it opens the eraser's settings, which Escape
+  // closes.
   await userEvent.click(found.eraser);
   expect(told).toHaveLength(1);
+  const settings = page.elementLocator(element).getByRole("dialog", { name: "Eraser settings" });
+  await expect.element(settings).toBeVisible();
+  await userEvent.keyboard("{Escape}");
+  await expect.element(settings).not.toBeInTheDocument();
   // The hand is a tool of the bar as the others are.
   await userEvent.click(found.hand);
   expect(element.tool).toBe("hand");

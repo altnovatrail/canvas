@@ -13,7 +13,7 @@ import {
   workbookDigestOf,
 } from "./marks.js";
 import { encodePNG } from "./png.js";
-import { pictureOf, rasterOf } from "./raster.js";
+import { channelsOf, pictureOf, rasterOf } from "./raster.js";
 import { type Gray, layOver, type TracingState, tenthsOf } from "./tracing.js";
 
 /** The work of a sheet for checking: the PNG of its crop, and the context of the submission. */
@@ -117,7 +117,8 @@ export function paperWorkForCheck(
   const crop = cropOf(strokes, groups, digit, tenthsOf(rect));
   if (crop === null) return null;
   const ink = rasterOf(strokes, crop);
-  if (picture !== null) layOver(ink, crop.width, picture, pixelsOf(rect, crop));
+  const channels = channelsOf(strokes);
+  if (picture !== null) layOver(ink, crop.width, picture, pixelsOf(rect, crop), channels);
   const { drawn, width, height, margins, sheetBox, frames, exact } = crop;
   const numbers: CropNumbers = { drawn, width, height, margins, sheetBox, frames, exact };
   const submission = {
@@ -131,7 +132,7 @@ export function paperWorkForCheck(
     digest: digestOf(strokes, numbers, groups, paper),
   };
   return Object.freeze({
-    png: encodePNG(ink, crop.width, crop.height),
+    png: encodePNG(ink, crop.width, crop.height, channels),
     submission: frozen(submission),
   });
 }

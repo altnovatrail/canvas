@@ -83,8 +83,8 @@ export interface SampleView {
   readonly boxes: readonly PageBox[];
   /** The strokes the sheet showed at the end. */
   readonly shown: readonly Line[];
-  /** The strokes a history wrote and the sheet did not show at the end — erased, cleared or taken
-   * off by undo, and still in the file; a geometry has none. */
+  /** The strokes a history wrote and the sheet did not show at the end — erased, cut, cleared or
+   * taken off by undo, and still in the file; a geometry has none. */
   readonly hidden: readonly Line[];
   readonly about: readonly Field[];
   readonly task: readonly Field[];
@@ -132,7 +132,8 @@ const slotOf = (place: AnswerSlotPlace | undefined) => (place ? placeOf(place) :
 /**
  * The strokes of the file: a geometry's, all shown, or a history's replayed by the sheet's own rule
  * (`replay`, src/core/history.ts), with what it wrote and did not show at the end apart — erased,
- * cleared or taken off by undo, and still in the file.
+ * cut, cleared or taken off by undo, and still in the file. The pieces a cut left are strokes it
+ * wrote, as the rule takes them.
  */
 function linesOf(ink: Sample["ink"]): { shown: Line[]; hidden: Line[] } {
   const line = (id: number, points: readonly { x: number; y: number }[]): Line => ({
@@ -144,13 +145,21 @@ function linesOf(ink: Sample["ink"]): { shown: Line[]; hidden: Line[] } {
   }
   if (ink.case !== "history") return { shown: [], hidden: [] };
   const written: Line[] = [];
+  const strokeOf = (id: number, points: readonly { x: number; y: number }[], t: number) => {
+    written.push(line(id, points));
+    return { id, kind: "", points: points.map(({ x, y }) => ({ x, y, t, p: 0 })) };
+  };
   const history = ink.value.events.flatMap(({ tMs: t, event }): HistoryEvent[] => {
     switch (event.case) {
       case "write": {
         const { id, points } = event.value;
-        written.push(line(id, points));
-        const stroke = { id, kind: "", points: points.map(({ x, y }) => ({ x, y, t, p: 0 })) };
-        return [{ kind: "write", t, stroke }];
+        return [{ kind: "write", t, stroke: strokeOf(id, points, t) }];
+      }
+      case "cut": {
+        const pieces = event.value.pieces.flatMap(({ of, stroke }) =>
+          stroke === undefined ? [] : [{ of, stroke: strokeOf(stroke.id, stroke.points, t) }],
+        );
+        return [{ kind: "cut", t, ids: event.value.ids, pieces }];
       }
       case "erase":
       case "clear":

@@ -1,6 +1,7 @@
 import type { Stroke } from "./ink.js";
 import { type PointerSample, PRIMARY, PRIMARY_HELD } from "./recorder.js";
 import type { Point } from "./screen.js";
+import type { EraserMode } from "./style.js";
 
 /** `button` of a pen's eraser, its other end (Pointer Events Level 3). */
 export const ERASER_BUTTON = 5;
@@ -12,8 +13,12 @@ interface Press {
   readonly pointerId: number;
   /** The bit of `buttons` that holds the press: the primary button's, or a pen eraser's. */
   readonly held: number;
-  /** How near a stroke's points the eraser takes it, in sheet units. */
+  /** The eraser's radius, in sheet units: how near a stroke's ink it takes it. */
   readonly reach: number;
+  /** Whether it takes the strokes it touches whole, or only what it passes over. */
+  readonly mode: EraserMode;
+  /** Its path: the places it went through in sight, from where it went down. */
+  readonly path: Point[];
   /** The eraser's latest place, and the page's time of it. */
   last: Point;
   time: number;
@@ -24,20 +29,32 @@ interface Press {
 const NONE: ReadonlySet<number> = new Set();
 
 /**
- * The eraser: one press of a pointer takes off the sheet, whole, every stroke its path comes
- * near — a tap is a path of one point. The strokes it comes near are pending while it is
- * down, and when it lifts they go to the handler the eraser is made with, in one action, with the
- * page's time of the lift: one undo brings them all back. `pointercancel` drops the press and
- * erases nothing. One pointer erases at a time, with the primary button or a pen's eraser.
+ * What a press of the eraser went through, as it lifts: its mode, its radius, in sheet units, and
+ * its path, the places it went through in sight from where it went down — a tap is a path of one
+ * point, and each two places in a row are a segment it passed along.
+ */
+export interface Erasure {
+  readonly mode: EraserMode;
+  readonly reach: number;
+  readonly path: readonly Point[];
+}
+
+/**
+ * The eraser: one press of a pointer takes off the sheet every stroke its path comes near — a tap
+ * is a path of one point —, whole, or in the mode "part" only what it passes over. The strokes it
+ * comes near are pending while it is down, and when it lifts they go to the handler the eraser is
+ * made with, with the press's mode, radius and path, for one action, with the page's time of the
+ * lift: one undo brings them all back. `pointercancel` drops the press and erases nothing. One
+ * pointer erases at a time, with the primary button or a pen's eraser.
  */
 export class Eraser {
   readonly #near: (from: Point, to: Point, reach: number) => readonly Stroke[];
-  readonly #finished: (ids: readonly number[], time: number) => void;
+  readonly #finished: (ids: readonly number[], time: number, erasure: Erasure) => void;
   #press: Press | undefined;
 
   constructor(
     near: (from: Point, to: Point, reach: number) => readonly Stroke[],
-    finished: (ids: readonly number[], time: number) => void,
+    finished: (ids: readonly number[], time: number, erasure: Erasure) => void,
   ) {
     this.#near = near;
     this.#finished = finished;
@@ -54,10 +71,22 @@ export class Eraser {
   }
 
   /**
-   * `pointerdown`: a press begins here, `reach` sheet units wide on either side, if none is under
-   * way and the primary button or a pen's eraser went down. It takes what lies under it at once.
+   * The press under way, its path so far: what the screen shows of an eraser that takes a part
+   * while it is down. Nothing between presses.
    */
-  down(sample: PointerSample, reach: number): boolean {
+  get erasure(): Erasure | undefined {
+    const press = this.#press;
+    return press === undefined
+      ? undefined
+      : { mode: press.mode, reach: press.reach, path: press.path };
+  }
+
+  /**
+   * `pointerdown`: a press begins here, `reach` sheet units wide on either side, in its mode, if
+   * none is under way and the primary button or a pen's eraser went down. It takes what lies under
+   * it at once.
+   */
+  down(sample: PointerSample, reach: number, mode: EraserMode = "stroke"): boolean {
     if (this.#press !== undefined) return false;
     let held: number;
     if (sample.button === PRIMARY) held = PRIMARY_HELD;
@@ -68,6 +97,8 @@ export class Eraser {
       pointerId: sample.pointerId,
       held,
       reach,
+      mode,
+      path: [],
       last: point,
       time: sample.time,
       hits: new Set(),
@@ -124,6 +155,8 @@ export class Eraser {
 
   /** The strokes near the eraser's way from its last place to `to`: whether any was new. */
   #take(press: Press, to: Point): boolean {
+    // Only a cut reads the way: one taking whole strokes keeps none of it.
+    if (press.mode === "part") press.path.push(to);
     let took = false;
     for (const stroke of this.#near(press.last, to, press.reach)) {
       if (press.hits.has(stroke.id)) continue;
@@ -138,7 +171,13 @@ export class Eraser {
     if (press === undefined) return false;
     // The press is no longer under way by the time the handler has its strokes.
     this.#press = undefined;
-    if (press.hits.size > 0) this.#finished([...press.hits], time);
+    if (press.hits.size > 0) {
+      this.#finished([...press.hits], time, {
+        mode: press.mode,
+        reach: press.reach,
+        path: press.path,
+      });
+    }
     return true;
   }
 }

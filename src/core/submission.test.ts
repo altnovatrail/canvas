@@ -63,6 +63,20 @@ test("is the crop's PNG and the context of its submission, as the rules make the
   }
 });
 
+test("is an RGB PNG where a stroke has a style, the crop's numbers by its width", () => {
+  const marker = { pen: "marker", color: "#ffcc00", width: 28, opacity: 40 } as const;
+  const strokes = staircase().work.strokes.map((each, k) =>
+    k === 0 ? { ...each, style: marker } : each,
+  );
+  const checked = workForCheck(strokes, 24);
+  const crop = cropOf(strokes, groupsOf(strokes), 24);
+  if (checked === null || crop === null) throw new Error("no crop");
+  expect(checked.png).toEqual(pictureOf(strokes, crop));
+  expect(checked.png[8 + 8 + 9]).toBe(2);
+  // The marker's line is 28 units at the crop's scale.
+  expect(crop.line).toBe(Math.max((280 * crop.drawn) / crop.exact.median, crop.drawn / 12, 1));
+});
+
 test("is frozen through, and comes back to the sheet through JSON", () => {
   const { work } = staircase();
   const checked = workForCheck(work.strokes, CROP.digit);

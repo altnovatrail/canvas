@@ -25,13 +25,20 @@
 // toggle button as well, which would say it twice —, and one last, after a line:
 // the sheet's grid, its icon and its name the grid shown now, which a press turns to the next,
 // round — dots, lines, blank, squares. A button that goes gives its stop of Tab and the focus
-// to the first button shown. This module is no entry point of the package.
+// to the first button shown. The chosen pen and the chosen eraser open their popovers by a second
+// press, Enter or Space from the keyboard (pens.ts), which their description says, unless the
+// element writes without styles; the pen shows a dot of its colour, and each of them a mark in its
+// corner while chosen. A press of any other button closes the popover, and so does the choice of
+// another tool; its button's tooltip gives way to it. This module is no entry point of the
+// package.
 
 import type { PaperGrid } from "@altnovatrail/spec/canvas";
+import { PALETTE, type PenSettings } from "../core/style.js";
 import type { Tool } from "../core/task.js";
 import { SVG, write } from "./attributes.js";
 import { ICONS, ROW } from "./icons.js";
 import { type Labels, labelsFor } from "./labels.js";
+import { HINT_ID, type Opener, Pens } from "./pens.js";
 
 /** A value of the bar, by its button's key: what its icon shows (icons.ts). */
 export type Value = keyof typeof ROW;
@@ -52,6 +59,8 @@ export interface ToolActions {
   readonly toggle: () => void;
   /** A task from paper's tracing paper hidden, or shown again. */
   readonly trace: () => void;
+  /** The settings of the pen and the eraser as the learner made them in a popover. */
+  readonly pens: (settings: PenSettings) => void;
 }
 
 /** What Next and Demo control, by their IDs in the element's shadow root. */
@@ -86,6 +95,9 @@ export interface ToolState {
   /** On a task from paper, whether its tracing paper is shown, and its sheet's grid. */
   readonly traced: boolean;
   readonly grid: PaperGrid;
+  /** The settings of the pen and the eraser, and whether the strokes take them, and the popovers. */
+  readonly pens: PenSettings;
+  readonly styled: boolean;
 }
 
 /** The value of the grid's button, and the key of its label, by the grid shown. */
@@ -136,6 +148,8 @@ export class Tools {
   /** A task from paper's grid, after a line. */
   readonly #beforeGrid = separator();
   readonly #grid = plainButton("gridDots");
+  /** The popovers of the pen and of the eraser, beside the bar. */
+  readonly pens: Pens;
   /**
    * The buttons with the keys of their labels, the row's and then the bar's in the order the arrow
    * keys go through them. A button is named only by its label, so each is here with its key.
@@ -168,6 +182,10 @@ export class Tools {
   #traced = true;
   /** A task from paper's grid: its button's icon and name say which. */
   #gridShown: PaperGrid = "dots";
+  /** The tool in use, whether the bar is one to write with, and with the popovers. */
+  #tool: Tool = "pen";
+  #writes = true;
+  #styled = true;
   /** Whether a button of the bar has had the focus: Tab comes to the first button until one has. */
   #chosen = false;
   /** The button the pointer is over, the one the keyboard's focus is on, and the tooltip's. */
@@ -233,7 +251,15 @@ export class Tools {
       this.#beforeGrid,
       this.#grid,
     );
-    this.rail.append(this.element, this.row, this.tip);
+    this.pens = new Pens(actions.pens, () => this.#showTip());
+    this.rail.append(
+      this.element,
+      this.row,
+      this.tip,
+      this.pens.pen,
+      this.pens.eraser,
+      this.pens.hint,
+    );
     for (const button of this.#buttons) button.classList.add("icon");
     // A worked example's row and a task from paper's buttons come with what they are for.
     for (const hidden of [
@@ -249,10 +275,24 @@ export class Tools {
     }
     // Tab comes to the first button shown, until another has had the focus.
     this.#stopAt(this.#first());
-    // The element decides whether a choice is a change: the tool in use, chosen again, is none.
-    this.#pen.addEventListener("click", () => actions.choose("pen"));
-    this.#eraser.addEventListener("click", () => actions.choose("eraser"));
+    // The element decides whether a choice is a change: the tool in use, chosen again, is none,
+    // but for the pen's and the eraser's popovers. A click from the keyboard has no detail.
+    const press = (tool: Opener, button: HTMLButtonElement, event: MouseEvent): void => {
+      if (this.#tool !== tool || !this.#styled || !this.#writes) {
+        actions.choose(tool);
+        return;
+      }
+      if (this.pens.opened === tool) this.pens.close();
+      else this.pens.open(tool, button, event.detail === 0);
+    };
+    this.#pen.addEventListener("click", (event) => press("pen", this.#pen, event));
+    this.#eraser.addEventListener("click", (event) => press("eraser", this.#eraser, event));
     this.#hand.addEventListener("click", () => actions.choose("hand"));
+    // A press of any other button of the bar closes a popover.
+    this.element.addEventListener("click", (event) => {
+      const button = event.target instanceof Element ? event.target.closest("button") : null;
+      if (button !== this.#pen && button !== this.#eraser) this.pens.close();
+    });
     const doing = (button: HTMLButtonElement, act: () => void): void => {
       // aria-disabled stops no click: the button does nothing while it stands unavailable.
       button.addEventListener("click", () => {
@@ -282,8 +322,11 @@ export class Tools {
     this.row.addEventListener("focusin", (event) => {
       if (event.target instanceof Element) bringIn(this.row, event.target);
     });
-    // A tooltip stands by its button as the bar scrolls under it.
-    this.element.addEventListener("scroll", () => this.#placeTip());
+    // A tooltip and a popover stand by their button as the bar scrolls under it.
+    this.element.addEventListener("scroll", () => {
+      this.#placeTip();
+      this.pens.place();
+    });
     this.element.addEventListener("focusout", () => {
       this.#focused = undefined;
       this.#showTip();
@@ -321,6 +364,8 @@ export class Tools {
       expanded,
       traced,
       grid,
+      pens,
+      styled,
     } = state;
     if (kind !== this.#kind) {
       this.#kind = kind;
@@ -364,6 +409,7 @@ export class Tools {
       this.#gridShown = grid;
       this.#nameGrid();
     }
+    this.#settings(tool, writes, styled, pens);
     draw(this.#demo, expanded ? "demoShown" : "demoHidden", false);
     draw(this.#task, "task", traced);
     if (traced !== this.#traced) {
@@ -391,12 +437,40 @@ export class Tools {
     }
     this.#nameTask();
     this.#nameGrid();
+    this.pens.label(tag);
     this.#tipFor = undefined;
     this.#showTip();
   }
 
+  /**
+   * The chosen pen and eraser as the settings are: described by the hint of a second press, marked
+   * in the corner, and the pen's dot of its colour, while the strokes take a style. A popover of a
+   * tool no longer in use, or of a bar without styles, closes.
+   */
+  #settings(tool: Tool, writes: boolean, styled: boolean, pens: PenSettings): void {
+    this.#tool = tool;
+    this.#writes = writes;
+    this.#styled = styled;
+    const opens = writes && styled;
+    for (const [button, value] of [
+      [this.#pen, "pen"],
+      [this.#eraser, "eraser"],
+    ] as const) {
+      button.classList.toggle("settings", opens);
+      write(button, "aria-describedby", opens && tool === value ? HINT_ID : null);
+    }
+    this.#pen.classList.toggle("dotted", opens);
+    const { color } = pens.styles[pens.pen];
+    // The palette's black is the theme's ink, as the sheet draws it.
+    if (color === PALETTE[0]) this.#pen.style.removeProperty("--pen-dot");
+    else this.#pen.style.setProperty("--pen-dot", color);
+    this.pens.show(pens);
+    if (!opens || (this.pens.opened !== undefined && this.pens.opened !== tool)) this.pens.close();
+  }
+
   /** The element left the page: a tooltip goes with it, and Escape is no longer heard. */
   disconnect(): void {
+    this.pens.close();
     clearTimeout(this.#grace);
     this.#hovered = undefined;
     this.#focused = undefined;
@@ -468,7 +542,11 @@ export class Tools {
   #showTip(): void {
     // A button the pointer was over may have gone with no pointerleave: the focus's has its
     // tooltip.
-    const wanted = [this.#hovered, this.#focused].find((button) => button && !button.hidden);
+    // An open popover stands where the tooltip would.
+    const wanted =
+      this.pens?.opened === undefined
+        ? [this.#hovered, this.#focused].find((button) => button && !button.hidden)
+        : undefined;
     if (this.#dismissed !== undefined && this.#dismissed !== wanted) this.#dismissed = undefined;
     const button = wanted !== this.#dismissed ? wanted : undefined;
     if (button === this.#tipFor && this.tip.hidden === (button === undefined)) return;

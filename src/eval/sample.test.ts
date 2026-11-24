@@ -1,6 +1,7 @@
 import {
   MarkupSchema,
   PartKind,
+  PenKind,
   SampleSchema,
   type TaskReferenceSchema,
 } from "@altnovatrail/contracts/novatrail/eval/v1/sample_pb.js";
@@ -10,12 +11,15 @@ import { clone, create, equals } from "@bufbuild/protobuf";
 import { describe, expect, test } from "vitest";
 import { tableOf } from "../core/boxes.js";
 import { budget } from "../core/budget.fixture.js";
+import { Clock } from "../core/clock.js";
 import { cropOf } from "../core/crop.js";
+import { cutOf } from "../core/cut.js";
 import { extentOf } from "../core/geometry.js";
 import { groupsOf } from "../core/groups.js";
 import { type HistoryEvent, replay } from "../core/history.js";
 import type { Stroke } from "../core/ink.js";
 import { ladder, staircase, undone } from "../core/sheets.fixture.js";
+import { Work } from "../core/work.js";
 import { draft, numbers } from "../core/workbooks.fixture.js";
 import {
   Purpose,
@@ -495,4 +499,93 @@ test("a stroke's box is held: the geometry's boxes are the strokes' as they came
       return [minX, minY, maxX, maxY].join(",");
     });
   expect(boxes(strokesOf(sample)).sort()).toEqual(boxes(staircase().work.strokes).sort());
+});
+
+describe("strokes in a style and a cut", () => {
+  /** A sheet of «1» in liner, a stroke of the kind pen and an underline in marker, cut short. */
+  function styled(): readonly HistoryEvent[] {
+    const clock = new Clock();
+    clock.at(0);
+    const work = new Work(clock);
+    const style = (pen: "pen" | "liner" | "marker", width: number, opacity = 100) =>
+      ({ pen, color: pen === "marker" ? "#ffcc00" : "#0a63d6", width, opacity }) as const;
+    const stroke = (
+      id: number,
+      s: Stroke["style"],
+      ...points: [number, number, number][]
+    ): Stroke => ({
+      id,
+      kind: "pen",
+      style: s,
+      points: points.map(([x, y, t]) => ({ x, y, t, p: 0.3 })),
+    });
+    work.write(stroke(1, style("liner", 1.2), [104, 210.8, 0], [112, 200, 32], [112, 236, 128]));
+    work.write(stroke(2, style("pen", 2), [126, 207.2, 400], [140, 200, 448], [146, 236, 608]));
+    const underline = stroke(
+      3,
+      style("marker", 12, 40),
+      [100, 248, 1500],
+      [130, 248, 1750],
+      [160, 248, 2000],
+    );
+    work.write(underline);
+    const pieces =
+      cutOf(
+        underline,
+        [
+          { x: 160, y: 240 },
+          { x: 160, y: 256 },
+        ],
+        4 + 6,
+      ) ?? [];
+    work.cut(
+      [{ id: 3, pieces: pieces.map((points, k) => ({ ...underline, id: 4 + k, points })) }],
+      2600.4,
+    );
+    return work.history;
+  }
+
+  test("keeps each stroke's style and the cut with its pieces in the history, and each style in the geometry", () => {
+    const history = styled();
+    const input = sheetSample(Purpose.MEASUREMENT, Writer.ADULT, "1");
+    const sample = sampleOf({ ...input, surface: { sheet: { history, digit: 24 } }, markup: {} });
+    if (sample.ink.case !== "history") throw new Error("no history");
+    const [one, , three, cut] = sample.ink.value.events;
+    expect(one?.event.case === "write" && one.event.value.style).toMatchObject({
+      pen: PenKind.LINER,
+      color: "#0a63d6",
+      width: 1.2,
+      opacity: 100,
+    });
+    expect(three?.event.case === "write" && three.event.value.style?.pen).toBe(PenKind.MARKER);
+    if (cut?.event.case !== "cut") throw new Error("no cut");
+    expect(cut.tMs).toBe(2600);
+    expect(cut.event.value.ids).toEqual([3]);
+    const [piece] = cut.event.value.pieces;
+    expect(piece?.of).toBe(3);
+    expect(piece?.stroke?.id).toBe(4);
+    expect(piece?.stroke?.style?.pen).toBe(PenKind.MARKER);
+    // Its points to a tenth and in whole ms, its own end among them.
+    expect(piece?.stroke?.points.at(-1)).toMatchObject({ x: 150, y: 248, tMs: 1917 });
+    // The crops are RGB, and the sample reads back as it was written.
+    if (sample.surface.case !== "sheet") throw new Error("no sheet");
+    for (const crop of sample.surface.value.crops?.crops ?? []) expect(crop.png[8 + 8 + 9]).toBe(2);
+    expect(equals(SampleSchema, readSample(sampleText(sample)), sample)).toBe(true);
+
+    const final = sampleOf({
+      ...sheetSample(Purpose.EVAL_SET, Writer.ADULT, "2"),
+      surface: { sheet: { history, digit: 24 } },
+      markup: {},
+    });
+    if (final.ink.case !== "geometry" || final.surface.case !== "sheet")
+      throw new Error("no geometry");
+    expect(final.ink.value.strokes.map(({ style }) => style?.pen)).toEqual([
+      PenKind.LINER,
+      PenKind.PEN,
+      PenKind.MARKER,
+    ]);
+    const numbers = (set: typeof final.surface.value.crops) =>
+      set?.crops.map(({ png: _, ...rest }) => rest);
+    expect(numbers(final.surface.value.crops)).toEqual(numbers(sample.surface.value.crops));
+  });
 });

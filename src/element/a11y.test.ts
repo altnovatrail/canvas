@@ -38,18 +38,18 @@ async function container(element: HTMLElement): Promise<HTMLElement> {
 
 test.each(KINDS)(
   "$name, of a height its content overflows, has none either: its container is a region with a stop of Tab, which axe's scrollable-region-focusable asks of it",
-  async ({ put, incomplete, clear = incomplete }) => {
+  async ({ put, incomplete, clear = incomplete, low = clear }) => {
     const element = await put(made);
     element.style.height = "300px";
     const viewport = await container(element);
     expect(viewport.getAttribute("role")).toBe("region");
-    await axeOf(element, clear);
+    await axeOf(element, low);
   },
 );
 
 test.each(KINDS)(
   "$name, of that height, in a lang its labels are not in, has none either: the container is in English, which it is named in, and the column in German",
-  async ({ put, incomplete, clear = incomplete }) => {
+  async ({ put, incomplete, clear = incomplete, low = clear }) => {
     const element = await put(made);
     element.style.height = "300px";
     element.setAttribute("lang", "de");
@@ -62,7 +62,7 @@ test.each(KINDS)(
     expect(["Sheet", "Workbook", "Worked example", "Task from paper"]).toContain(
       viewport.getAttribute("aria-label"),
     );
-    await axeOf(element, clear);
+    await axeOf(element, low);
   },
 );
 

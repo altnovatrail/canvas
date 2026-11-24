@@ -2,7 +2,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import type { HistoryEvent } from "../core/history.js";
 import type { View } from "../core/screen.js";
 import { type HistoryChange, NovatrailCanvas } from "./index.js";
-import { at, sheetWork } from "./pointer.fixture.js";
+import { hand, sheetWork } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The history of writing as the element takes and gives it: read as the sheet has it, told
@@ -38,23 +38,6 @@ async function sheet(width = 400, height?: number) {
     return view;
   };
   return { element, canvas, viewport, view };
-}
-
-/** A pointer on the canvas, made by a script, at points of the sheet: a mouse's, or as given. */
-function hand(canvas: HTMLCanvasElement, view: () => View, init: PointerEventInit = {}) {
-  const pointer = { pointerId: 1, pointerType: "mouse", isPrimary: true, bubbles: true, ...init };
-  const send = (type: string, x: number, y: number, state: PointerEventInit) =>
-    canvas.dispatchEvent(
-      new PointerEvent(type, { ...pointer, ...at(canvas, view(), x, y), ...state }),
-    );
-  return {
-    down: (x: number, y: number) =>
-      send("pointerdown", x, y, { button: 0, buttons: 1, pressure: 0.5 }),
-    move: (x: number, y: number) =>
-      send("pointermove", x, y, { button: -1, buttons: 1, pressure: 0.5 }),
-    up: (x: number, y: number) => send("pointerup", x, y, { button: 0, buttons: 0, pressure: 0 }),
-    cancel: (x: number, y: number) => send("pointercancel", x, y, { button: 0, buttons: 0 }),
-  };
 }
 
 /** A level stroke at `y`, from `from` to `to`. */

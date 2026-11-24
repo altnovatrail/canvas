@@ -257,6 +257,9 @@ function mount(): void {
   sheet?.remove();
   const element = document.createElement(TAG) as NovatrailCanvas;
   element.lang = "ru";
+  // The page's texts say nothing yet of a stroke's style: its samples hold strokes with none, and
+  // the eraser takes strokes whole.
+  element.setAttribute("unstyled", "");
   const { task, module } = chosen();
   const carried = module === undefined ? undefined : data.modules[module];
   // A module's manifest gives the height of its digits; tutor's file has none.

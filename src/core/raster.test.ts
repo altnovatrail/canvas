@@ -4,7 +4,7 @@ import { budget } from "./budget.fixture.js";
 import { type Crop, cropOf } from "./crop.js";
 import { groupsOf } from "./groups.js";
 import type { Stroke } from "./ink.js";
-import { pictureOf, rasterOf } from "./raster.js";
+import { channelsOf, pictureOf, rasterOf } from "./raster.js";
 import { CROP_SHEETS, dot, later, SHEETS, staircase, stroke, whole } from "./sheets.fixture.js";
 
 // The pixels of the crop on the synthetic sheets: what is ink and what is white, measured
@@ -239,4 +239,136 @@ test("the crop's code uses only what ECMAScript rounds alike in every engine", (
       .join("\n");
     expect(code, file).not.toMatch(loose);
   }
+});
+
+describe("the pixels of strokes in a style", () => {
+  const blue = "#0a63d6";
+  /** A level stroke at y, from x 100 to 300 and back as `back` says, in a style or in none. */
+  function level(id: number, y: number, style?: Stroke["style"], back = false): Stroke {
+    const xs = back ? [100, 300, 100] : [100, 300];
+    const points = xs.map((x, k) => ({ x, y, t: k, p: 0.5 }));
+    return style === undefined
+      ? { id, kind: "mouse", points }
+      : { id, kind: "mouse", style, points };
+  }
+  /** A tall stroke down at x, from y 100 to 300, so the crop's scale is 1 px to a unit at 200 px. */
+  function tall(id: number, x: number, style?: Stroke["style"]): Stroke {
+    const points = [100, 300].map((y, k) => ({ x, y, t: k, p: 0.5 }));
+    return style === undefined
+      ? { id, kind: "mouse", points }
+      : { id, kind: "mouse", style, points };
+  }
+  /** The channels of the pixel where a point of the sheet lies on the crop. */
+  function at(rgb: Uint8Array, crop: Crop, x: number, y: number): number[] {
+    const [top, left] = crop.margins;
+    const { box, median: unit } = crop.exact;
+    const column = Math.floor(((Math.round(10 * x) - box.minX) * crop.drawn) / unit + left);
+    const row = Math.floor(((Math.round(10 * y) - box.minY) * crop.drawn) / unit + top);
+    const k = 3 * (row * crop.width + column);
+    return [rgb[k] ?? -1, rgb[k + 1] ?? -1, rgb[k + 2] ?? -1];
+  }
+  const liner = (color: string, opacity: number) =>
+    ({ pen: "liner", color, width: 4, opacity }) as const;
+  const lay = (under: number, colour: number, a: number) =>
+    Math.round(under * (1 - a) + colour * a);
+
+  test("are grey when no stroke has a style, and RGB when one has", () => {
+    const plain = [tall(1, 150), level(2, 200)];
+    const crop = cropAt(plain, 32);
+    expect(channelsOf(plain)).toBe(1);
+    expect(rasterOf(plain, crop)).toHaveLength(crop.width * crop.height);
+    const styled = [tall(1, 150), level(2, 200, liner(blue, 100))];
+    expect(channelsOf(styled)).toBe(3);
+    const rgb = rasterOf(styled, cropAt(styled, 32));
+    expect(rgb).toHaveLength(3 * crop.width * crop.height);
+    // A stroke without a style among them is black and opaque, and white is white.
+    expect(at(rgb, cropAt(styled, 32), 150, 150)).toEqual([0, 0, 0]);
+    expect(at(rgb, cropAt(styled, 32), 250, 150)).toEqual([255, 255, 255]);
+    const large = cropAt(styled, 200);
+    expect(at(rasterOf(styled, large), large, 250, 200)).toEqual([10, 99, 214]);
+  });
+
+  test("lay a pen's or a liner's colour at its opacity over what lies under it", () => {
+    const strokes = [tall(1, 150), level(2, 200, liner(blue, 40))];
+    const crop = cropAt(strokes, 200);
+    const rgb = rasterOf(strokes, crop);
+    expect(at(rgb, crop, 250, 200)).toEqual([
+      lay(255, 10, 0.4),
+      lay(255, 99, 0.4),
+      lay(255, 214, 0.4),
+    ]);
+    // Over the black line, black's under it.
+    expect(at(rgb, crop, 150, 200)).toEqual([lay(0, 10, 0.4), lay(0, 99, 0.4), lay(0, 214, 0.4)]);
+    // A pen's line too, at its width, with no pressure and no speed.
+    const pen = [tall(1, 150), level(2, 200, { ...liner(blue, 40), pen: "pen" })];
+    expect(rasterOf(pen, crop)).toEqual(rgb);
+  });
+
+  test("multiply a marker's colour with what lies under it, at its opacity", () => {
+    const marker = { pen: "marker", color: "#ffcc00", width: 8, opacity: 40 } as const;
+    const strokes = [tall(1, 150, liner("#e5322d", 100)), level(2, 200, marker)];
+    const crop = cropAt(strokes, 200);
+    const rgb = rasterOf(strokes, crop);
+    const multiplied = (under: number, colour: number) =>
+      Math.round(under * 0.6 + ((under * colour) / 255) * 0.4);
+    expect(at(rgb, crop, 250, 200)).toEqual([255, multiplied(255, 204), multiplied(255, 0)]);
+    expect(at(rgb, crop, 150, 200)).toEqual([
+      multiplied(229, 255),
+      multiplied(50, 204),
+      multiplied(45, 0),
+    ]);
+  });
+
+  test("lay each stroke as one layer: where it crosses itself it is no darker", () => {
+    const once = [tall(1, 150), level(2, 200, liner(blue, 40))];
+    const twice = [tall(1, 150), level(2, 200, liner(blue, 40), true)];
+    const crop = cropAt(once, 200);
+    expect(at(rasterOf(twice, crop), crop, 250, 200)).toEqual(
+      at(rasterOf(once, crop), crop, 250, 200),
+    );
+  });
+
+  test("lay the strokes by their IDs, whatever their order on the sheet", () => {
+    const red = (id: number) => level(id, 200, liner("#e5322d", 100));
+    const strokes = [tall(2, 250, liner(blue, 100)), red(1)];
+    const crop = cropAt(strokes, 200);
+    expect(at(rasterOf(strokes, crop), crop, 250, 200)).toEqual([10, 99, 214]);
+    const later = [tall(1, 250, liner(blue, 100)), red(2)];
+    expect(at(rasterOf(later, crop), crop, 250, 200)).toEqual([229, 50, 45]);
+  });
+
+  test("draw a stroke's line at its width at the crop's scale, 1 px at least", () => {
+    for (const [width, digit] of [
+      [4, 200],
+      [12, 100],
+      [0.1, 32],
+    ] as const) {
+      const strokes = [tall(1, 150), level(2, 200, liner(blue, 100))];
+      const styled = strokes.map((each) =>
+        each.id === 2 ? { ...each, style: { ...liner(blue, 100), width } } : each,
+      );
+      const crop = cropAt(styled, digit);
+      const rgb = rasterOf(styled, crop);
+      // Down through the line, away from the other stroke: the pixels it covers whole.
+      let inked = 0;
+      for (let row = 0; row < crop.height; row++) {
+        const [, left] = crop.margins;
+        const column = Math.floor(
+          ((2500 - crop.exact.box.minX) * crop.drawn) / crop.exact.median + left,
+        );
+        if (rgb[3 * (row * crop.width + column)] === 10) inked++;
+      }
+      const line = Math.max((width * 10 * crop.drawn) / crop.exact.median, 1);
+      expect(Math.abs(inked - line), `${width} at ${digit}`).toBeLessThanOrEqual(1);
+    }
+  });
+
+  test("encode RGB, colour type 2, and grey, colour type 0, with their channels", () => {
+    const styled = [tall(1, 150), level(2, 200, liner(blue, 100))];
+    const crop = cropAt(styled, 32);
+    const png = pictureOf(styled, crop);
+    // IHDR's colour type, after the signature, its length and type, and width, height and depth.
+    expect(png[8 + 8 + 9]).toBe(2);
+    expect(pictureOf([tall(1, 150)], cropAt([tall(1, 150)], 32))[8 + 8 + 9]).toBe(0);
+  });
 });

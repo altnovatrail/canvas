@@ -66,22 +66,150 @@ export function followsPressure(stroke: Stroke): boolean {
 }
 
 /**
+ * The speed at which a pen of the kind "pen" without a pen's pressure draws its finest line, in
+ * sheet units a millisecond: a quick stroke of a finger or a mouse. Slower, the line is wider.
+ */
+export const SPEED_FINEST = 1.5;
+
+/**
+ * The share of a pen's line, of the kind "pen", that its speed sets without a pen's pressure: as
+ * a pressure, 0.45 at its first point, then each point's leaning on the one's before it by
+ * `SPEED_FOLLOW`, from 0.75 at rest down to 0.15 at `SPEED_FINEST` and faster.
+ */
+const SPEED_START = 0.45;
+const SPEED_FOLLOW = 0.25;
+const SPEED_SLOWEST = 0.75;
+const SPEED_RANGE = 0.6;
+
+/**
+ * How a pen's line of the kind "pen" thins at its ends: its width there is this share of what it
+ * would be, and it widens to all of it over `TAPER_LENGTH` widths along the stroke.
+ */
+const TAPER_LEAST = 0.45;
+const TAPER_LENGTH = 4;
+
+/**
  * The outline of a stroke on the screen, as perfect-freehand draws it: a closed polygon around the
- * stroke's points, in sheet units, to be filled. A pen's line widens with its pressure; a mouse's
- * or a finger's is as wide all along. `complete` says the stroke has ended: its last point is
- * then taken as it is, rather than eased toward.
+ * stroke's points, in sheet units, to be filled. `complete` says the stroke has ended: its last
+ * point is then taken as it is, rather than eased toward. A stroke without a style is 3 units wide,
+ * black in the theme's ink: a pen's line widens with its pressure, and a mouse's or a
+ * finger's is as wide all along. A stroke with a style is its width: a liner's and a marker's line
+ * as wide all along; one of the kind "pen" wider and finer by a pen's pressure, as a pen without a
+ * style, or without one by the speed between its points, slow wider, and finer at its start, and
+ * at its end once it is complete. Its pressure stays the pointer's: a width from the speed is
+ * never written into a point.
  */
 export function outline(stroke: Stroke, complete: boolean): Vec2[] {
-  return polygon(stroke, followsPressure(stroke) ? PEN_THINNING : EVEN, complete);
+  const { style } = stroke;
+  if (style === undefined) {
+    return polygon(stroke, followsPressure(stroke) ? PEN_THINNING : EVEN, complete);
+  }
+  if (style.pen !== "pen")
+    return styled(
+      stroke.points.map(() => 1),
+      stroke,
+      style.width,
+      complete,
+    );
+  const factors =
+    stroke.kind === "pen" ? pressed(stroke.points) : stroke.points.map(speedOf(stroke.points));
+  return styled(
+    tapered(factors, stroke.points, style.width, complete),
+    stroke,
+    style.width,
+    complete,
+  );
+}
+
+/** A pen's pressure, eased from point to point, as the width it gives the line, in widths. */
+function pressed(points: Stroke["points"]): number[] {
+  return eased(points).map(penWidth);
+}
+
+/** Each point's pressure leaning on the point's before it, so the line widens and narrows smoothly. */
+function eased(points: Stroke["points"]): number[] {
+  let last: number | undefined;
+  return points.map(({ p }) => {
+    last = last === undefined ? p : (1 - PEN_FOLLOW) * last + PEN_FOLLOW * p;
+    return last;
+  });
+}
+
+/** The width the speed gives each point of a line without a pen's pressure, in widths. */
+function speedOf(points: Stroke["points"]): (point: Stroke["points"][number], k: number) => number {
+  let share = SPEED_START;
+  return (point, k) => {
+    const before = points[k - 1];
+    // A point at the time of the one before it has no speed of its own, and changes nothing.
+    if (before !== undefined && point.t > before.t) {
+      const speed = Math.hypot(point.x - before.x, point.y - before.y) / (point.t - before.t);
+      const target = SPEED_SLOWEST - SPEED_RANGE * Math.min(speed / SPEED_FINEST, 1);
+      share = (1 - SPEED_FOLLOW) * share + SPEED_FOLLOW * target;
+    }
+    return penWidth(share);
+  };
+}
+
+/**
+ * Widths of a line, finer at its start, and at its end once it is complete. A dot or a dash of two
+ * points keeps its width.
+ */
+function tapered(
+  factors: readonly number[],
+  points: Stroke["points"],
+  width: number,
+  complete: boolean,
+): readonly number[] {
+  if (points.length <= 2) return factors;
+  const along: number[] = [];
+  let length = 0;
+  for (const [k, point] of points.entries()) {
+    const before = points[k - 1];
+    if (before !== undefined) length += Math.hypot(point.x - before.x, point.y - before.y);
+    along.push(length);
+  }
+  const reach = TAPER_LENGTH * width;
+  const share = (distance: number) =>
+    Math.max(TAPER_LEAST, Math.min(1, TAPER_LEAST + ((1 - TAPER_LEAST) * distance) / reach));
+  return factors.map((factor, k) => {
+    const from = along[k] ?? 0;
+    const thinned = complete ? Math.min(share(from), share(length - from)) : share(from);
+    return factor * thinned;
+  });
+}
+
+/**
+ * The outline of a stroke in a style, each point its width in widths of the style's: the library
+ * takes the width as each point's pressure and halves it, so its radius is the style's width times
+ * that, halved. Its size is the line's without a style, and its easing scales it to the style's
+ * width: the size also sets how far the library smooths the outline and how much of the stroke's
+ * start it passes over, which a wide marker would otherwise draw as a chord. A liner as wide as
+ * the line without a style draws a finger's very line.
+ */
+function styled(
+  factors: readonly number[],
+  stroke: Stroke,
+  width: number,
+  complete: boolean,
+): Vec2[] {
+  const points = stroke.points.map(({ x, y }, k) => [x, y, factors[k] ?? 1]);
+  const scale = width / INK_WIDTH;
+  return freehand(points, {
+    ...OPTIONS,
+    easing: (factor: number) => (factor * scale) / 2,
+    thinning: PEN_THINNING,
+    last: complete,
+  });
 }
 
 function polygon(stroke: Stroke, thinning: number, complete: boolean): Vec2[] {
-  // Each point's pressure leans on the point's before it: the line widens and narrows smoothly.
-  let eased: number | undefined;
-  const points = stroke.points.map(({ x, y, p }) => {
-    eased = eased === undefined ? p : (1 - PEN_FOLLOW) * eased + PEN_FOLLOW * p;
-    return [x, y, eased];
-  });
+  const pressures = eased(stroke.points);
+  const points = stroke.points.map(({ x, y }, k) => [x, y, pressures[k] ?? 0]);
+  return freehand(points, { ...OPTIONS, thinning, last: complete });
+}
+
+/** perfect-freehand's outline of points [x, y, pressure], with the few points it draws amiss. */
+function freehand(points: number[][], options: StrokeOptions): Vec2[] {
   // One point alone perfect-freehand pairs with another a unit off and draws as an oval. The same
   // point twice it draws as a round dot, as wide as the line.
   const [only, end] = points;
@@ -94,5 +222,5 @@ function polygon(stroke: Stroke, thinning: number, complete: boolean): Vec2[] {
     );
     points.splice(1, 0, ...between);
   }
-  return getStroke(points, { ...OPTIONS, thinning, last: complete });
+  return getStroke(points, options);
 }

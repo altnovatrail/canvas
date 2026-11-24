@@ -35,6 +35,8 @@ import type {
   Marks,
   Media,
   NovatrailCanvas,
+  PenChangeEvent,
+  PenSettings,
   Submission,
   Task,
   WorkedExample,
@@ -210,6 +212,12 @@ let demoChanges = 0;
 let taskNumber = 1;
 let changes = 0;
 let choices = 0;
+/**
+ * The settings of the pen and the eraser, as penchange told them and as app is to keep them: given
+ * to each new element.
+ */
+let pens: PenSettings | undefined;
+let penChanges = 0;
 
 /**
  * A new element for the page's task, or its worked example, with the history and the marks given,
@@ -234,6 +242,7 @@ function mount(history?: readonly HistoryEvent[], marks?: Marks): NovatrailCanva
   }
   element.manifest = manifestFor();
   element.media = media;
+  if (pens !== undefined) element.pens = pens;
   // The history first, then the marks: they hold on to its strokes.
   if (history !== undefined) element.history = history;
   if (marks !== undefined) element.marks = marks;
@@ -241,7 +250,15 @@ function mount(history?: readonly HistoryEvent[], marks?: Marks): NovatrailCanva
   element.addEventListener("historychange", told);
   element.addEventListener("toolchange", chose);
   element.addEventListener("demochange", demoTold);
+  element.addEventListener("penchange", pensTold);
   return element;
+}
+
+/** What penchange tells: the learner changed a setting of the pen or the eraser. */
+function pensTold({ detail }: PenChangeEvent): void {
+  pens = detail;
+  penChanges++;
+  count();
 }
 
 /** What demochange tells: the learner opened a part of the demo, or hid or showed it. */
@@ -280,7 +297,9 @@ function count(): void {
     state === undefined
       ? ""
       : ` · demochange × ${demoChanges}, ${state.opened} of ${parts} open${state.hidden ? ", hidden" : ""}`;
-  counter.textContent = `Task ${taskNumber} · ${told} · toolchange × ${choices}, ${sheet.tool}${filled}${demo}`;
+  const pen = sheet.pens.styles[sheet.pens.pen];
+  const styled = ` · penchange × ${penChanges}, ${pen.pen} ${pen.color} ${pen.width} ${pen.opacity}%`;
+  counter.textContent = `Task ${taskNumber} · ${told} · toolchange × ${choices}, ${sheet.tool}${styled}${filled}${demo}`;
 }
 
 const SVG = "http://www.w3.org/2000/svg";
@@ -778,6 +797,7 @@ function mounted(next: NovatrailCanvas): void {
   old.removeEventListener("historychange", told);
   old.removeEventListener("toolchange", chose);
   old.removeEventListener("demochange", demoTold);
+  old.removeEventListener("penchange", pensTold);
   sheet = next;
   old.replaceWith(next);
   // A new sheet starts with the pen.

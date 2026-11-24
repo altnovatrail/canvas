@@ -71,7 +71,9 @@ test("the sheet is a stack of layers in the order spec's glossary gives them, an
   // Over the tracing paper, under the ink, its cover of the statements read; over the layers its
   // frame, its sign, its grip and tooltip and its bar of scale: they and the paper's layer show on
   // a task from paper alone.
-  const parts = ".tracing-cover, .tracing-frame, .tracing-sign, .grip, .tip, .tracing-scale";
+  // The circle of a hovering pen is none either.
+  const parts =
+    ".tracing-cover, .tracing-frame, .tracing-sign, .grip, .tip, .tracing-scale, .hover";
   const layers = [...stage.children].filter((each) => !each.matches(parts));
   expect(layers.map((layer) => layer.getAttribute("class") ?? layer.localName)).toEqual([
     "template",
@@ -88,6 +90,7 @@ test("the sheet is a stack of layers in the order spec's glossary gives them, an
       .map((each) => [each.className, (each as HTMLElement).hidden]),
   ).toEqual([
     ["tracing-cover", true],
+    ["hover", true],
     ["tracing-frame", true],
     ["tracing-sign", true],
     ["grip", true],
@@ -466,6 +469,14 @@ test("the consumer's custom properties colour the paper, the grid, the ink and t
   ]);
   inUse.blur();
 
+  // A black liner as wide as the line of a stroke without a style: the palette's black is the
+  // theme's ink on the screen.
+  const { styles } = element.pens;
+  element.pens = {
+    ...element.pens,
+    pen: "liner",
+    styles: { ...styles, liner: { ...styles.liner, color: "#1c1c1e", width: 3 } },
+  };
   dense(canvas, view(), 300, 100, 300);
   await settle();
   expect(near(rgbaAt(canvas, view(), 200, 300), [0, 0, 255, 255])).toBe(true);

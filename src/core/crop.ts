@@ -1,6 +1,6 @@
 import type { CropNumbers, Frame } from "@altnovatrail/spec/canvas";
 import RBush from "rbush";
-import { around, type Box, type Extent, extentOf } from "./geometry.js";
+import { around, type Box, type Extent, extentOf, tenths } from "./geometry.js";
 import type { Group } from "./groups.js";
 import type { Stroke } from "./ink.js";
 import { Sets } from "./sets.js";
@@ -12,7 +12,7 @@ import { Sets } from "./sets.js";
  * runner, which crops by the same rule, gets the same numbers to the bit.
  */
 export const CROP = Object.freeze({
-  /** The margin around the work, px. */
+  /** The least margin around the work, px: wider where half the widest line and a pixel are. */
   margin: 12,
   /**
    * A stroke lower than this, in units, is a line, not writing — a dot, a minus, a bar, an
@@ -59,8 +59,29 @@ export interface Crop extends CropNumbers {
   readonly median: number;
   /** s, the crop's px to a sheet unit: D′ over h_med, or over the ceiling if h_med is above it. */
   readonly scale: number;
-  /** The width of the line, px: D′ / 12, and 1 at least. */
+  /**
+   * The width of its widest line, px: of a stroke without a style D′ / 12, and 1 at least; of one
+   * with a style its width at the crop's scale, and 1 at least.
+   */
   readonly line: number;
+}
+
+/**
+ * A stroke's width for the rule of the crop: its style's, in whole tenths of a unit, or null for
+ * a stroke without a style.
+ */
+export function widthOf(stroke: Stroke): number | null {
+  return stroke.style === undefined ? null : tenths(stroke.style.width);
+}
+
+/**
+ * N, the ink of a stroke's line on a crop with its digits `drawn` px high, of a set whose scale
+ * takes `unit`, H, in tenths: the line is N / (12 × H) px wide. Without a style, `width` null,
+ * N = H × max(D′, 12), the line max(D′, 12) / 12 px; with one of `width` W tenths,
+ * N = 12 × max(W × D′, H), its width at the crop's scale and 1 px at least. A whole number.
+ */
+export function inkOf(width: number | null, drawn: number, unit: number): number {
+  return width === null ? unit * Math.max(drawn, 12) : 12 * Math.max(width * drawn, unit);
 }
 
 /**
@@ -102,19 +123,28 @@ export function cropOf(
   const box = around(also === undefined ? extents : [...extents, also]);
   const median = medianTenths(extents);
   const unit = Math.min(median, CROP.ceiling * 10);
-  let size = sizeOf(box, unit, digit);
-  // At a digit of 1 px every sheet fits: its sides are 200 px, for (14000 / 150 + 24) px is less.
-  while (!fits(size) && size.drawn > 1) size = sizeOf(box, unit, size.drawn - 1);
+  const widthById = new Map(strokes.map((stroke) => [stroke.id, widthOf(stroke)]));
+  const widths = [...new Set(widthById.values())];
+  // N of the widest line of strokes of these widths, at a height drawn.
+  const widest = (of: readonly (number | null)[], drawn: number) =>
+    Math.max(...of.map((width) => inkOf(width, drawn, unit)));
+  const sizeAt = (drawn: number) => sizeOf(box, unit, drawn, widest(widths, drawn));
+  let size = sizeAt(digit);
+  // At a digit of 1 px every sheet fits: its sides are 200 px, for (14000 / 150 + 24) px is less,
+  // and a line 50 units wide is then under 2 px, within the least margin.
+  while (!fits(size) && size.drawn > 1) size = sizeAt(size.drawn - 1);
   const { drawn, width, height, top, left } = size;
-  // The line's width in twelfths of a px, 12 at least.
-  const line = Math.max(drawn, 12);
-  // Places on the crop as whole numbers, X × 24 × unit. A frame reaches past the points by half the
-  // line and by the pixel at its edge, which the raster still shades: (line / 24 + 1) px.
+  // N of the widest line: the line is N / (12 × unit) px wide.
+  const line = widest(widths, drawn);
+  // Places on the crop as whole numbers, X × 24 × unit. A frame reaches past the points by half its
+  // group's widest line and by the pixel at its edge, which the raster still shades: N / (24 ×
+  // unit) + 1 px.
   const across = (x: number) => 24 * ((x - box.minX) * drawn + left * unit);
   const down = (y: number) => 24 * ((y - box.minY) * drawn + top * unit);
-  const reach = (line + 24) * unit;
-  const frames = groups.map(({ label }, n): Frame => {
+  const frames = groups.map(({ label, ids }, n): Frame => {
     const frame = around(members[n] ?? []);
+    const reach =
+      widest([...new Set(ids.map((id) => widthById.get(id) ?? null))], drawn) + 24 * unit;
     return {
       label,
       box: [
@@ -132,7 +162,7 @@ export function cropOf(
     drawn,
     median: median / 10,
     scale: (10 * drawn) / unit,
-    line: line / 12,
+    line: line / (12 * unit),
     width,
     height,
     margins,
@@ -242,15 +272,20 @@ interface Size {
   readonly left: number;
 }
 
-function sizeOf(box: Box, unit: number, drawn: number): Size {
-  const width = ceilDiv((box.maxX - box.minX) * drawn, unit) + 2 * CROP.margin;
-  const height = ceilDiv((box.maxY - box.minY) * drawn, unit) + 2 * CROP.margin;
+/**
+ * The size at a height drawn, of strokes whose widest line is `ink`, N: the margin holds half that
+ * line and a pixel, ⌈N / (24 × unit)⌉ + 1 px, and `CROP.margin` at least.
+ */
+function sizeOf(box: Box, unit: number, drawn: number, ink: number): Size {
+  const margin = Math.max(CROP.margin, ceilDiv(ink, 24 * unit) + 1);
+  const width = ceilDiv((box.maxX - box.minX) * drawn, unit) + 2 * margin;
+  const height = ceilDiv((box.maxY - box.minY) * drawn, unit) + 2 * margin;
   return {
     drawn,
     width: Math.max(width, CROP.side),
     height: Math.max(height, CROP.side),
-    top: CROP.margin + floorDiv(Math.max(CROP.side - height, 0), 2),
-    left: CROP.margin + floorDiv(Math.max(CROP.side - width, 0), 2),
+    top: margin + floorDiv(Math.max(CROP.side - height, 0), 2),
+    left: margin + floorDiv(Math.max(CROP.side - width, 0), 2),
   };
 }
 
