@@ -7,9 +7,9 @@
 // page's, which fail it.
 //
 // Two builds, two ways. The release's goes an adult's measurement with the moves of the
-// emulators' checklist on the sheet — a stroke the browser cancels, the eraser and undo, two
-// fingers that scroll — and the workbook written as an adult imitating a child; then the page is
-// opened anew and the sheet's file opened in it. The test build's goes its start, the eval
+// emulators' checklist on the sheet — no text selected, a stroke the browser cancels, the eraser
+// and undo, two fingers that scroll — and the workbook written as an adult imitating a child; then
+// the page is opened anew and the sheet's file opened in it. The test build's goes its start, the eval
 // set closed and a child's session begun with the form's code, and the child's sheet and workbook.
 
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -257,14 +257,21 @@ async function begin(run: Run, device: Device, way: Way): Promise<boolean> {
   return true;
 }
 
-/** The moves of the emulators' checklist on the sheet, after its first stroke: a stroke the
- * browser cancels leaves nothing; the row's eraser takes the stroke off, and undo puts it back; a
+/** The moves of the emulators' checklist on the sheet, after its first stroke: the
+ * element's text is not selected, nor a menu opened by a long press; a stroke the browser
+ * cancels leaves nothing; the row's eraser takes the stroke off, and undo puts it back; a
  * second stroke, erased, stays in the history apart; the pen comes back; two fingers scroll and
  * write nothing. Whether the way goes on: a move the device could not make stops it, as its
  * failure. */
 async function moves(run: Run, device: Device, name: string): Promise<boolean> {
   const sheet = () => json<SheetNow>(device, SHEET);
   const before = await sheet();
+  run.record(
+    "no text of the element is selected, nor does a long press open a menu over it",
+    !before.selectable,
+    before.selectable ? "the element's styles allow it" : "the element's styles forbid it",
+    "page",
+  );
   const cancelled = await device.cancel(name);
   if (cancelled === undefined) return false;
   const kept = await sheet();

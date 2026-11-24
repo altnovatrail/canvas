@@ -151,7 +151,7 @@ test("the sheet is a stack of layers in the order spec's glossary gives them, an
   expect(element.contains(document.elementFromPoint(...onPen))).toBe(false);
 });
 
-test("a worked example's canvas alone takes no pointer, the stage keeps the menu and the selection off the sheet, and out of it the consumer's none reaches the canvas again", async () => {
+test("a worked example's canvas alone takes no pointer, the stage keeps the menu off the sheet and the element the selection, and out of it the consumer's none reaches the canvas again", async () => {
   const { element, canvas, stage } = await sheet(400);
   const layers = [...stage.children];
   element.workedExample = workedExample();
@@ -164,7 +164,8 @@ test("a worked example's canvas alone takes no pointer, the stage keeps the menu
     target.dispatchEvent(menu);
     expect(menu.defaultPrevented).toBe(true);
   }
-  expect(getComputedStyle(stage).userSelect).toBe("none");
+  // No text of the element is selected, the sheet among it.
+  expect(getComputedStyle(element).userSelect).toBe("none");
   // The class goes with the example, and the canvas inherits again: it set no pointer-events.
   element.workedExample = undefined;
   expect(getComputedStyle(canvas).pointerEvents).toBe("auto");

@@ -484,11 +484,12 @@ test("a pen's eraser erases whatever the tool, and its barrel button neither era
 test("one pointer at a time writes or erases, and a press goes on as it began when the tool changes", async () => {
   const { element, canvas, view } = await sheet(400);
   level(canvas, view(), 300, 100, 300);
-  // A stroke under way: a pen's eraser that comes down meanwhile erases nothing.
-  const pen = { pointerId: 11, pointerType: "pen", isPrimary: true, bubbles: true };
+  // A mouse's stroke under way: a pen's eraser that comes down meanwhile erases nothing. A pen's
+  // stroke it would end: a screen has one pen, and the other lost its way up.
+  const mouse = { pointerId: 11, pointerType: "mouse", isPrimary: true, bubbles: true };
   const send = (type: string, x: number, init: PointerEventInit) =>
     canvas.dispatchEvent(
-      new PointerEvent(type, { ...pen, ...at(canvas, view(), x, 600), ...init }),
+      new PointerEvent(type, { ...mouse, ...at(canvas, view(), x, 600), ...init }),
     );
   send("pointerdown", 100, { button: 0, buttons: 1, pressure: 0.5 });
   const eraser = eraserHand(canvas, view, "pen eraser", 12);

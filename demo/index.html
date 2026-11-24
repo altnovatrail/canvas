@@ -55,6 +55,7 @@
   #sent-cells figure { display: inline-block; margin: 0 8px 8px 0; font-size: 13px; }
   #sent-cells img { display: block; border: 1px solid #d4d4cf; }
   table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  caption { text-align: left; color: #6b6b66; }
   th, td { text-align: left; padding: 2px 12px 2px 0; vertical-align: top; }
 </style>
 </head>
@@ -68,6 +69,11 @@
     <button id="next">Next task</button>
     <span id="status" role="status"></span>
   </div>
+  <table>
+    <caption>The pen's pressure, of the strokes on the sheet</caption>
+    <thead><tr><th>Stroke</th><th>Points</th><th>Below 0.1</th><th>10 %</th><th>Median</th><th>90 %</th><th>Highest</th></tr></thead>
+    <tbody id="pressure"></tbody>
+  </table>
   <div class="tools">
     <label>Canvas <select id="kind">
       <option value="sheet">handwriting sheet</option>

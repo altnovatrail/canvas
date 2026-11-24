@@ -320,6 +320,11 @@ const ERASER_RADIUS_PX = 10;
 // writing and the buttons' pointer, though not their keys. A worked example's canvas
 // takes no pointer at all: a finger or a pen on its sheet scrolls, and zooms, as the browser does
 // on the statement, and a long press or a right click opens no menu over the sheet all the same.
+// No text of the element is selected, nor does a long press open a menu of the system over it: on
+// an iPad a pen's double tap or long press, the way a dot or an equals sign is written, would
+// select the nearest text, a button's label out of sight among it, and the system's menu of the
+// selection would come up over the sheet (measurements 1.8). A screen reader reads what it read
+// before.
 // The theme is the consumer's, by custom properties that the shadow tree inherits; with
 // forced colours the system's colours stand in for them. The element is horizontal whatever writing
 // mode the page is in: a sheet has no other.
@@ -332,7 +337,10 @@ const ERASER_RADIUS_PX = 10;
 // is three pixels across at the fit and above it, and smaller by the zoom below it, so that a sheet
 // zoomed out is no field of dots.
 const STYLE = `
-:host { display: flex; flex-direction: column; isolation: isolate; writing-mode: horizontal-tb; }
+:host {
+  display: flex; flex-direction: column; isolation: isolate; writing-mode: horizontal-tb;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+}
 :host([hidden]) { display: none; }
 .frame {
   position: relative; flex: 1 1 auto; min-height: 0; display: grid;
@@ -469,10 +477,7 @@ const STYLE = `
   position: relative; aspect-ratio: ${SHEET.width} / ${SHEET.height};
   background: var(--novatrail-canvas-paper, ${PAPER});
 }
-.stage {
-  position: sticky; top: 0; left: 0; max-height: 100%; overflow: clip;
-  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
-}
+.stage { position: sticky; top: 0; left: 0; max-height: 100%; overflow: clip; }
 .spot { position: absolute; visibility: hidden; }
 .stage > * { position: absolute; inset: 0; width: 100%; height: 100%; }
 .stage > :not(canvas) { pointer-events: none; }
@@ -483,6 +488,7 @@ const STYLE = `
 .grid.dots { stroke-width: calc(3px * min(1, var(--zoom, 1))); stroke-linecap: round; }
 .print {
   all: initial; font-family: inherit; visibility: inherit; pointer-events: none; direction: ltr;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   font-variant-numeric: tabular-nums; font-size: ${LAYOUT.size}px;
   color: var(--novatrail-canvas-ink, ${INK});
 }
@@ -973,6 +979,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     {
       writer: () => this.#writer(),
       drop: (pointerId) => this.#drop(pointerId),
+      end: (pointerId) => {
+        this.#recorder.end(pointerId);
+        this.#eraser.end(pointerId);
+      },
       scroll: (dx, dy, fresh) => this.#scroll(dx, dy, fresh),
       zoom: (ratio, x, y) => this.#pinch(ratio, x, y),
       across: () => overflowOf(this.#viewport, "x") > EDGE,
@@ -1018,8 +1028,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       }
     | undefined;
   #tool: Tool = "pen";
-  /** The pointer the hand moves the sheet by, and where it was on the screen last. */
-  #pan: { readonly pointerId: number; readonly x: number; readonly y: number } | undefined;
+  /** The pointer the hand moves the sheet by, of its type, and where it was on the screen last. */
+  #pan:
+    | { readonly pointerId: number; readonly kind: string; readonly x: number; readonly y: number }
+    | undefined;
   /** A task from paper's grid, the learner's. */
   #paperGrid: PaperGrid = "dots";
   /** How far the sheet goes, in units, as laid out: the page and past it. */
@@ -1174,6 +1186,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     // The bar comes first, as the row of buttons before it did: Tab reaches it before the sheet.
     this.#wrapper.append(this.#tools.rail, this.#viewport, this.#ring);
     root.append(this.#wrapper);
+    // The styles keep every text of the element from a selection; a selection that a script or an
+    // engine starts anyway does not start here.
+    root.addEventListener("selectstart", (event) => event.preventDefault());
     this.#lay(NO_TASK);
     this.#refresh();
 
@@ -1196,6 +1211,18 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     // canvas's event comes up to the stage, and so does the stage's own, where a worked example's
     // sheet takes the pointer instead.
     this.#stage.addEventListener("contextmenu", (event) => event.preventDefault());
+    // A pen's touch on the canvas starts none of the system's gestures: on an iPad a long press or a
+    // double tap would select text and open the menu of the selection, and a pen writes by pointer
+    // events alone, which come before the touch events. A finger's touch is left as it is.
+    for (const type of ["touchstart", "touchmove"] as const) {
+      this.#canvas.addEventListener(
+        type,
+        (event) => {
+          if (byStylus(event)) event.preventDefault();
+        },
+        { passive: false },
+      );
+    }
     // A new colour of the ink, from the consumer's theme or the page's colour scheme, ends a
     // transition of the canvas's colour a millisecond long: the ink is drawn anew in it.
     this.#canvas.addEventListener("transitionend", () => this.#request());
@@ -2231,8 +2258,15 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     // The hand moves the sheet under a pen, a finger or a mouse alike, and writes nothing: one
     // pointer at a time, and the others do nothing while it moves.
     if (this.#tool === HAND) {
+      // A pen that moves the sheet lost its way up when a pen comes down again: a screen has one.
+      if (this.#pan?.kind === "pen" && event.pointerType === "pen") this.#endPan();
       if (this.#pan !== undefined) return;
-      this.#pan = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+      this.#pan = {
+        pointerId: event.pointerId,
+        kind: event.pointerType,
+        x: event.clientX,
+        y: event.clientY,
+      };
       this.#latch = undefined;
       this.#latchAcross = undefined;
       this.#sheet.classList.add("panning");
@@ -2292,7 +2326,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const pan = this.#pan;
     if (pan !== undefined && pan.pointerId === event.pointerId) {
       this.#scroll(event.clientX - pan.x, event.clientY - pan.y, false);
-      this.#pan = { pointerId: pan.pointerId, x: event.clientX, y: event.clientY };
+      this.#pan = { ...pan, x: event.clientX, y: event.clientY };
       this.#flush();
       return;
     }
@@ -3546,6 +3580,15 @@ function contactOf(event: PointerEvent): Contact {
     height: event.height,
     time: event.timeStamp,
   };
+}
+
+/**
+ * Whether a touch event is a pen's: WebKit gives a pen's touch the `touchType` "stylus". A touch
+ * without it is taken for a finger's, and is left as it is.
+ */
+function byStylus(event: TouchEvent): boolean {
+  const touches: readonly (Touch & { readonly touchType?: string })[] = [...event.changedTouches];
+  return touches.some((touch) => touch.touchType === "stylus");
 }
 
 /** The scroll an event's fingers owe a scroller, in whole pixels, if any: the rest waits. */
