@@ -6,7 +6,7 @@ The repository is cloned with `git clone --recurse-submodules`: `spec/` is a git
 
 - [architecture.md](architecture.md) — the component: what it does and does not do, its data and links, and what is still to decide.
 - [decisions.md](decisions.md) — the decision log: what was decided, why, and what was rejected.
-- [sources.md](sources.md) — the records of external facts, each with its source, its date and its quote; [measurements.md](measurements.md) — the results of measurements.
+- [sources.md](sources.md) — the records of the facts no run checks that the documents rest on, each with its address, the date read and a quote; [measurements.md](measurements.md) — the results of measurements.
 - `plan/` — the archives of done epics, one file each, in Russian, with the bodies of the tasks done outside an epic in its time or after it (RUN.md, rule 9).
 - [RUN.md](../RUN.md) — the work plan, in epics; its other tables are in `run/`: the technical debt is [run/DEBT.md](../run/DEBT.md), the questions to the author [run/QUESTIONS.md](../run/QUESTIONS.md).
 
