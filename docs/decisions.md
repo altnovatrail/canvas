@@ -4,7 +4,7 @@
 >
 > **Rule:** do not propose again what was rejected without new facts. If a decision has to change, ask the author and rewrite its entry in its place, and every entry the change touches: an entry is its text in force — what was decided, why, what was rejected and what a change of it edits —, git keeps the old text, and the commit says why. An entry's number stands in its heading alone: an entry cites no other entry and no section, says in words what it rests on, and carries no date of who decided it and no amendment; a fact that no run of ours checks cites its one record of [sources.md](sources.md).
 >
-> The repository was set up 2026-10-19 from the template of `spec` v0.1.0. How it comes to differ from the template — tools in the devcontainer, rules in RUN.md — is recorded here as a decision. Next number — R91.
+> The repository was set up 2026-10-19 from the template of `spec` v0.1.0. How it comes to differ from the template — tools in the devcontainer, rules in RUN.md — is recorded here as a decision. Next number — R92.
 >
 > Open questions that concern several repositories — О-, П-, Т- — are in the registers of `spec`, in `spec/docs/product.md`, `spec/docs/privacy.md` and `spec/docs/repositories.md`. What is still to decide in the component itself is in [architecture.md](architecture.md).
 
@@ -3893,3 +3893,16 @@ How it is built — the docking with the app in [architecture.md](architecture.m
 - **styles on the samples page now** — its texts do not name them yet.
 
 — *Consequence:* [architecture.md](architecture.md), the drawing engine and the layers, docking with the app, the sample file and accessibility; `src/core/style.ts`, `src/core/cut.ts`, `src/core/history.ts`, `src/core/work.ts`, `src/core/eraser.ts`, `src/core/outline.ts`, `src/core/crop.ts`, `src/core/raster.ts`, `src/core/png.ts`, `src/core/sheet.ts`, `src/core/contracts.fixture.ts`, `src/element/index.ts`, `src/element/pens.ts`, `src/element/tools.ts`, `src/element/labels.ts`, `src/element/interface.check.ts`, `src/eval/sample.ts`, `page/main.ts`, `page/open.ts`; their tests.
+
+**R91. The element tells app's debug view what its drawing holds and costs, and shows what a frame paints: `paintStats`, a new frozen reading each time — the strokes and their points, the frames painted and of them those that painted all in sight, the strokes filled, the last frame's fills, share of the view and time, the times of the last 120 frames and the canvases it holds —, and `paintFlash`, false as it comes, under which each rectangle a frame paints shows red and fades in 300 ms.**
+- **The counting** is the drawing's own: a frame that paints anything adds two readings of `performance.now()` around its painting and a slot of a ring of 120; a rectangle painted adds its area, and a painting of all in sight makes the share 1. The strokes, their points and the canvases are read when `paintStats` is, not kept. A frame that paints nothing counts for nothing.
+- **The flash** is a canvas of its own, class `flash`, after the ink's and of its size, there only while `paintFlash` is on: it takes no pointer, is out of the accessibility tree and no export reads it, for the exports draw the strokes anew. Off, it goes at once with what it showed. Anything but a boolean is a TypeError.
+
+— *Why:* the author looks at the load of a sheet full of ink on an iPad, which heated it and lagged, in `app`'s debug window: Safari gives a page no CPU load and no memory, so what the element paints, how long that takes and what it holds stand in for them, read where they are counted. The flash shows which frames paint all in sight and which a rectangle alone.
+
+— *Rejected:*
+- **marks of User Timing** for each frame, which `app` would observe: a contract all the same, by names and details, and a buffer of entries that grows unless someone clears it;
+- **an event for each frame**: a dispatch and an object a frame, while the reading costs nothing until `app` asks, twice a second at most;
+- **the flash drawn on the ink's canvas**, which the next frame would have to take off and a pixel of the ink would hold.
+
+— *Consequence:* `src/element/index.ts` — `paintStats`, `paintFlash`, `#draw` and the rectangles it paints; `src/element/flash.ts`; `src/element/interface.check.ts`; `src/element/stats.test.ts`; [architecture.md](architecture.md), the drawing engine and the layers.

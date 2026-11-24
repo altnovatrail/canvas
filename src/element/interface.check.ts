@@ -29,6 +29,7 @@ import type {
   Marks,
   Media,
   NovatrailCanvas,
+  PaintStats,
   PaperGrid,
   PaperSubmission,
   PaperTask,
@@ -70,6 +71,7 @@ export type Contract = All<
     Same<Mark, spec.Mark>,
     Same<Marks, spec.Marks>,
     Same<Media, spec.Media>,
+    Same<PaintStats, spec.PaintStats>,
     Same<PaperGrid, spec.PaperGrid>,
     Same<PaperSubmission, spec.PaperSubmission>,
     Same<PaperTask, spec.PaperTask>,
@@ -158,6 +160,14 @@ export const history: readonly HistoryEvent[] = sheet.history;
  * picture: always a Blob, never null.
  */
 export const picture: Promise<Blob> = sheet.exportPicture();
+/** The debug view reads what the drawing costs, and turns on the flash of what a frame paints. */
+export const stats: PaintStats = sheet.paintStats;
+export const lastArea: number | undefined = sheet.paintStats.last?.area;
+sheet.paintFlash = true;
+// @ts-expect-error The reading is the element's: a consumer sets none.
+sheet.paintStats = stats;
+// @ts-expect-error The flash is on or off, nothing else.
+sheet.paintFlash = "on";
 /** A workbook's marks stand on answer cells, by their item and slot. */
 sheet.marks = {
   submission: boxes,

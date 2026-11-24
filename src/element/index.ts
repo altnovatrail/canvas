@@ -65,6 +65,7 @@ import type {
   GridChange,
   HistoryChange,
   Media,
+  PaintStats,
   PaperGrid,
   PaperTask,
   ToolChange,
@@ -159,6 +160,7 @@ import {
 import { type Cutting, nextIdOf, resumeOf, Work } from "../core/work.js";
 import { ZOOM_MIN, ZOOM_STEP } from "../core/zoom.js";
 import { placeOver, SVG, write } from "./attributes.js";
+import { Flash } from "./flash.js";
 import { knows, labelsFor, say, sayAround } from "./labels.js";
 import { Parts } from "./parts.js";
 import { pensStyle, samePens, screenColourOf } from "./pens.js";
@@ -193,6 +195,7 @@ export type {
   HistoryChange,
   HistoryChangeEvent,
   Media,
+  PaintStats,
   PaperGrid,
   PaperTask,
   PenChangeEvent,
@@ -508,7 +511,7 @@ const STYLE = `
 .stage { position: sticky; top: 0; left: 0; max-height: 100%; overflow: clip; }
 .spot { position: absolute; visibility: hidden; }
 .stage > * { position: absolute; inset: 0; width: 100%; height: 100%; }
-.stage > :not(canvas) { pointer-events: none; }
+.stage > :not(canvas), .stage > canvas.flash { pointer-events: none; }
 .grid {
   fill: none; stroke: var(--novatrail-canvas-grid, #d3dbe5); stroke-width: 1px;
   vector-effect: non-scaling-stroke;
@@ -830,6 +833,9 @@ interface Painted {
 /** A rectangle of a canvas, in whole device pixels: left, top, width and height. */
 type Pixels = readonly [number, number, number, number];
 
+/** How many of the last frames' times `paintStats` keeps. */
+const PAINT_MS = 120;
+
 /**
  * A mark the sheet shows: its name and where it is, its frame on the layer of the marks — a
  * verdict's tick or cross on its halo, or a wavy line —, the frame as last drawn, in
@@ -1011,6 +1017,21 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   #underHolds: Painted | undefined;
   /** How many strokes the element has filled on its buffers and its canvas since it was built. */
   #fills = 0;
+  /** What the frame being painted has painted: all in sight, or rectangles of this many device pixels. */
+  #frameAll = false;
+  #frameArea = 0;
+  /** The frames painted since the element was built, and of them those that painted all in sight. */
+  #frames = 0;
+  #fullRepaints = 0;
+  /** The last frame painted: the strokes it filled, the share of the view it painted, its time. */
+  #lastFills = 0;
+  #lastArea = 0;
+  #lastMs = 0;
+  /** The time of each of the last frames painted, ms, a ring, and how many were ever written. */
+  readonly #paintMs = new Float64Array(PAINT_MS);
+  #paintsKept = 0;
+  /** The flash of what a frame paints, while `paintFlash` is on. */
+  #flash: Flash | undefined;
   /** The canvas's style as it is computed, read live: its colour is the ink's on the screen. */
   readonly #canvasStyle = getComputedStyle(this.#canvas);
   /** The files of the pictures of the statement and of a worked example's demo. */
@@ -2073,6 +2094,60 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
+   * What the drawing holds and has cost, a new frozen reading each time, for app's debug view: the
+   * strokes and their points, the frames painted and those that painted all in sight, the strokes
+   * filled, the last frame, the times of the last frames and the canvases held. Counted as the
+   * element paints anyway: a frame adds two readings of the clock and a slot of the ring.
+   */
+  get paintStats(): PaintStats {
+    let points = 0;
+    for (const stroke of this.#work.strokes) points += stroke.points.length;
+    const kept = Math.min(this.#paintsKept, PAINT_MS);
+    const paintMs: number[] = [];
+    for (let i = this.#paintsKept - kept; i < this.#paintsKept; i++) {
+      paintMs.push(this.#paintMs[i % PAINT_MS] ?? 0);
+    }
+    const buffers = [this.#canvas, this.#under]
+      .filter((canvas) => canvas.width > 0 && canvas.height > 0)
+      .map(({ width, height }) => Object.freeze({ width, height }));
+    return Object.freeze({
+      strokes: this.#work.strokes.length,
+      points,
+      frames: this.#frames,
+      fullRepaints: this.#fullRepaints,
+      fills: this.#fills,
+      last:
+        this.#frames === 0
+          ? undefined
+          : Object.freeze({ fills: this.#lastFills, area: this.#lastArea, ms: this.#lastMs }),
+      paintMs: Object.freeze(paintMs),
+      buffers: Object.freeze(buffers),
+    });
+  }
+
+  /**
+   * While true, each rectangle a frame paints shows red over the sheet and fades, on a canvas of
+   * its own that takes no pointer and no export reads: for app's debug view. Anything but a boolean
+   * is a TypeError.
+   */
+  get paintFlash(): boolean {
+    return this.#flash !== undefined;
+  }
+
+  set paintFlash(on: boolean) {
+    if (typeof on !== "boolean") throw new TypeError(`<${TAG}>.paintFlash is a boolean`);
+    if (on === (this.#flash !== undefined)) return;
+    if (on) {
+      this.#flash = new Flash();
+      this.#canvas.after(this.#flash.canvas);
+      return;
+    }
+    this.#flash?.stop();
+    this.#flash?.canvas.remove();
+    this.#flash = undefined;
+  }
+
+  /**
    * The picture of the work, for the `picture` of a stored work that app puts on the server, a
    * method of the agreement with app: the PNG of the strokes the surface shows,
    * with no condition — the sheet's page, or the workbook's whole page with its draft, and the ink
@@ -2190,6 +2265,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#unwatchColours = undefined;
     cancelAnimationFrame(this.#frame);
     this.#frame = 0;
+    this.#flash?.stop();
     // WebKit caps what all the page's canvases hold: the buffers go at once, not at a collection.
     this.#under.width = 0;
     this.#under.height = 0;
@@ -3833,6 +3909,32 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * drawn as the pieces it would leave.
    */
   #draw(): void {
+    const start = performance.now();
+    const fills = this.#fills;
+    this.#frameAll = false;
+    this.#frameArea = 0;
+    this.#drawNow();
+    if (!this.#frameAll && this.#frameArea === 0) return;
+    const ms = performance.now() - start;
+    const { width, height } = this.#canvas;
+    this.#frames++;
+    if (this.#frameAll) this.#fullRepaints++;
+    this.#lastFills = this.#fills - fills;
+    this.#lastArea = this.#frameAll ? 1 : Math.min(1, this.#frameArea / (width * height));
+    this.#lastMs = ms;
+    this.#paintMs[this.#paintsKept % PAINT_MS] = ms;
+    this.#paintsKept++;
+  }
+
+  /** What a frame paints on the canvas: all in sight, or a rectangle of it, for `paintStats` and the flash. */
+  #painting(at: Pixels | undefined): void {
+    const { width, height } = this.#canvas;
+    if (at === undefined) this.#frameAll = true;
+    else this.#frameArea += at[2] * at[3];
+    this.#flash?.add(at ?? [0, 0, width, height], width, height);
+  }
+
+  #drawNow(): void {
     const screen = this.#view();
     if (screen === undefined) return;
     // Read before anything is written: the colour as the style now computes it.
@@ -3891,6 +3993,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const at = union(was, this.#pixelsOf(frame, liveTraced, boundsOf(polygon)));
     if (at === undefined) return;
     const [x, y, wide, high] = at;
+    this.#painting(at);
     context.save();
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.beginPath();
@@ -3940,6 +4043,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /** The canvas cleared and the finished ink in sight painted on it, all of it. */
   #paintAnew(context: CanvasRenderingContext2D, frame: Frame, now: Painted): void {
+    this.#painting(undefined);
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.clearRect(0, 0, now.width, now.height);
     this.#paintInk(context, frame, now.layers);
@@ -3956,6 +4060,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     layers: Layers,
     [x, y, wide, high]: Pixels,
   ): void {
+    this.#painting([x, y, wide, high]);
     context.save();
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.beginPath();
