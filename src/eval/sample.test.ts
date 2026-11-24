@@ -229,6 +229,16 @@ describe("what a sample holds, by its purpose and its writer", () => {
     for (const input of cases) expect(() => sampleOf(input)).toThrow(TypeError);
   });
 
+  test("a history with an act of the tutor is a TypeError: its strokes are no one's writing", () => {
+    const sheet = sheetSample(Purpose.MEASUREMENT, Writer.ADULT, "1");
+    if (!("sheet" in sheet.surface)) throw new Error("no sheet");
+    const { history } = sheet.surface.sheet;
+    const t = (history.at(-1)?.t ?? 0) + 10;
+    const acted: HistoryEvent = { kind: "tutor", t, strokes: [], ids: [1] };
+    const surface = { sheet: { ...sheet.surface.sheet, history: [...history, acted] } };
+    expect(() => sampleOf({ ...sheet, surface })).toThrow(/tutor/);
+  });
+
   test("a person's sample names the page's texts and version; a synthetic one 'none' and 0.0.0, and its seed", () => {
     const synthetic = sampleOf(sheetSample(Purpose.MEASUREMENT, Writer.ADULT, "1"));
     expect([synthetic.textSetVersion, synthetic.canvasVersion]).toEqual(["none", "0.0.0"]);

@@ -61,6 +61,7 @@
 import type {
   CanvasElement,
   CanvasEventMap,
+  ExportedPaper,
   ExportedWork,
   GridChange,
   HistoryChange,
@@ -97,7 +98,14 @@ import { type Contact, Hands } from "../core/hands.js";
 import { begins, type HistoryEvent, sameHistory } from "../core/history.js";
 import type { InkPoint, Stroke } from "../core/ink.js";
 import { type Manifest, NO_MANIFEST, type Settings, settingsOf } from "../core/manifest.js";
-import { type Marks, marksOf, type Placed, placesOf, shownOf } from "../core/marks.js";
+import {
+  type Marks,
+  marksOf,
+  type PaperSubmission,
+  type Placed,
+  placesOf,
+  shownOf,
+} from "../core/marks.js";
 import { outline } from "../core/outline.js";
 import {
   isBox,
@@ -120,7 +128,12 @@ import {
   penSettingsOf,
   reachOf,
 } from "../core/style.js";
-import { cellsForCheck, paperWorkForCheck, workForCheck } from "../core/submission.js";
+import {
+  cellsForCheck,
+  drawingSubmissionOf,
+  paperWorkForCheck,
+  workForCheck,
+} from "../core/submission.js";
 import {
   HAND,
   isTool,
@@ -157,6 +170,19 @@ import {
   tracingStateOf,
   whollyOff,
 } from "../core/tracing.js";
+import {
+  type CropStroke,
+  cropStrokesOf,
+  type DrawingContext,
+  drawingContextOf,
+  drawingCropOf,
+  drawnPart,
+  lengthOf,
+  type Timing,
+  type TutorAct,
+  timingsOf,
+  tutorPlanOf,
+} from "../core/tutor.js";
 import { type Cutting, nextIdOf, resumeOf, Work } from "../core/work.js";
 import { ZOOM_MIN, ZOOM_STEP } from "../core/zoom.js";
 import { placeOver, SVG, write } from "./attributes.js";
@@ -183,6 +209,7 @@ export type {
   Box,
   CanvasElement,
   CanvasEventMap,
+  CropStroke,
   DemoChangeEvent,
   EraserMode,
   ExportedCell,
@@ -208,6 +235,7 @@ export type {
   TracingReadEvent,
   TracingReading,
   TracingState,
+  TutorAct,
 } from "@altnovatrail/spec/canvas";
 export type { Filled, Filling } from "../core/boxes.js";
 export type { Crop, Frame } from "../core/crop.js";
@@ -833,6 +861,32 @@ interface Painted {
 /** A rectangle of a canvas, in whole device pixels: left, top, width and height. */
 type Pixels = readonly [number, number, number, number];
 
+/**
+ * The tutor's act being drawn on the canvas, stroke by stroke: when each of its strokes is drawn,
+ * by ID, in ms from `start` on the page's clock, all of them by `end`; the part of each the frame
+ * draws and the part the last frame painted, none before it starts; whether a frame has painted
+ * it yet; whoever waits for its end, and the timer that ends it should no frame come.
+ */
+interface Drawing {
+  readonly timings: ReadonlyMap<number, Timing>;
+  readonly start: number;
+  readonly end: number;
+  readonly parts: Map<number, { readonly share: number; readonly stroke: Stroke | undefined }>;
+  readonly painted: Map<number, Stroke | undefined>;
+  fresh: boolean;
+  readonly done: () => void;
+  readonly timer: ReturnType<typeof setTimeout>;
+}
+
+/**
+ * How long after its last stroke's end the tutor's act ends by its timer, ms, should no frame of
+ * the element's end it: a page in the background paints none.
+ */
+const DRAWING_SLACK = 250;
+
+/** The query of a learner's wish for less motion, under which the tutor's act appears at once. */
+const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
+
 /** How many of the last frames' times `paintStats` keeps. */
 const PAINT_MS = 120;
 
@@ -1015,6 +1069,14 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   #liveAt: Pixels | undefined;
   readonly #under = document.createElement("canvas");
   #underHolds: Painted | undefined;
+  /**
+   * The tutor's act being drawn: its strokes by ID, when each is drawn from the act's start on the
+   * page's clock, how far each was drawn on the last frame painted, and whoever waits for its end.
+   * `fresh` till a frame has painted it.
+   */
+  #drawing: Drawing | undefined;
+  /** The page's time of the frame being painted, by which the tutor's strokes are drawn so far. */
+  #drawingNow = 0;
   /** How many strokes the element has filled on its buffers and its canvas since it was built. */
   #fills = 0;
   /** What the frame being painted has painted: all in sight, or rectangles of this many device pixels. */
@@ -1599,9 +1661,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   set paper(paper: PaperTask | undefined) {
     if (paper === this.#paper) return;
     if (paper === undefined) {
-      if (this.#work.traced) {
+      if (this.#work.traced || this.#work.tutored) {
         throw new TypeError(
-          `<${TAG}> has strokes on the tracing paper: the task from paper goes with a new element, or a history without them`,
+          `<${TAG}> has strokes on the tracing paper or an act of the tutor: the task from paper goes with a new element, or a history without them`,
         );
       }
       this.#leaveTracing(false);
@@ -1810,8 +1872,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The history of writing: every stroke, erasing, clearing and undo on the sheet, in the
-   * order they landed, at the sheet's time — frozen, and the same array until the next action. The
+   * The history of writing: every stroke, erasing, cut, clearing, undo and act of the tutor on the
+   * sheet, in the order they landed, at the sheet's time — frozen, and the same array until the next action. The
    * consumer keeps it, adding what `historychange` tells, and gives it back to open the sheet as it
    * was: the strokes, and the actions undo takes back.
    *
@@ -1869,6 +1931,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
         `<${TAG}> takes a history that is where its own began: the ${before.length - after.length} actions after it are gone`,
       );
     }
+    this.#endDrawing();
     this.#recorder.restart(nextIdOf(after));
     const erasing = this.#eraser.pointer;
     if (erasing !== undefined) this.#eraser.cancel(erasing);
@@ -2023,7 +2086,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    */
   undo(): boolean {
     const undone = this.#work.undo(performance.now());
-    if (undone) this.#changed();
+    if (undone) {
+      this.#endDrawing();
+      this.#changed();
+    }
     return undone;
   }
 
@@ -2034,7 +2100,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    */
   clear(): boolean {
     const cleared = this.#work.clear(performance.now());
-    if (cleared) this.#changed();
+    if (cleared) {
+      this.#endDrawing();
+      this.#changed();
+    }
     return cleared;
   }
 
@@ -2091,6 +2160,273 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const work = workForCheck(this.#work.strokes, digit);
     if (work === null) return null;
     return Object.freeze({ png: blobOf(work.png), submission: work.submission });
+  }
+
+  /**
+   * The work of a task from paper for the drawing of grown-up mode, as the sheet is when it is
+   * called: the crop of the part of the sheet in sight — the page, should the element not be laid
+   * out —, with room to write in, its longer edge 1568 px at most and its visual tokens within
+   * the crop's bound, RGB, on white with no grid: every stroke there in its style, and the tracing
+   * paper where it lies, while it is shown, its picture laid in grey and multiplied and its strokes
+   * over it. With the task's crop and the context: the crop's numbers, no groups, where the tracing
+   * paper lay and the digest. A sheet with no stroke gives it too. Without a task from paper it is a
+   * TypeError, thrown at once.
+   */
+  exportForDrawing(): Promise<ExportedPaper> {
+    const paper = this.#paper;
+    const tracing = this.#tracing;
+    if (paper === undefined || tracing === undefined) {
+      throw new TypeError(`<${TAG}> shows no task from paper: the drawing's crop is one's alone`);
+    }
+    const screen = this.#view();
+    const region: Box =
+      screen === undefined || !(screen.width > 0 && screen.height > 0)
+        ? { minX: 0, minY: 0, maxX: SHEET.width, maxY: SHEET.height }
+        : {
+            minX: Math.max(0, screen.vx),
+            minY: Math.max(0, screen.vy),
+            maxX: Math.min(REACH.width, screen.vx + screen.width / screen.k),
+            maxY: Math.min(REACH.height, screen.vy + screen.height / screen.k),
+          };
+    return this.#drawingOf(paper, tracing, this.#work, region);
+  }
+
+  async #drawingOf(
+    paper: PaperTask,
+    tracing: TracingState,
+    work: Work,
+    region: Box,
+  ): Promise<ExportedPaper> {
+    const crop = drawingCropOf(region);
+    const strokes = work.strokes;
+    const { size, gray: picture } = await this.#tracingPaper.read;
+    const { width, height } = crop;
+    const [top, left] = crop.sheetBox;
+    // Pixels a unit, across and down alike: the crop's numbers keep one scale.
+    const scale = width / (crop.sheetBox[3] - left);
+    const by = scaleIn(tracing);
+    const shown = !tracing.hidden;
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (context === null)
+      throw new Error(`<${TAG}> got no 2D context to draw the drawing's crop on`);
+    context.fillStyle = "#fff";
+    context.fillRect(0, 0, width, height);
+    const fill = (stroke: Stroke) => {
+      const { style } = stroke;
+      context.fillStyle = style?.color ?? "#000";
+      context.globalAlpha = style === undefined ? 1 : style.opacity / 100;
+      context.globalCompositeOperation = style?.pen === "marker" ? "multiply" : "source-over";
+      context.fill(this.#finished(stroke).path);
+    };
+    // The sheet's strokes, then the shown paper's crop multiplied over them, then its strokes.
+    context.setTransform(scale, 0, 0, scale, -left * scale, -top * scale);
+    for (const stroke of strokes) if (!work.onTracing(stroke.id)) fill(stroke);
+    const { data } = context.getImageData(0, 0, width, height);
+    const pixels = new Uint8Array(3 * width * height);
+    for (let at = 0; at < width * height; at++) {
+      for (let c = 0; c < 3; c++) pixels[3 * at + c] = data[4 * at + c] as number;
+    }
+    if (shown && picture !== null) {
+      const rect = tracingRect(tracing.at, scaled(size, by));
+      const place = {
+        left: (rect.minX - left) * scale,
+        top: (rect.minY - top) * scale,
+        right: (rect.maxX - left) * scale,
+        bottom: (rect.maxY - top) * scale,
+      };
+      layOver(pixels, width, picture, place, 3);
+    }
+    const traced = strokes.filter((stroke) => work.onTracing(stroke.id));
+    if (shown && traced.length > 0) {
+      const image = context.createImageData(width, height);
+      for (let at = 0; at < width * height; at++) {
+        for (let c = 0; c < 3; c++) image.data[4 * at + c] = pixels[3 * at + c] as number;
+        image.data[4 * at + 3] = 255;
+      }
+      context.setTransform(1, 0, 0, 1, 0, 0);
+      context.globalAlpha = 1;
+      context.globalCompositeOperation = "source-over";
+      context.putImageData(image, 0, 0);
+      const [x, y] = tracing.at;
+      context.setTransform(scale * by, 0, 0, scale * by, (x - left) * scale, (y - top) * scale);
+      for (const stroke of traced) fill(stroke);
+      const over = context.getImageData(0, 0, width, height).data;
+      for (let at = 0; at < width * height; at++) {
+        for (let c = 0; c < 3; c++) pixels[3 * at + c] = over[4 * at + c] as number;
+      }
+    }
+    // The canvas's memory goes at once, not at a collection: WebKit caps what all canvases hold.
+    canvas.width = 0;
+    canvas.height = 0;
+    const placed = strokes.map((stroke) => this.#onSheet(stroke, tracing));
+    const onPaper = { at: tracing.at, scale: by, onTracing: (id: number) => work.onTracing(id) };
+    const submission = drawingSubmissionOf(placed, onPaper, tracing, crop);
+    return Object.freeze({
+      statement: paper.statement,
+      png: blobOf(encodePNG(pixels, width, height, 3)),
+      submission,
+    });
+  }
+
+  /**
+   * The strokes the crop of a task from paper shows, for the tutor in grown-up mode, by the context
+   * of the submission `exportWork()` or `exportForDrawing()` gave with that crop: of the strokes on the sheet, in its
+   * order, those whose ink reaches into the crop, where they lay when it was made — the tracing
+   * paper's where the context's paper lay, none of them while it was hidden —, by ID, their points in the crop's pixels to a
+   * hundredth, thinned to 128 at most, frozen. A context that is not a task from paper's, and one
+   * given to a sheet with no task from paper, is a TypeError.
+   */
+  cropStrokes(submission: PaperSubmission): readonly CropStroke[] {
+    const context = this.#paperContextOf(submission);
+    const work = this.#work;
+    return Object.freeze(cropStrokesOf(work.strokes, (id) => work.onTracing(id), context));
+  }
+
+  /**
+   * The tutor's act in grown-up mode put on the sheet, by the context of the submission whose crop
+   * the drawing read, in one action that an undo takes back whole: the strokes it takes off, and
+   * its strokes after every other, new IDs, liners of its colours, laid from the crop's pixels
+   * onto the sheet, or onto the tracing paper from its corner when the context's paper was shown.
+   * It sends `historychange` at once. Its strokes are drawn one after another, each along its
+   * length at a hand's speed, all of it within 3 s, and at once with reduced motion or off the
+   * page; the promise resolves once the last is drawn. An undo, a clearing, an eraser, a new
+   * history, a scroll or another act cut the drawing short — what is left of it is drawn at once,
+   * and the promise resolves. An act that writes nothing and takes nothing off is no action, and
+   * resolves at once. A context that is not a task from paper's, an act with an ID the sheet does
+   * not show, a point off the sheet or a colour that is not `#rrggbb` is a TypeError, thrown
+   * before anything changes.
+   */
+  drawTutor(submission: PaperSubmission, act: TutorAct): Promise<void> {
+    const context = this.#paperContextOf(submission);
+    const work = this.#work;
+    const plan = tutorPlanOf(act, context, new Set(work.strokes.map(({ id }) => id)));
+    this.#endDrawing();
+    const first = this.#recorder.reserve(plan.strokes.length);
+    const drafts = plan.strokes.map((stroke, k) => ({ id: first + k, ...stroke }));
+    if (!work.tutor(drafts, plan.erase, performance.now(), plan.on)) return Promise.resolve();
+    // The drawing is there before any listener hears: one that undoes at once cuts it short.
+    const done = this.#startDrawing(drafts, plan.on === undefined ? 1 : scaleIn(context.tracing));
+    this.#changed();
+    return done;
+  }
+
+  /** A context a consumer gives back for the tutor's act, checked: a task from paper's, on one. */
+  #paperContextOf(submission: unknown): DrawingContext {
+    if (this.#paper === undefined) {
+      throw new TypeError(`<${TAG}> shows no task from paper: the tutor acts on one alone`);
+    }
+    return drawingContextOf(submission, "submission");
+  }
+
+  /**
+   * The drawing of the tutor's strokes begins, by their lengths on the sheet — `by` the tracing
+   * paper's scale, for those on it: none for none, or with reduced motion, or off the page.
+   */
+  #startDrawing(
+    strokes: readonly { readonly id: number; readonly points: readonly Point[] }[],
+    by: number,
+  ): Promise<void> {
+    if (strokes.length === 0 || !this.isConnected || matchMedia(REDUCED_MOTION).matches) {
+      return Promise.resolve();
+    }
+    const timings = timingsOf(strokes.map(({ points }) => lengthOf(points) * by));
+    const end = timings.at(-1)?.end ?? 0;
+    return new Promise((resolve) => {
+      this.#drawing = {
+        timings: new Map(strokes.map(({ id }, k) => [id, timings[k] as Timing])),
+        start: performance.now(),
+        end,
+        parts: new Map(),
+        painted: new Map(),
+        fresh: true,
+        done: resolve,
+        timer: setTimeout(() => this.#endDrawing(), end + DRAWING_SLACK),
+      };
+    });
+  }
+
+  /**
+   * The drawing of the tutor's act ends, and whoever waits hears: what the last frame did not
+   * paint whole of it, the next paints at once.
+   */
+  #endDrawing(): void {
+    const drawing = this.#drawing;
+    if (drawing === undefined) return;
+    this.#drawing = undefined;
+    clearTimeout(drawing.timer);
+    const byId = this.#byId();
+    const whole = [...drawing.timings.keys()].every((id) => {
+      const stroke = byId.get(id);
+      return stroke === undefined || drawing.painted.get(id) === stroke;
+    });
+    if (!whole) {
+      this.#painted = undefined;
+      this.#underHolds = undefined;
+      this.#request();
+    }
+    drawing.done();
+  }
+
+  /**
+   * The part of a stroke of the tutor's act the frame draws, by the frame's time: none before its
+   * start, the stroke whole after its end, the same object for the same share.
+   */
+  #partOf(stroke: Stroke, drawing: Drawing): Stroke | undefined {
+    const timing = drawing.timings.get(stroke.id);
+    if (timing === undefined) return stroke;
+    const elapsed = this.#drawingNow - drawing.start;
+    const span = timing.end - timing.start;
+    const share =
+      elapsed >= timing.end ? 1 : span <= 0 ? 0 : Math.max(0, (elapsed - timing.start) / span);
+    const kept = drawing.parts.get(stroke.id);
+    if (kept?.share === share) return kept.stroke;
+    const part = share <= 0 ? undefined : drawnPart(stroke, share);
+    drawing.parts.set(stroke.id, { share, stroke: part });
+    return part;
+  }
+
+  /**
+   * Where the canvas no longer shows the tutor's act as the frame draws it: around each part the
+   * last frame painted and the part this one draws, of the strokes that went on since. None
+   * without a drawing, or where nothing went on.
+   */
+  #drawingChanged(frame: Frame): Pixels | undefined {
+    const drawing = this.#drawing;
+    if (drawing === undefined) return undefined;
+    const byId = this.#byId();
+    let at: Pixels | undefined;
+    for (const id of drawing.timings.keys()) {
+      const stroke = byId.get(id);
+      if (stroke === undefined) continue;
+      const was = drawing.painted.get(id);
+      const now = this.#partOf(stroke, drawing);
+      if (was === now) continue;
+      const traced = this.#work.onTracing(id);
+      for (const part of [was, now]) {
+        if (part !== undefined) at = union(at, this.#pixelsOf(frame, traced, this.#finished(part)));
+      }
+    }
+    return at;
+  }
+
+  /**
+   * The frame has painted the tutor's act as it draws it: so the next one knows, and once every
+   * stroke is whole the drawing ends; till then the next frame comes.
+   */
+  #drawingPainted(): void {
+    const drawing = this.#drawing;
+    if (drawing === undefined) return;
+    drawing.fresh = false;
+    const byId = this.#byId();
+    for (const id of drawing.timings.keys()) {
+      const stroke = byId.get(id);
+      drawing.painted.set(id, stroke === undefined ? undefined : this.#partOf(stroke, drawing));
+    }
+    if (this.#drawingNow - drawing.start >= drawing.end) this.#endDrawing();
+    else this.#request();
   }
 
   /**
@@ -2240,6 +2576,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     // no tree now.
     this.#recorder.end();
     this.#eraser.end();
+    this.#endDrawing();
     this.#hands.reset();
     this.#latch = undefined;
     this.#latchAcross = undefined;
@@ -2474,7 +2811,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
           ? [event.stroke]
           : event.kind === "cut"
             ? event.pieces.map(({ stroke }) => stroke)
-            : [];
+            : event.kind === "tutor"
+              ? event.strokes
+              : [];
       return tracing === undefined
         ? strokes
         : strokes.map((stroke) => this.#onSheet(stroke, tracing));
@@ -3285,9 +3624,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The work has changed — a stroke landed, an erasing, an undo, a clearing: the sheet is drawn
-   * anew, and whoever listens hears of it at once, the history already as it now is, with the
-   * events it has gained. The event goes up from the element itself, and out of a consumer's
+   * The work has changed — a stroke landed, an erasing, an undo, a clearing, the tutor's act: the
+   * sheet is drawn anew, and whoever listens hears of it at once, the history already as it now
+   * is, with the events it has gained. The event goes up from the element itself, and out of a consumer's
    * own shadow tree too, should the element be in one. An action a listener takes while it hears is
    * told of next, once every listener has heard of the one before: each hears the history's events
    * in its order. A history given meanwhile is no action, and what it replaced is told of no more.
@@ -3935,6 +4274,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   #drawNow(): void {
+    this.#drawingNow = performance.now();
     const screen = this.#view();
     if (screen === undefined) return;
     // Read before anything is written: the colour as the style now computes it.
@@ -3949,8 +4289,20 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const across = (width / screen.width) * screen.k;
     const down = (height / screen.height) * screen.k;
     const frame: Frame = { screen, across, down, colour };
+    this.#paintFrame(context, frame);
+    this.#drawingPainted();
+  }
+
+  /**
+   * A frame painted on the canvas: anew, or within the rectangles where the finished ink, the
+   * stroke under way and the tutor's act being drawn have changed since the last.
+   */
+  #paintFrame(context: CanvasRenderingContext2D, frame: Frame): void {
+    const { colour } = frame;
     const now = this.#paintedNow(frame, "all");
     if (this.#eraser.pending.size > 0 || this.#eraser.erasure !== undefined) {
+      // An eraser cuts the tutor's drawing short: what it comes near is the sheet's as it is.
+      this.#endDrawing();
       this.#paintAnew(context, frame, now);
       this.#painted = undefined;
       this.#underHolds = undefined;
@@ -3960,6 +4312,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     // and a stroke that landed since.
     let was = this.#liveAt;
     this.#liveAt = undefined;
+    let drew: Pixels | undefined;
     if (this.#follows(now)) {
       const landed = addedOnTop(this.#painted?.strokes ?? [], now.strokes);
       if (landed !== undefined)
@@ -3967,7 +4320,12 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
           was,
           this.#pixelsOf(frame, this.#work.onTracing(landed.id), this.#finished(landed)),
         );
+      drew = this.#drawingChanged(frame);
+      was = union(was, drew);
     } else {
+      // Anything but the act's own first frame and a stroke landing — a scroll, an undo, a new
+      // history — cuts the tutor's drawing short, and the canvas paints it whole.
+      if (this.#drawing?.fresh === false) this.#endDrawing();
       this.#paintAnew(context, frame, now);
       was = undefined;
     }
@@ -3988,6 +4346,8 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const work = this.#work;
     const over = !liveTraced && shown && work.strokes.some((stroke) => work.onTracing(stroke.id));
     const layers: Layers = over ? "sheet" : "all";
+    // The ink under the stroke has changed where the tutor's drawing went on.
+    if (drew !== undefined) this.#underHolds = undefined;
     const under = this.#underFor(frame, layers, was === undefined);
     const polygon = this.#outline(live, false);
     const at = union(was, this.#pixelsOf(frame, liveTraced, boundsOf(polygon)));
@@ -4175,8 +4535,14 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
         this.#fillStroke(context, stroke, ink.path, colour);
       }
     };
-    // A stroke an eraser has come near: out of sight, or the pieces a cut would leave of it.
+    const drawing = this.#drawing;
+    // A stroke of the tutor's act being drawn: the part of it drawn so far. A stroke an eraser has
+    // come near: out of sight, or the pieces a cut would leave of it.
     const drawn = (stroke: Stroke): readonly Stroke[] => {
+      if (drawing?.timings.has(stroke.id)) {
+        const part = this.#partOf(stroke, drawing);
+        return part === undefined ? [] : [part];
+      }
       if (!erasing.has(stroke.id)) return [stroke];
       return erasure?.mode === "part" ? this.#piecesOf(stroke, erasure) : [];
     };

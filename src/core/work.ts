@@ -3,15 +3,23 @@ import { Clock } from "./clock.js";
 import { shown } from "./fields.js";
 import { type Box, boxOf, segmentBox, segmentDistance } from "./geometry.js";
 import { GROUP_RULE } from "./groups.js";
-import { frozen, type HistoryEvent, historyOf, type Piece, sameEvent } from "./history.js";
+import {
+  frozen,
+  type HistoryEvent,
+  historyOf,
+  type Piece,
+  sameEvent,
+  TUTOR_POINTER,
+} from "./history.js";
 import type { Stroke } from "./ink.js";
 import type { Point } from "./screen.js";
-import { reachOf } from "./style.js";
+import { reachOf, type StrokeStyle } from "./style.js";
 
 /**
  * An action on the sheet, the thing undo takes back: a stroke written; strokes erased,
  * each with the place it had on the sheet; strokes cut, with the sheet as it was before and the
- * pieces left; or the sheet cleared, with the strokes that were on it.
+ * pieces left; the sheet cleared, with the strokes that were on it; or the tutor's act, with the
+ * sheet as it was before, its strokes and the IDs it took off.
  */
 type Action =
   | { readonly kind: "write"; readonly stroke: Stroke }
@@ -22,7 +30,23 @@ type Action =
       readonly ids: readonly number[];
       readonly pieces: readonly Piece[];
     }
-  | { readonly kind: "clear"; readonly strokes: readonly Stroke[] };
+  | { readonly kind: "clear"; readonly strokes: readonly Stroke[] }
+  | {
+      readonly kind: "tutor";
+      readonly before: readonly Stroke[];
+      readonly strokes: readonly Stroke[];
+      readonly ids: readonly number[];
+    };
+
+/**
+ * A stroke the tutor writes, before it lands: its ID, its style and its points in the units of its
+ * layer. It lands with every point at the act's time and of no pressure, of the tutor's pointer.
+ */
+export interface TutorDraft {
+  readonly id: number;
+  readonly style: StrokeStyle;
+  readonly points: readonly Point[];
+}
 
 /**
  * What one press of the eraser that takes a part left of a stroke it crossed: the stroke's ID,
@@ -82,7 +106,9 @@ export class Work {
    * actions for undo and the history itself, in frozen objects of the work's own. The events are
    * checked as `historyOf` checks them, then replayed by the work's own rules, each at its own
    * time, and each must be what the work records for it: an erasing takes off strokes on the sheet,
-   * in the sheet's order, and so does a cut, which leaves its pieces at their places; a clearing clears a sheet with strokes, all of them; an undo takes back
+   * in the sheet's order, and so does a cut, which leaves its pieces at their places, and the
+   * tutor's act, which puts its strokes after every other; a clearing clears a sheet with strokes,
+   * all of them; an undo takes back
    * the last action still in force and says what the stack says. A history the sheet could not have
    * written is a TypeError that names the event. The clock is not asked: it goes on as the sheet
    * that takes the work tells it (`Clock.resume`). On a task from paper, `paper`, a stroke may be
@@ -128,6 +154,11 @@ export class Work {
   /** Whether any stroke was written on the tracing paper, erased or not. */
   get traced(): boolean {
     return this.#tracing.size > 0;
+  }
+
+  /** Whether the tutor has acted on the sheet, whether an undo took the act back or not. */
+  get tutored(): boolean {
+    return this.#events.some((event) => event.kind === "tutor");
   }
 
   /**
@@ -189,6 +220,30 @@ export class Work {
    */
   undo(time: number): boolean {
     return this.#undo(() => this.#clock.at(time));
+  }
+
+  /**
+   * The tutor's act, in one action: the strokes of these IDs the sheet shows go off it, and the
+   * tutor's strokes come on after every other, at the act's time, on the tracing paper when `on`
+   * says so. The IDs are the caller's, new ones above every ID the history had. An act that takes
+   * nothing off and writes nothing is no action.
+   */
+  tutor(
+    drafts: readonly TutorDraft[],
+    ids: Iterable<number>,
+    time: number,
+    on?: "tracing",
+  ): boolean {
+    const strokesAt = (t: number) =>
+      drafts.map(
+        ({ id, style, points }): Stroke => ({
+          id,
+          kind: TUTOR_POINTER,
+          style,
+          points: points.map(({ x, y }) => ({ x, y, t, p: 0 })),
+        }),
+      );
+    return this.#tutor(drafts.length, strokesAt, ids, () => this.#clock.at(time), on);
   }
 
   /** Takes every stroke off the sheet, in one action. Clearing an empty sheet is no action. */
@@ -273,6 +328,36 @@ export class Work {
     return true;
   }
 
+  #tutor(
+    count: number,
+    strokesAt: (t: number) => readonly Stroke[],
+    ids: Iterable<number>,
+    at: () => number,
+    on?: "tracing",
+  ): boolean {
+    const wanted = new Set(ids);
+    const before = this.#strokes;
+    const strokes: Stroke[] = [];
+    const taken: number[] = [];
+    for (const stroke of before) {
+      if (wanted.has(stroke.id)) taken.push(stroke.id);
+      else strokes.push(stroke);
+    }
+    if (taken.length === 0 && count === 0) return false;
+    const t = at();
+    const written = strokesAt(t);
+    strokes.push(...written);
+    if (on !== undefined) for (const stroke of written) this.#tracing.add(stroke.id);
+    this.#strokes = strokes;
+    this.#done.push({ kind: "tutor", before, strokes: written, ids: taken });
+    this.#record(
+      on === undefined
+        ? { kind: "tutor", t, strokes: written, ids: taken }
+        : { kind: "tutor", t, strokes: written, ids: taken, on },
+    );
+    return true;
+  }
+
   #undo(at: () => number): boolean {
     const action = this.#done.pop();
     if (action === undefined) return false;
@@ -293,6 +378,11 @@ export class Work {
       // The sheet is as the cut left it, so it goes back to the very sheet before the cut.
       this.#strokes = action.before;
       const removed = action.pieces.map(({ stroke }) => stroke.id);
+      this.#record({ kind: "undo", t, removed, restored: [...action.ids] });
+    } else if (action.kind === "tutor") {
+      // So is it as the tutor's act left it, whole.
+      this.#strokes = action.before;
+      const removed = action.strokes.map((stroke) => stroke.id);
       this.#record({ kind: "undo", t, removed, restored: [...action.ids] });
     } else {
       this.#strokes = action.strokes;
@@ -322,7 +412,9 @@ export class Work {
     else if (event.kind === "erase") done = this.#erase(event.ids, at);
     else if (event.kind === "cut") done = this.#cut(cuttingsOf(event), at);
     else if (event.kind === "clear") done = this.#clear(at);
-    else done = this.#undo(at);
+    else if (event.kind === "tutor") {
+      done = this.#tutor(event.strokes.length, () => event.strokes, event.ids, at, event.on);
+    } else done = this.#undo(at);
     const recorded = this.#events.at(-1);
     if (done && recorded !== undefined && sameEvent(recorded, event)) return;
     throw new TypeError(`${path}: ${what(event)}, ${done ? instead(recorded) : unable(event)}`);
@@ -370,6 +462,8 @@ export function nextIdOf(history: readonly HistoryEvent[]): number {
     if (event.kind === "write") highest = Math.max(highest, event.stroke.id);
     else if (event.kind === "cut") {
       for (const { stroke } of event.pieces) highest = Math.max(highest, stroke.id);
+    } else if (event.kind === "tutor") {
+      for (const stroke of event.strokes) highest = Math.max(highest, stroke.id);
     }
   }
   return highest + 1;
@@ -404,6 +498,8 @@ function what(event: HistoryEvent): string {
       return `strokes ${shown(event.ids)} cut into ${shown(event.pieces.map(({ stroke }) => stroke.id))}`;
     case "clear":
       return `strokes ${shown(event.ids)} cleared`;
+    case "tutor":
+      return `the tutor's act that writes ${shown(event.strokes.map(({ id }) => id))} and takes off ${shown(event.ids)}`;
     case "undo":
       return `an undo that takes off ${shown(event.removed)} and brings back ${shown(event.restored)}`;
   }
@@ -414,6 +510,7 @@ function instead(recorded: HistoryEvent | undefined): string {
   switch (recorded?.kind) {
     case "erase":
     case "cut":
+    case "tutor":
       return `where the sheet takes off ${shown(recorded.ids)}, in its order`;
     case "clear":
       return `where the sheet clears ${shown(recorded.ids)}`;
@@ -429,6 +526,7 @@ function unable(event: HistoryEvent): string {
   switch (event.kind) {
     case "erase":
     case "cut":
+    case "tutor":
       return "but none of them is on the sheet";
     case "clear":
       return "but the sheet is empty";

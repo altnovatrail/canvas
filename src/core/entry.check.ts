@@ -17,6 +17,7 @@ export type Given = [
   types.CellPlace,
   types.Crop,
   types.CropNumbers,
+  types.CropStroke,
   types.DemoState,
   types.EraserMode,
   types.Filling,
@@ -38,6 +39,7 @@ export type Given = [
   types.Submission,
   types.Task,
   types.TracingState,
+  types.TutorAct,
   types.WorkedExample,
   types.WorkbookSubmission,
 ];
@@ -53,6 +55,7 @@ export type Data = All<
     Same<types.Box, spec.Box>,
     Same<types.CellPlace, spec.CellPlace>,
     Same<types.CropNumbers, spec.CropNumbers>,
+    Same<types.CropStroke, spec.CropStroke>,
     Same<types.DemoState, spec.DemoState>,
     Same<types.EraserMode, spec.EraserMode>,
     Same<types.Filling, spec.Filling>,
@@ -72,6 +75,7 @@ export type Data = All<
     Same<types.StrokeStyle, spec.StrokeStyle>,
     Same<types.Submission, spec.Submission>,
     Same<types.TracingState, spec.TracingState>,
+    Same<types.TutorAct, spec.TutorAct>,
     Same<types.WorkbookSubmission, spec.WorkbookSubmission>,
     Same<types.WorkedExample, open.WorkedExample>,
   ]

@@ -94,7 +94,8 @@ const ADULTS = new Set([Writer.ADULT, Writer.ADULT_AS_CHILD]);
 /**
  * The sample of the input, checked as far as the input alone tells: a sample with
  * no purpose or no writer, a child's sample of an eval set, and a writer's code where its
- * composition has none, or none where it has one, are each a TypeError. The rest — the shape of an
+ * composition has none, or none where it has one, and a history with an act of the tutor, are each
+ * a TypeError. The rest — the shape of an
  * ID, a code, a version, a digest, the markup against the strokes — is spec's sample-check's.
  */
 export function sampleOf(input: SampleInput): Sample {
@@ -116,6 +117,9 @@ export function sampleOf(input: SampleInput): Sample {
   const { history, digit } =
     "sheet" in input.surface ? input.surface.sheet : input.surface.workbook;
   const cells = "workbook" in input.surface ? input.surface.workbook.cells : null;
+  if (history.some((event) => event.kind === "tutor")) {
+    throw new TypeError("a sample holds no act of the tutor: its strokes are no one's writing");
+  }
   // The groups and the table of boxes are the device's, of the strokes as they came.
   const raw = replay(history);
   const groups = cells === null ? groupsOf(raw) : [];
@@ -307,6 +311,8 @@ function historyInk(history: readonly HistoryEvent[], shown: readonly Stroke[]):
         const pieces = event.pieces.map(({ of, stroke }) => ({ of, stroke: strokeField(stroke) }));
         return { tMs, event: { case: "cut", value: { ids: [...event.ids], pieces } } };
       }
+      case "tutor":
+        throw new TypeError("a sample holds no act of the tutor");
       default: {
         const { removed, restored } = event;
         return {

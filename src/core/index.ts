@@ -36,3 +36,4 @@ export { SHEET } from "./sheet.js";
 export type { EraserMode, PenKind, PenSettings, StrokeStyle } from "./style.js";
 export type { Canvas, Task } from "./task.js";
 export type { TracingState } from "./tracing.js";
+export type { CropStroke, TutorAct } from "./tutor.js";
