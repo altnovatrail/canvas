@@ -167,6 +167,17 @@ A probe in the image through Playwright 1.64.1. Under the policy `default-src 'n
 
 A probe in the image's Chrome Headless Shell 156.0.8078.4 through Playwright 1.64.1, on the page of `just demo` 414 CSS px wide: the rules of the Text Spacing bookmarklet — `line-height: 1.5`, `letter-spacing: 0.12em`, `word-spacing: 0.16em` with `!important` on every element and `margin-bottom: 2em` on a paragraph — first as a style of the document, and then also as a sheet in the element's shadow root, in place of a user style. The document's style reaches the statement by inheritance — `letter-spacing` 1.92 px — but not the workbook's printed text: its text has `normal`. The sheet in the shadow root gives the printed text 3.6 px, but the widths of the first three pieces stay within a third of a unit: 24, 41 and 57 units of the sheet against 24, 41 and 57.34 without the spacing; `textLength` holds them. No label of the row's eight buttons went beyond its button, neither on the sheet nor on the workbook.
 
+### 1.17. A pan and a stroke over many strokes, 2026-11-24
+
+Playwright 1.65.0, Chromium 158.0.8127.18 and WebKit 27.2, headless on Linux, not on an iPad. The element of `app`'s build, a task from paper with a sheet of dots, a viewport of 1366 × 1024 CSS px at a device pixel ratio of 2, 30 scribbles — markers, pens and liners, 8,391 points —, a sheet of 3448 × 3448 units; the median of a frame's time, between `requestAnimationFrame` callbacks, over a pan by the wheel and a stroke written by a pen's moves. The machine had other work running, which moved a median by up to 10 ms: the numbers below are the quiet runs.
+
+- The grid of dots was one path of 14,248 dots. A pan's frame with it took 82–84 ms in WebKit and 42–48 in Chromium; with the grid hidden, 51 and 17; with the canvas of ink hidden, almost as with it.
+- The grid as a `<pattern>` of one dot: 62 ms in WebKit and 17 in Chromium. A path of only the dots on the screen, rebuilt as the sheet scrolls, was as fast as the pattern in WebKit and slower in Chromium; dots as a CSS background, as fast as the pattern; dots filled by a pattern on a canvas of their own each frame, slower in WebKit than the path. In a profile of WebKit's pan with the path, the raster workers ran for about 4.9 s of the run.
+- The dot of the pattern, a path of no length with a round cap and a stroke that does not scale, was 3 CSS px wide at every scale in both engines, in a screenshot.
+- Every stroke filled on each frame: a frame of writing took 35 ms in WebKit and 17 in Chromium. A buffer of the finished strokes copied whole on each frame: 43 ms in WebKit. Only the rectangle that changed, from a buffer under the stroke: 17 ms in both.
+- A pan that shifts what the canvas holds and fills only the band that opened was slower in both engines than filling the strokes anew: a pan repaints anew.
+- With both changes, a pan's frame took about 65–70 ms in WebKit and 17–20 in Chromium, a stroke's 17 in both.
+
 ## 2. The tokens Claude Code's sessions spend
 
 A row is `just -f spec/justfile tokens-report --since <start> --until <end> --row` over the transcripts of this machine's sessions, after the pattern of measurements 1.9 spec; when an epic is archived, over the epic's window. The first row is "before" the epic E13: all of `canvas`'s sessions until 2026-11-12T14:27, as `spec` measured them in measurements 1.9 spec; the next ones are E13's sessions.

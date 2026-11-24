@@ -91,7 +91,7 @@ import {
 } from "../core/example.js";
 import { sameItems } from "../core/fields.js";
 import { type Box, boxOf } from "../core/geometry.js";
-import { GRID_STEP, gridBand, gridPath } from "../core/grid.js";
+import { dotsTiling, GRID_STEP, gridBand, gridPath } from "../core/grid.js";
 import { type Contact, Hands } from "../core/hands.js";
 import { begins, type HistoryEvent, sameHistory } from "../core/history.js";
 import type { InkPoint, Stroke } from "../core/ink.js";
@@ -783,9 +783,52 @@ interface Screen extends View {
 /** A finished stroke's path, with the top and the bottom of its outline on the sheet. */
 interface Ink {
   readonly path: Path2D;
+  readonly left: number;
   readonly top: number;
+  readonly right: number;
   readonly bottom: number;
 }
+
+/**
+ * Which finished strokes are painted: all of them, the sheet's alone, under a stroke under way on
+ * the sheet that the tracing paper's strokes lie over, or the tracing paper's alone, over it.
+ */
+type Layers = "all" | "sheet" | "tracing";
+
+/** What a frame draws in: the view, device pixels to a unit across and down, and the ink's colour. */
+interface Frame {
+  readonly screen: Screen;
+  readonly across: number;
+  readonly down: number;
+  readonly colour: string;
+}
+
+/** A part of the sheet, in units: its left, top, right and bottom. */
+interface Bounds {
+  readonly left: number;
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+}
+
+/** What finished ink a canvas shows: the strokes, the layers and the view they are in. */
+interface Painted {
+  readonly strokes: readonly Stroke[];
+  readonly layers: Layers;
+  readonly vx: number;
+  readonly vy: number;
+  readonly across: number;
+  readonly down: number;
+  readonly width: number;
+  readonly height: number;
+  readonly colour: string;
+  readonly forced: boolean;
+  /** Where the tracing paper lies, its scale and whether it is hidden; empty without one. */
+  readonly tracing: string;
+}
+
+/** A rectangle of a canvas, in whole device pixels: left, top, width and height. */
+type Pixels = readonly [number, number, number, number];
 
 /**
  * A mark the sheet shows: its name and where it is, its frame on the layer of the marks — a
@@ -803,6 +846,10 @@ interface Shown {
 }
 
 /** An `<svg>` layer of the sheet, which counts in sheet units and hides from screen readers. */
+function setAttributes(element: Element, values: Readonly<Record<string, number>>): void {
+  for (const [name, value] of Object.entries(values)) element.setAttribute(name, String(value));
+}
+
 function svgLayer(name: string): SVGSVGElement {
   const svg = document.createElementNS(SVG, "svg");
   svg.setAttribute("class", name);
@@ -930,6 +977,13 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /** The author's template: a sheet's grid, or a workbook's lines, a list of its items. */
   readonly #template = svgLayer("template");
   readonly #grid = document.createElementNS(SVG, "path");
+  /**
+   * A grid of dots: one tile of the pattern, its dot — a stroke of no length, as a dot of the
+   * bands, as wide in CSS px at any k —, and the rectangle the tiles fill.
+   */
+  readonly #dotTile = document.createElementNS(SVG, "pattern");
+  readonly #dot = document.createElementNS(SVG, "path");
+  readonly #dots = document.createElementNS(SVG, "rect");
   /** The grid going on above the sheet and below it, under the consumer's floating bars. */
   readonly #above = document.createElementNS(SVG, "svg");
   readonly #below = document.createElementNS(SVG, "svg");
@@ -945,6 +999,18 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   readonly #canvas = document.createElement("canvas");
   readonly #marksLayer = marksLayer();
   readonly #context = this.#canvas.getContext("2d");
+  /**
+   * The finished ink the canvas shows, but where the stroke under way was drawn on the last frame,
+   * in device pixels; and while a stroke is written, a buffer of the finished ink under it, which
+   * each frame takes that place back from. The buffer is the canvas's size while a stroke is
+   * written, and holds nothing off the page.
+   */
+  #painted: Painted | undefined;
+  #liveAt: Pixels | undefined;
+  readonly #under = document.createElement("canvas");
+  #underHolds: Painted | undefined;
+  /** How many strokes the element has filled on its buffers and its canvas since it was built. */
+  #fills = 0;
   /** The canvas's style as it is computed, read live: its colour is the ink's on the screen. */
   readonly #canvasStyle = getComputedStyle(this.#canvas);
   /** The files of the pictures of the statement and of a worked example's demo. */
@@ -1203,6 +1269,13 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#sheet.className = "sheet";
     this.#stage.className = "stage";
     this.#grid.setAttribute("class", "grid");
+    // The pattern's ID is the shadow root's own: each element has its own tree.
+    this.#dotTile.id = "dot-tile";
+    this.#dotTile.setAttribute("patternUnits", "userSpaceOnUse");
+    this.#dot.setAttribute("class", "grid dots");
+    this.#dotTile.append(this.#dot);
+    this.#dots.setAttribute("fill", "url(#dot-tile)");
+    this.#dots.setAttribute("display", "none");
     for (const [band, place] of [
       [this.#above, "above"],
       [this.#below, "below"],
@@ -1228,7 +1301,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#nameGrip(null);
     this.#lines.setAttribute("role", "list");
     this.#print.append(this.#lines);
-    this.#template.append(this.#grid, this.#print);
+    const defs = document.createElementNS(SVG, "defs");
+    defs.append(this.#dotTile);
+    this.#template.append(this.#grid, defs, this.#dots, this.#print);
     this.#show.append(this.#parts.layer);
     this.#stage.append(
       this.#template,
@@ -1315,6 +1390,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       live: this.#recorder.live,
       pending: [...this.#eraser.pending],
       outlines: this.#outlines,
+      fills: this.#fills,
       view: this.#view(),
       marks: this.#shown.map(({ name, placed, frame }) => ({ name, ids: placed.ids, frame })),
       roles: this.#hands.roles,
@@ -2114,6 +2190,12 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#unwatchColours = undefined;
     cancelAnimationFrame(this.#frame);
     this.#frame = 0;
+    // WebKit caps what all the page's canvases hold: the buffers go at once, not at a collection.
+    this.#under.width = 0;
+    this.#under.height = 0;
+    this.#underHolds = undefined;
+    this.#painted = undefined;
+    this.#liveAt = undefined;
   }
 
   /**
@@ -3074,8 +3156,19 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const key = grid === undefined ? "" : `${grid.kind} ${grid.step} ${width} ${height}`;
     if (key === this.#gridDrawn) return;
     this.#gridDrawn = key;
-    this.#grid.setAttribute("d", grid === undefined ? "" : gridPath(grid, this.#extent));
-    this.#grid.classList.toggle("dots", grid?.kind === "dots");
+    const dotted = grid?.kind === "dots";
+    this.#grid.setAttribute("d", grid === undefined || dotted ? "" : gridPath(grid, this.#extent));
+    this.#grid.classList.toggle("dots", dotted);
+    if (dotted) {
+      const { step } = grid;
+      const { x, y, width: across, height: down } = dotsTiling(step, this.#extent);
+      setAttributes(this.#dotTile, { x, y, width: step, height: step });
+      this.#dot.setAttribute("d", `M${step / 2} ${step / 2}h0`);
+      setAttributes(this.#dots, { x, y, width: across, height: down });
+      this.#dots.removeAttribute("display");
+    } else {
+      this.#dots.setAttribute("display", "none");
+    }
     // A page of units is more than any padding at the smallest k.
     const band = SHEET.height;
     for (const [svg, top] of [
@@ -3731,15 +3824,13 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The layers in the visible part, and the strokes there, in device pixels: each finished stroke
-   * by the path it was given once, the stroke under way outlined anew. A stroke whose points lie
-   * far out of sight is not outlined till it comes into sight: a history given to the sheet may
-   * hold thousands. What the eraser under way has come near is out of sight already, though
-   * still on the sheet until it lifts — or, for an eraser that takes a part, drawn as the pieces it
-   * would leave. A stroke without a style is in the ink's colour, the canvas's, as the theme makes
-   * it; one with a style in its colour, filled once at its opacity, so that it is one layer
-   * however it crosses itself, and a marker's multiplied with the ink under it. The palette's
-   * black is the theme's ink, and with forced colours every stroke is.
+   * The layers in the visible part, and the strokes there, in device pixels. The canvas keeps the
+   * finished strokes from frame to frame while the view stays: a stroke that lands, or a stroke
+   * under way, takes back only its own rectangle. A stroke under way on the sheet lies under the
+   * tracing paper's strokes, which are painted over it there. Anything else — a scroll among
+   * them — paints the strokes anew, and so does each frame while an eraser is down: what it has come near is out of
+   * sight already, though still on the sheet until it lifts — or, for an eraser that takes a part,
+   * drawn as the pieces it would leave.
    */
   #draw(): void {
     const screen = this.#view();
@@ -3755,11 +3846,212 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     // which holds under any scale the page puts on the element, times `k`.
     const across = (width / screen.width) * screen.k;
     const down = (height / screen.height) * screen.k;
+    const frame: Frame = { screen, across, down, colour };
+    const now = this.#paintedNow(frame, "all");
+    if (this.#eraser.pending.size > 0 || this.#eraser.erasure !== undefined) {
+      this.#paintAnew(context, frame, now);
+      this.#painted = undefined;
+      this.#underHolds = undefined;
+      return;
+    }
+    // Where the canvas no longer shows the finished ink: the stroke under way of the last frame,
+    // and a stroke that landed since.
+    let was = this.#liveAt;
+    this.#liveAt = undefined;
+    if (this.#follows(now)) {
+      const landed = addedOnTop(this.#painted?.strokes ?? [], now.strokes);
+      if (landed !== undefined)
+        was = union(
+          was,
+          this.#pixelsOf(frame, this.#work.onTracing(landed.id), this.#finished(landed)),
+        );
+    } else {
+      this.#paintAnew(context, frame, now);
+      was = undefined;
+    }
+    this.#painted = now;
+    const live = this.#recorder.live;
+    const tracing = this.#tracing;
+    const shown = tracing !== undefined && !tracing.hidden;
+    if (live === undefined) {
+      if (was !== undefined) this.#paintWithin(context, frame, "all", was);
+      this.#underHolds = undefined;
+      return;
+    }
+    const liveTraced = this.#writeOn === "tracing";
+    if (liveTraced && !shown) {
+      if (was !== undefined) this.#paintWithin(context, frame, "all", was);
+      return;
+    }
+    const work = this.#work;
+    const over = !liveTraced && shown && work.strokes.some((stroke) => work.onTracing(stroke.id));
+    const layers: Layers = over ? "sheet" : "all";
+    const under = this.#underFor(frame, layers, was === undefined);
+    const polygon = this.#outline(live, false);
+    const at = union(was, this.#pixelsOf(frame, liveTraced, boundsOf(polygon)));
+    if (at === undefined) return;
+    const [x, y, wide, high] = at;
+    context.save();
     context.setTransform(1, 0, 0, 1, 0, 0);
-    context.clearRect(0, 0, width, height);
-    context.fillStyle = colour;
-    const right = screen.vx + screen.width / screen.k;
-    const bottom = screen.vy + screen.height / screen.k;
+    context.beginPath();
+    context.rect(x, y, wide, high);
+    context.clip();
+    context.clearRect(x, y, wide, high);
+    if (under === undefined) this.#paintInk(context, frame, layers, this.#boundsOf(frame, at));
+    else context.drawImage(under, x, y, wide, high, x, y, wide, high);
+    this.#inkFrame(context, frame, liveTraced ? tracing : undefined);
+    this.#fillStroke(context, live, pathOf(polygon), colour);
+    if (over) this.#paintInk(context, frame, "tracing", this.#boundsOf(frame, at));
+    context.restore();
+    this.#liveAt = at;
+  }
+
+  /** What the canvas shows of the finished ink in a frame, in its layers. */
+  #paintedNow({ screen, across, down, colour }: Frame, layers: Layers): Painted {
+    const tracing = this.#tracing;
+    return {
+      strokes: this.#work.strokes,
+      layers,
+      vx: screen.vx,
+      vy: screen.vy,
+      across,
+      down,
+      width: this.#canvas.width,
+      height: this.#canvas.height,
+      colour,
+      forced: this.#forced,
+      tracing:
+        tracing === undefined
+          ? ""
+          : `${tracing.at[0]} ${tracing.at[1]} ${scaleIn(tracing)} ${tracing.hidden}`,
+    };
+  }
+
+  /**
+   * Whether the canvas shows `now` without painting it all: the same finished ink in the same
+   * view, or with a stroke that landed on it since — which the caller paints, within its
+   * rectangle. False when it has to be painted anew.
+   */
+  #follows(now: Painted): boolean {
+    const was = this.#painted;
+    if (was === undefined || !sameView(was, now)) return false;
+    return was.strokes === now.strokes || addedOnTop(was.strokes, now.strokes) !== undefined;
+  }
+
+  /** The canvas cleared and the finished ink in sight painted on it, all of it. */
+  #paintAnew(context: CanvasRenderingContext2D, frame: Frame, now: Painted): void {
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.clearRect(0, 0, now.width, now.height);
+    this.#paintInk(context, frame, now.layers);
+    this.#painted = now;
+  }
+
+  /**
+   * A rectangle of the canvas cleared and its finished ink painted within it: each of its pixels
+   * what a painting of the whole gives it.
+   */
+  #paintWithin(
+    context: CanvasRenderingContext2D,
+    frame: Frame,
+    layers: Layers,
+    [x, y, wide, high]: Pixels,
+  ): void {
+    context.save();
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.beginPath();
+    context.rect(x, y, wide, high);
+    context.clip();
+    context.clearRect(x, y, wide, high);
+    this.#paintInk(context, frame, layers, this.#boundsOf(frame, [x, y, wide, high]));
+    context.restore();
+  }
+
+  /**
+   * The buffer of the finished ink of the layers under a stroke under way, for this frame: as it
+   * was, or taken from the canvas when it shows them whole, or else painted. None if the buffer
+   * has no context: the caller paints what it needs instead.
+   */
+  #underFor(frame: Frame, layers: Layers, clean: boolean): HTMLCanvasElement | undefined {
+    const want = this.#paintedNow(frame, layers);
+    const held = this.#underHolds;
+    if (held !== undefined && held.strokes === want.strokes && sameView(held, want)) {
+      return this.#under;
+    }
+    const buffer = this.#under;
+    if (buffer.width !== want.width || buffer.height !== want.height) {
+      buffer.width = want.width;
+      buffer.height = want.height;
+    }
+    const context = buffer.getContext("2d");
+    if (context === null) return undefined;
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.globalCompositeOperation = "copy";
+    if (clean && layers === "all") {
+      context.drawImage(this.#canvas, 0, 0);
+      context.globalCompositeOperation = "source-over";
+    } else {
+      context.globalCompositeOperation = "source-over";
+      context.clearRect(0, 0, want.width, want.height);
+      this.#paintInk(context, frame, layers);
+    }
+    this.#underHolds = want;
+    return buffer;
+  }
+
+  /**
+   * The rectangle of the canvas, in whole device pixels, that holds a stroke's outline, whose
+   * bounds are in its own units — the sheet's, or the tracing paper's when it is `traced` —, with
+   * two pixels' margin for its smoothed edge, and cut to the canvas. None when it is out of sight.
+   */
+  #pixelsOf(
+    { screen, across, down }: Frame,
+    traced: boolean,
+    bounds: { minX: number; minY: number; maxX: number; maxY: number } | Ink,
+  ): Pixels | undefined {
+    const box =
+      "path" in bounds
+        ? { minX: bounds.left, minY: bounds.top, maxX: bounds.right, maxY: bounds.bottom }
+        : bounds;
+    const tracing = traced ? this.#tracing : undefined;
+    const [dx, dy] = tracing?.at ?? [0, 0];
+    const by = tracing === undefined ? 1 : scaleIn(tracing);
+    const { width, height } = this.#canvas;
+    const left = Math.max(0, Math.floor((box.minX * by + dx - screen.vx) * across) - 2);
+    const top = Math.max(0, Math.floor((box.minY * by + dy - screen.vy) * down) - 2);
+    const right = Math.min(width, Math.ceil((box.maxX * by + dx - screen.vx) * across) + 2);
+    const bottom = Math.min(height, Math.ceil((box.maxY * by + dy - screen.vy) * down) + 2);
+    if (!(right > left && bottom > top)) return undefined;
+    return [left, top, right - left, bottom - top];
+  }
+
+  /** A rectangle of the canvas, in device pixels, as a part of the sheet, in units. */
+  #boundsOf({ screen, across, down }: Frame, [x, y, wide, high]: Pixels): Bounds {
+    return {
+      left: screen.vx + x / across,
+      top: screen.vy + y / down,
+      right: screen.vx + (x + wide) / across,
+      bottom: screen.vy + (y + high) / down,
+    };
+  }
+
+  /**
+   * The finished strokes of the layers, those in sight — within `bounds`, when given — each by
+   * the path it was given once: the sheet's, then the shown tracing paper's over them, moved to
+   * where it lies. A stroke whose points lie far out of sight is not outlined till it comes into
+   * sight: a history given to the sheet may hold thousands. `strokes` paints only those.
+   */
+  #paintInk(
+    context: CanvasRenderingContext2D,
+    frame: Frame,
+    layers: Layers,
+    bounds?: Bounds,
+    strokes: readonly Stroke[] = this.#work.strokes,
+  ): void {
+    const { screen, colour } = frame;
+    const left = bounds?.left ?? screen.vx;
+    const top = bounds?.top ?? screen.vy;
+    const right = bounds?.right ?? screen.vx + screen.width / screen.k;
+    const bottom = bounds?.bottom ?? screen.vy + screen.height / screen.k;
     const erasing = this.#eraser.pending;
     const erasure = this.#eraser.erasure;
     // A task from paper's tracing paper: its strokes over the sheet's, moved to where it lies, and
@@ -3767,47 +4059,52 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const tracing = this.#tracing;
     const work = this.#work;
     const shown = tracing !== undefined && !tracing.hidden;
-    const fill = (stroke: Stroke, path: Path2D): void => {
-      const { style } = stroke;
-      if (style === undefined) {
-        context.fill(path);
-        return;
-      }
-      context.fillStyle = screenColourOf(style, colour, this.#forced);
-      context.globalAlpha = style.opacity / 100;
-      if (style.pen === "marker") context.globalCompositeOperation = "multiply";
-      context.fill(path);
-      context.fillStyle = colour;
-      context.globalAlpha = 1;
-      context.globalCompositeOperation = "source-over";
-    };
     const draw = (stroke: Stroke, dx: number, dy: number, by = 1): void => {
       // The outline keeps within half the widest line of the points: twice that is out of sight.
       const box = this.#pointBoxOf(stroke);
       const reach = 2 * reachOf(stroke) * by;
-      if (box.maxY * by + dy + reach < screen.vy || box.minY * by + dy - reach > bottom) return;
-      if (box.maxX * by + dx + reach < screen.vx || box.minX * by + dx - reach > right) return;
+      if (box.maxY * by + dy + reach < top || box.minY * by + dy - reach > bottom) return;
+      if (box.maxX * by + dx + reach < left || box.minX * by + dx - reach > right) return;
       const ink = this.#finished(stroke);
-      if (ink.bottom * by + dy >= screen.vy && ink.top * by + dy <= bottom) fill(stroke, ink.path);
+      if (ink.bottom * by + dy >= top && ink.top * by + dy <= bottom) {
+        this.#fillStroke(context, stroke, ink.path, colour);
+      }
     };
     // A stroke an eraser has come near: out of sight, or the pieces a cut would leave of it.
     const drawn = (stroke: Stroke): readonly Stroke[] => {
       if (!erasing.has(stroke.id)) return [stroke];
       return erasure?.mode === "part" ? this.#piecesOf(stroke, erasure) : [];
     };
-    context.setTransform(across, 0, 0, down, -screen.vx * across, -screen.vy * down);
-    const traced: Stroke[] = [];
-    for (const stroke of work.strokes) {
-      if (tracing === undefined || !work.onTracing(stroke.id)) {
-        for (const each of drawn(stroke)) draw(each, 0, 0);
-      } else if (shown) traced.push(...drawn(stroke));
+    const onPaper = (stroke: Stroke): boolean => tracing !== undefined && work.onTracing(stroke.id);
+    if (layers !== "tracing") {
+      this.#inkFrame(context, frame);
+      for (const stroke of strokes) {
+        if (!onPaper(stroke)) for (const each of drawn(stroke)) draw(each, 0, 0);
+      }
     }
-    const live = this.#recorder.live;
-    const liveTraced = this.#writeOn === "tracing";
-    if (live !== undefined && !liveTraced) fill(live, pathOf(this.#outline(live, false)));
-    if (!shown) return;
+    if (layers === "sheet" || !shown) return;
     const [dx, dy] = tracing.at;
-    // The paper's strokes are as large as its scale draws it, from its corner.
+    this.#inkFrame(context, frame, tracing);
+    const by = scaleIn(tracing);
+    for (const stroke of strokes) {
+      if (onPaper(stroke)) for (const each of drawn(stroke)) draw(each, dx, dy, by);
+    }
+  }
+
+  /**
+   * The context set to draw in units of the sheet, or of the tracing paper — as large as its
+   * scale draws it, from its corner — within the device pixels of the frame.
+   */
+  #inkFrame(
+    context: CanvasRenderingContext2D,
+    { screen, across, down }: Frame,
+    tracing?: TracingState,
+  ): void {
+    if (tracing === undefined) {
+      context.setTransform(across, 0, 0, down, -screen.vx * across, -screen.vy * down);
+      return;
+    }
+    const [dx, dy] = tracing.at;
     const by = scaleIn(tracing);
     context.setTransform(
       across * by,
@@ -3817,16 +4114,41 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       (dx - screen.vx) * across,
       (dy - screen.vy) * down,
     );
-    for (const stroke of traced) draw(stroke, dx, dy, by);
-    if (live !== undefined && liveTraced) fill(live, pathOf(this.#outline(live, false)));
+  }
+
+  /**
+   * A stroke filled: without a style in the ink's colour, the canvas's, as the theme makes it;
+   * with one in its colour, filled once at its opacity, so that it is one layer however it crosses
+   * itself, and a marker's multiplied with the ink under it. The palette's black is the theme's
+   * ink, and with forced colours every stroke is.
+   */
+  #fillStroke(
+    context: CanvasRenderingContext2D,
+    stroke: Stroke,
+    path: Path2D,
+    colour: string,
+  ): void {
+    this.#fills++;
+    const { style } = stroke;
+    if (style === undefined) {
+      context.fillStyle = colour;
+      context.fill(path);
+      return;
+    }
+    context.fillStyle = screenColourOf(style, colour, this.#forced);
+    context.globalAlpha = style.opacity / 100;
+    if (style.pen === "marker") context.globalCompositeOperation = "multiply";
+    context.fill(path);
+    context.globalAlpha = 1;
+    context.globalCompositeOperation = "source-over";
   }
 
   #finished(stroke: Stroke): Ink {
     let ink = this.#inks.get(stroke);
     if (ink === undefined) {
       const polygon = this.#outline(stroke, true);
-      const ys = polygon.map(([, y]) => y);
-      ink = { path: pathOf(polygon), top: Math.min(...ys), bottom: Math.max(...ys) };
+      const { minX, minY, maxX, maxY } = boundsOf(polygon);
+      ink = { path: pathOf(polygon), left: minX, top: minY, right: maxX, bottom: maxY };
       this.#inks.set(stroke, ink);
     }
     return ink;
@@ -4129,6 +4451,60 @@ function scaleOf(element: Element, box?: DOMRect, axis: Axis = "y"): number {
   if (laid <= 0) return 1;
   const shown = box ?? element.getBoundingClientRect();
   return (axis === "y" ? shown.height : shown.width) / laid;
+}
+
+/** Whether two paintings show their layers the same way: all but which strokes they hold. */
+function sameView(a: Painted, b: Painted): boolean {
+  return (
+    a.layers === b.layers &&
+    a.vx === b.vx &&
+    a.vy === b.vy &&
+    a.across === b.across &&
+    a.down === b.down &&
+    a.width === b.width &&
+    a.height === b.height &&
+    a.colour === b.colour &&
+    a.forced === b.forced &&
+    a.tracing === b.tracing
+  );
+}
+
+/** The smallest rectangle that holds both, either of which may be none. */
+function union(a: Pixels | undefined, b: Pixels | undefined): Pixels | undefined {
+  if (a === undefined) return b;
+  if (b === undefined) return a;
+  const left = Math.min(a[0], b[0]);
+  const top = Math.min(a[1], b[1]);
+  const right = Math.max(a[0] + a[2], b[0] + b[2]);
+  const bottom = Math.max(a[1] + a[3], b[1] + b[3]);
+  return [left, top, right - left, bottom - top];
+}
+
+/** The bounds of an outline's points. */
+function boundsOf(polygon: readonly Vec2[]): {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+} {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const [x, y] of polygon) {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  return { minX, minY, maxX, maxY };
+}
+
+/** The one stroke `now` has after all of `was`, the same objects in the same order, or none. */
+function addedOnTop(was: readonly Stroke[], now: readonly Stroke[]): Stroke | undefined {
+  if (now.length !== was.length + 1) return undefined;
+  for (let i = 0; i < was.length; i++) if (now[i] !== was[i]) return undefined;
+  return now[was.length];
 }
 
 /**

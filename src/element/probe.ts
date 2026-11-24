@@ -1,6 +1,6 @@
 // What a test sees of an element beyond its interface: its strokes, the stroke under way, what the
-// eraser is about to take, its view of the sheet, how many outlines it has drawn, the tutor's
-// marks it shows and what each pointer down on it does. The history of writing is not here:
+// eraser is about to take, its view of the sheet, how many outlines it has drawn and strokes it
+// has filled, the tutor's marks it shows and what each pointer down on it does. The history of writing is not here:
 // it is the element's own property. This module is no entry point of the package, so the
 // element's interface stays what its decisions make it.
 
@@ -19,6 +19,8 @@ export interface Probe {
   readonly pending: readonly number[];
   /** How many outlines of strokes the element has computed since it was built. */
   readonly outlines: number;
+  /** How many strokes the element has filled, on its canvas and its buffers, since it was built. */
+  readonly fills: number;
   /** Where the sheet is on the screen, or nothing while the element is not laid out. */
   readonly view: View | undefined;
   /**

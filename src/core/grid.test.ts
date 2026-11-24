@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { DEFAULT_GRID, type GridKind, gridBand, gridPath } from "./grid.js";
+import { DEFAULT_GRID, dotsTiling, type GridKind, gridBand, gridPath } from "./grid.js";
 
 /** The subpaths of a path, each from its moveto. */
 function subpaths(path: string): string[] {
@@ -27,6 +27,31 @@ test("lines rule only across, and dots stand where the rulings of squares cross"
   expect(dots).toHaveLength(19 * 27);
   expect(dots[0]).toBe("50 50h0");
   expect(dots.at(-1)).toBe("950 1350h0");
+});
+
+test("the tiles of dots, a dot in the middle of each, put the dots where the path of dots does", () => {
+  for (const [step, size] of [
+    [50, undefined],
+    [25, { width: 2400, height: 2010 }],
+    [100 / 3, undefined],
+  ] as const) {
+    const { x, y, width, height } = dotsTiling(step, size);
+    expect([x, y]).toEqual([step / 2, step / 2]);
+    const across = Math.round(width / step);
+    const down = Math.round(height / step);
+    const tiled = Array.from({ length: across * down }, (_, n) => [
+      x + step / 2 + (n % across) * step,
+      y + step / 2 + Math.floor(n / across) * step,
+    ]);
+    const drawn = subpaths(gridPath({ kind: "dots", step }, size)).map((part) =>
+      part.replace("h0", "").split(" ").map(Number),
+    );
+    expect(tiled).toHaveLength(drawn.length);
+    tiled.forEach(([tx, ty], n) => {
+      expect(tx).toBeCloseTo(drawn[n]?.[0] ?? Number.NaN, 2);
+      expect(ty).toBeCloseTo(drawn[n]?.[1] ?? Number.NaN, 2);
+    });
+  }
 });
 
 test("a step that does not divide the sheet stops short of its edges, at exact places", () => {

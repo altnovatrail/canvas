@@ -3,16 +3,55 @@
 // Chromium's DevTools protocol — a mouse, a pen and touches — the pixels of a screenshot,
 // Chromium's own accessibility tree and an element given its properties before it was upgraded;
 // and for the pictures, a picture's file — an SVG, or a PNG of four colours — a load the test
-// settles, the wait for the files that came, and what changes in a node. The tests take
+// settles, the wait for the files that came, and what changes in a node; and the tiles of the
+// template's dots. The tests take
 // them from here rather than each keeping a copy. Like the tests, the build leaves this module out
 // (tsconfig.build.json), and the package never has it.
 
 import { vi } from "vitest";
 import { cdp, page, server } from "vitest/browser";
+import { dotsTiling } from "../core/grid.js";
 import { toScreen, type View } from "../core/screen.js";
+import type { Size } from "../core/sheet.js";
 import "./index.js";
 import { type ExportedSheet, NovatrailCanvas, type Task } from "./index.js";
 import { probe } from "./probe.js";
+
+/**
+ * The tiles of dots, in units: the rectangle they fill and the tile, as x, y, width, height, and
+ * the dot's path in the tile.
+ */
+export interface DotTiles {
+  readonly box: readonly number[];
+  readonly tile: readonly number[];
+  readonly dot: string | null;
+}
+
+/** The tiles of the template's dots, or none while its grid is not of dots. */
+export function dotTilesOf(root: ShadowRoot): DotTiles | undefined {
+  const box = root.querySelector(".template > rect");
+  const tile = root.querySelector(".template pattern");
+  const dot = tile?.querySelector(".grid.dots");
+  if (!box || !tile || !dot) throw new Error("the template has no tiles of dots");
+  if (box.getAttribute("display") === "none") return undefined;
+  const numbers = (of: Element, names: readonly string[]) =>
+    names.map((name) => Number(of.getAttribute(name)));
+  return {
+    box: numbers(box, ["x", "y", "width", "height"]),
+    tile: numbers(tile, ["x", "y", "width", "height"]),
+    dot: dot.getAttribute("d"),
+  };
+}
+
+/** The tiles of dots of a step on a sheet as large as `size`, as `dotTilesOf` reads them. */
+export function dotTiles(step: number, size?: Size): DotTiles {
+  const { x, y, width, height } = dotsTiling(step, size);
+  return {
+    box: [x, y, width, height],
+    tile: [x, y, step, step],
+    dot: `M${step / 2} ${step / 2}h0`,
+  };
+}
 
 /** The work of a sheet for checking, as its exportWork() gives it: a sheet's, and not null. */
 export async function sheetWork(element: NovatrailCanvas): Promise<ExportedSheet> {

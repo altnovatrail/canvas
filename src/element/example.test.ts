@@ -6,6 +6,8 @@ import type { HistoryChange, WorkedExample } from "./index.js";
 import {
   at,
   devtools,
+  dotTiles,
+  dotTilesOf,
   input,
   level,
   placed,
@@ -65,7 +67,8 @@ test("a worked example shows its statement above the sheet in the manifest's lan
   expect(statement?.getAttribute("lang")).toBe("ru");
   // Its sheet is its page alone, ruled as far as it goes, once it is laid out.
   await settle();
-  expect(root.querySelector(".grid")?.getAttribute("d")).toBe(gridPath({ kind: "dots", step: 40 }));
+  expect(root.querySelector(".grid")?.getAttribute("d")).toBe("");
+  expect(dotTilesOf(root)).toEqual(dotTiles(40));
   // Nothing of a work: the learner does not write on a worked example's sheet.
   expect(element.history).toEqual([]);
   expect(element.filled).toBeNull();

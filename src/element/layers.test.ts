@@ -8,7 +8,7 @@ import { extentOf as reachOf, SHEET } from "../core/sheet.js";
 import { workForCheck } from "../core/submission.js";
 import { sheetTask, workedExample } from "../core/tasks.fixture.js";
 import { NovatrailCanvas } from "./index.js";
-import { at, level, screenshot, sheetWork } from "./pointer.fixture.js";
+import { at, dotTiles, dotTilesOf, level, screenshot, sheetWork } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The sheet's layers in a browser: the stack in its order, one view for every layer at any
@@ -309,20 +309,21 @@ test("an element the page scales writes its strokes in the sheet's own units, it
 });
 
 test("the task rules the sheet by its grid, and a task of the same template writes nothing", async () => {
-  const { element, grid } = await sheet(400);
+  const { element, root, grid } = await sheet(400);
   // The grid rules the whole sheet, past the page as far as it goes.
   expect(grid.getAttribute("d")).toBe(gridPath({ kind: "squares", step: 50 }, extentOf(element)));
   expect(grid.classList.contains("dots")).toBe(false);
+  expect(dotTilesOf(root)).toBeUndefined();
 
+  // Dots are tiles of a pattern, not a path.
   const dots = sheetTask({ grid: "dots", grid_step: 40 });
   element.task = dots;
   expect(element.task).toBe(dots);
-  expect(grid.getAttribute("d")).toBe(gridPath({ kind: "dots", step: 40 }, extentOf(element)));
+  expect(grid.getAttribute("d")).toBe("");
   expect(grid.classList.contains("dots")).toBe(true);
+  expect(dotTilesOf(root)).toEqual(dotTiles(40, extentOf(element)));
   await settle();
 
-  const root = element.shadowRoot;
-  if (!root) throw new Error("the element has no shadow root");
   const records: MutationRecord[] = [];
   const observer = new MutationObserver((list) => records.push(...list));
   observer.observe(root, { subtree: true, childList: true, attributes: true, characterData: true });
@@ -339,6 +340,7 @@ test("the task rules the sheet by its grid, and a task of the same template writ
 
   element.task = sheetTask({ grid: "lines" });
   expect(grid.getAttribute("d")).toBe(gridPath({ kind: "lines", step: 50 }, extentOf(element)));
+  expect(dotTilesOf(root)).toBeUndefined();
   element.task = undefined;
   expect(grid.getAttribute("d")).toBe(gridPath({ kind: "squares", step: 50 }, extentOf(element)));
   observer.disconnect();
@@ -518,7 +520,8 @@ test("a workbook that does not fit is a TypeError at its item, and so is an answ
     element.task = zoned;
   }).toThrow(/^task\.items\[0\]\.answer_slots\[0\]\.binding: .* no "zone" yet/);
   expect(element.task).toBe(dots);
-  expect(grid.getAttribute("d")).toBe(gridPath({ kind: "dots", step: 50 }, extentOf(element)));
+  expect(grid.getAttribute("d")).toBe("");
+  expect(dotTilesOf(root)).toEqual(dotTiles(50, extentOf(element)));
   expect(root.querySelector(".statement")?.textContent).toBe("Count the dots.");
 });
 

@@ -155,8 +155,8 @@ test("a stroke on a zoomed sheet lands in sheet units, and the work for checking
 test("a dot of the grid is 3 px across at the fit and above it, and smaller by the zoom below it", async () => {
   const { element, root } = await placed(made, 400, 300, { task: sheetTask({ grid: "dots" }) });
   const dots = [...root.querySelectorAll<SVGPathElement>(".grid")];
-  // The sheet's grid, and the bands above and below it.
-  expect(dots).toHaveLength(3);
+  // The sheet's grid, the dot of its pattern's tile, and the bands above and below it.
+  expect(dots).toHaveLength(4);
   const across = () => dots.map((dot) => getComputedStyle(dot).strokeWidth);
   for (const [zoom, width] of [
     [1, "3px"],
@@ -166,7 +166,7 @@ test("a dot of the grid is 3 px across at the fit and above it, and smaller by t
   ] as const) {
     await zoomTo(element, zoom);
     expect(dots.every((dot) => dot.classList.contains("dots"))).toBe(true);
-    expect(across()).toEqual([width, width, width]);
+    expect(across()).toEqual([width, width, width, width]);
   }
 });
 
