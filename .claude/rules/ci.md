@@ -38,7 +38,7 @@ A new dependency needs a license spec's list allows; a tool that never ships may
 
 ## The container
 
-`.devcontainer/` is spec's template for the kind `typescript`: a move to a new tag of spec takes it as `just new-repo-draft canvas typescript 3.2 <tag>` writes it in a temporary clone of spec, and keeps only the base image Dependabot raises. Its stages are `toolchain-core` — Node, just, Go and buf —, `toolchain` over it, to which the kind adds Chrome Headless Shell, WebKit and Firefox from Playwright's image, with their system libraries by apt from a snapshot of the Ubuntu archive alone, and `devcontainer`.
+`.devcontainer/` is spec's template for the kind `typescript`: a move to a new tag of spec takes it as `just new-repo-draft canvas typescript 3.2 <tag>` writes it in a temporary clone of spec, and keeps only the base image Dependabot raises; then it raises what `just -f spec/justfile devcontainer-outdated` names — the VS Code extensions, the repository's own too, and Claude Code, which Dependabot does not see — until it exits with 0, a run never in CI. Its stages are `toolchain-core` — Node, just, Go and buf —, `toolchain` over it, to which the kind adds Chrome Headless Shell, WebKit and Firefox from Playwright's image, with their system libraries by apt from a snapshot of the Ubuntu archive alone, and `devcontainer`.
 
 ## The release
 
