@@ -111,6 +111,62 @@ So the pen's pressure in WebKit lies in about 0–0.2, not 0–1.
 
 - **A selection that took the pen**, by the author on the same iPad, writing on a task from a photo in `app` with the element as it was then: now and then a small blue rectangle of the system's selection came up by the bar, beside the grid's button, with a dot in it, and the selection's menu of WebKit — Copy, Writing Tools, Search with Google and the like —, with Scribble off in the settings too, after a quick double tap or a long press of the pen, the way a dot or an equals sign is written. While Scribble was on, the stroke before the rectangle went; once the menu had been opened, the sheet wrote nothing until another task and back. By the element's code then, that is a sheet waiting for the lift of a pen of which neither `pointerup`, `pointercancel` nor a loss of capture came, while the pen's next touch came under another ID.
 
+### 1.9. The sheet's input in Chrome Headless Shell 156, 2026-10-22
+
+Probes in the container, when the sheet's input was planned:
+
+- `Emulation.setDeviceMetricsOverride` with `deviceScaleFactor: 2` in the middle of a test: in the test's frame `devicePixelRatio` became 2, while the `devicePixelContentBoxSize` of a drawing surface of 300 × 420 CSS px stayed 300 × 420. Neither a ResizeObserver entry nor a `change` event of `matchMedia("(resolution: 1dppx)")` came in 20 frames, though `matches` became `false`;
+- with `deviceScaleFactor: 2` in Playwright's context, `devicePixelRatio` is 2 from the very start, and the `devicePixelContentBoxSize` of an element of 300 × 100 CSS px is 300 × 100, both in the test's frame and on the page outside it;
+- the mouse of `Input.dispatchMouseEvent` presses with the `force` it was given, and without one with 0; with `pointerType: "pen"` and `force` a pen comes, with that pressure;
+- `PointerEvent.pressure` is a 32-bit number: 0.6 reads as 0.6000000238418579.
+
+### 1.10. Forced colors and the shadow root in Chrome Headless Shell 156, 2026-10-25
+
+Probes in the container through Playwright 1.64.1, when the layers were planned: with `forcedColors: "active"` in Playwright's context, `matchMedia("(forced-colors: active)")` matches from the very start, and the page's own color `rgb(255, 0, 0)` computes to the color CanvasText, so the mode forces the colors, not only the media query. Vitest 5.0.5's `page.getByRole` goes into an open shadow root, and its `page.screenshot` with `save: false` writes no file, as its [`context.d.ts`](https://cdn.jsdelivr.net/npm/@vitest/browser@5.0.5/context.d.ts) says.
+
+### 1.11. Touches by the DevTools protocol in Chrome Headless Shell 156, 2026-10-26
+
+A probe in the container, when input on tablets was planned, by `Input.dispatchTouchEvent`:
+
+- touches come as pointer events `touch`, with the width as twice `radiusX`, and with implicit capture;
+- `touchEnd` with fingers releases only them;
+- `timestamp` reaches `timeStamp`;
+- for `pointerup` the width is 1;
+- `navigator.maxTouchPoints` is 0.
+
+### 1.12. The workbook's list in the accessibility tree, 2026-10-27
+
+A probe in the container, Chrome Headless Shell 156 through Playwright 1.64.1. SVG in an open shadow root: the root is `role="none"`, inside it `<g role="list">`, and the items are `<g role="listitem">` with `<text>` and `<rect role="img" aria-label>`. `ariaSnapshot()` gives the list, its items, the text and the pictures with names, in order: «listitem: text: 1. 7 × · img "окошко 1, пусто" · text: = 56». With `role="list"` on the root itself, the same. `ariaSnapshot()` is Playwright's model, which it builds itself; Chromium's own accessibility tree, `Accessibility.getFullAXTree` through the DevTools protocol, showed the same when the workbook's layout and its template layer were planned: the root `role="none"` is skipped, `list`, its `listitem` in order, the text as `StaticText`, the boxes as `image` with names.
+
+By WCAG's formula of contrast, the sheet's grid `#d3dbe5` on `#fff` is 1.40:1.
+
+### 1.13. The image's fonts and the workbook's text, 2026-10-27
+
+The package `fonts-liberation` 1:2.1.5-3 from a snapshot of the Ubuntu archive (`dpkg -s`): Liberation Sans, Serif and Mono. The widths of the characters were read from their tables `cmap` and `hmtx` and checked in Chrome Headless Shell 156: the mean of Sans and Serif, rounded to a hundredth, is the number of canvas's own table of the characters' widths. Probes through Playwright 1.64.1:
+
+- `textLength` with `lengthAdjust="spacingAndGlyphs"` fits a `<text>` exactly: the width of `getBBox` is the one set, ±1 unit, in Liberation Sans, Serif and Mono;
+- `sans-serif` in the image is Liberation Sans, and `system-ui` is Liberation Mono;
+- `lang` with no namespace on an SVG `<g>` gives its `<text>` `:lang(ru)`, as `xml:lang` does;
+- an inherited `direction: rtl` moves `<text x="100">` with `text-anchor: start` to 72, and `direction: ltr` on the SVG returns it to 100.
+
+### 1.14. Pictures from `blob:` addresses in Chrome Headless Shell 156.0.8078.4, 2026-11-01
+
+Probes in the image through Playwright 1.64.1, when the worked example and the pictures on the sheet's areas were planned:
+
+- after `new Image()` with a `blob:` URL and `await decode()`, a new `<img>` with the same URL is `complete`, with `naturalWidth` above zero, synchronously, even before it is inserted into the document, for SVG and for PNG. After `URL.revokeObjectURL` a new `<img>` with that URL is not decoded: "EncodingError: The source image cannot be decoded";
+- `SVGImageElement.prototype.decode` is a function: Chromium gives it beyond the IDL of SVG 2, which has no method `decode()`;
+- a PNG of 3000 × 3000 of noise: a new `<image>` with a `blob:` URL that a picture had decoded beforehand is painted, by Element Timing, 15 ms after its insertion, in the nearest frame, and without the decoding 105 ms after, six `requestAnimationFrame` callbacks later;
+- a PNG of 40 × 20 of four colors in an `<image preserveAspectRatio="none">` of 400 × 300 fit its corners to the corners, and an SVG file stretches the same way, with `viewBox` and without it;
+- `scrollIntoView` on a box with `visibility: hidden` scrolls the container the same as on a visible one.
+
+### 1.15. Styles under `app`'s policy in Chrome Headless Shell 156.0.8078.4, 2026-11-08
+
+A probe in the image through Playwright 1.64.1. Under the policy `default-src 'none'; style-src 'self'; img-src blob:` in a frame's `<meta>`, a `<style>` in a shadow root is blocked — a `securitypolicyviolation` event with `style-src-elem` and the URL `inline`, and the host has `display: inline` — while a sheet from `replaceSync()`, assignments to the `style` properties and `blob:` pictures work with no events. An element moved into an iframe of the same origin stays with an empty `adoptedStyleSheets` and with no styles — both there and after its return — until `adoptedCallback()` gives it the sheet.
+
+### 1.16. Text spacing on the page of `just demo`, 2026-11-11
+
+A probe in the image's Chrome Headless Shell 156.0.8078.4 through Playwright 1.64.1, on the page of `just demo` 414 CSS px wide: the rules of the Text Spacing bookmarklet — `line-height: 1.5`, `letter-spacing: 0.12em`, `word-spacing: 0.16em` with `!important` on every element and `margin-bottom: 2em` on a paragraph — first as a style of the document, and then also as a sheet in the element's shadow root, in place of a user style. The document's style reaches the statement by inheritance — `letter-spacing` 1.92 px — but not the workbook's printed text: its text has `normal`. The sheet in the shadow root gives the printed text 3.6 px, but the widths of the first three pieces stay within a third of a unit: 24, 41 and 57 units of the sheet against 24, 41 and 57.34 without the spacing; `textLength` holds them. No label of the row's eight buttons went beyond its button, neither on the sheet nor on the workbook.
+
 ## 2. The tokens Claude Code's sessions spend
 
 A row is `just -f spec/justfile tokens-report --since <start> --until <end> --row` over the transcripts of this machine's sessions, after the pattern of measurements 1.9 spec; when an epic is archived, over the epic's window. The first row is "before" the epic E13: all of `canvas`'s sessions until 2026-11-12T14:27, as `spec` measured them in measurements 1.9 spec; the next ones are E13's sessions.
@@ -140,3 +196,33 @@ The times GitHub gives each job and step, `gh api repos/altnovatrail/canvas/acti
 - **The entries** of the cache are 5.7–6.3 MB each.
 - **Not measured apart:** the runners' own spread is as large as a gain of tens of seconds — the boot of the simulator took 95–179 s in these runs, the build of WebDriverAgent 157–513 s, and the samples page's iPad job came out no faster within it. The Android job of `emulators.yml` failed in the first two attempts of run 43812391731 on "System UI isn't responding" in the emulator and passed in the third, 352 s; neither it nor its files changed with the cache.
 - **A loaded runner.** In run [43816134598](https://github.com/altnovatrail/canvas/actions/runs/43816134598), on the code with the cache, a hit, iPad 27 failed in 1112 s: the simulator booted in 179 s, `xcodebuild -xctestrun` wrote its first line 8 min after it — 83 s in the hit before —, and `simctl io screenshot` failed in the probe. Hence the start's wait is ten minutes by the clock, not 120 tries.
+
+## 4. Probes of packages and tools
+
+### 4.1. The size of the drawing libraries, 2026-10-21
+
+When the drawing engine was chosen: the main file of each library's build from jsdelivr, compressed by `gzip -9`, in bytes — `konva.min.js` of Konva 10.9.0, 58,317; perfect-freehand 1.2.3 `dist/esm/index.mjs`, 1,999; `rbush.min.js` of rbush 4.0.1 with `quickselect` inside, 2,327; Fabric.js 7.4.0 `dist/index.min.mjs`, 91,558; `paper-core.min.js` of Paper.js 0.14.0, 74,297; `pixi.min.mjs` of PixiJS 8.22.0, 236,793; `two.min.js` of Two.js 0.8.24, 49,680; Excalidraw 0.18.1 `dist/prod/index.js`, 154,698; `signature_pad.min.js` 5.1.4, 4,660; Atrament 5.1.0 `dist/esm/index.js`, 2,601; `@drauu/core` 1.0.0 `dist/index.mjs`, without minification, 8,096.
+
+### 4.2. The Playwright image v1.64.1-noble, 2026-10-21
+
+The image `mcr.microsoft.com/playwright:v1.64.1-noble`, index `sha256:7852dc5…`, amd64 manifest `sha256:bdfda2a…` (the MCR registry):
+
+- the layer `sha256:e20e5ef…`, 314,299,253 bytes compressed, is `playwright-core install chromium`: `chromium-1248` with `WidevineCdm/LICENSE`, `chromium_headless_shell-1248` and `ffmpeg-1013`. Firefox and WebKit are separate layers, of 122,076,107 and 113,748,815 bytes, and they hold no license files;
+- `chromium_headless_shell-1248/chrome-headless-shell-linux64/ABOUT`: "Google Chrome … Copyright 2026 Google LLC. All rights reserved. Chrome is made possible by the Chromium open source project (https://www.chromium.org/) and other open source software (chrome://credits). See the Terms of Service at chrome://terms". `LICENSE.headless_shell` beside it begins with "The Chromium Project" and BSD-3-Clause;
+- in the rebuilt container `chrome-headless-shell --version` answers "Google Chrome for Testing 156.0.8078.4", and the folder takes 273 MB.
+
+### 4.3. The coverage of a module no test loads, 2026-11-01
+
+Vitest 5.0.5 with `@vitest/coverage-v8` 5.0.5, here: the module `src/core/`, which no test loads, entered the report with `LH:0`, and the run of all the tests with coverage took 16.0 s against 15.4 without it.
+
+### 4.4. The server of `just demo`, 2026-10-22
+
+Vite 8.3.4, in the working tree of the task that added `demo/` and `just demo`:
+
+- `just demo` answers 200 on `/` and `/main.ts`;
+- on `/@fs/<tree>/package.json` and `RUN.md`, 403, and the server's log has exactly three allowed folders: `demo`, `src` and `node_modules`;
+- on `/package.json`, `/../package.json` and `/%2e%2e/package.json` it answers with the page itself, `index.html`.
+
+### 4.5. perfect-freehand's outline of short strokes, 2026-10-22
+
+perfect-freehand 1.2.3 from the lock file, straight strokes at `size` 3, when the sheet's input was planned: at 0.5 and 1 unit long the outline is wider by 0.08 and 0.29 of a unit than when counted in "sheet × 10", and from 2 units on it is the same.
