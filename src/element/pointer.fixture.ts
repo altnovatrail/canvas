@@ -110,6 +110,12 @@ export async function quarters(colours: readonly Colour[] = QUARTERS): Promise<B
   return canvas.convertToBlob({ type: "image/png" });
 }
 
+/**
+ * How long a test waits for the tracing paper's grip, which shows once the crop's picture is read:
+ * a browser just started reads its first picture slowly.
+ */
+export const GRIP_MS = 10_000;
+
 /** A task's crop: a PNG of 200 × 50 px by default, grey, as app cuts one, made on a canvas. */
 export async function paperCrop(width = 200, height = 50): Promise<Blob> {
   const canvas = document.createElement("canvas");

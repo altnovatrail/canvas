@@ -7,7 +7,7 @@ import type {
   PaperSubmission,
   TutorAct,
 } from "./index.js";
-import { paperCrop, settle } from "./pointer.fixture.js";
+import { GRIP_MS, paperCrop, settle } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // What the tests of the tutor's act share: a task from paper with a stroke of the learner's and
@@ -44,7 +44,7 @@ export async function paper(
   element.paper = { statement: await paperCrop() };
   element.history = history;
   const grip = element.shadowRoot?.querySelector<HTMLButtonElement>("button.grip");
-  await expect.poll(() => grip?.hidden).toBe(false);
+  await expect.poll(() => grip?.hidden, { timeout: GRIP_MS }).toBe(false);
   await settle();
   const work = ((await element.exportWork()) ??
     (await element.exportForDrawing())) as ExportedPaper;
@@ -98,7 +98,7 @@ export async function offFromWhole(made: HTMLElement[], element: NovatrailCanvas
   fresh.tracing = element.tracing;
   fresh.history = element.history;
   const grip = fresh.shadowRoot?.querySelector<HTMLButtonElement>("button.grip");
-  await expect.poll(() => grip?.hidden).toBe(false);
+  await expect.poll(() => grip?.hidden, { timeout: GRIP_MS }).toBe(false);
   await settle();
   const pixels = (of: NovatrailCanvas) => {
     const canvas = of.shadowRoot?.querySelector("canvas");
