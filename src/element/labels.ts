@@ -1,6 +1,7 @@
-// The labels of the element's own buttons, of the popovers of the pen and the eraser, of a
-// workbook's boxes and of the parts of a worked example's demo, in the languages of the
-// interface, English and Russian, by the shared rules of the packages' translations:
+// The labels of the element's own buttons, of the popovers of the pen, the eraser and Select, of
+// Select's bar, of a workbook's boxes and of the parts of a worked example's demo, in the
+// languages of the interface, English and Russian, by the shared rules of the packages'
+// translations:
 // - the language is the element's own `lang`, looked up as RFC 4647 does it, and English stands for
 //   any other, under a `lang` of its own;
 // - a label with a number or a word in it is one string with named places, «Часть {n} из {total}.»,
@@ -35,6 +36,8 @@ export interface Labels {
   readonly tool: string;
   readonly pen: string;
   readonly eraser: string;
+  /** The tool that draws a lasso or a rectangle round strokes, to move, copy or delete them. */
+  readonly select: string;
   readonly undo: string;
   readonly clear: string;
   /** The tool that moves the sheet and writes nothing. */
@@ -126,6 +129,15 @@ export interface Labels {
   readonly whatToErase: string;
   readonly size: string;
   readonly sizeAt: string;
+  /** Select's popover, the heading of its shapes, and the shapes. */
+  readonly selectSettings: string;
+  readonly shape: string;
+  readonly lasso: string;
+  readonly rectangle: string;
+  /** The bar of the strokes Select took, and its buttons. */
+  readonly selectionButtons: string;
+  readonly copy: string;
+  readonly remove: string;
 }
 
 /** The labels in English, the code's own language: those of any language the table has not. */
@@ -142,6 +154,7 @@ const ENGLISH: Labels = Object.freeze({
   tool: "Tool",
   pen: "Pen",
   eraser: "Eraser",
+  select: "Select",
   undo: "Undo",
   clear: "Clear",
   hand: "Hand",
@@ -205,6 +218,13 @@ const ENGLISH: Labels = Object.freeze({
   whatToErase: "What to erase",
   size: "Size",
   sizeAt: "Size {n} of {total}",
+  selectSettings: "Select settings",
+  shape: "Shape",
+  lasso: "Lasso",
+  rectangle: "Rectangle",
+  selectionButtons: "Selected strokes",
+  copy: "Copy",
+  remove: "Delete",
 });
 
 /**
@@ -228,6 +248,7 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
       tool: "Инструмент",
       pen: "Перо",
       eraser: "Ластик",
+      select: "Выделение",
       undo: "Отменить",
       clear: "Очистить",
       hand: "Рука",
@@ -291,6 +312,13 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
       whatToErase: "Что стирать",
       size: "Размер",
       sizeAt: "Размер {n} из {total}",
+      selectSettings: "Настройки выделения",
+      shape: "Форма",
+      lasso: "Лассо",
+      rectangle: "Прямоугольник",
+      selectionButtons: "Выделенные штрихи",
+      copy: "Копировать",
+      remove: "Удалить",
     }),
   ],
 ]);

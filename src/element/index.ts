@@ -120,6 +120,7 @@ import {
 import { encodePNG } from "../core/png.js";
 import { type PointerSample, Recorder } from "../core/recorder.js";
 import { fitScale, K_MAX, type Point, scaleFor, toSheet, type View } from "../core/screen.js";
+import { keptOffset, rectangleOf, takenBy } from "../core/select.js";
 import { extentOf, pictureOf, REACH, SHEET, type Size } from "../core/sheet.js";
 import {
   type EraserMode,
@@ -140,6 +141,7 @@ import {
   isTool,
   isWorkbook,
   NO_TASK,
+  SELECT,
   sameLayer,
   sameStatement,
   type Task,
@@ -193,6 +195,7 @@ import { Parts } from "./parts.js";
 import { pensStyle, samePens, screenColourOf } from "./pens.js";
 import { Pictures } from "./pictures.js";
 import { attachProbe } from "./probe.js";
+import { Selection } from "./selection.js";
 import { PAGE_ZOOM, PEN_MODE } from "./session.js";
 import { Statement } from "./statement.js";
 import { type DemoControls, type RowKind, Tools } from "./tools.js";
@@ -424,7 +427,7 @@ const STYLE = `
 }
 .rail[hidden] { display: none; }
 .rail.example { padding-bottom: 88px; }
-.tools, .tracing-scale {
+.tools, .tracing-scale, .selection-bar {
   box-sizing: border-box; flex: none; width: 52px; max-height: 100%;
   margin: 0 0 0 16px; padding: 4px; border-radius: 26px;
   display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -436,7 +439,7 @@ const STYLE = `
     0 1px 2px rgba(0, 0, 0, 0.04);
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .tools, .tracing-scale { background: var(--novatrail-canvas-paper, ${PAPER}); }
+  .tools, .tracing-scale, .selection-bar { background: var(--novatrail-canvas-paper, ${PAPER}); }
 }
 .tools:dir(rtl) { direction: rtl; }
 .tools.row {
@@ -446,19 +449,19 @@ const STYLE = `
   overflow-x: auto; overflow-y: hidden;
 }
 .tools .choice { display: flex; flex-direction: column; gap: 2px; flex: none; }
-:is(.tools, .tracing-scale) .line {
+:is(.tools, .tracing-scale, .selection-bar) .line {
   flex: none; width: 24px; height: 1px; margin: 4px 0; background: rgba(0, 0, 0, 0.1);
 }
 .tools.row .line { width: 1px; height: 24px; margin: 0 4px; }
 .tools.row ::slotted(*) { flex: none; }
-:is(.tools, .tracing-scale) button {
+:is(.tools, .tracing-scale, .selection-bar) button {
   box-sizing: border-box; flex: none; min-width: 44px; min-height: 44px; margin: 0;
   padding: 0 14px 0 10px; display: flex; align-items: center; justify-content: center; gap: 6px;
   font: inherit; font-weight: 500; white-space: nowrap; color: inherit; background: transparent;
   cursor: pointer; border: none; border-radius: 22px;
 }
-:is(.tools, .tracing-scale) button.icon { width: 44px; height: 44px; padding: 0; }
-:is(.tools, .tracing-scale) button.icon .label {
+:is(.tools, .tracing-scale, .selection-bar) button.icon { width: 44px; height: 44px; padding: 0; }
+:is(.tools, .tracing-scale, .selection-bar) button.icon .label {
   position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
   overflow: hidden; clip-path: inset(50%); white-space: nowrap;
 }
@@ -466,21 +469,21 @@ const STYLE = `
   background: color-mix(in srgb, var(--novatrail-canvas-accent, ${ACCENT}) 12%, transparent);
   color: var(--novatrail-canvas-accent, ${ACCENT});
 }
-:is(.tools, .tracing-scale) button:focus-visible {
+:is(.tools, .tracing-scale, .selection-bar) button:focus-visible {
   outline: 2px solid var(--novatrail-canvas-accent, ${ACCENT}); outline-offset: 0;
 }
-:is(.tools, .tracing-scale) [aria-disabled="true"] {
+:is(.tools, .tracing-scale, .selection-bar) [aria-disabled="true"] {
   color: color-mix(
     in srgb, var(--novatrail-canvas-ink, ${INK}) 40%, var(--novatrail-canvas-paper, ${PAPER})
   );
   cursor: default;
 }
 @supports not (color: color-mix(in srgb, red 40%, blue)) {
-  :is(.tools, .tracing-scale) [aria-disabled="true"] { opacity: 0.4; }
+  :is(.tools, .tracing-scale, .selection-bar) [aria-disabled="true"] { opacity: 0.4; }
   .tools [aria-checked="true"] { background: transparent; }
 }
-.tools[hidden], :is(.tools, .tracing-scale) [hidden] { display: none; }
-:is(.tools, .tracing-scale) button svg { display: block; flex: none; width: 20px; height: 20px; fill: currentColor; }
+.tools[hidden], :is(.tools, .tracing-scale, .selection-bar) [hidden] { display: none; }
+:is(.tools, .tracing-scale, .selection-bar) button svg { display: block; flex: none; width: 20px; height: 20px; fill: currentColor; }
 .tools:dir(rtl) svg.mirrored { transform: scaleX(-1); }
 .tip {
   position: absolute; left: var(--tip-x, 76px); top: var(--tip-y, 0px); z-index: 2;
@@ -657,6 +660,21 @@ canvas {
   flex-direction: row; gap: 2px; pointer-events: auto; overflow: visible;
 }
 .tracing-scale .line { width: 1px; height: 24px; margin: 0 4px; }
+/* Select's marks, dashed in the accent over a light wash of it, as thin at any zoom; and its bar of
+   glass over them, which the element places. */
+.selection .shape, .selection .box {
+  fill: color-mix(in srgb, var(--novatrail-canvas-accent, ${ACCENT}) 6%, transparent);
+  stroke: var(--novatrail-canvas-accent, ${ACCENT}); stroke-width: 1.5px; stroke-dasharray: 6 4;
+  stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke;
+}
+.selection .box { stroke-width: 1px; }
+.stage > .selection-bar {
+  inset: var(--select-y, 0px) auto auto var(--select-x, 0px); transform: translateX(-50%);
+  width: max-content; height: auto; max-height: none; margin: 0; padding: 4px;
+  flex-direction: row; gap: 2px; pointer-events: auto; overflow: visible;
+}
+.stage > .selection-bar[hidden] { display: none; }
+.selection-bar .remove { color: #d70015; }
 .tracing-scale .percent { min-width: 64px; padding: 0 8px; font-variant-numeric: tabular-nums; }
 .tracing-scale .mode {
   background: var(--novatrail-canvas-accent, ${ACCENT}); color: #fff; margin-inline-start: 2px;
@@ -719,17 +737,21 @@ canvas {
   .tracing-scale .mode, .tracing-scale .mode.busy, .tracing-scale .mode.back {
     background: ButtonFace; color: ButtonText; border: 1px solid ButtonBorder;
   }
-  .tools, .tracing-scale { background: Canvas; color: CanvasText; border: 1px solid CanvasText; }
-  :is(.tools, .tracing-scale) .line { background: CanvasText; }
-  :is(.tools, .tracing-scale) button {
+  .tools, .tracing-scale, .selection-bar {
+    background: Canvas; color: CanvasText; border: 1px solid CanvasText;
+  }
+  .selection .shape, .selection .box { fill: none; stroke: Highlight; }
+  .selection-bar .remove { color: ButtonText; }
+  :is(.tools, .tracing-scale, .selection-bar) .line { background: CanvasText; }
+  :is(.tools, .tracing-scale, .selection-bar) button {
     background: ButtonFace; color: ButtonText; border: 1px solid ButtonBorder;
   }
   .tools [aria-checked="true"] {
     background: Highlight; color: HighlightText; border-color: Highlight;
   }
-  :is(.tools, .tracing-scale) [aria-disabled="true"] { color: GrayText; border-color: GrayText; }
+  :is(.tools, .tracing-scale, .selection-bar) [aria-disabled="true"] { color: GrayText; border-color: GrayText; }
   .tip { background: Canvas; color: CanvasText; border: 1px solid CanvasText; }
-  :is(.tools, .tracing-scale) button:focus-visible, .viewport:focus-visible + .ring {
+  :is(.tools, .tracing-scale, .selection-bar) button:focus-visible, .viewport:focus-visible + .ring {
     outline-color: Highlight;
   }
   .stage > .hover { background: CanvasText; }
@@ -879,6 +901,43 @@ interface Drawing {
   readonly done: () => void;
   readonly timer: ReturnType<typeof setTimeout>;
 }
+
+/** Select's shape under way: its pointer, its layer, and its points in the layer's units. */
+interface Selecting {
+  readonly pointerId: number;
+  readonly layer: "tracing" | undefined;
+  readonly points: Point[];
+}
+
+/** The strokes Select took, all of one layer, by their IDs in the sheet's order. */
+interface Selected {
+  readonly ids: readonly number[];
+  readonly layer: "tracing" | undefined;
+}
+
+/**
+ * The strokes Select took, dragged: its pointer, the strokes by ID, where it came down and how
+ * far it has gone, in their layer's units, kept so that every point stays on the sheet; the
+ * offset the canvas shows, and each stroke moved as far, made once for each offset.
+ */
+interface Dragging {
+  readonly pointerId: number;
+  readonly ids: ReadonlySet<number>;
+  readonly from: Point;
+  readonly box: Box;
+  offset: readonly [number, number];
+  painted: readonly [number, number];
+  readonly moved: Map<number, Stroke>;
+}
+
+/** How far the box round the strokes Select took keeps from their points, in CSS pixels. */
+const SELECT_PAD_PX = 10;
+
+/**
+ * How far below the strokes Select took their copy lands, past their own height, in their layer's
+ * units: clear of them, so that the copy is seen to be one.
+ */
+const COPY_GAP = 12;
 
 /**
  * How long after its last stroke's end the tutor's act ends by its timer, ms, should no frame of
@@ -1102,6 +1161,17 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * `fresh` till a frame has painted it.
    */
   #drawing: Drawing | undefined;
+  /** Select's shape under way: its pointer, its layer, and its points in the layer's units. */
+  #selecting: Selecting | undefined;
+  /** The strokes Select took, all of one layer, by their IDs in the sheet's order. */
+  #selected: Selected | undefined;
+  /** The strokes taken, dragged: see `Dragging`. */
+  #dragging: Dragging | undefined;
+  /** Select's shape, the box round what it took, and the bar of Copy and Delete. */
+  readonly #selection = new Selection({
+    copy: () => this.#copySelected(),
+    remove: () => this.#removeSelected(),
+  });
   /** The page's time of the frame being painted, by which the tutor's strokes are drawn so far. */
   #drawingNow = 0;
   /** How many strokes the element has filled on its buffers and its canvas since it was built. */
@@ -1425,11 +1495,13 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       this.#canvas,
       this.#hover,
       this.#marksLayer,
+      this.#selection.layer,
       this.#tracingPaper.frame,
       this.#tracingPaper.sign,
       this.#tracingPaper.grip,
       this.#tracingPaper.tip,
       this.#tracingPaper.bar,
+      this.#selection.bar,
     );
     this.#sheet.append(this.#stage, this.#parts.spot);
     // The bands come after the sheet: the ruling on its edge, half past the band, lies over it.
@@ -1494,6 +1566,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#viewport.addEventListener("wheel", (event) => this.#wheel(event), { passive: false });
     // A container left with nothing to scroll keeps its stop of Tab while it has the focus.
     this.#viewport.addEventListener("blur", () => this.#region());
+    // Delete or Backspace erases what Select took, Escape lets it go: from the sheet, or its bar.
+    for (const at of [this.#viewport, this.#selection.bar]) {
+      at.addEventListener("keydown", (event) => this.#selectKey(event));
+    }
 
     attachProbe(this, () => ({
       strokes: this.#work.strokes,
@@ -1567,7 +1643,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   set tool(tool: Tool) {
     if (!isTool(tool)) {
       throw new TypeError(
-        `the tool of <${TAG}> is "pen", "eraser" or "hand", not ${JSON.stringify(tool)}`,
+        `the tool of <${TAG}> is "pen", "eraser", "select" or "hand", not ${JSON.stringify(tool)}`,
       );
     }
     if (!this.#allows(tool)) {
@@ -1576,6 +1652,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     }
     this.#tool = tool;
     this.#refresh();
+    this.#request();
   }
 
   /**
@@ -2076,6 +2153,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       return;
     }
     this.#tools.label(this.getAttribute("lang"));
+    this.#selection.label(this.getAttribute("lang"));
     this.#nameGrip();
     this.#nameRegion();
     this.#nameBoxes();
@@ -2375,6 +2453,282 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const done = this.#startDrawing(drafts, plan.on === undefined ? 1 : scaleIn(context.tracing));
     this.#changed();
     return done;
+  }
+
+  /**
+   * Select comes down: inside the box of the strokes it took, it drags them; anywhere else, it lets
+   * them go and begins its shape on the layer the press is on — the tracing paper's, `layer`, or the
+   * sheet's.
+   */
+  #selectDown(pointerId: number, sample: Point, layer: "tracing" | undefined): void {
+    const selected = this.#selectedNow();
+    if (selected !== undefined) {
+      const point = this.#inLayer(sample, selected.layer);
+      const box = this.#selectedBox(selected);
+      const screen = this.#view();
+      const pad =
+        screen === undefined ? 0 : SELECT_PAD_PX / (screen.k * this.#layerScale(selected.layer));
+      if (
+        box !== undefined &&
+        point.x >= box.minX - pad &&
+        point.x <= box.maxX + pad &&
+        point.y >= box.minY - pad &&
+        point.y <= box.maxY + pad
+      ) {
+        this.#dragging = {
+          pointerId,
+          ids: new Set(selected.ids),
+          from: point,
+          box,
+          offset: [0, 0],
+          painted: [0, 0],
+          moved: new Map(),
+        };
+        this.#request();
+        return;
+      }
+    }
+    this.#selected = undefined;
+    this.#selecting = { pointerId, layer, points: [this.#inLayer(sample, layer)] };
+    this.#request();
+  }
+
+  /** Select's pointer moves: its shape gains a point, or the strokes it took go with it. */
+  #selectMove(event: PointerEvent): void {
+    const screen = this.#view();
+    if (screen === undefined) return;
+    const sheet = toSheet(screen, event.clientX - screen.left, event.clientY - screen.top);
+    const dragging = this.#dragging;
+    if (dragging !== undefined) {
+      const layer = this.#selected?.layer;
+      const { x, y } = this.#inLayer(sheet, layer);
+      const offset = keptOffset(
+        dragging.box,
+        [x - dragging.from.x, y - dragging.from.y],
+        REACH.width,
+        REACH.height,
+      );
+      if (offset[0] === dragging.offset[0] && offset[1] === dragging.offset[1]) return;
+      dragging.offset = offset;
+      dragging.moved.clear();
+      this.#request();
+      return;
+    }
+    const selecting = this.#selecting;
+    if (selecting === undefined) return;
+    const point = this.#inLayer(sheet, selecting.layer);
+    const last = selecting.points.at(-1) as Point;
+    // A point a pixel or two from the last adds nothing to the shape the eye can see.
+    const least = 2 / (screen.k * this.#layerScale(selecting.layer));
+    if (Math.hypot(point.x - last.x, point.y - last.y) < least) return;
+    selecting.points.push(point);
+    this.#request();
+  }
+
+  /**
+   * Select's pointer lifts: its shape takes the strokes of its layer it holds almost wholly, or the
+   * strokes dragged land where they are, moved, in one action that an undo takes back whole.
+   */
+  #selectUp(event: PointerEvent): void {
+    const selecting = this.#selecting;
+    if (selecting?.pointerId === event.pointerId) {
+      this.#selectMove(event);
+      this.#selecting = undefined;
+      const shape = this.#shapeOf(selecting.points);
+      const work = this.#work;
+      const traced = selecting.layer === "tracing";
+      const strokes = work.strokes.filter((stroke) => work.onTracing(stroke.id) === traced);
+      const ids = takenBy(strokes, shape);
+      this.#selected = ids.length === 0 ? undefined : { ids, layer: selecting.layer };
+      this.#request();
+      return;
+    }
+    const dragging = this.#dragging;
+    if (dragging?.pointerId !== event.pointerId) return;
+    this.#selectMove(event);
+    this.#dragging = undefined;
+    const selected = this.#selected;
+    const [dx, dy] = dragging.offset;
+    if (selected === undefined || (dx === 0 && dy === 0)) {
+      this.#request();
+      return;
+    }
+    this.#act("move", selected, dragging.offset);
+  }
+
+  /** The strokes Select took, copied just below themselves, and the copies taken in their place. */
+  #copySelected(): void {
+    const selected = this.#selectedNow();
+    const box = selected === undefined ? undefined : this.#selectedBox(selected);
+    if (selected === undefined || box === undefined) return;
+    const down = box.maxY - box.minY + COPY_GAP;
+    this.#act("copy", selected, keptOffset(box, [0, down], REACH.width, REACH.height));
+  }
+
+  /** A key while Select has taken strokes: Delete or Backspace erases them, Escape lets them go. */
+  #selectKey(event: KeyboardEvent): void {
+    if (this.#dragging !== undefined || this.#selectedNow() === undefined) return;
+    if (event.key === "Delete" || event.key === "Backspace") this.#removeSelected();
+    else if (event.key === "Escape") {
+      this.#selected = undefined;
+      this.#viewport.focus();
+      this.#request();
+    } else return;
+    event.preventDefault();
+  }
+
+  /** The strokes Select took, erased, in one action. */
+  #removeSelected(): void {
+    const selected = this.#selectedNow();
+    if (selected === undefined) return;
+    this.#selected = undefined;
+    if (this.#work.erase(selected.ids, performance.now())) this.#changed();
+    else this.#request();
+  }
+
+  /** A move or a copy of the strokes Select took, whose new strokes it takes then. */
+  #act(kind: "move" | "copy", selected: Selected, offset: readonly [number, number]): void {
+    const first = this.#recorder.reserve(selected.ids.length);
+    if (this.#work.select(kind, selected.ids, offset, first, performance.now())) {
+      this.#selected = {
+        ids: selected.ids.map((_, k) => first + k),
+        layer: selected.layer,
+      };
+      this.#changed();
+    } else {
+      // The strokes a drag showed moved go back where they are: the whole sheet is drawn anew.
+      this.#selected = undefined;
+      this.#painted = undefined;
+      this.#request();
+    }
+  }
+
+  /**
+   * The strokes Select took, while it is the tool and they are on the sheet, in sight: those gone
+   * since are left out, and with none left, or with another tool, or with their tracing paper
+   * hidden, the selection goes.
+   */
+  #selectedNow(): Selected | undefined {
+    const selected = this.#selected;
+    if (selected === undefined) return undefined;
+    const traced = selected.layer === "tracing";
+    const work = this.#work;
+    const on = new Set(
+      work.strokes.filter((stroke) => work.onTracing(stroke.id) === traced).map(({ id }) => id),
+    );
+    const ids = selected.ids.filter((id) => on.has(id));
+    const hidden = traced && (this.#tracing === undefined || this.#tracing.hidden);
+    if (this.#tool !== SELECT || ids.length === 0 || hidden) {
+      this.#selected = undefined;
+      return undefined;
+    }
+    if (ids.length !== selected.ids.length) this.#selected = { ids, layer: selected.layer };
+    return this.#selected;
+  }
+
+  /** The box of the points of the strokes Select took, in their layer's units. */
+  #selectedBox(selected: Selected): Box | undefined {
+    const ids = new Set(selected.ids);
+    const points = this.#work.strokes.filter(({ id }) => ids.has(id)).flatMap((s) => s.points);
+    return points.length === 0 ? undefined : boxOf(points);
+  }
+
+  /** A point of the sheet in a layer's units: the tracing paper's from its corner, or as it is. */
+  #inLayer(point: Point, layer: "tracing" | undefined): Point {
+    const tracing = this.#tracing;
+    if (layer !== "tracing" || tracing === undefined) return { x: point.x, y: point.y };
+    return toTracing(point, tracing.at, this.#tracingPaper.size, scaleIn(tracing));
+  }
+
+  /** How large a unit of a layer is on the sheet: the tracing paper's scale, or 1. */
+  #layerScale(layer: "tracing" | undefined): number {
+    return layer === "tracing" && this.#tracing !== undefined ? scaleIn(this.#tracing) : 1;
+  }
+
+  /** Select's shape from the points its pointer went through: the lasso, or the rectangle. */
+  #shapeOf(points: readonly Point[]): Point[] {
+    if (this.#pens.select === "lasso") return [...points];
+    const first = points[0] as Point;
+    return rectangleOf(first, points.at(-1) ?? first);
+  }
+
+  /**
+   * Select's marks as they are now: its shape under way, and the box round what it took — where a
+   * drag has it — with the bar, in the sheet's units, over the strokes of either layer.
+   */
+  #drawSelection(screen: Screen): void {
+    const selecting = this.#tool === SELECT ? this.#selecting : undefined;
+    const toSheetOf = (layer: "tracing" | undefined) => {
+      const tracing = this.#tracing;
+      const [ax, ay] = layer === "tracing" && tracing !== undefined ? tracing.at : [0, 0];
+      const by = this.#layerScale(layer);
+      return ({ x, y }: Point): Point => ({ x: x * by + ax, y: y * by + ay });
+    };
+    this.#selection.shape(
+      selecting === undefined
+        ? undefined
+        : this.#shapeOf(selecting.points).map(toSheetOf(selecting.layer)),
+    );
+    const selected = this.#selectedNow();
+    const box = selected === undefined ? undefined : this.#selectedBox(selected);
+    if (selected === undefined || box === undefined) {
+      this.#selection.box(undefined, screen, screen.height, false);
+      return;
+    }
+    const [dx, dy] = this.#dragging?.offset ?? [0, 0];
+    const at = toSheetOf(selected.layer);
+    const corner = at({ x: box.minX + dx, y: box.minY + dy });
+    const end = at({ x: box.maxX + dx, y: box.maxY + dy });
+    const pad = SELECT_PAD_PX / screen.k;
+    const onSheet = {
+      minX: corner.x - pad,
+      minY: corner.y - pad,
+      maxX: end.x + pad,
+      maxY: end.y + pad,
+    };
+    this.#selection.box(onSheet, screen, screen.height, this.#dragging !== undefined);
+  }
+
+  /** A stroke moved by the drag's offset, as the drag shows it: made once for each offset. */
+  #movedOf(stroke: Stroke, [dx, dy]: readonly [number, number]): Stroke {
+    const dragging = this.#dragging;
+    const kept = dragging?.moved.get(stroke.id);
+    if (kept !== undefined) return kept;
+    const moved: Stroke = {
+      ...stroke,
+      points: stroke.points.map((point) => ({ ...point, x: point.x + dx, y: point.y + dy })),
+    };
+    dragging?.moved.set(stroke.id, moved);
+    return moved;
+  }
+
+  /**
+   * Where the canvas no longer shows the strokes dragged as they are now: around each where the
+   * last frame painted it and where it is now. None without a drag, or where it has not moved.
+   */
+  #draggedChanged(frame: Frame): Pixels | undefined {
+    const dragging = this.#dragging;
+    if (dragging === undefined) return undefined;
+    const [was, now] = [dragging.painted, dragging.offset];
+    if (was[0] === now[0] && was[1] === now[1]) return undefined;
+    let at: Pixels | undefined;
+    for (const stroke of this.#work.strokes) {
+      if (!dragging.ids.has(stroke.id)) continue;
+      const traced = this.#work.onTracing(stroke.id);
+      // A stroke's outline moves with its points, so its box moves as far.
+      const ink = this.#finished(stroke);
+      for (const [dx, dy] of [was, now]) {
+        const box = {
+          minX: ink.left + dx,
+          minY: ink.top + dy,
+          maxX: ink.right + dx,
+          maxY: ink.bottom + dy,
+        };
+        at = union(at, this.#pixelsOf(frame, traced, box));
+      }
+    }
+    dragging.painted = now;
+    return at;
   }
 
   /** A context a consumer gives back for the tutor's act, checked: a task from paper's, on one. */
@@ -2738,7 +3092,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /** Whether the sheet shown has a tool: the task's, and the hand on every sheet written on. */
   #allows(tool: Tool): boolean {
-    if (tool === HAND) return this.#example === undefined;
+    if (tool === HAND || tool === SELECT) return this.#example === undefined;
     return this.#shownTemplate.tools.includes(tool);
   }
 
@@ -3005,6 +3359,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     // A press on the sheet lets the tracing paper go: its frame and bar of scale leave.
     this.#tracingPaper.letGo();
     const layer = traced ? "tracing" : undefined;
+    if (this.#tool === SELECT && !erases) {
+      this.#selectDown(event.pointerId, onSheetSample, layer);
+      return;
+    }
     if (erases) this.#eraseOn = tracing === undefined ? undefined : (layer ?? "sheet");
     else this.#writeOn = layer;
     const sample =
@@ -3176,6 +3534,15 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       this.#flush();
       return;
     }
+    // Select's shape, or a drag of what it took, follows its pointer.
+    if (
+      this.#selecting?.pointerId === event.pointerId ||
+      this.#dragging?.pointerId === event.pointerId
+    ) {
+      for (const each of coalesced(event)) this.#hands.move(contactOf(each));
+      this.#selectMove(event);
+      return;
+    }
     // A pointer the hands did not see come down, such as a mouse or a pen hovering, does nothing,
     // and reads no layout.
     if (!this.#hands.knows(event.pointerId)) return;
@@ -3203,6 +3570,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   #up(event: PointerEvent): void {
+    this.#selectUp(event);
     const input = this.#inputOf(event.pointerId);
     if (input !== undefined) {
       const screen = this.#view();
@@ -3246,6 +3614,12 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /** A pointer's stroke or erasing goes, as on `pointercancel`, and the sheet is drawn anew. */
   #drop(pointerId: number): void {
+    if (this.#selecting?.pointerId === pointerId || this.#dragging?.pointerId === pointerId) {
+      this.#selecting = undefined;
+      this.#dragging = undefined;
+      this.#painted = undefined;
+      this.#request();
+    }
     if (this.#recorder.cancel(pointerId) || this.#eraser.cancel(pointerId)) {
       this.#cutting.clear();
       this.#request();
@@ -3729,6 +4103,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     if (tool === this.#tool || !this.#allows(tool)) return;
     this.#tool = tool;
     this.#refresh();
+    this.#request();
     const detail: ToolChange = Object.freeze({ tool });
     this.dispatchEvent(new CustomEvent(TOOL_CHANGE, { bubbles: true, composed: true, detail }));
   }
@@ -4146,6 +4521,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       this.#tracingPaper.layer,
       this.#sketch,
       this.#marksLayer,
+      this.#selection.layer,
     ]) {
       layer.setAttribute("viewBox", viewBox);
     }
@@ -4345,6 +4721,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const colour = this.#canvasStyle.color;
     this.#place(screen);
     this.#drawMarks(screen);
+    this.#drawSelection(screen);
     const context = this.#context;
     const { width, height } = this.#canvas;
     if (context === null || width === 0 || height === 0) return;
@@ -4384,7 +4761,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
           was,
           this.#pixelsOf(frame, this.#work.onTracing(landed.id), this.#finished(landed)),
         );
-      drew = this.#drawingChanged(frame);
+      drew = union(this.#drawingChanged(frame), this.#draggedChanged(frame));
       was = union(was, drew);
     } else {
       // Anything but the act's own first frame and a stroke landing — a scroll, an undo, a new
@@ -4602,7 +4979,9 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const drawing = this.#drawing;
     // A stroke of the tutor's act being drawn: the part of it drawn so far. A stroke an eraser has
     // come near: out of sight, or the pieces a cut would leave of it.
+    const dragging = this.#dragging;
     const drawn = (stroke: Stroke): readonly Stroke[] => {
+      if (dragging?.ids.has(stroke.id)) return [this.#movedOf(stroke, dragging.offset)];
       if (drawing?.timings.has(stroke.id)) {
         const part = this.#partOf(stroke, drawing);
         return part === undefined ? [] : [part];

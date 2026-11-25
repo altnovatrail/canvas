@@ -45,7 +45,14 @@ export function replay(history: readonly HistoryEvent[]): Stroke[] {
         }
         break;
       case "tutor":
+      case "move":
         for (const id of event.ids) visible.delete(id);
+        for (const stroke of event.strokes) {
+          written.push(stroke);
+          visible.add(stroke.id);
+        }
+        break;
+      case "copy":
         for (const stroke of event.strokes) {
           written.push(stroke);
           visible.add(stroke.id);
@@ -85,8 +92,13 @@ export function replay(history: readonly HistoryEvent[]): Stroke[] {
  * alone the tutor acts too, `tutor`: strokes or IDs to take off, one at least; its strokes new,
  * their IDs ascending above every ID before them, each of the pointer "tutor", of the pen "liner"
  * at full opacity, of two points at least, each at the event's time and of no pressure, and on the
- * tracing paper, `on: "tracing"`, as a stroke written there is. Whether the actions keep the rules of the stack, and take off strokes the sheet shows, the work
- * on the sheet checks as it replays them (`Work.restore`).
+ * tracing paper, `on: "tracing"`, as a stroke written there is. Select moves strokes, `move`, or
+ * copies them, `copy`: the IDs of strokes written before, one at least, none twice, and as many
+ * new strokes, their IDs ascending above every ID before them, each the stroke of the same place
+ * with every point moved by one offset for all of them, its pointer, style, times and pressures as
+ * they were, landed by the event's time; `on`, "tracing" or none, as for a stroke written. Whether
+ * the actions keep the rules of the stack, take off strokes the sheet shows and take those of one
+ * layer, the work on the sheet checks as it replays them (`Work.restore`).
  */
 export function historyOf(value: unknown, paper = false): HistoryEvent[] {
   if (!Array.isArray(value)) throw new TypeError(`history: a list of events, not ${shown(value)}`);
@@ -134,6 +146,12 @@ export function historyOf(value: unknown, paper = false): HistoryEvent[] {
         for (const [k, stroke] of event.strokes.entries()) fresh(stroke, `${path}.strokes[${k}]`);
         return frozen(event);
       }
+      case "move":
+      case "copy": {
+        const event = selectOf(fields, fields.kind, t, path, highest, written, paper);
+        for (const [k, stroke] of event.strokes.entries()) fresh(stroke, `${path}.strokes[${k}]`);
+        return frozen(event);
+      }
       case "erase":
         return frozen({ kind: "erase", t, ids: idsOf(fields.ids, `${path}.ids`) });
       case "cut":
@@ -149,7 +167,7 @@ export function historyOf(value: unknown, paper = false): HistoryEvent[] {
         });
       default:
         throw new TypeError(
-          `${path}.kind: "write", "erase", "cut", "clear"${paper ? ', "tutor"' : ""} or "undo", not ${shown(fields.kind)}`,
+          `${path}.kind: "write", "erase", "cut", "clear", "move", "copy"${paper ? ', "tutor"' : ""} or "undo", not ${shown(fields.kind)}`,
         );
     }
   });
@@ -214,6 +232,80 @@ function tutorOf(
     throw new TypeError(`${path}.on: "tracing", or none, not ${shown(fields.on)}`);
   }
   return { kind: "tutor", t, strokes, ids, on: "tracing" };
+}
+
+/** How far apart a moved point may be from its offset, in sheet units: what JSON's decimals lose. */
+const OFFSET_SLACK = 1e-6;
+
+/**
+ * A move's or a copy's fields, checked: the IDs of strokes written before, one at least, none
+ * twice; as many strokes, their IDs ascending above `highest`, each the stroke of the same place
+ * moved by one offset for all — its pointer, style, times and pressures, and its points' count —,
+ * landed by `t`; and `on`, "tracing" on a task from paper, or none.
+ */
+function selectOf(
+  fields: Record<string, unknown>,
+  kind: "move" | "copy",
+  t: number,
+  path: string,
+  highest: number,
+  written: ReadonlyMap<number, Stroke>,
+  paper: boolean,
+): HistoryEvent & { kind: "move" | "copy" } {
+  const ids = idsOf(fields.ids, `${path}.ids`);
+  if (ids.length === 0) throw new TypeError(`${path}.ids: one stroke at least, not none`);
+  if (!Array.isArray(fields.strokes) || fields.strokes.length !== ids.length) {
+    throw new TypeError(
+      `${path}.strokes: a list of ${ids.length} strokes, one for each ID, not ${shown(fields.strokes)}`,
+    );
+  }
+  let above = highest;
+  let offset: readonly [number, number] | undefined;
+  const strokes = Array.from(fields.strokes, (item: unknown, k): Stroke => {
+    const at = `${path}.strokes[${k}]`;
+    const stroke = strokeOf(item, at);
+    if (stroke.id <= above) {
+      throw new TypeError(`${at}.id: ${stroke.id}, not above ${above}: new strokes number on`);
+    }
+    above = stroke.id;
+    landed(stroke, t, at);
+    const id = ids[k] as number;
+    const from = written.get(id);
+    if (from === undefined) {
+      throw new TypeError(`${path}.ids[${k}]: ${id}, the ID of no stroke written before`);
+    }
+    if (
+      stroke.kind !== from.kind ||
+      !sameStyle(stroke.style, from.style) ||
+      stroke.points.length !== from.points.length
+    ) {
+      throw new TypeError(
+        `${at}: stroke ${id} moved, its pointer, style and points as they were, not another`,
+      );
+    }
+    for (const [n, point] of stroke.points.entries()) {
+      const was = from.points[n] as InkPoint;
+      offset ??= [point.x - was.x, point.y - was.y];
+      if (
+        point.t !== was.t ||
+        point.p !== was.p ||
+        Math.abs(point.x - was.x - offset[0]) > OFFSET_SLACK ||
+        Math.abs(point.y - was.y - offset[1]) > OFFSET_SLACK
+      ) {
+        throw new TypeError(
+          `${at}.points[${n}]: the point of stroke ${id} moved by the one offset, its time and pressure as they were`,
+        );
+      }
+    }
+    return stroke;
+  });
+  if (fields.on === undefined) return { kind, t, ids, strokes };
+  if (fields.on !== "tracing" || !paper) {
+    throw new TypeError(
+      `${path}.on: ${paper ? '"tracing", or none' : "none, on a sheet with no task from paper"}, not ${shown(fields.on)}`,
+    );
+  }
+  return { kind, t, ids, strokes, on: "tracing" };
 }
 
 /** A stroke lands no sooner than its last point: a piece too, when its cut lands. */
@@ -383,7 +475,7 @@ export function frozen(event: HistoryEvent): HistoryEvent {
   } else if (event.kind === "undo") {
     Object.freeze(event.removed);
     Object.freeze(event.restored);
-  } else if (event.kind === "tutor") {
+  } else if (event.kind === "tutor" || event.kind === "move" || event.kind === "copy") {
     for (const stroke of event.strokes) frozenStroke(stroke);
     Object.freeze(event.strokes);
     Object.freeze(event.ids);
@@ -445,6 +537,8 @@ export function sameEvent(value: unknown, event: HistoryEvent): boolean {
     case "cut":
       return sameIds(given.ids, event.ids) && samePieces(given.pieces, event.pieces);
     case "tutor":
+    case "move":
+    case "copy":
       return (
         given.on === event.on &&
         sameIds(given.ids, event.ids) &&

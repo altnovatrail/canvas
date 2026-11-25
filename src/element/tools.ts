@@ -1,6 +1,7 @@
-// The element's own buttons: the tools the task allows — the pen and the eraser — and
-// the hand, which moves the sheet, undo and clearing, on a vertical bar of glass at the left
-// edge of the element, as the interface mockup draws it. It is a toolbar as WAI-ARIA's
+// The element's own buttons: the tools the task allows — the pen and the eraser —, Select,
+// which takes strokes to move, copy or delete, and the hand, which moves the sheet, undo and
+// clearing, on a vertical bar of glass at the left edge of the element, as the interface mockup
+// draws it. It is a toolbar as WAI-ARIA's
 // Authoring Practices have one: one stop of Tab, the arrow keys up and down from button to button,
 // and the tools a group of radio buttons that the arrows go through without choosing one. Undo and
 // Clear with nothing to take back or to clear stay where the focus can reach them, marked
@@ -28,7 +29,8 @@
 // to the first button shown. The chosen pen and the chosen eraser open their popovers by a second
 // press, Enter or Space from the keyboard (pens.ts), which their description says, unless the
 // element writes without styles; the pen shows a dot of its colour, and each of them a mark in its
-// corner while chosen. A press of any other button closes the popover, and so does the choice of
+// corner while chosen. So does Select, styles or not, its popover its shapes, and its icon the
+// shape it draws. A press of any other button closes the popover, and so does the choice of
 // another tool; its button's tooltip gives way to it. This module is no entry point of the
 // package.
 
@@ -138,6 +140,7 @@ export class Tools {
   readonly #group = document.createElement("div");
   readonly #pen = radioButton("pen");
   readonly #eraser = radioButton("eraser");
+  readonly #select = radioButton("selectLasso");
   readonly #hand = radioButton("hand");
   readonly #undo = plainButton("undo");
   readonly #clear = plainButton("clear");
@@ -160,6 +163,7 @@ export class Tools {
     [this.#task, "hideTask"],
     [this.#pen, "pen"],
     [this.#eraser, "eraser"],
+    [this.#select, "select"],
     [this.#hand, "hand"],
     [this.#undo, "undo"],
     [this.#clear, "clear"],
@@ -238,7 +242,7 @@ export class Tools {
     this.row.append(this.#next, this.#demo, this.#beforeActions, this.#actions);
     this.#group.className = "choice";
     this.#group.setAttribute("role", "radiogroup");
-    this.#group.append(this.#pen, this.#eraser, this.#hand);
+    this.#group.append(this.#pen, this.#eraser, this.#select, this.#hand);
     this.element.append(
       this.#task,
       this.#afterTask,
@@ -258,6 +262,7 @@ export class Tools {
       this.tip,
       this.pens.pen,
       this.pens.eraser,
+      this.pens.select,
       this.pens.hint,
     );
     for (const button of this.#buttons) button.classList.add("icon");
@@ -276,9 +281,10 @@ export class Tools {
     // Tab comes to the first button shown, until another has had the focus.
     this.#stopAt(this.#first());
     // The element decides whether a choice is a change: the tool in use, chosen again, is none,
-    // but for the pen's and the eraser's popovers. A click from the keyboard has no detail.
+    // but for the popovers of the pen, the eraser and Select. A click from the keyboard has no
+    // detail.
     const press = (tool: Opener, button: HTMLButtonElement, event: MouseEvent): void => {
-      if (this.#tool !== tool || !this.#styled || !this.#writes) {
+      if (this.#tool !== tool || !this.#writes || (!this.#styled && tool !== "select")) {
         actions.choose(tool);
         return;
       }
@@ -287,11 +293,14 @@ export class Tools {
     };
     this.#pen.addEventListener("click", (event) => press("pen", this.#pen, event));
     this.#eraser.addEventListener("click", (event) => press("eraser", this.#eraser, event));
+    this.#select.addEventListener("click", (event) => press("select", this.#select, event));
     this.#hand.addEventListener("click", () => actions.choose("hand"));
     // A press of any other button of the bar closes a popover.
     this.element.addEventListener("click", (event) => {
       const button = event.target instanceof Element ? event.target.closest("button") : null;
-      if (button !== this.#pen && button !== this.#eraser) this.pens.close();
+      if (button !== this.#pen && button !== this.#eraser && button !== this.#select) {
+        this.pens.close();
+      }
     });
     const doing = (button: HTMLButtonElement, act: () => void): void => {
       // aria-disabled stops no click: the button does nothing while it stands unavailable.
@@ -383,6 +392,7 @@ export class Tools {
       [this.#group, writes],
       [this.#pen, writes],
       [this.#eraser, writes && tools.includes("eraser")],
+      [this.#select, writes],
       [this.#hand, writes],
       [this.#undo, writes],
       [this.#clear, writes],
@@ -394,6 +404,7 @@ export class Tools {
     ]);
     write(this.#pen, "aria-checked", String(tool === "pen"));
     write(this.#eraser, "aria-checked", String(tool === "eraser"));
+    write(this.#select, "aria-checked", String(tool === "select"));
     write(this.#hand, "aria-checked", String(tool === "hand"));
     write(this.#undo, "aria-disabled", undoable ? null : "true");
     write(this.#clear, "aria-disabled", clearable ? null : "true");
@@ -403,6 +414,11 @@ export class Tools {
     write(this.#demo, "aria-expanded", String(expanded));
     draw(this.#pen, "pen", tool === "pen");
     draw(this.#eraser, "eraser", tool === "eraser");
+    draw(
+      this.#select,
+      pens.select === "rectangle" ? "selectRectangle" : "selectLasso",
+      tool === "select",
+    );
     draw(this.#hand, "hand", tool === "hand");
     draw(this.#grid, GRID_VALUES[grid], false);
     if (grid !== this.#gridShown) {
@@ -452,12 +468,13 @@ export class Tools {
     this.#writes = writes;
     this.#styled = styled;
     const opens = writes && styled;
-    for (const [button, value] of [
-      [this.#pen, "pen"],
-      [this.#eraser, "eraser"],
+    for (const [button, value, has] of [
+      [this.#pen, "pen", opens],
+      [this.#eraser, "eraser", opens],
+      [this.#select, "select", writes],
     ] as const) {
-      button.classList.toggle("settings", opens);
-      write(button, "aria-describedby", opens && tool === value ? HINT_ID : null);
+      button.classList.toggle("settings", has);
+      write(button, "aria-describedby", has && tool === value ? HINT_ID : null);
     }
     this.#pen.classList.toggle("dotted", opens);
     const { color } = pens.styles[pens.pen];
@@ -465,7 +482,10 @@ export class Tools {
     if (color === PALETTE[0]) this.#pen.style.removeProperty("--pen-dot");
     else this.#pen.style.setProperty("--pen-dot", color);
     this.pens.show(pens);
-    if (!opens || (this.pens.opened !== undefined && this.pens.opened !== tool)) this.pens.close();
+    const opened = this.pens.opened;
+    if (opened !== undefined && (opened !== tool || !writes || (!styled && opened !== "select"))) {
+      this.pens.close();
+    }
   }
 
   /** The element left the page: a tooltip goes with it, and Escape is no longer heard. */

@@ -19,7 +19,7 @@ import { groupsOf } from "../core/groups.js";
 import { type HistoryEvent, replay } from "../core/history.js";
 import type { Stroke } from "../core/ink.js";
 import { ladder, staircase, undone } from "../core/sheets.fixture.js";
-import { Work } from "../core/work.js";
+import { nextIdOf, resumeOf, Work } from "../core/work.js";
 import { draft, numbers } from "../core/workbooks.fixture.js";
 import {
   Purpose,
@@ -308,6 +308,27 @@ test("a history with an undo keeps it, the strokes it took off and put back", ()
       .map(({ event }) => event.value),
   ).toMatchObject(undos.map(({ removed, restored }) => ({ removed, restored })));
   expect(strokesOf(sample).map(({ id }) => id)).toEqual(replay(history).map(({ id }) => id));
+});
+
+test("Select's move is spelt as an erasing and the writes of the strokes moved, its copy as the writes", () => {
+  const clock = new Clock();
+  const work = Work.restore(undone().work.history, clock);
+  clock.resume(resumeOf(work.history));
+  const [first, second] = work.strokes.map(({ id }) => id) as [number, number];
+  const next = nextIdOf(work.history);
+  expect(work.select("move", [first], [40, 0], next, 1000)).toBe(true);
+  expect(work.select("copy", [second], [0, 80], next + 1, 1200)).toBe(true);
+  expect(work.undo(1400)).toBe(true);
+  const { history } = work;
+  const input = sheetSample(Purpose.MEASUREMENT, Writer.ADULT, "1");
+  const sample = sampleOf({ ...input, surface: { sheet: { history, digit: 24 } }, markup: {} });
+  if (sample.ink.case !== "history") throw new Error("no history");
+  const tail = sample.ink.value.events.slice(-4).map(({ event }) => event);
+  expect(tail.map(({ case: kind }) => kind)).toEqual(["erase", "write", "write", "undo"]);
+  expect(tail[0]?.value).toMatchObject({ ids: [first] });
+  expect(tail[1]?.value).toMatchObject({ id: next });
+  expect(tail[2]?.value).toMatchObject({ id: next + 1 });
+  expect(strokesOf(sample).map(({ id }) => id)).toEqual(work.strokes.map(({ id }) => id));
 });
 
 describe("the final geometry", () => {

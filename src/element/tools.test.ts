@@ -139,7 +139,7 @@ async function off(): Promise<HTMLButtonElement> {
   return away;
 }
 
-test("the bar is a vertical toolbar of the pen, the eraser and the hand, undo and clear, zoom in and out, named in English for an element of no language, before the sheet in the order of Tab", async () => {
+test("the bar is a vertical toolbar of the pen, the eraser, Select and the hand, undo and clear, zoom in and out, named in English for an element of no language, before the sheet in the order of Tab", async () => {
   const { element, root, row, actions } = await sheet();
   const found = buttons(element);
   await expect.element(found.row).toBeVisible();
@@ -161,6 +161,7 @@ test("the bar is a vertical toolbar of the pen, the eraser and the hand, undo an
     "Hide the task",
     "Pen",
     "Eraser",
+    "Select",
     "Hand",
     "Undo",
     "Clear",
@@ -193,6 +194,7 @@ test("each button shows its icon, its label after it: an SVG that names nothing,
     ROW.task.filled,
     ROW.pen.filled,
     ROW.eraser.outline,
+    ROW.selectLasso.outline,
     ROW.hand.outline,
     ROW.undo.outline,
     ROW.clear.outline,
@@ -253,6 +255,7 @@ test("in an element whose text runs right to left, the icons of Next, Undo and a
   expect(mirrored()).toEqual({
     Pen: false,
     Eraser: false,
+    Select: false,
     Hand: false,
     Undo: true,
     Clear: false,
@@ -297,6 +300,7 @@ test("the labels follow the element's own lang: Russian for ru and its regions, 
     "Спрятать задачу",
     "Перо",
     "Ластик",
+    "Выделение",
     "Рука",
     "Отменить",
     "Очистить",
@@ -420,7 +424,7 @@ test("a tool the consumer sets shows on the bar and is told of by no event", asy
   expect(told).toEqual([]);
 });
 
-test("the hand is a tool of every sheet the learner writes on, and of no worked example; a tool of no name is a TypeError that names the three", async () => {
+test("the hand is a tool of every sheet the learner writes on, and of no worked example; a tool of no name is a TypeError that names the four", async () => {
   const { element } = await sheet();
   element.tool = "hand";
   // A task, with the eraser or without it, keeps the hand.
@@ -443,7 +447,7 @@ test("the hand is a tool of every sheet the learner writes on, and of no worked 
   for (const bad of ["ruler", "Hand", undefined]) {
     expect(() => {
       Reflect.set(element, "tool", bad);
-    }).toThrow(/is "pen", "eraser" or "hand", not/);
+    }).toThrow(/is "pen", "eraser", "select" or "hand", not/);
   }
 });
 
@@ -548,6 +552,7 @@ test("the bar is one stop of Tab, the arrows down and up move between its button
   // down: the keys, and the button they leave focused.
   await moves(root, [
     ["{ArrowDown}", "Eraser"],
+    ["{ArrowDown}", "Select"],
     ["{ArrowDown}", "Hand"],
     ["{ArrowDown}{ArrowDown}", "Clear"],
     ["{ArrowDown}{ArrowDown}", "Zoom out"],
@@ -557,7 +562,7 @@ test("the bar is one stop of Tab, the arrows down and up move between its button
     ["{End}", "Zoom out"],
     ["{Control>}{ArrowUp}{/Control}", "Zoom out"],
     ["{ArrowLeft}{ArrowRight}", "Zoom out"],
-    ["{ArrowUp}{ArrowUp}{ArrowUp}{ArrowUp}{ArrowUp}", "Eraser"],
+    ["{ArrowUp}{ArrowUp}{ArrowUp}{ArrowUp}{ArrowUp}{ArrowUp}", "Eraser"],
   ]);
   expect(element.tool).toBe("pen");
   expect(stops()).toEqual(["Eraser"]);
@@ -640,8 +645,8 @@ test("a task without the eraser has none: no button, no eraser of the pen, no to
   level(canvas, view(), 100, 100, 300);
   element.task = sheetTask({ tools: ["pen"] });
   await expect.element(buttons(element).pen).toBeChecked();
-  // The pen, and the hand, which every sheet has.
-  expect(page.elementLocator(element).getByRole("radio").elements()).toHaveLength(2);
+  // The pen, and Select and the hand, which every sheet has.
+  expect(page.elementLocator(element).getByRole("radio").elements()).toHaveLength(3);
   // The pen's other end over the stroke neither erases nor writes.
   const pen = { pointerId: 3, pointerType: "pen", isPrimary: true, bubbles: true };
   const end = (type: string, x: number, init: PointerEventInit) =>
@@ -657,12 +662,12 @@ test("a task without the eraser has none: no button, no eraser of the pen, no to
   expect(element.tool).toBe("pen");
   // The names the sheet does not know are passed over; a list without the pen is no task.
   element.task = sheetTask({ tools: ["pen", "ruler", "calculator"] });
-  expect(page.elementLocator(element).getByRole("radio").elements()).toHaveLength(2);
+  expect(page.elementLocator(element).getByRole("radio").elements()).toHaveLength(3);
   expect(() => {
     element.task = sheetTask({ tools: ["eraser"] });
   }).toThrow(TypeError);
-  // Pen, Hand, Undo, Clear, Zoom in and Zoom out.
-  expect(root.querySelectorAll(".tools button:not([hidden])")).toHaveLength(6);
+  // Pen, Select, Hand, Undo, Clear, Zoom in and Zoom out.
+  expect(root.querySelectorAll(".tools button:not([hidden])")).toHaveLength(7);
 });
 
 test("a new task without the eraser puts the pen back, with no event, and the focus with it; an erasing under way ends as it began", async () => {
@@ -706,7 +711,7 @@ test("a worked example has no bar: its toolbar goes out of sight and of the acce
     const stops = () =>
       [...root.querySelectorAll('.tools [tabindex="0"]')].map((each) => each.textContent);
     const toolbars = () => page.elementLocator(element).getByRole("toolbar").elements();
-    expect(shown(row)).toHaveLength(7);
+    expect(shown(row)).toHaveLength(8);
     buttonOf(element, "Pen").focus();
     element.workedExample = workedExample();
     await settle();
@@ -746,7 +751,7 @@ test("a worked example has no bar: its toolbar goes out of sight and of the acce
       )
       .toBeVisible();
     expect(row.getAttribute("aria-orientation")).toBe("vertical");
-    expect(shown(row)).toHaveLength(7);
+    expect(shown(row)).toHaveLength(8);
     expect(actions.hidden).toBe(true);
     expect(root.activeElement?.textContent).toBe(russian.pen);
     expect(stops()).toEqual([russian.pen]);
@@ -912,11 +917,11 @@ test("every button is at least 44 CSS pixels square, in English and in Russian, 
   try {
     const { element, root } = await sheet(400);
     PEN_MODE.on = true;
-    // A sheet's seven buttons, the zoom's two among them, then a worked example's two of its
-    // row, then a task from paper's nine, with its button atop the tools and its grid's.
-    for (const count of [7, 2, 9]) {
+    // A sheet's eight buttons, the zoom's two among them, then a worked example's two of its
+    // row, then a task from paper's ten, with its button atop the tools and its grid's.
+    for (const count of [8, 2, 10]) {
       if (count === 2) element.workedExample = workedExample();
-      if (count === 9) {
+      if (count === 10) {
         element.workedExample = undefined;
         element.paper = { statement: await paperCrop() };
       }
@@ -1110,7 +1115,7 @@ test("the keyboard's focus on an icon button shows its tooltip, the arrows move 
   const steps: [keys: string, tip: string | null][] = [
     ["{ArrowDown}", "Eraser"],
     ["{Escape}", null],
-    ["{ArrowDown}", "Hand"],
+    ["{ArrowDown}", "Select"],
     ["{Shift>}{Tab}{/Shift}", null],
   ];
   for (const [keys, shown] of steps) {

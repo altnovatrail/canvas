@@ -18,8 +18,9 @@ import { reachOf, type StrokeStyle } from "./style.js";
 /**
  * An action on the sheet, the thing undo takes back: a stroke written; strokes erased,
  * each with the place it had on the sheet; strokes cut, with the sheet as it was before and the
- * pieces left; the sheet cleared, with the strokes that were on it; or the tutor's act, with the
- * sheet as it was before, its strokes and the IDs it took off.
+ * pieces left; the sheet cleared, with the strokes that were on it; the tutor's act, with the
+ * sheet as it was before, its strokes and the IDs it took off; or Select's move or copy, with the
+ * sheet as it was before, the new strokes and the IDs they are of.
  */
 type Action =
   | { readonly kind: "write"; readonly stroke: Stroke }
@@ -32,11 +33,14 @@ type Action =
     }
   | { readonly kind: "clear"; readonly strokes: readonly Stroke[] }
   | {
-      readonly kind: "tutor";
+      readonly kind: "tutor" | "move" | "copy";
       readonly before: readonly Stroke[];
       readonly strokes: readonly Stroke[];
       readonly ids: readonly number[];
     };
+
+/** What Select does with the strokes it took: moves them, or copies them. */
+export type SelectAction = "move" | "copy";
 
 /**
  * A stroke the tutor writes, before it lands: its ID, its style and its points in the units of its
@@ -246,6 +250,31 @@ export class Work {
     return this.#tutor(drafts.length, strokesAt, ids, () => this.#clock.at(time), on);
   }
 
+  /**
+   * Select's move or copy, in one action: the strokes of these IDs the sheet shows, all of one
+   * layer, moved by `offset` in their layer's units, as new strokes after every other, their IDs
+   * from `first` on in the sheet's order, the strokes they are of taken off for a move. IDs no
+   * longer on the sheet are left out; none on it, or strokes of both layers, is no action.
+   */
+  select(
+    kind: SelectAction,
+    ids: Iterable<number>,
+    offset: readonly [number, number],
+    first: number,
+    time: number,
+  ): boolean {
+    const [dx, dy] = offset;
+    const moved = (taken: readonly Stroke[]) =>
+      taken.map(
+        (stroke, k): Stroke => ({
+          ...stroke,
+          id: first + k,
+          points: stroke.points.map((point) => ({ ...point, x: point.x + dx, y: point.y + dy })),
+        }),
+      );
+    return this.#select(kind, ids, moved, () => this.#clock.at(time));
+  }
+
   /** Takes every stroke off the sheet, in one action. Clearing an empty sheet is no action. */
   clear(time: number): boolean {
     return this.#clear(() => this.#clock.at(time));
@@ -358,6 +387,39 @@ export class Work {
     return true;
   }
 
+  #select(
+    kind: SelectAction,
+    ids: Iterable<number>,
+    strokesOf: (taken: readonly Stroke[]) => readonly Stroke[],
+    at: () => number,
+    on?: "tracing",
+  ): boolean {
+    const wanted = new Set(ids);
+    const before = this.#strokes;
+    const taken = before.filter((stroke) => wanted.has(stroke.id));
+    if (taken.length === 0) return false;
+    const traced = this.#tracing.has((taken[0] as Stroke).id);
+    if (taken.some((stroke) => this.#tracing.has(stroke.id) !== traced)) return false;
+    // Replayed, the event says its layer, which must be the strokes'.
+    if (on !== undefined && !traced) return false;
+    const written = strokesOf(taken);
+    if (written.length !== taken.length) return false;
+    const t = at();
+    const strokes =
+      kind === "move" ? before.filter((stroke) => !wanted.has(stroke.id)) : [...before];
+    strokes.push(...written);
+    if (traced) for (const stroke of written) this.#tracing.add(stroke.id);
+    this.#strokes = strokes;
+    const taking = taken.map((stroke) => stroke.id);
+    this.#done.push({ kind, before, strokes: written, ids: taking });
+    this.#record(
+      traced
+        ? { kind, t, ids: taking, strokes: written, on: "tracing" }
+        : { kind, t, ids: taking, strokes: written },
+    );
+    return true;
+  }
+
   #undo(at: () => number): boolean {
     const action = this.#done.pop();
     if (action === undefined) return false;
@@ -379,11 +441,14 @@ export class Work {
       this.#strokes = action.before;
       const removed = action.pieces.map(({ stroke }) => stroke.id);
       this.#record({ kind: "undo", t, removed, restored: [...action.ids] });
-    } else if (action.kind === "tutor") {
-      // So is it as the tutor's act left it, whole.
+    } else if (action.kind === "tutor" || action.kind === "move") {
+      // So is it as the tutor's act or the move left it, whole.
       this.#strokes = action.before;
       const removed = action.strokes.map((stroke) => stroke.id);
       this.#record({ kind: "undo", t, removed, restored: [...action.ids] });
+    } else if (action.kind === "copy") {
+      this.#strokes = action.before;
+      this.#record({ kind: "undo", t, removed: action.strokes.map(({ id }) => id), restored: [] });
     } else {
       this.#strokes = action.strokes;
       const restored = action.strokes.map((stroke) => stroke.id);
@@ -414,6 +479,8 @@ export class Work {
     else if (event.kind === "clear") done = this.#clear(at);
     else if (event.kind === "tutor") {
       done = this.#tutor(event.strokes.length, () => event.strokes, event.ids, at, event.on);
+    } else if (event.kind === "move" || event.kind === "copy") {
+      done = this.#select(event.kind, event.ids, () => event.strokes, at, event.on);
     } else done = this.#undo(at);
     const recorded = this.#events.at(-1);
     if (done && recorded !== undefined && sameEvent(recorded, event)) return;
@@ -462,7 +529,7 @@ export function nextIdOf(history: readonly HistoryEvent[]): number {
     if (event.kind === "write") highest = Math.max(highest, event.stroke.id);
     else if (event.kind === "cut") {
       for (const { stroke } of event.pieces) highest = Math.max(highest, stroke.id);
-    } else if (event.kind === "tutor") {
+    } else if (event.kind === "tutor" || event.kind === "move" || event.kind === "copy") {
       for (const stroke of event.strokes) highest = Math.max(highest, stroke.id);
     }
   }
@@ -500,6 +567,9 @@ function what(event: HistoryEvent): string {
       return `strokes ${shown(event.ids)} cleared`;
     case "tutor":
       return `the tutor's act that writes ${shown(event.strokes.map(({ id }) => id))} and takes off ${shown(event.ids)}`;
+    case "move":
+    case "copy":
+      return `strokes ${shown(event.ids)} ${event.kind === "move" ? "moved" : "copied"} as ${shown(event.strokes.map(({ id }) => id))}`;
     case "undo":
       return `an undo that takes off ${shown(event.removed)} and brings back ${shown(event.restored)}`;
   }
@@ -511,7 +581,10 @@ function instead(recorded: HistoryEvent | undefined): string {
     case "erase":
     case "cut":
     case "tutor":
+    case "move":
       return `where the sheet takes off ${shown(recorded.ids)}, in its order`;
+    case "copy":
+      return `where the sheet copies ${shown(recorded.ids)}, in its order`;
     case "clear":
       return `where the sheet clears ${shown(recorded.ids)}`;
     case "undo":
@@ -528,6 +601,9 @@ function unable(event: HistoryEvent): string {
     case "cut":
     case "tutor":
       return "but none of them is on the sheet";
+    case "move":
+    case "copy":
+      return "but none of them is on the sheet, or they are of both layers, or not of its layer";
     case "clear":
       return "but the sheet is empty";
     default:
