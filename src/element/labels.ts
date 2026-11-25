@@ -70,13 +70,15 @@ export interface Labels {
   readonly fit: string;
   /**
    * The reading of the statement in clean print: its button, as it offers it, waits and
-   * offers the photo back, and the sign above the paper of what it shows.
+   * offers the photo back, and the sign above the paper of what it shows: the photo, the reading,
+   * or the text of a task of a module.
    */
   readonly recognise: string;
   readonly recognising: string;
   readonly original: string;
   readonly photoShown: string;
   readonly readingShown: string;
+  readonly moduleShown: string;
   /** A box of a workbook's line, alone in it. */
   readonly box: string;
   /** A box among several of its line, by its slot: {slot}. */
@@ -180,6 +182,7 @@ const ENGLISH: Labels = Object.freeze({
   original: "Original",
   photoShown: "Photo of the task",
   readingShown: "Recognised by AI",
+  moduleShown: "Task of the module",
   box: "Box",
   boxAt: "Box {slot}",
   boxIn: "Box {line}.{slot}",
@@ -275,6 +278,7 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
       original: "Оригинал",
       photoShown: "Фото задачи",
       readingShown: "Распознано ИИ",
+      moduleShown: "Задача модуля",
       box: "Окошко",
       boxAt: "Окошко {slot}",
       boxIn: "Окошко {line}.{slot}",

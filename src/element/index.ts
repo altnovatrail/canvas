@@ -1798,6 +1798,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
         `paper.statement: the task's crop, a Blob of a JPEG or a PNG, not ${typeof statement}`,
       );
     }
+    const source: unknown = paper.source ?? "photo";
+    if (source !== "photo" && source !== "module") {
+      throw new TypeError(`paper.source: "photo" or "module", not ${String(source)}`);
+    }
+    this.#tracingPaper.source = source;
     // A consumer that renders the same crop anew in a new object keeps the paper where it lies.
     if (this.#paper?.statement === statement) {
       this.#paper = paper;

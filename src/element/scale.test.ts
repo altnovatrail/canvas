@@ -439,3 +439,25 @@ test("a reading given without a task from paper is a TypeError", () => {
     element.reading = { state: "ready" };
   }).toThrow(TypeError);
 });
+
+test("a task of a module says so above the paper, shows its picture and offers no Recognise", async () => {
+  const { element, root, grip, sign } = await paper();
+  const statement = element.paper?.statement;
+  if (statement === undefined) throw new Error("no paper");
+  element.paper = { statement, source: "module" };
+  choose(grip);
+  await settle();
+  const mode = root.querySelector<HTMLButtonElement>(".tracing-scale .mode");
+  expect(sign.textContent).toBe("Task of the module");
+  expect(sign.dataset.shows).toBe("module");
+  element.reading = { state: "ready" };
+  expect(mode?.hidden).toBe(true);
+  expect(root.querySelector(".tracing image")?.getAttribute("display")).toBeNull();
+  // The same picture as a photo's crop again: the photo's sign and its Recognise.
+  element.paper = { statement };
+  expect(sign.textContent).toBe("Photo of the task");
+  expect(mode?.hidden).toBe(false);
+  expect(() => {
+    element.paper = { statement, source: "book" } as never;
+  }).toThrow(TypeError);
+});

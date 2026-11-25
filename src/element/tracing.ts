@@ -14,10 +14,11 @@
 // its own size, larger, and fit to the window —; a press on the sheet lets it go. The bar's buttons
 // are the keyboard's way, and a drag's alternative (WCAG 2.5.7). Above its corner a sign says what
 // it shows: the photo, the reading on its way, or the statements the AI read, which the bar's last
-// button offers, waits for and gives back the photo from. This module is no entry point of the
-// package.
+// button offers, waits for and gives back the photo from; or, for a task of a module, whose
+// picture is the module's text, the module's book, with no button to read it. This module is no
+// entry point of the package.
 
-import type { TracingReading } from "@altnovatrail/spec/canvas";
+import type { PaperTask, TracingReading } from "@altnovatrail/spec/canvas";
 import {
   type Gray,
   grayOf,
@@ -75,6 +76,9 @@ type Corner = "tl" | "tr" | "bl" | "br";
 /** What the paper shows: the crop, or the statements read. */
 type View = "photo" | "text";
 
+/** Where the paper's picture comes from: a photo's crop, or a module's text drawn. */
+type Source = NonNullable<PaperTask["source"]>;
+
 /** The grip's size, CSS pixels: a target of 68 × 44 (WCAG 2.5.5), the bar above the paper's edge. */
 const GRIP = Object.freeze({ width: 68, height: 44, over: 29 });
 
@@ -129,6 +133,7 @@ export class TracingPaper {
   #scale = 1;
   #chosen = false;
   #reading: TracingReading | undefined;
+  #source: Source = "photo";
   #shows: View = "photo";
   /** The learner asked for the statements: they take the crop's place once they come. */
   #asked = false;
@@ -308,6 +313,18 @@ export class TracingPaper {
       this.#asked = false;
       this.#shows = "text";
     }
+    this.#drawn = "";
+    this.#showReading();
+  }
+
+  /**
+   * Where the paper's picture comes from: a module's text has nothing to read, and its sign says
+   * whose it is.
+   */
+  set source(source: Source) {
+    if (source === this.#source) return;
+    this.#source = source;
+    this.#shows = "photo";
     this.#drawn = "";
     this.#showReading();
   }
@@ -677,7 +694,8 @@ export class TracingPaper {
   /** The bar's last button, the sign and the cover, by the reading and what the paper shows. */
   #showReading(): void {
     const labels = this.#labels;
-    const reading = this.#reading;
+    const module = this.#source === "module";
+    const reading = module ? undefined : this.#reading;
     this.#mode.hidden = reading === undefined;
     const busy = reading?.state === "busy";
     const text = this.#shows === "text";
@@ -690,7 +708,7 @@ export class TracingPaper {
     this.#text.hidden = !text;
     this.#scan.hidden = !busy;
     if (text) this.#drawText();
-    const shows = busy ? "busy" : text ? "text" : "photo";
+    const shows = module ? "module" : busy ? "busy" : text ? "text" : "photo";
     if (this.sign.dataset.shows !== shows) {
       this.sign.dataset.shows = shows;
       this.sign.firstElementChild?.replaceWith(signOf(shows));
@@ -699,7 +717,13 @@ export class TracingPaper {
     const words = busy ? labels.recognising : text ? labels.original : labels.recognise;
     const label = this.#mode.querySelector(".label");
     if (label !== null && label.textContent !== words) label.textContent = words;
-    const sign = busy ? labels.recognising : text ? labels.readingShown : labels.photoShown;
+    const sign = module
+      ? labels.moduleShown
+      : busy
+        ? labels.recognising
+        : text
+          ? labels.readingShown
+          : labels.photoShown;
     if (this.#signWords.textContent !== sign) this.#signWords.textContent = sign;
   }
 
@@ -800,14 +824,18 @@ async function readOf(blob: Blob): Promise<Read> {
   }
 }
 
-/** The sign's mark of what the paper shows: the photo's, the reading's wait, or the AI's reading. */
-function signOf(shows: "busy" | "text" | "photo"): Element {
+/**
+ * The sign's mark of what the paper shows: the photo's, the reading's wait, the AI's reading, or a
+ * module's text.
+ */
+function signOf(shows: "busy" | "text" | "photo" | "module"): Element {
   if (shows === "busy") {
     const spinner = document.createElement("span");
     spinner.className = "spinner";
     return spinner;
   }
-  const name: IconName = ROW[shows === "text" ? "recognise" : "original"].outline;
+  const name: IconName =
+    ROW[shows === "module" ? "module" : shows === "text" ? "recognise" : "original"].outline;
   const { viewBox, paths } = ICONS[name];
   const icon = document.createElementNS(SVG, "svg");
   icon.setAttribute("viewBox", viewBox);
