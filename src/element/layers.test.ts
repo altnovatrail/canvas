@@ -8,7 +8,7 @@ import { extentOf as reachOf, SHEET } from "../core/sheet.js";
 import { workForCheck } from "../core/submission.js";
 import { sheetTask, workedExample } from "../core/tasks.fixture.js";
 import { NovatrailCanvas } from "./index.js";
-import { at, level, screenshot, sheetWork } from "./pointer.fixture.js";
+import { at, dotTiles, dotTilesOf, level, screenshot, sheetWork } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // The sheet's layers in a browser: the stack in its order, one view for every layer at any
@@ -71,9 +71,10 @@ test("the sheet is a stack of layers in the order spec's glossary gives them, an
   // Over the tracing paper, under the ink, its cover of the statements read; over the layers its
   // frame, its sign, its grip and tooltip and its bar of scale: they and the paper's layer show on
   // a task from paper alone.
-  // The circle of a hovering pen is none either.
+  // The circle of a hovering pen is none either, nor is Select's bar. Select's marks are a layer
+  // over them all.
   const parts =
-    ".tracing-cover, .tracing-frame, .tracing-sign, .grip, .tip, .tracing-scale, .hover";
+    ".tracing-cover, .tracing-frame, .tracing-sign, .grip, .tip, .tracing-scale, .hover, .selection-bar";
   const layers = [...stage.children].filter((each) => !each.matches(parts));
   expect(layers.map((layer) => layer.getAttribute("class") ?? layer.localName)).toEqual([
     "template",
@@ -83,6 +84,7 @@ test("the sheet is a stack of layers in the order spec's glossary gives them, an
     "sketch",
     "canvas",
     "marks",
+    "selection",
   ]);
   expect(
     [...stage.children]
@@ -96,6 +98,7 @@ test("the sheet is a stack of layers in the order spec's glossary gives them, an
     ["grip", true],
     ["tip grip-tip", true],
     ["tracing-scale", true],
+    ["selection-bar", true],
   ]);
   expect(stage.querySelector(".tracing-cover")?.previousElementSibling?.getAttribute("class")).toBe(
     "tracing",
@@ -123,7 +126,7 @@ test("the sheet is a stack of layers in the order spec's glossary gives them, an
   }
   const sheetBox = root.querySelector(".sheet");
   if (!sheetBox) throw new Error("the element has no sheet");
-  // The bar of the element's own buttons sets no pointer-events of its own either, the
+  // The bar of the element's own buttons sets no pointer-events of its own either, Select and the
   // hand, a task from paper's buttons and a worked example's row of Next and Demo
   // too. The rail it stands in, as tall as the element in sight, is as wide as
   // nothing: the bar stands out of it, and beside the bar the pointer is on the sheet.
@@ -132,7 +135,7 @@ test("the sheet is a stack of layers in the order spec's glossary gives them, an
   const rail = root.querySelector(".rail");
   const buttons = [...root.querySelectorAll(".tools button")];
   if (!bar || !row || !rail) throw new Error("the element has no bar and row in a rail");
-  expect(buttons).toHaveLength(11);
+  expect(buttons).toHaveLength(12);
   expect(rail.getBoundingClientRect().width).toBe(0);
   const boxes = [canvas, stage, sheetBox, viewport, rail, bar, row, ...buttons];
   for (const box of boxes) expect(getComputedStyle(box).pointerEvents).toBe("auto");
@@ -179,14 +182,15 @@ test("a worked example's canvas alone takes no pointer, the stage keeps the menu
 test("every layer shows the sheet by one view, whatever the width and the scroll, and the page is at most 1000 CSS pixels wide, at the sheet's left", async () => {
   for (const width of [400, 1000, 1400]) {
     const { element, root, canvas, viewport, view } = await sheet(width, 300);
-    // The template, the author's demo, the tutor's sketch and the marks; the tracing paper's
-    // layer shows a task from paper's alone.
+    // The template, the author's demo, the tutor's sketch and the marks, and Select's marks over
+    // them; the tracing paper's layer shows a task from paper's alone.
     const svgs = [...root.querySelectorAll<SVGSVGElement>('.stage > svg:not([display="none"])')];
     expect(svgs.map((svg) => svg.getAttribute("class"))).toEqual([
       "template",
       "show",
       "sketch",
       "marks",
+      "selection",
     ]);
     const k = Math.min(width, 1000) / 1000;
     expect(view().k).toBeCloseTo(k, 6);
@@ -309,20 +313,21 @@ test("an element the page scales writes its strokes in the sheet's own units, it
 });
 
 test("the task rules the sheet by its grid, and a task of the same template writes nothing", async () => {
-  const { element, grid } = await sheet(400);
+  const { element, root, grid } = await sheet(400);
   // The grid rules the whole sheet, past the page as far as it goes.
   expect(grid.getAttribute("d")).toBe(gridPath({ kind: "squares", step: 50 }, extentOf(element)));
   expect(grid.classList.contains("dots")).toBe(false);
+  expect(dotTilesOf(root)).toBeUndefined();
 
+  // Dots are tiles of a pattern, not a path.
   const dots = sheetTask({ grid: "dots", grid_step: 40 });
   element.task = dots;
   expect(element.task).toBe(dots);
-  expect(grid.getAttribute("d")).toBe(gridPath({ kind: "dots", step: 40 }, extentOf(element)));
+  expect(grid.getAttribute("d")).toBe("");
   expect(grid.classList.contains("dots")).toBe(true);
+  expect(dotTilesOf(root)).toEqual(dotTiles(40, extentOf(element)));
   await settle();
 
-  const root = element.shadowRoot;
-  if (!root) throw new Error("the element has no shadow root");
   const records: MutationRecord[] = [];
   const observer = new MutationObserver((list) => records.push(...list));
   observer.observe(root, { subtree: true, childList: true, attributes: true, characterData: true });
@@ -339,6 +344,7 @@ test("the task rules the sheet by its grid, and a task of the same template writ
 
   element.task = sheetTask({ grid: "lines" });
   expect(grid.getAttribute("d")).toBe(gridPath({ kind: "lines", step: 50 }, extentOf(element)));
+  expect(dotTilesOf(root)).toBeUndefined();
   element.task = undefined;
   expect(grid.getAttribute("d")).toBe(gridPath({ kind: "squares", step: 50 }, extentOf(element)));
   observer.disconnect();
@@ -518,7 +524,8 @@ test("a workbook that does not fit is a TypeError at its item, and so is an answ
     element.task = zoned;
   }).toThrow(/^task\.items\[0\]\.answer_slots\[0\]\.binding: .* no "zone" yet/);
   expect(element.task).toBe(dots);
-  expect(grid.getAttribute("d")).toBe(gridPath({ kind: "dots", step: 50 }, extentOf(element)));
+  expect(grid.getAttribute("d")).toBe("");
+  expect(dotTilesOf(root)).toEqual(dotTiles(50, extentOf(element)));
   expect(root.querySelector(".statement")?.textContent).toBe("Count the dots.");
 });
 

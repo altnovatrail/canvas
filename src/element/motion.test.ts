@@ -2,11 +2,13 @@ import { afterEach, beforeEach, expect, test } from "vitest";
 import { cdp } from "vitest/browser";
 import { sheetTask, workedExample } from "../core/tasks.fixture.js";
 import { buttonOf, devtools, placed, settle, spacer } from "./pointer.fixture.js";
+import { inkAt, lines, paper } from "./tutor.fixture.js";
 
 // Motion and the learner's wish for less of it (WCAG 2.3.3, which spec's standard of UI packages
-// asks of canvas): nothing in the element moves but the scrolling, and its scrolls jump to where
-// they go — two fingers and a part of a worked example brought into sight — whatever smoothness the
-// page asks of its scrolling. The style animates nothing: its one transition, of the canvas's
+// asks of canvas): nothing in the element moves but the scrolling and the tutor's act in grown-up
+// mode, whose strokes are drawn one after another as a hand writes them, and at once with reduced
+// motion; its scrolls jump to where they go — two fingers and a part of a worked example brought
+// into sight — whatever smoothness the page asks of its scrolling. The style animates nothing: its one transition, of the canvas's
 // colour, a millisecond long, moves nothing and only tells the element to draw the ink anew. The
 // page asks for reduced motion here, through the DevTools protocol, so that a smoothness that came
 // in quietly would fail where a learner who asked for none would see it.
@@ -107,5 +109,21 @@ test.runIf(devtools)(
     expect(canvas.map((rule) => rule.style.transition).filter(Boolean)).toEqual([
       "color 1ms step-end",
     ]);
+  },
+);
+
+test.runIf(devtools)(
+  "draws the tutor's act at once, its last stroke too, by the next frame",
+  async () => {
+    const { element, submission } = await paper(made);
+    const done = element.drawTutor(submission, lines(submission, 120, 40));
+    const first = await Promise.race([
+      done.then(() => "drawn"),
+      new Promise((resolve) => requestAnimationFrame(() => resolve("a frame"))),
+    ]);
+    expect(first).toBe("drawn");
+    await settle();
+    expect(inkAt(element, 350, 120)).toBe(true);
+    expect(inkAt(element, 350, 120 + 39 * 6)).toBe(true);
   },
 );

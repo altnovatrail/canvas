@@ -1,7 +1,8 @@
-// The popovers of the pen and of the eraser, as the mockup of the pen's settings draws them, in
-// the glass of the bar: a second press of the chosen pen opens the pen's — the kind of pen, its
-// width, its opacity and its colour, each kind with its own —, and a second press of the chosen
-// eraser the eraser's — whether it takes a stroke whole or only what it passes over, and its size.
+// The popovers of the pen, the eraser and Select, as the mockup of the pen's settings draws them,
+// in the glass of the bar: a second press of the chosen pen opens the pen's — the kind of pen, its
+// width, its opacity and its colour, each kind with its own —, a second press of the chosen
+// eraser the eraser's — whether it takes a stroke whole or only what it passes over, and its size
+// —, and a second press of Select its shapes, the lasso and the rectangle, each with its icon.
 // Each is a dialog that is no modal one, named in the element's language: its choices are toggle
 // buttons in named groups, the opacity a slider, and the other colours behind a disclosure button.
 // It stands to the right of the bar, level with its button and kept within the element, its arrow
@@ -25,14 +26,17 @@ import {
   type PenKind,
   type PenSettings,
   penSettingsOf,
+  SELECT_SHAPES,
+  type SelectShape,
   type StrokeStyle,
   sameStyle,
 } from "../core/style.js";
 import { SVG, write } from "./attributes.js";
+import { ICONS, ROW } from "./icons.js";
 import { type Labels, labelsFor, say } from "./labels.js";
 
 /** The tools whose popovers these are. */
-export type Opener = "pen" | "eraser";
+export type Opener = "pen" | "eraser" | "select";
 
 /** The IDs in the shadow root of the hint the chosen pen and eraser are described by, and of the
  * other colours, which the colour wheel shows and hides. */
@@ -40,6 +44,7 @@ export const HINT_ID = "pens-hint";
 const MORE_ID = "pens-more";
 const MODE_ID = "pens-mode";
 const SIZE_ID = "pens-size";
+const SHAPE_ID = "pens-shape";
 
 /** How narrow an element is, in CSS pixels, below which a popover is docked along its bottom. */
 export const NARROW_PX = 600;
@@ -89,6 +94,7 @@ export function samePens(a: PenSettings, b: PenSettings): boolean {
     (a.pen === b.pen &&
       a.eraser === b.eraser &&
       a.eraserSize === b.eraserSize &&
+      a.select === b.select &&
       PEN_KINDS.every((kind) => sameStyle(a.styles[kind], b.styles[kind])))
   );
 }
@@ -219,6 +225,17 @@ export function pensStyle(ink: string, paper: string, accent: string): string {
   background: ${PAPER}; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); font-weight: 600;
 }
 .pop .seg button:focus-visible { outline-offset: -2px; }
+.pop.select:not(.docked) { width: 220px; }
+.pop .shapes { display: flex; flex-direction: column; gap: 2px; }
+.pop .shape {
+  display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 12px;
+  text-align: start; font-size: 14px; font-weight: 600;
+}
+.pop .shape svg { display: block; flex: none; width: 20px; height: 20px; fill: currentColor; }
+/* The shape chosen: its name in the ink, which the accent's wash would pale below 4.5:1, and its
+   icon in the accent. */
+.pop .shape[aria-pressed="true"] { background: color-mix(in srgb, ${ACCENT} 12%, transparent); }
+.pop .shape[aria-pressed="true"] svg { fill: ${ACCENT}; }
 @media (prefers-reduced-motion: no-preference) {
   .pop:not([hidden]) { animation: novatrail-pop 160ms cubic-bezier(0.2, 0.9, 0.3, 1.2); }
 }
@@ -236,10 +253,11 @@ export function pensStyle(ink: string, paper: string, accent: string): string {
   }
   .pop .swatch.wheel[aria-pressed="true"]::after { box-shadow: 0 0 0 2px Canvas; }
   .pop .kind[aria-pressed="true"], .pop .width[aria-pressed="true"],
-  .pop .seg button[aria-pressed="true"] {
+  .pop .seg button[aria-pressed="true"], .pop .shape[aria-pressed="true"] {
     background: Highlight; color: HighlightText; border-color: Highlight;
   }
   .pop .width :is(path, circle) { stroke: currentColor; stroke-opacity: 1; }
+  .pop .shape[aria-pressed="true"] svg { fill: currentColor; }
   .pop .seg { background: Canvas; }
   .pop button:focus-visible, .pop input:focus-visible { outline-color: Highlight; }
   .tools .settings[aria-checked="true"]::after { border-right-color: HighlightText; border-bottom-color: HighlightText; }
@@ -251,13 +269,21 @@ export function pensStyle(ink: string, paper: string, accent: string): string {
 /** What a popover's choice asks of the element: the settings as the learner made them. */
 export type PenChoice = (settings: PenSettings) => void;
 
+/** The icons of Select's shapes, by their values on the bar. */
+const SHAPE_ICONS = {
+  lasso: "selectLasso",
+  rectangle: "selectRectangle",
+} as const satisfies Record<SelectShape, keyof typeof ROW>;
+
 /**
- * The popovers of the pen and of the eraser, as the bar shows them: at most one open at a time,
- * by its tool's button, and every choice in it a change of the settings the element decides on.
+ * The popovers of the pen, the eraser and Select, as the bar shows them: at most one open at a
+ * time, by its tool's button, and every choice in it a change of the settings the element decides
+ * on.
  */
 export class Pens {
   readonly pen = dialog();
   readonly eraser = dialog();
+  readonly select = dialog("select");
   /** What the chosen pen and eraser say of a second press, which a screen reader reads. */
   readonly hint = document.createElement("span");
   readonly #choose: PenChoice;
@@ -278,6 +304,8 @@ export class Pens {
   readonly #modes = ERASER_MODES.map(() => toggle(""));
   readonly #sizeHeading = heading(SIZE_ID);
   readonly #sizes = ERASER_SIZES.map((size) => toggle("width", circleOf(size)));
+  readonly #shapeHeading = heading(SHAPE_ID);
+  readonly #shapes = SELECT_SHAPES.map((shape) => shapeButton(shape));
   #settings: PenSettings = PEN_SETTINGS;
   #open: Opener | undefined;
   #opener: HTMLElement | undefined;
@@ -288,7 +316,7 @@ export class Pens {
    */
   readonly #escape = (event: KeyboardEvent): void => {
     if (event.key !== "Escape" || this.#open === undefined) return;
-    const pop = this.#open === "pen" ? this.pen : this.eraser;
+    const pop = this.#popOf(this.#open);
     const root = pop.getRootNode();
     const focused = root instanceof ShadowRoot ? root.activeElement : null;
     event.preventDefault();
@@ -334,6 +362,12 @@ export class Pens {
     sizes.setAttribute("aria-labelledby", SIZE_ID);
     sizes.append(...this.#sizes);
     this.eraser.append(body(section(this.#modeHeading, modes), section(this.#sizeHeading, sizes)));
+    const shapes = document.createElement("div");
+    shapes.className = "shapes";
+    shapes.setAttribute("role", "group");
+    shapes.setAttribute("aria-labelledby", SHAPE_ID);
+    shapes.append(...this.#shapes);
+    this.select.append(body(section(this.#shapeHeading, shapes)));
 
     for (const [k, button] of this.#kinds.entries()) {
       button.addEventListener("click", () => this.#change({ pen: PEN_KINDS[k] as PenKind }));
@@ -364,9 +398,13 @@ export class Pens {
     for (const [k, button] of this.#sizes.entries()) {
       button.addEventListener("click", () => this.#change({ eraserSize: ERASER_SIZES[k] }));
     }
+    for (const [k, button] of this.#shapes.entries()) {
+      button.addEventListener("click", () => this.#change({ select: SELECT_SHAPES[k] }));
+    }
     for (const [which, pop] of [
       ["pen", this.pen],
       ["eraser", this.eraser],
+      ["select", this.select],
     ] as const) {
       // The focus gone to another of the element's controls, or out of it, takes the popover
       // with it, but not to its own button, whose press closes it, nor to nowhere: Safari takes the
@@ -389,12 +427,13 @@ export class Pens {
   }
 
   /**
-   * A tool's popover opens by its button, and the other's closes. From the keyboard the focus goes
-   * to its first choice: the kind of pen in use, or the eraser's mode.
+   * A tool's popover opens by its button, and the others close. From the keyboard the focus goes
+   * to its first choice: the kind of pen in use, the eraser's mode, or Select's shape.
    */
   open(which: Opener, opener: HTMLElement, focus: boolean): void {
-    const pop = which === "pen" ? this.pen : this.eraser;
-    (which === "pen" ? this.eraser : this.pen).hidden = true;
+    const pop = this.#popOf(which);
+    for (const other of [this.pen, this.eraser, this.select])
+      if (other !== pop) other.hidden = true;
     this.#open = which;
     this.#opener = opener;
     pop.hidden = false;
@@ -402,7 +441,7 @@ export class Pens {
     this.place();
     this.#toggled();
     if (!focus) return;
-    const choices = which === "pen" ? this.#kinds : this.#modes;
+    const choices = which === "pen" ? this.#kinds : which === "eraser" ? this.#modes : this.#shapes;
     const first = choices.find((button) => button.getAttribute("aria-pressed") === "true");
     (first ?? choices[0])?.focus();
   }
@@ -413,7 +452,8 @@ export class Pens {
     if (this.#open === undefined) return;
     const root = this.pen.getRootNode();
     const focused = root instanceof ShadowRoot ? root.activeElement : null;
-    const held = focused !== null && (this.pen.contains(focused) || this.eraser.contains(focused));
+    const held =
+      focused !== null && [this.pen, this.eraser, this.select].some((pop) => pop.contains(focused));
     this.#hide();
     // The focus a popover held would be lost with it: it goes back to the popover's button.
     if (refocus || held) opener?.focus();
@@ -425,6 +465,7 @@ export class Pens {
     document.removeEventListener("keydown", this.#escape, true);
     this.pen.hidden = true;
     this.eraser.hidden = true;
+    this.select.hidden = true;
     this.#more.hidden = true;
     write(this.#wheel, "aria-expanded", "false");
     this.#toggled();
@@ -467,6 +508,9 @@ export class Pens {
     for (const [k, button] of this.#sizes.entries()) {
       write(button, "aria-pressed", String(ERASER_SIZES[k] === settings.eraserSize));
     }
+    for (const [k, button] of this.#shapes.entries()) {
+      write(button, "aria-pressed", String(SELECT_SHAPES[k] === settings.select));
+    }
     this.#nameOpacity();
   }
 
@@ -475,10 +519,16 @@ export class Pens {
     const { lang, labels } = labelsFor(tag);
     if (lang === this.#lang) return;
     this.#lang = lang;
-    for (const node of [this.pen, this.eraser, this.hint]) node.lang = lang;
+    for (const node of [this.pen, this.eraser, this.select, this.hint]) node.lang = lang;
     this.hint.textContent = labels.settingsHint;
     this.pen.setAttribute("aria-label", labels.penSettings);
     this.eraser.setAttribute("aria-label", labels.eraserSettings);
+    this.select.setAttribute("aria-label", labels.selectSettings);
+    this.#shapeHeading.textContent = labels.shape;
+    for (const [k, button] of this.#shapes.entries()) {
+      const name = button.lastElementChild;
+      if (name !== null) name.textContent = labels[SELECT_SHAPES[k] as SelectShape];
+    }
     for (const [k, button] of this.#kinds.entries()) {
       const name = button.lastElementChild;
       if (name !== null) name.textContent = labels[KIND_LABELS[PEN_KINDS[k] as PenKind]];
@@ -523,7 +573,7 @@ export class Pens {
    */
   place(): void {
     const opener = this.#opener;
-    const pop = this.#open === "pen" ? this.pen : this.eraser;
+    const pop = this.#popOf(this.#open);
     const rail = pop.parentElement;
     if (this.#open === undefined || opener === undefined || rail === null) return;
     const root = rail.getRootNode();
@@ -560,6 +610,11 @@ export class Pens {
     set("--arrow", Math.max(corner, Math.min(middle - y, height - corner)));
   }
 
+  /** A tool's popover: the pen's while none is open, which shows nothing then. */
+  #popOf(which: Opener | undefined): HTMLDivElement {
+    return which === "eraser" ? this.eraser : which === "select" ? this.select : this.pen;
+  }
+
   /** The opacity's value, said and shown in the labels' language. */
   #nameOpacity(anew = false): void {
     const { labels } = labelsFor(this.#lang ?? null);
@@ -589,9 +644,9 @@ export class Pens {
  * arrow is an element of its own, not the popover's pseudo-element: axe cannot tell the background
  * of text under an ancestor's pseudo-element, and leaves its contrast undecided.
  */
-function dialog(): HTMLDivElement {
+function dialog(kind?: string): HTMLDivElement {
   const pop = document.createElement("div");
-  pop.className = "pop";
+  pop.className = kind === undefined ? "pop" : `pop ${kind}`;
   pop.setAttribute("role", "dialog");
   pop.hidden = true;
   const arrow = document.createElement("span");
@@ -638,6 +693,23 @@ function toggle(className: string, picture?: SVGSVGElement): HTMLButtonElement {
   if (className !== "") button.className = className;
   button.setAttribute("aria-pressed", "false");
   if (picture !== undefined) button.append(picture);
+  return button;
+}
+
+/** A shape of Select: a toggle button with its icon, hidden from a screen reader, and its name. */
+function shapeButton(shape: SelectShape): HTMLButtonElement {
+  const icon = document.createElementNS(SVG, "svg");
+  icon.setAttribute("aria-hidden", "true");
+  const { viewBox, paths } = ICONS[ROW[SHAPE_ICONS[shape]].outline];
+  icon.setAttribute("viewBox", viewBox);
+  for (const d of paths) {
+    const path = document.createElementNS(SVG, "path");
+    path.setAttribute("d", d);
+    icon.append(path);
+  }
+  const button = toggle("shape", icon);
+  const name = document.createElement("span");
+  button.append(name);
   return button;
 }
 

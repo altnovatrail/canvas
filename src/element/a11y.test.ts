@@ -10,7 +10,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 import { sheetTask } from "../core/tasks.fixture.js";
 import { axeOf, contrast, KINDS, WORKBOOK_INCOMPLETE } from "./axe.fixture.js";
-import { buttonOf, placed, rest, settle } from "./pointer.fixture.js";
+import { buttonOf, hand, level, placed, rest, settle } from "./pointer.fixture.js";
 
 const made: HTMLElement[] = [];
 
@@ -239,6 +239,39 @@ test.each(KINDS.filter(({ name }) => name.startsWith("a worked example")))(
     }
   },
 );
+
+test("Select's popover has no violation axe finds, nor its bar over the strokes it took, whose labels stand out from the glass over the paper, as axe cannot tell", async () => {
+  const { element, canvas, view } = await placed(made, 500, undefined, { task: sheetTask() });
+  level(canvas, view(), 200, 100, 300);
+  await settle();
+  element.tool = "select";
+  await userEvent.click(buttonOf(element, "Select"));
+  // Once it has popped in: on its way its words are paler than they stand.
+  const pop = element.shadowRoot?.querySelector<HTMLElement>(".pop.select");
+  await Promise.all(pop?.getAnimations().map((animation) => animation.finished) ?? []);
+  await axeOf(element);
+  await userEvent.keyboard("{Escape}");
+  const mouse = hand(canvas, view);
+  mouse.down(60, 160);
+  for (const [x, y] of [
+    [340, 160],
+    [340, 260],
+    [60, 260],
+  ] as const)
+    mouse.move(x, y);
+  mouse.up(60, 170);
+  await settle();
+  const bar = element.shadowRoot?.querySelector(".selection-bar");
+  if (!(bar instanceof HTMLElement) || bar.hidden) throw new Error("Select shows no bar");
+  // The bar stands on glass over the canvas, which axe takes for an image.
+  await axeOf(element, ["color-contrast"]);
+  const glass = glassOf(element, bar);
+  // WCAG 1.4.3 Contrast (Minimum): «at least 4.5:1» for text of the size of the labels.
+  for (const button of ["Copy", "Delete"].map((label) => buttonOf(element, label))) {
+    const { color, backgroundColor } = getComputedStyle(button);
+    expect(contrast(color, over(backgroundColor, glass))).toBeGreaterThanOrEqual(4.5);
+  }
+});
 
 test("a bar taller than the band it stands in scrolls inside its glass and is still one stop of Tab, and End brings its last button whole into the glass's sight, as focus() does in Chromium and WebKit (1.4.10, 2.4.11)", async () => {
   const { root, row, viewport } = await placed(made, 400, 200, { task: sheetTask() });

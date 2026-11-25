@@ -560,7 +560,10 @@ describe("a history given to the sheet", () => {
       ],
       [null, /^history: a list of events/],
       [[null], /^history\[0\]: an object/],
-      [[{ kind: "draw", t: 0 }], /^history\[0\]\.kind: "write", "erase", "cut", "clear" or "undo"/],
+      [
+        [{ kind: "draw", t: 0 }],
+        /^history\[0\]\.kind: "write", "erase", "cut", "clear", "move", "copy" or "undo"/,
+      ],
       [[write(stroke([point]), Number.NaN)], /^history\[0\]\.t: .*not NaN$/],
       [[write(stroke([point]), -1)], /^history\[0\]\.t: .*from 0, not -1$/],
       [[one(1, 20), one(2, 10)], /^history\[1\]\.t: 10, earlier than the event before it, at 20$/],

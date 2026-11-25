@@ -137,6 +137,29 @@ export function paperWorkForCheck(
   });
 }
 
+/**
+ * The context of the drawing's crop of a task from paper, `crop`, frozen through: its numbers, no
+ * groups, where the tracing paper lay, `tracing`, and the digest of the strokes where they lie on
+ * the sheet, `strokes`, with those numbers and the strokes written on the tracing paper, `paper`.
+ */
+export function drawingSubmissionOf(
+  strokes: readonly Stroke[],
+  paper: Paper,
+  tracing: TracingState,
+  crop: CropNumbers,
+): PaperSubmission {
+  return frozen({
+    crop,
+    groups: [],
+    tracing: {
+      at: [tracing.at[0], tracing.at[1]] as const,
+      hidden: tracing.hidden,
+      scale: tracing.scale ?? 1,
+    },
+    digest: digestOf(strokes, crop, [], paper),
+  });
+}
+
 /** Where a rectangle of the sheet, in units, lies on a crop, in px, as its raster places points. */
 function pixelsOf(
   rect: Box,

@@ -15,6 +15,7 @@ import {
   arrive,
   buttonOf,
   consumerButton,
+  GRIP_MS,
   level,
   paperCrop,
   placed,
@@ -200,7 +201,9 @@ function example(given: WorkedExample, images = 0, actions = false) {
 async function fromPaper(made: HTMLElement[]) {
   const { element, root, canvas, view } = await placed(made, 400);
   element.paper = { statement: await paperCrop() };
-  await expect.poll(() => root.querySelector<HTMLElement>(".grip")?.hidden).toBe(false);
+  await expect
+    .poll(() => root.querySelector<HTMLElement>(".grip")?.hidden, { timeout: GRIP_MS })
+    .toBe(false);
   level(canvas, view(), 100, 200, 300);
   await settle();
   const work = (await element.exportWork()) as ExportedPaper | null;

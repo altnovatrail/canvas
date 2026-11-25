@@ -695,7 +695,8 @@ test("the popover stands right of the bar level with its button, its arrow at it
   const around = narrow.element.getBoundingClientRect();
   expect(at.left - around.left).toBeCloseTo(8, 0);
   expect(around.right - at.right).toBeCloseTo(8, 0);
-  expect(around.bottom - at.bottom).toBeCloseTo(48, 0);
+  // Above the padding at the bottom, of the element or of the window, whichever is in sight.
+  expect(Math.min(around.bottom, innerHeight) - at.bottom).toBeCloseTo(48, 0);
 });
 
 test("every target of the popovers is 44 × 44 CSS px at least", async () => {

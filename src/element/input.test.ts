@@ -208,6 +208,80 @@ test("finished strokes are outlined once: a new frame outlines only the stroke u
   expect(probe(element).outlines).toBe(once + 1);
 });
 
+test("a frame of a stroke under way fills that stroke alone, and one that lands is filled once more", async () => {
+  const { element, canvas, view } = await sheet(400, 300);
+  for (const y of [100, 150, 200]) level(canvas, view(), y, 100, 900);
+  await settle();
+  const before = probe(element).fills;
+  const pointer = { pointerId: 5, pointerType: "touch", isPrimary: true, bubbles: true };
+  const event = (type: string, x: number, buttons: number) =>
+    new PointerEvent(type, { ...pointer, ...at(canvas, view(), x, 250), button: 0, buttons });
+  canvas.dispatchEvent(event("pointerdown", 100, 1));
+  await settle();
+  expect(probe(element).fills).toBe(before + 1);
+  canvas.dispatchEvent(event("pointermove", 500, 1));
+  await settle();
+  expect(probe(element).fills).toBe(before + 2);
+  // Landed on top of the others, it is filled on their buffer, and the canvas takes a copy.
+  canvas.dispatchEvent(event("pointerup", 500, 0));
+  await settle();
+  expect(probe(element).fills).toBe(before + 3);
+  expect(probe(element).strokes).toHaveLength(4);
+});
+
+test("strokes written over others, a marker's among them, leave the canvas as a sheet drawn at once shows it", async () => {
+  const { element, canvas, viewport, view } = await sheet(400, 300);
+  viewport.scrollTop = 60;
+  await settle();
+  // Levels across the sheet, and over them strokes down it, frame by frame, the marker's
+  // multiplied with the ink under it: each frame takes back only its own rectangle.
+  for (let y = 200; y <= 600; y += 100) level(canvas, view(), y, 100, 900);
+  await settle();
+  for (const [pen, x] of [
+    ["marker", 200],
+    ["pen", 400],
+    ["marker", 600],
+  ] as const) {
+    element.pens = { ...element.pens, pen };
+    const pointer = { pointerId: 6, pointerType: "touch", isPrimary: true, bubbles: true };
+    const event = (type: string, y: number, buttons: number) =>
+      new PointerEvent(type, { ...pointer, ...at(canvas, view(), x, y), button: 0, buttons });
+    canvas.dispatchEvent(event("pointerdown", 150, 1));
+    for (const y of [250, 350, 450, 550]) {
+      await frame();
+      canvas.dispatchEvent(event("pointermove", y, 1));
+    }
+    await frame();
+    canvas.dispatchEvent(event("pointerup", 650, 0));
+    await settle();
+  }
+
+  const fresh = document.createElement("novatrail-canvas");
+  fresh.style.width = "400px";
+  fresh.style.height = "300px";
+  fresh.history = element.history;
+  document.body.append(fresh);
+  made.push(fresh);
+  await settle();
+  const freshPort = fresh.shadowRoot?.querySelector(".viewport");
+  const freshCanvas = fresh.shadowRoot?.querySelector("canvas");
+  if (!freshPort || !freshCanvas) throw new Error("the element has no canvas in a viewport");
+  freshPort.scrollTop = 60;
+  await settle();
+  const { k, vx, vy } = view();
+  expect(viewOf(fresh)).toMatchObject({ k, vx, vy });
+  const pixels = (of: HTMLCanvasElement) =>
+    of.getContext("2d")?.getImageData(0, 0, of.width, of.height).data ?? new Uint8ClampedArray();
+  const written = pixels(canvas);
+  const whole = pixels(freshCanvas);
+  expect(written.length).toBe(whole.length);
+  let off = 0;
+  for (let i = 0; i < whole.length; i++) {
+    if (Math.abs((written[i] ?? 0) - (whole[i] ?? 0)) > 2) off++;
+  }
+  expect(off).toBe(0);
+});
+
 test("a sheet taken off the page ends the stroke under way where it was", async () => {
   const { element, canvas, view } = await sheet(400);
   const pointer = { pointerId: 4, pointerType: "pen", isPrimary: true, bubbles: true };

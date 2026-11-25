@@ -1,4 +1,10 @@
-import type { EraserMode, PenKind, PenSettings, StrokeStyle } from "@altnovatrail/spec/canvas";
+import type {
+  EraserMode,
+  PenKind,
+  PenSettings,
+  SelectShape,
+  StrokeStyle,
+} from "@altnovatrail/spec/canvas";
 import { record, shown } from "./fields.js";
 import type { Stroke } from "./ink.js";
 import { INK_REACH, PEN_WIDEST } from "./outline.js";
@@ -7,13 +13,16 @@ import { INK_REACH, PEN_WIDEST } from "./outline.js";
  * How a stroke looks, the learner's settings of the pen and the eraser, the kinds of pen and the
  * modes of the eraser: spec's types, of the contract of canvas and app.
  */
-export type { EraserMode, PenKind, PenSettings, StrokeStyle };
+export type { EraserMode, PenKind, PenSettings, SelectShape, StrokeStyle };
 
 /** The kinds of pen, in the order the pen's popover offers them. */
 export const PEN_KINDS: readonly PenKind[] = Object.freeze(["pen", "liner", "marker"]);
 
 /** The eraser's modes: a stroke it touches whole, or only what it passes over. */
 export const ERASER_MODES: readonly EraserMode[] = Object.freeze(["stroke", "part"]);
+
+/** The shapes Select draws, in the order of its popover: the lasso, then the rectangle. */
+export const SELECT_SHAPES: readonly SelectShape[] = Object.freeze(["lasso", "rectangle"]);
 
 /** The five widths of the pen and the liner, in sheet units, the thinnest first. */
 export const PEN_WIDTHS: readonly number[] = Object.freeze([1.2, 2, 3, 4.5, 7]);
@@ -71,13 +80,15 @@ export const PEN_SETTINGS: PenSettings = penSettingsOf({
   },
   eraser: "stroke",
   eraserSize: 16,
+  select: "lasso",
 });
 
 /**
  * Settings of the pen and the eraser given by a consumer, checked field by field and copied into
  * frozen objects of the element's own, with only the fields they have: others are passed over.
  * Anything not of `PenSettings` is a TypeError that names the field — a style whose `pen` is not
- * its kind's, a colour, a width, an opacity or a size out of its bounds.
+ * its kind's, a colour, a width, an opacity or a size out of its bounds, a shape of Select not its
+ * own. Settings without `select` keep the lasso.
  */
 export function penSettingsOf(value: unknown, path = "pens"): PenSettings {
   const fields = record(value, path);
@@ -105,7 +116,11 @@ export function penSettingsOf(value: unknown, path = "pens"): PenSettings {
       `${path}.eraserSize: the eraser's diameter in sheet units, from ${least} to ${most}, not ${shown(eraserSize)}`,
     );
   }
-  return Object.freeze({ pen, styles, eraser, eraserSize });
+  const select = fields.select ?? "lasso";
+  if (!SELECT_SHAPES.includes(select as SelectShape)) {
+    throw new TypeError(`${path}.select: "lasso" or "rectangle", not ${shown(select)}`);
+  }
+  return Object.freeze({ pen, styles, eraser, eraserSize, select: select as SelectShape });
 }
 
 /**

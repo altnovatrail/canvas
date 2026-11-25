@@ -38,6 +38,7 @@ describe("the settings", () => {
       },
       eraser: "stroke",
       eraserSize: 16,
+      select: "lasso",
     });
     expect(Object.isFrozen(PEN_SETTINGS)).toBe(true);
     expect(Object.isFrozen(PEN_SETTINGS.styles)).toBe(true);
@@ -50,6 +51,7 @@ describe("the settings", () => {
       pen: "marker",
       eraser: "part",
       eraserSize: 1,
+      select: "rectangle",
       styles: {
         ...PEN_SETTINGS.styles,
         liner: { pen: "liner", color: "#ffffff", width: 0.1, opacity: 10, note: "the consumer's" },
@@ -65,10 +67,14 @@ describe("the settings", () => {
       },
       eraser: "part",
       eraserSize: 1,
+      select: "rectangle",
     });
     expect(settings).not.toBe(given);
     expect(Object.isFrozen(settings.styles.liner)).toBe(true);
     expect(penSettingsOf({ ...PEN_SETTINGS, eraserSize: 200 }).eraserSize).toBe(200);
+    // Settings kept before Select had a shape take the lasso.
+    const { select: _, ...older } = PEN_SETTINGS;
+    expect(penSettingsOf(older).select).toBe("lasso");
   });
 
   test("not of PenSettings are a TypeError that names the field", () => {
@@ -120,6 +126,10 @@ describe("the settings", () => {
       [{ ...PEN_SETTINGS, eraserSize: 201 }, /^pens\.eraserSize:/],
       [{ ...PEN_SETTINGS, eraserSize: Number.NaN }, /^pens\.eraserSize:/],
       [{ ...PEN_SETTINGS, eraserSize: undefined }, /^pens\.eraserSize:/],
+      [
+        { ...PEN_SETTINGS, select: "ellipse" },
+        /^pens\.select: "lasso" or "rectangle", not "ellipse"$/,
+      ],
     ];
     for (const [value, message] of cases) {
       expect(() => penSettingsOf(value), String(message)).toThrow(TypeError);

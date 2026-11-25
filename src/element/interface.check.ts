@@ -10,6 +10,7 @@ import type { All, Same } from "../core/entry.check.js";
 import type {
   CanvasElement,
   CanvasEventMap,
+  CropStroke,
   DemoChangeEvent,
   DemoState,
   EraserMode,
@@ -29,6 +30,7 @@ import type {
   Marks,
   Media,
   NovatrailCanvas,
+  PaintStats,
   PaperGrid,
   PaperSubmission,
   PaperTask,
@@ -43,6 +45,7 @@ import type {
   ToolChangeEvent,
   TracingChangeEvent,
   TracingState,
+  TutorAct,
   WorkbookSubmission,
   WorkedExample,
 } from "./index.js";
@@ -56,6 +59,7 @@ export type Contract = All<
   [
     Same<CanvasElement, spec.CanvasElement>,
     Same<CanvasEventMap, spec.CanvasEventMap>,
+    Same<CropStroke, spec.CropStroke>,
     Same<DemoChangeEvent, spec.DemoChangeEvent>,
     Same<EraserMode, spec.EraserMode>,
     Same<ExportedCell, spec.ExportedCell>,
@@ -70,6 +74,7 @@ export type Contract = All<
     Same<Mark, spec.Mark>,
     Same<Marks, spec.Marks>,
     Same<Media, spec.Media>,
+    Same<PaintStats, spec.PaintStats>,
     Same<PaperGrid, spec.PaperGrid>,
     Same<PaperSubmission, spec.PaperSubmission>,
     Same<PaperTask, spec.PaperTask>,
@@ -82,6 +87,7 @@ export type Contract = All<
     Same<ToolChangeEvent, spec.ToolChangeEvent>,
     Same<TracingChangeEvent, spec.TracingChangeEvent>,
     Same<TracingState, spec.TracingState>,
+    Same<TutorAct, spec.TutorAct>,
     Same<Filled, spec.Filled>,
     Same<Tool, spec.Tool>,
     Same<GlobalEventHandlersEventMap["historychange"], CanvasEventMap["historychange"]>,
@@ -158,6 +164,14 @@ export const history: readonly HistoryEvent[] = sheet.history;
  * picture: always a Blob, never null.
  */
 export const picture: Promise<Blob> = sheet.exportPicture();
+/** The debug view reads what the drawing costs, and turns on the flash of what a frame paints. */
+export const stats: PaintStats = sheet.paintStats;
+export const lastArea: number | undefined = sheet.paintStats.last?.area;
+sheet.paintFlash = true;
+// @ts-expect-error The reading is the element's: a consumer sets none.
+sheet.paintStats = stats;
+// @ts-expect-error The flash is on or off, nothing else.
+sheet.paintFlash = "on";
 /** A workbook's marks stand on answer cells, by their item and slot. */
 sheet.marks = {
   submission: boxes,
@@ -220,6 +234,15 @@ export const pieces: readonly Piece[] = sheet.history.flatMap((event) =>
 export const beside: Blob | undefined = "statement" in done ? done.statement : undefined;
 export const laid: TracingState = fromPaper.submission.tracing;
 sheet.marks = { submission: fromPaper.submission, marks: [] };
+/** The tutor in grown-up mode reads the crop's strokes by its context, and acts on the sheet by it. */
+export const seen: readonly CropStroke[] = sheet.cropStrokes(fromPaper.submission);
+export const forDrawing: Promise<ExportedPaper> = sheet.exportForDrawing();
+export const acted: Promise<void> = sheet.drawTutor(fromPaper.submission, {
+  strokes: [{ points: [10, 10, 40, 12], color: "#ff3b30", width: 2 }],
+  erase: seen.map(({ id }) => id),
+});
+// @ts-expect-error A sheet's context is no task from paper's.
+sheet.cropStrokes(crop as unknown as SheetSubmission);
 // @ts-expect-error The crop is a Blob, not its address.
 sheet.paper = { statement: "blob:crop" };
 sheet.paper = undefined;

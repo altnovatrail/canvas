@@ -5,7 +5,15 @@ import type { View } from "../core/screen.js";
 import { sheetTask, workedExample } from "../core/tasks.fixture.js";
 import { axeOf } from "./axe.fixture.js";
 import { type ExportedPaper, NovatrailCanvas, type TracingState } from "./index.js";
-import { at, buttonOf, paperCrop, settle, upgraded } from "./pointer.fixture.js";
+import {
+  at,
+  buttonOf,
+  dotTiles,
+  dotTilesOf,
+  paperCrop,
+  settle,
+  upgraded,
+} from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 
 // A task from paper in a browser: the crop as tracing paper over a sheet of the learner's
@@ -129,6 +137,85 @@ test("writes a stroke begun on the tracing paper from its corner, and one elsewh
   expect(element.filled).toEqual([[true]]);
 });
 
+test("a stroke written on the sheet under the tracing paper's marker leaves the canvas as a sheet drawn at once shows it", async () => {
+  const { element, canvas, statement, view } = await paper();
+  // A marker on the paper, across where the sheet's stroke will go.
+  element.pens = { ...element.pens, pen: "marker" };
+  write(canvas, view, [260, 100], [300, 104], [340, 100], [380, 104]);
+  element.pens = { ...element.pens, pen: "pen" };
+  await settle();
+  // A pen's stroke begun on the sheet below the paper, up under the marker: each frame fills
+  // the stroke and, over it, the paper's strokes in its rectangle.
+  const send = (type: string, y: number, init: PointerEventInit) =>
+    sendOn(canvas, view, type, [320, y], init);
+  send("pointerdown", 900, { button: 0, buttons: 1, pressure: 0.5 });
+  await settle();
+  const filled: number[] = [];
+  for (let y = 860; y >= 40; y -= 40) {
+    const before = probe(element).fills;
+    send("pointermove", y, { buttons: 1, pressure: 0.5 });
+    await settle();
+    filled.push(probe(element).fills - before);
+  }
+  // Far below the paper the stroke alone; once its outline reaches the marker, the marker too.
+  expect(filled[0]).toBe(1);
+  expect(filled.at(-1)).toBe(2);
+  send("pointerup", 40, { button: 0, buttons: 0 });
+  await settle();
+  const writes = element.history.filter((event) => event.kind === "write");
+  expect(writes.map((event) => ("on" in event ? event.on : undefined))).toEqual([
+    "tracing",
+    undefined,
+  ]);
+
+  const fresh = document.createElement("novatrail-canvas");
+  fresh.style.width = "500px";
+  document.body.append(fresh);
+  made.push(fresh);
+  fresh.paper = { statement };
+  fresh.tracing = element.tracing;
+  fresh.history = element.history;
+  await settle();
+  const freshCanvas = fresh.shadowRoot?.querySelector("canvas");
+  const freshGrip = fresh.shadowRoot?.querySelector<HTMLButtonElement>("button.grip");
+  if (!freshCanvas || !freshGrip) throw new Error("the element has no tracing paper");
+  await expect.poll(() => freshGrip.hidden).toBe(false);
+  await settle();
+  const pixels = (of: HTMLCanvasElement) =>
+    of.getContext("2d")?.getImageData(0, 0, of.width, of.height).data ?? new Uint8ClampedArray();
+  const written = pixels(canvas);
+  const whole = pixels(freshCanvas);
+  expect(written.length).toBe(whole.length);
+  // Chromium's and Firefox's rasterizer give the marker's smoothed edge, where the pen's
+  // rectangle cuts it, up to 14 levels more or less than a painting of the whole does; the marker
+  // filled twice there would be 40 off and more.
+  let off = 0;
+  for (let i = 0; i < whole.length; i++) {
+    if (Math.abs((written[i] ?? 0) - (whole[i] ?? 0)) > 24) off++;
+  }
+  expect(off).toBe(0);
+});
+
+test("a stroke under way on the tracing paper shows where it goes, frame by frame", async () => {
+  const { canvas, view } = await paper();
+  const send = (type: string, x: number, init: PointerEventInit) =>
+    sendOn(canvas, view, type, [x, 200], init);
+  send("pointerdown", 220, { button: 0, buttons: 1, pressure: 0.5 });
+  for (let x = 240; x <= 400; x += 20) {
+    send("pointermove", x, { buttons: 1, pressure: 0.5 });
+    await settle();
+  }
+  // The ink under way, in the device pixels of a point it has passed.
+  const { k, vx, vy } = view();
+  const scale = canvas.width / canvas.getBoundingClientRect().width;
+  const alpha = canvas
+    .getContext("2d")
+    ?.getImageData(Math.floor((300 - vx) * k * scale), Math.floor((200 - vy) * k * scale), 1, 1)
+    .data[3];
+  expect(alpha).toBeGreaterThan(0);
+  send("pointerup", 400, { button: 0, buttons: 0 });
+});
+
 test("hides and shows the tracing paper by its button, which tells", async () => {
   const { element, grip } = await paper();
   const told: TracingState[] = [];
@@ -162,18 +249,21 @@ test("rules its sheet by the grid the consumer gives, dots as it comes, lines, s
     return { width: Math.round((box?.width ?? 0) / k), height: Math.round((box?.height ?? 0) / k) };
   };
   expect(element.grid).toBe("dots");
-  expect(grid?.getAttribute("d")).toBe(gridPath({ kind: "dots", step: 25 }, extent()));
+  // Dots are tiles of a pattern, and the path is empty.
+  expect(grid?.getAttribute("d")).toBe("");
+  expect(dotTilesOf(root)).toEqual(dotTiles(25, extent()));
   expect(grid?.classList.contains("dots")).toBe(true);
   for (const [given, path] of [
     ["lines", gridPath({ kind: "lines", step: 40 }, extent())],
     ["squares", gridPath({ kind: "squares", step: 25 }, extent())],
     ["blank", ""],
-    ["dots", gridPath({ kind: "dots", step: 25 }, extent())],
+    ["dots", ""],
   ] as const) {
     element.grid = given;
     expect(element.grid).toBe(given);
     expect(grid?.getAttribute("d"), given).toBe(path);
     expect(grid?.classList.contains("dots"), given).toBe(given === "dots");
+    expect(dotTilesOf(root), given).toEqual(given === "dots" ? dotTiles(25, extent()) : undefined);
   }
   // The bar's button says the grid the consumer gave.
   element.grid = "blank";

@@ -169,6 +169,7 @@ test.runIf(devtools)(
     expect(shownButtons(row)).toEqual([
       russian.pen,
       russian.eraser,
+      russian.select,
       russian.hand,
       russian.undo,
       russian.clear,

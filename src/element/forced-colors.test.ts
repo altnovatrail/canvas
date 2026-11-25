@@ -101,6 +101,9 @@ test("with forced colours the sheet takes the system's colours, whatever the con
   const text = system("CanvasText");
   expect(getComputedStyle(canvas).color).toBe(text);
   expect(getComputedStyle(grid).stroke).toBe(system("GrayText"));
+  const dot = root?.querySelector(".template pattern .grid");
+  if (!dot) throw new Error("the template has no dot");
+  expect(getComputedStyle(dot).stroke).toBe(system("GrayText"));
   expect(getComputedStyle(sheet).outlineColor).toBe(text);
 
   // The ink, six strokes over one another so that the middle of the line is covered.

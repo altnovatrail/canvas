@@ -88,6 +88,9 @@ test("a sheet shows its row, its statement with a picture, its grid, the ink and
   const grid = root.querySelector(".grid");
   if (grid === null) throw new Error("the sheet has no grid");
   expect(getComputedStyle(grid).stroke).toBe("rgb(211, 219, 229)");
+  const dot = root.querySelector(".template pattern .grid");
+  if (dot === null) throw new Error("the template has no dot");
+  expect(getComputedStyle(dot).stroke).toBe("rgb(211, 219, 229)");
   // The statement's picture comes by its blob: address, decoded.
   const image = root.querySelector<HTMLImageElement>(".statement img");
   expect(image?.src.startsWith("blob:")).toBe(true);

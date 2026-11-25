@@ -289,7 +289,9 @@ describe("the rule on the corpus of the sweep", () => {
 function reference(s: Stroke, cells: readonly Cell[], { margin, limit }: BoxRule): number {
   const xs = s.points.map((p) => BigInt(Math.round(p.x * 10)));
   const ys = s.points.map((p) => BigInt(Math.round(p.y * 10)));
+  // biome-ignore lint/complexity/useMathMinMax: Math.min takes no bigint.
   const least = (v: bigint[]) => v.reduce((a, b) => (b < a ? b : a));
+  // biome-ignore lint/complexity/useMathMinMax: Math.max takes no bigint.
   const most = (v: bigint[]) => v.reduce((a, b) => (b > a ? b : a));
   const [x0, x1, y0, y1] = [least(xs), most(xs), least(ys), most(ys)];
   const m = BigInt(margin);

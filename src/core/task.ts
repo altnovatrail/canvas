@@ -32,15 +32,19 @@ export type { Tool };
 
 /**
  * The tools of the module format a task allows, in the order their buttons stand: the pen, the
- * eraser. The hand is no tool of the format: every sheet the learner writes on has it.
+ * eraser. Select and the hand are no tools of the format: every sheet the learner writes on has
+ * them.
  */
 export const TOOLS: readonly Tool[] = Object.freeze(["pen", "eraser"]);
 
 /** The tool that moves the sheet and writes nothing. */
 export const HAND: Tool = "hand";
 
+/** The tool that takes strokes within a lasso or a rectangle, to move, copy or delete them. */
+export const SELECT: Tool = "select";
+
 export function isTool(value: unknown): value is Tool {
-  return value === HAND || (TOOLS as readonly unknown[]).includes(value);
+  return value === HAND || value === SELECT || (TOOLS as readonly unknown[]).includes(value);
 }
 
 /** A paragraph of a task's statement, or a piece of text of a workbook's line. */

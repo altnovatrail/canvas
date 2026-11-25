@@ -46,6 +46,31 @@ export function gridPath(grid: Grid, size: Size = SHEET): string {
   }
 }
 
+/** A rectangle on the sheet, in units: its top left corner and its size. */
+export interface Rect {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * Where a grid of dots tiles the sheet: a tile is a square of the step with its dot in the middle,
+ * and the tiles start half a step in from the sheet's top left corner. The rectangle ends half a
+ * step past the last rulings, so every tile in it is whole and its dots stand where `gridPath`
+ * puts them. The browser draws one tile and repeats it. A path draws a round cap for each dot,
+ * and it draws all of them again whenever the sheet scrolls.
+ */
+export function dotsTiling(step: number, size: Size = SHEET): Rect {
+  const half = step / 2;
+  return {
+    x: half,
+    y: half,
+    width: rulings(step, size.width).length * step,
+    height: rulings(step, size.height).length * step,
+  };
+}
+
 /**
  * Where the rulings of a step lie along a side of the sheet, inside it: each one i × step, worked
  * out apart rather than summed, so that no error builds up, and rounded to a thousandth of a unit.

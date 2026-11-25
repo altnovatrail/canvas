@@ -94,7 +94,8 @@ const ADULTS = new Set([Writer.ADULT, Writer.ADULT_AS_CHILD]);
 /**
  * The sample of the input, checked as far as the input alone tells: a sample with
  * no purpose or no writer, a child's sample of an eval set, and a writer's code where its
- * composition has none, or none where it has one, are each a TypeError. The rest — the shape of an
+ * composition has none, or none where it has one, and a history with an act of the tutor, are each
+ * a TypeError. The rest — the shape of an
  * ID, a code, a version, a digest, the markup against the strokes — is spec's sample-check's.
  */
 export function sampleOf(input: SampleInput): Sample {
@@ -116,6 +117,9 @@ export function sampleOf(input: SampleInput): Sample {
   const { history, digit } =
     "sheet" in input.surface ? input.surface.sheet : input.surface.workbook;
   const cells = "workbook" in input.surface ? input.surface.workbook.cells : null;
+  if (history.some((event) => event.kind === "tutor")) {
+    throw new TypeError("a sample holds no act of the tutor: its strokes are no one's writing");
+  }
   // The groups and the table of boxes are the device's, of the strokes as they came.
   const raw = replay(history);
   const groups = cells === null ? groupsOf(raw) : [];
@@ -291,30 +295,26 @@ function strokeField(stroke: Stroke): MessageInitShape<typeof StrokeSchema> {
  * The history of writing as a sample keeps it: each event at its time in whole
  * milliseconds, a stroke's points to a tenth of a unit and in whole milliseconds, without the
  * pressure, and its style. Rounding keeps the order of times, so a stroke still lands no sooner
- * than its last point, and a piece's times stay within its stroke's. Its strokes are those the
- * history shows at the end, as the file holds them.
+ * than its last point, and a piece's times stay within its stroke's. A move of Select is an erasing
+ * of the strokes it moved and a writing of each new stroke, and a copy the writings alone, at its
+ * time: the protocol has no event of Select, and they replay to the same sheet. Its strokes are
+ * those the history shows at the end, as the file holds them.
  */
 function historyInk(history: readonly HistoryEvent[], shown: readonly Stroke[]): Ink {
-  const events = history.map((event): MessageInitShape<typeof HistoryEventSchema> => {
+  const events = history.flatMap((event): MessageInitShape<typeof HistoryEventSchema>[] => {
     const tMs = toMs(event.t);
-    switch (event.kind) {
-      case "write":
-        return { tMs, event: { case: "write", value: strokeField(event.stroke) } };
-      case "erase":
-      case "clear":
-        return { tMs, event: { case: event.kind, value: { ids: [...event.ids] } } };
-      case "cut": {
-        const pieces = event.pieces.map(({ of, stroke }) => ({ of, stroke: strokeField(stroke) }));
-        return { tMs, event: { case: "cut", value: { ids: [...event.ids], pieces } } };
-      }
-      default: {
-        const { removed, restored } = event;
-        return {
-          tMs,
-          event: { case: "undo", value: { removed: [...removed], restored: [...restored] } },
-        };
-      }
+    if (event.kind === "move" || event.kind === "copy") {
+      const writes = event.strokes.map((stroke) => ({
+        tMs,
+        event: { case: "write" as const, value: strokeField(stroke) },
+      }));
+      if (event.kind === "copy") return writes;
+      return [
+        { tMs, event: { case: "erase" as const, value: { ids: [...event.ids] } } },
+        ...writes,
+      ];
     }
+    return [eventField(event, tMs)];
   });
   const strokes = shown.map((stroke) => ({
     ...stroke,
@@ -325,6 +325,33 @@ function historyInk(history: readonly HistoryEvent[], shown: readonly Stroke[]):
     strokes,
     numbers: new Map(strokes.map(({ id }) => [id, id])),
   };
+}
+
+/** An event of the history as a sample keeps it, but for Select's, which it spells otherwise. */
+function eventField(
+  event: Exclude<HistoryEvent, { kind: "move" | "copy" }>,
+  tMs: number,
+): MessageInitShape<typeof HistoryEventSchema> {
+  switch (event.kind) {
+    case "write":
+      return { tMs, event: { case: "write", value: strokeField(event.stroke) } };
+    case "erase":
+    case "clear":
+      return { tMs, event: { case: event.kind, value: { ids: [...event.ids] } } };
+    case "cut": {
+      const pieces = event.pieces.map(({ of, stroke }) => ({ of, stroke: strokeField(stroke) }));
+      return { tMs, event: { case: "cut", value: { ids: [...event.ids], pieces } } };
+    }
+    case "tutor":
+      throw new TypeError("a sample holds no act of the tutor");
+    default: {
+      const { removed, restored } = event;
+      return {
+        tMs,
+        event: { case: "undo", value: { removed: [...removed], restored: [...restored] } },
+      };
+    }
+  }
 }
 
 /**

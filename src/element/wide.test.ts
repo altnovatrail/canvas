@@ -14,6 +14,8 @@ import type { HistoryChange, ToolChange } from "./index.js";
 import {
   at,
   devtools,
+  dotTiles,
+  dotTilesOf,
   input,
   level,
   paperCrop,
@@ -489,7 +491,7 @@ test("a worked example's sheet is its page alone: as wide as the container, with
   await settle();
   same(extentOf(root, view()), SHEET);
   expect(viewport.scrollWidth).toBe(viewport.clientWidth);
-  expect(root.querySelector(".grid")?.getAttribute("d")).toBe(gridPath({ kind: "dots", step: 40 }));
+  expect(dotTilesOf(root)).toEqual(dotTiles(40));
   // Taken off, the sheet goes past the page again.
   element.workedExample = undefined;
   await settle();
