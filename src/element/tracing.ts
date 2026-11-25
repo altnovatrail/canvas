@@ -733,8 +733,11 @@ export class TracingPaper {
 
   /**
    * The statements' letters at the paper's full size, or smaller by as much as the widest line, or
-   * the lines together, exceed the paper. Measured at the size they have, so that once fitted they
-   * fit and their size stays: the observer of the lines, which calls this again, then stops.
+   * the lines together, exceed the paper. Measured at the size they have, and only ever smaller
+   * than it: a fraction does not scale with its letters — WebKit lays it out by whole pixels —, so
+   * a size measured anew may want a little more again, and the observer of the lines, which calls
+   * this again, would swing between two sizes for good. Smaller each time by more than a rounding,
+   * it stops once they fit; `#drawText` starts again from the full size.
    */
   #fitText(): void {
     const { width, height } = this.#box;
@@ -751,9 +754,9 @@ export class TracingPaper {
     if (wide === 0 || tall === 0) return;
     const size = Number.parseFloat(this.#text.style.fontSize) || this.#full;
     const k = Math.min((width * 0.92) / wide, (height * 0.92) / tall);
-    const fitted = Math.min(this.#full, size * k);
+    const fitted = Math.min(this.#full, size, size * k);
     // Within half a percent it stays: a size that moves by a rounding feeds the observer again.
-    if (Math.abs(fitted - size) > size * 0.005) this.#text.style.fontSize = `${fitted}px`;
+    if (size - fitted > size * 0.005) this.#text.style.fontSize = `${fitted}px`;
   }
 
   /** The tooltip on hover or the keyboard's focus, unless Escape or a drag dismissed it. */

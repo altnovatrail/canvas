@@ -392,6 +392,47 @@ test("statements read while the paper was hidden fit it once it is shown", async
   expect(Number.parseFloat(text.style.fontSize)).toBeGreaterThan(8);
 });
 
+test("statements with fractions settle on one size that fits: the observer of their lines does not swing between two", async () => {
+  // A crop and a sheet on which WebKit's fractions, laid out by whole pixels, once swung the size
+  // for good.
+  const element = document.createElement("novatrail-canvas");
+  element.style.width = "1180px";
+  element.style.height = "700px";
+  document.body.append(element);
+  made.push(element);
+  element.paper = { statement: await paperCrop(680, 200) };
+  await settle();
+  const root = element.shadowRoot;
+  const grip = root?.querySelector<HTMLButtonElement>("button.grip");
+  if (!root || !grip) throw new Error("no tracing paper");
+  await expect.poll(() => grip.hidden).toBe(false);
+  element.reading = { state: "ready" };
+  root.querySelector<HTMLButtonElement>(".tracing-scale .mode")?.click();
+  await settle();
+  const text = root.querySelector<HTMLElement>(".statements");
+  if (text === null) throw new Error("no statements");
+  const sizes: string[] = [];
+  const watch = new MutationObserver(() => sizes.push(text.style.fontSize));
+  watch.observe(text, { attributes: true, attributeFilter: ["style"] });
+  element.reading = {
+    state: "done",
+    statements: [
+      "\\frac{48}{5} : \\frac{27}{4} \\cdot \\frac{5}{12} - \\frac{17}{6} = □",
+      "\\frac{1}{2} + \\frac{1}{3} = □",
+    ],
+  };
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  const settled = sizes.length;
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  watch.disconnect();
+  expect(sizes.length).toBe(settled);
+  expect(settled).toBeLessThan(8);
+  const paperBox = text.getBoundingClientRect();
+  for (const line of text.querySelectorAll(".line")) {
+    expect(line.getBoundingClientRect().width).toBeLessThanOrEqual(paperBox.width + 1);
+  }
+});
+
 test("a reading given without a task from paper is a TypeError", () => {
   const element = new NovatrailCanvas();
   expect(() => {
