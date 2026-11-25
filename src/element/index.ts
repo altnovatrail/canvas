@@ -2301,11 +2301,14 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     });
     const rail = this.#tools.rail;
     // The bar is of no width itself, its panels standing out of it, over the sheet's left edge or
-    // beside it: a margin from the rightmost shown, either way.
+    // beside it: a margin from the rightmost shown, either way. A tooltip is no panel: it comes and
+    // goes with the pointer, which may rest over a button as the grown-up asks.
     const right = rail.hidden
       ? undefined
       : Math.max(
-          ...Array.from(rail.children, (panel) => panel.getBoundingClientRect())
+          ...Array.from(rail.children)
+            .filter((panel) => panel !== this.#tools.tip)
+            .map((panel) => panel.getBoundingClientRect())
             .filter((box) => box.width > 0)
             .map((box) => box.right),
         );

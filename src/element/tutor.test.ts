@@ -1,7 +1,8 @@
 import { afterEach, expect, test } from "vitest";
+import { userEvent } from "vitest/browser";
 import { toCrop } from "../core/tutor.js";
 import type { ExportedPaper, HistoryChange, HistoryEvent, TutorAct } from "./index.js";
-import { at, settle } from "./pointer.fixture.js";
+import { at, buttonOf, settle } from "./pointer.fixture.js";
 import { probe } from "./probe.js";
 import { inkAt, lines, offFromWhole, paper, written } from "./tutor.fixture.js";
 
@@ -333,6 +334,28 @@ test("its crop shows the strokes in sight and the tracing paper while shown, and
   expect(element.cropStrokes(hidden.submission).map(({ id }) => id)).toEqual([1]);
   const paperHidden = toCrop({ x: 180 + 150, y: 60 + 80 }, hidden.submission);
   expect(await pixelOf(hidden.png, paperHidden.x, paperHidden.y)).toEqual([255, 255, 255]);
+});
+
+test("a tooltip of the bar narrows no drawing's crop: the pointer may rest over a button as the grown-up asks", async () => {
+  const onPaper: HistoryEvent = {
+    kind: "write",
+    t: 300,
+    on: "tracing",
+    stroke: {
+      id: 2,
+      kind: "pen",
+      points: [
+        { x: 20, y: 20, t: 200, p: 0.5 },
+        { x: 60, y: 30, t: 300, p: 0.5 },
+      ],
+    },
+  };
+  const { element } = await paper(made, [written, onPaper]);
+  const tip = element.shadowRoot?.querySelector<HTMLElement>(".tip");
+  await userEvent.hover(buttonOf(element, "Select"));
+  expect(tip?.hidden).toBe(false);
+  const shown = await element.exportForDrawing();
+  expect(element.cropStrokes(shown.submission).map(({ id }) => id)).toEqual([1, 2]);
 });
 
 test("gives no drawing's crop without a task from paper: a TypeError at once", () => {
