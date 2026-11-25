@@ -96,7 +96,7 @@ import { sameItems } from "../core/fields.js";
 import { type Box, boxOf } from "../core/geometry.js";
 import { dotsTiling, GRID_STEP, gridBand, gridPath } from "../core/grid.js";
 import { type Contact, Hands } from "../core/hands.js";
-import { begins, type HistoryEvent, sameHistory } from "../core/history.js";
+import { begins, type HistoryEvent, sameHistory, writtenBy } from "../core/history.js";
 import type { InkPoint, Stroke } from "../core/ink.js";
 import { type Manifest, NO_MANIFEST, type Settings, settingsOf } from "../core/manifest.js";
 import {
@@ -3222,19 +3222,12 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * Every stroke the sheet has known, erased or not, as its history wrote them: the strokes
-   * written, and the pieces the eraser cut.
+   * written, the pieces the eraser cut, the tutor's, and those a move or a copy landed.
    */
   #known(): Stroke[] {
     const tracing = this.#tracing;
     return this.#work.history.flatMap((event) => {
-      const strokes =
-        event.kind === "write"
-          ? [event.stroke]
-          : event.kind === "cut"
-            ? event.pieces.map(({ stroke }) => stroke)
-            : event.kind === "tutor"
-              ? event.strokes
-              : [];
+      const strokes = writtenBy(event);
       return tracing === undefined
         ? strokes
         : strokes.map((stroke) => this.#onSheet(stroke, tracing));

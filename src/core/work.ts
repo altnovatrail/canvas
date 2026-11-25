@@ -10,6 +10,7 @@ import {
   type Piece,
   sameEvent,
   TUTOR_POINTER,
+  writtenBy,
 } from "./history.js";
 import type { Stroke } from "./ink.js";
 import type { Point } from "./screen.js";
@@ -526,12 +527,7 @@ export class Work {
 export function nextIdOf(history: readonly HistoryEvent[]): number {
   let highest = 0;
   for (const event of history) {
-    if (event.kind === "write") highest = Math.max(highest, event.stroke.id);
-    else if (event.kind === "cut") {
-      for (const { stroke } of event.pieces) highest = Math.max(highest, stroke.id);
-    } else if (event.kind === "tutor" || event.kind === "move" || event.kind === "copy") {
-      for (const stroke of event.strokes) highest = Math.max(highest, stroke.id);
-    }
+    for (const stroke of writtenBy(event)) highest = Math.max(highest, stroke.id);
   }
   return highest + 1;
 }

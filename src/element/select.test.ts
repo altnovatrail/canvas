@@ -2,10 +2,21 @@ import { afterEach, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import type { HistoryEvent } from "../core/history.js";
 import type { Stroke } from "../core/ink.js";
+import type { Marks, SheetSubmission } from "../core/marks.js";
 import { ROW } from "./icons.js";
 import type { NovatrailCanvas } from "./index.js";
 import { labelsFor } from "./labels.js";
-import { buttonOf, hand, iconOf, level, placed, rest, settle } from "./pointer.fixture.js";
+import {
+  buttonOf,
+  hand,
+  iconOf,
+  level,
+  placed,
+  rest,
+  settle,
+  sheetWork,
+} from "./pointer.fixture.js";
+import { probe } from "./probe.js";
 import { PEN_MODE } from "./session.js";
 
 // Select in a browser: its button between the eraser and the hand, its popover of the lasso and
@@ -203,6 +214,41 @@ test("the rectangle takes what it spans, Delete or Backspace erases it, and anot
   element.tool = "pen";
   await settle();
   expect(bar?.hidden).toBe(true);
+});
+
+test("marks of a submission hold on to the strokes a move and a copy landed, and marks of one before them are still the sheet's", async () => {
+  const { element, canvas, view } = await written();
+  const before = (await sheetWork(element)).submission;
+  await lasso(canvas, view, [60, 160], [340, 260]);
+  const mouse = hand(canvas, view);
+  mouse.down(200, 200);
+  mouse.move(250, 250);
+  mouse.up(250, 250);
+  await settle();
+  const move = lastOf(element, "move");
+  await userEvent.click(buttonOf(element, "Copy"));
+  await settle();
+  const copy = lastOf(element, "copy");
+  const { submission } = await sheetWork(element);
+  const landed = [...move.strokes, ...copy.strokes].map(({ id }) => id);
+  expect(submission.groups.flatMap(({ ids }) => ids)).toEqual(expect.arrayContaining(landed));
+  const framed = (given: SheetSubmission): Marks => ({
+    submission: given,
+    marks: given.groups.map(({ label }) => ({
+      kind: "frame",
+      at: { group: label },
+      name: `Group ${label}`,
+    })),
+  });
+  element.marks = framed(submission);
+  await settle();
+  expect(probe(element).marks.map(({ ids }) => ids)).toEqual(
+    submission.groups.map(({ ids }) => ids),
+  );
+  // The strokes the move took off are still the sheet's, erased: a submission of them is its own.
+  const earlier = framed(before);
+  element.marks = earlier;
+  expect(element.marks).toBe(earlier);
 });
 
 test("its bar speaks the element's language", async () => {

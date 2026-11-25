@@ -16,6 +16,29 @@ import { sameStyle, styleOf } from "./style.js";
 export type { HistoryEvent, Piece };
 
 /**
+ * The strokes an event puts on the sheet with IDs of their own: the stroke written, the pieces a
+ * cut leaves, the tutor's strokes and the strokes a move or a copy lands; none for an erasing, a
+ * clearing or an undo. A kind of event this does not name is a type error, so that whatever counts
+ * the strokes a history has known cannot pass over a new one.
+ */
+export function writtenBy(event: HistoryEvent): readonly Stroke[] {
+  switch (event.kind) {
+    case "write":
+      return [event.stroke];
+    case "cut":
+      return event.pieces.map(({ stroke }) => stroke);
+    case "tutor":
+    case "move":
+    case "copy":
+      return event.strokes;
+    case "erase":
+    case "clear":
+    case "undo":
+      return [];
+  }
+}
+
+/**
  * The strokes a history leaves on the sheet, in the sheet's order: as they were written, and each
  * piece a cut left at the place of the stroke it was cut of, as the sheet puts it there. What the
  * sheet shows after it.
