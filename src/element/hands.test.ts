@@ -172,6 +172,7 @@ test.runIf(devtools)(
       russian.select,
       russian.hand,
       russian.undo,
+      russian.redo,
       russian.clear,
       russian.zoomIn,
       russian.zoomOut,
