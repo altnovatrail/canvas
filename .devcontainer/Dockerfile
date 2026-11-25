@@ -14,7 +14,7 @@
 
 # -- toolchain-core: releases the repository, checks it without a browser -----
 
-FROM mcr.microsoft.com/devcontainers/base:3.0.13-noble@sha256:48be4adec1c1ecbe030064700aef85382f5205786a8f82937fc44a7473717eae AS toolchain-core
+FROM mcr.microsoft.com/devcontainers/base:3.0.14-noble@sha256:88171bb581e19bbb45db77a16a3a5475e2f9ddce025b044c2e5a69a6a1e24fa1 AS toolchain-core
 
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 
@@ -117,16 +117,16 @@ SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 # in spec's repo-template, which a move to its new tag brings here, or here first, in the pull
 # request that raises the package. COPY takes a folder's contents, not the folder, so each
 # browser has a COPY of its own, all three from the one image.
-ARG PLAYWRIGHT_HEADLESS_SHELL_REVISION=1254
+ARG PLAYWRIGHT_HEADLESS_SHELL_REVISION=1255
 ARG PLAYWRIGHT_WEBKIT_REVISION=2388
 ARG PLAYWRIGHT_FIREFOX_REVISION=1572
-COPY --from=mcr.microsoft.com/playwright:v1.65.0-noble@sha256:9beb546099e11f52d62e505537914870e01a67e0e6b00ae41da4775324e73dbe \
+COPY --from=mcr.microsoft.com/playwright:v1.65.1-noble@sha256:1507cbfc550a63a6b7396791ca4f00df17beb56342d2447b3f106c306f525579 \
     /ms-playwright/chromium_headless_shell-${PLAYWRIGHT_HEADLESS_SHELL_REVISION} \
     /ms-playwright/chromium_headless_shell-${PLAYWRIGHT_HEADLESS_SHELL_REVISION}
-COPY --from=mcr.microsoft.com/playwright:v1.65.0-noble@sha256:9beb546099e11f52d62e505537914870e01a67e0e6b00ae41da4775324e73dbe \
+COPY --from=mcr.microsoft.com/playwright:v1.65.1-noble@sha256:1507cbfc550a63a6b7396791ca4f00df17beb56342d2447b3f106c306f525579 \
     /ms-playwright/webkit-${PLAYWRIGHT_WEBKIT_REVISION} \
     /ms-playwright/webkit-${PLAYWRIGHT_WEBKIT_REVISION}
-COPY --from=mcr.microsoft.com/playwright:v1.65.0-noble@sha256:9beb546099e11f52d62e505537914870e01a67e0e6b00ae41da4775324e73dbe \
+COPY --from=mcr.microsoft.com/playwright:v1.65.1-noble@sha256:1507cbfc550a63a6b7396791ca4f00df17beb56342d2447b3f106c306f525579 \
     /ms-playwright/firefox-${PLAYWRIGHT_FIREFOX_REVISION} \
     /ms-playwright/firefox-${PLAYWRIGHT_FIREFOX_REVISION}
 # Where Playwright looks for its browsers, outside any home: in CI the checks run with HOME=/tmp.
