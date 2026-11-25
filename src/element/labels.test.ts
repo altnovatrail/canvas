@@ -82,13 +82,14 @@ test("a label that names the place to cut at not once, or a place with no value,
 test("the buttons say the words of spec's table of the bar's buttons", () => {
   const words = (tag: string) => {
     const { labels } = labelsFor(tag);
-    const { pen, eraser, hand, undo, clear, zoomIn, zoomOut, next, demo } = labels;
+    const { pen, eraser, hand, undo, redo, clear, zoomIn, zoomOut, next, demo } = labels;
     const { gridDots, gridLines, gridBlank, gridSquares } = labels;
     return [
       pen,
       eraser,
       hand,
       undo,
+      redo,
       clear,
       zoomIn,
       zoomOut,
@@ -105,6 +106,7 @@ test("the buttons say the words of spec's table of the bar's buttons", () => {
     "Eraser",
     "Hand",
     "Undo",
+    "Redo",
     "Clear",
     "Zoom in",
     "Zoom out",
@@ -120,6 +122,7 @@ test("the buttons say the words of spec's table of the bar's buttons", () => {
     "Ластик",
     "Рука",
     "Отменить",
+    "Повторить",
     "Очистить",
     "Крупнее",
     "Мельче",

@@ -89,6 +89,12 @@ export const ICONS = {
       "M8 19q-.425 0-.712-.288T7 18t.288-.712T8 17h6.1q1.575 0 2.738-1T18 13.5T16.838 11T14.1 10H7.8l1.9 1.9q.275.275.275.7t-.275.7t-.7.275t-.7-.275L4.7 9.7q-.15-.15-.213-.325T4.426 9t.063-.375T4.7 8.3l3.6-3.6q.275-.275.7-.275t.7.275t.275.7t-.275.7L7.8 8h6.3q2.425 0 4.163 1.575T20 13.5t-1.737 3.925T14.1 19z",
     ],
   },
+  "redo-outline-rounded": {
+    viewBox: "0 0 24 24",
+    paths: [
+      "M16.2 10H9.9q-1.575 0-2.738 1T6 13.5T7.163 16T9.9 17H16q.425 0 .713.288T17 18t-.288.713T16 19H9.9q-2.425 0-4.163-1.575T4 13.5t1.738-3.925T9.9 8h6.3l-1.9-1.9q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l3.6 3.6q.15.15.213.325t.062.375t-.062.375t-.213.325l-3.6 3.6q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7z",
+    ],
+  },
   "delete-sweep-outline-rounded": {
     viewBox: "0 0 24 24",
     paths: [
@@ -221,6 +227,7 @@ export const ROW = {
   },
   selectRectangle: { outline: "select-outline-rounded", filled: "select-rounded", mirrored: false },
   undo: { outline: "undo-outline-rounded", filled: "undo-outline-rounded", mirrored: true },
+  redo: { outline: "redo-outline-rounded", filled: "redo-outline-rounded", mirrored: true },
   clear: {
     outline: "delete-sweep-outline-rounded",
     filled: "delete-sweep-outline-rounded",

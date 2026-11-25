@@ -39,6 +39,8 @@ export interface Labels {
   /** The tool that draws a lasso or a rectangle round strokes, to move, copy or delete them. */
   readonly select: string;
   readonly undo: string;
+  /** Does again what Undo took back. */
+  readonly redo: string;
   readonly clear: string;
   /** The tool that moves the sheet and writes nothing. */
   readonly hand: string;
@@ -156,6 +158,7 @@ const ENGLISH: Labels = Object.freeze({
   eraser: "Eraser",
   select: "Select",
   undo: "Undo",
+  redo: "Redo",
   clear: "Clear",
   hand: "Hand",
   zoomIn: "Zoom in",
@@ -250,6 +253,7 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
       eraser: "Ластик",
       select: "Выделение",
       undo: "Отменить",
+      redo: "Повторить",
       clear: "Очистить",
       hand: "Рука",
       zoomIn: "Крупнее",

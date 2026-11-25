@@ -761,41 +761,43 @@ The design — [architecture.md](architecture.md).
 - the drawing engine's palm rejection goes with input on tablets; the sheet's coordinates take the path of scrolling; the package's tests run in Chromium twice, with `/.vitest/` in `.gitignore`, and WebKit is needed by input on tablets and the check on devices; the plan for the MVP splits input on tablets off;
 - `src/core/`, `src/element/`, `vitest.config.ts`, `.gitignore`; [architecture.md](architecture.md) — the drawing engine and the layers, the sheet's logical coordinates, code and tools, and the sources.
 
-**R19. Undo and clearing are a stack of actions in the DOM-free part. Undo removes the last action — a stroke written, an erasing or a clearing —, and clearing is an action too, and undo brings its strokes back. There is no redo. The element opens the methods `undo()` and `clear()`, and its own buttons «Отменить» and «Очистить» call them.**
+**R19. Undo, redo and clearing are stacks of actions in the DOM-free part. Undo removes the last action — a stroke written, an erasing or a clearing —, and clearing is an action too, and undo brings its strokes back. Redo does again what undo took back, the last first, till another action. The element opens the methods `undo()`, `redo()` and `clear()`, and its own buttons «Отменить», «Повторить» and «Очистить» call them.**
 - **The work on the sheet** — `Work` in `src/core/work.ts`: the strokes that are visible, in the order in which they went down, and the stack of actions. An action is `write`, a stroke is written, `erase`, strokes are erased, or `clear`, the sheet is cleared, together with the strokes that were on it.
   - undo removes the last action: for `write` its stroke goes, for `erase` the erased strokes come back to their places on the sheet, and for `clear` its strokes come back — the same array. On a sheet with no actions it changes nothing and returns `false`;
   - clearing removes all the strokes in one action, and on an empty sheet it is not an action: `false`, and nothing goes onto the stack;
   - the methods take the page's time — `undo(time)`, `clear(time)`, `erase(ids, time)` —, and each action that changed something writes an event of the writing history. The order of the history is the order of the actions: a stroke finished after an undo or a clearing comes after it in the history, though the time of its points is earlier;
   - another writing history replaces both the strokes and the stack, and the stack is built by the same rules that built it during writing: `undo()` after it removes its last action;
-  - there is no redo of what was undone.
+  - redo does the last action undo took back again, as an action of its kind and an event of it: a stroke written again, the same strokes erased, cut, moved or copied again, the sheet cleared again, the tutor's act again. Its new strokes take new IDs, from the recorder's, for the history gives a stroke's ID once; their points stay, but the tutor's, at the redo's time. An action that names strokes a redo wrote anew names them by their new IDs. Any other action empties the stack of redo, and a history given to the sheet leaves on it what the undos at its end took back.
 - **The input recorder** does not hold a finished stroke. It first finishes it, then hands it to the handler it gets at creation — and the element puts the stroke into the work. The ID is still the recorder's, and undo does not give the ID back. The time of the strokes and of the actions is one clock of the sheet, the time from its first event.
 - **The stroke being written** is touched by neither undo nor clearing: it is the recorder's and goes onto the sheet when it ends — after that action.
-- **Element.** The methods `undo(): boolean` and `clear(): boolean` return `true` if the sheet changed, and the sheet is redrawn on the next frame; `historychange` comes after them only then. A finished stroke's path is built once, after an undone clearing too.
-  - The element's own buttons «Отменить» and «Очистить» call `undo()` and `clear()`, and the methods stay: the consumer may call them too.
-  - «Отменить», while there is nothing to undo, and «Очистить» on an empty sheet are disabled, and whether the stack is empty, `Work.undoable` tells.
+- **Element.** The methods `undo(): boolean`, `redo(): boolean` and `clear(): boolean` return `true` if the sheet changed, and the sheet is redrawn on the next frame; `historychange` comes after them only then. A finished stroke's path is built once, after an undone clearing too.
+  - The element's own buttons «Отменить», «Повторить» and «Очистить» call `undo()`, `redo()` and `clear()`, and the methods stay: the consumer may call them too.
+  - «Отменить», while there is nothing to undo, «Повторить», while there is nothing to redo, and «Очистить» on an empty sheet are disabled; `Work.undoable` and `Work.redoable` tell.
 - **The next task** — not by `clear()`: undo would bring back the strokes of the previous task. The element has no reset that cannot be undone: the consumer puts a new element in its place or gives it another writing history.
 
 — *Why:*
 - **Clearing can be undone.** A child who pressed «Очистить» by accident does not lose the work. On the board clearing cannot be undone, but the board is the author's sheet, while the sheet of `canvas` is also the learner's.
-- **No redo.** The board has none either, and the clearing that can be undone already guards the work against an accidental loss. Redo is one more stack and one more button.
+- **Redo.** A learner who undid one step too many gets it back without writing it again, as a notes app lets them.
+- **Redo as an action of its kind.** The contract of the history and every reader of it — the export, the samples, `api` — stay as they are: a redo replays as the action it does again. A kind of event of its own would change them all for a word the history does not need.
 - **Stack of actions.** Erasing goes onto the same stack, its action keeping the erased strokes with their places, and the writing history records the actions as events with their time.
 - **Methods beside the buttons.** The buttons and the consumer call the same operations, and that the sheet is redrawn after each of them is checked on the element itself.
 - **First finish, then hand over.** Otherwise in the handler the stroke would be both live and on the sheet, and the event of change would see it twice.
 
 — *Rejected:*
 - clearing without undo, as on the board — an accidental clearing would wipe the work for good;
-- redo of what was undone — for the reason above;
+- a kind of event "redo" in the history — for the reason above; a redo under the strokes' old IDs — the history gives a stroke's ID once;
+- a stack of redo kept past another action — a redo after new work would put back strokes the new work did not see;
 - an access for the tests instead of the methods — the tests would call the operations around the interface;
 - undo and clearing also removing the stroke being written — the ink would vanish from under a pen that is still on the sheet;
 - the input recorder holding the finished strokes and the stack itself — it records input, and the work on the sheet is another thing: erasing goes into it too;
 - a snapshot of the sheet for each action instead of a stack of actions — memory would grow by the whole sheet with each stroke, and erasing and the writing history fit actions, not snapshots.
 
-— *Revisit:* redo — if someone asks for it; a limit on the stack — if the stack becomes noticeable in memory: the cleared and erased strokes live in it for the sheet's whole life, and with them the paths the element built for them.
+— *Revisit:* a limit on the stack — if the stack becomes noticeable in memory: the cleared and erased strokes live in it for the sheet's whole life, and with them the paths the element built for them.
 
 — *Consequence:*
 - `src/core/work.ts` — the work on the sheet: the strokes, the stack with `undoable`, and the actions with the page's time;
 - `src/core/recorder.ts` — a finished stroke goes to the handler;
-- `src/element/` — `undo()` and `clear()`, the buttons that call them, and `historychange` after them;
+- `src/element/` — `undo()`, `redo()` and `clear()`, the buttons that call them, and `historychange` after them;
 - [architecture.md](architecture.md) — the work on the sheet and the element's methods.
 
 **R20. The element for a check: the consumer keeps writing off during the check by the style `pointer-events: none` on the element, and moves on to the next task with a new element or another writing history — the element has no reset that cannot be undone. `tutor`'s check board does not take the element, and the element has no picture or event of its own for it: the check takes the crop of `exportWork()`, a change of the work is told by `historychange`, and the PNG of the whole sheet is `exportPicture()`, for the stored work.**

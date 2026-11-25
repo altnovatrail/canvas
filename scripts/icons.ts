@@ -53,6 +53,7 @@ export const TABLE: Readonly<Record<string, Value>> = {
   selectLasso: { base: "lasso-select", filled: true, mirrored: false },
   selectRectangle: { base: "select", filled: true, mirrored: false },
   undo: { base: "undo", filled: false, mirrored: true },
+  redo: { base: "redo", filled: false, mirrored: true },
   clear: { base: "delete-sweep", filled: false, mirrored: false },
   hand: { base: "pan-tool", filled: true, mirrored: false },
   gridDots: { base: "background-dot-small", filled: false, mirrored: false },

@@ -1204,6 +1204,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     {
       choose: (tool) => this.#choose(tool),
       undo: () => this.undo(),
+      redo: () => this.redo(),
       clear: () => this.clear(),
       zoom: (larger) => this.#zoomBy(larger),
       turnGrid: () => this.#turnGrid(),
@@ -2196,6 +2197,21 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       this.#changed();
     }
     return undone;
+  }
+
+  /**
+   * Does again the last action an undo took back, if no other action came since, and says whether
+   * there was one, with a `historychange` if there was: the history gets an action of its kind, its
+   * new strokes under new IDs. The element's Redo button calls it, and so may the consumer. A
+   * stroke under way stays, as for an undo.
+   */
+  redo(): boolean {
+    const redone = this.#work.redo(performance.now(), (count) => this.#recorder.reserve(count));
+    if (redone) {
+      this.#endDrawing();
+      this.#changed();
+    }
+    return redone;
   }
 
   /**
@@ -4427,6 +4443,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       tools: this.#shownTemplate.tools,
       tool: this.#tool,
       undoable: this.#work.undoable,
+      redoable: this.#work.redoable,
       clearable: this.#work.strokes.length > 0,
       larger: PAGE_ZOOM.larger,
       smaller: PAGE_ZOOM.smaller,
