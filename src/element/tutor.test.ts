@@ -201,12 +201,18 @@ async function pixelOf(png: Blob, x: number, y: number): Promise<number[]> {
   return [...context.getImageData(Math.floor(x), Math.floor(y), 1, 1).data.slice(0, 3)];
 }
 
-/** The right edge of the element's bar of buttons, its panels', in CSS px from the element's left. */
+/**
+ * The right edge of the element's bar of buttons, its panels', in CSS px from the element's left. The
+ * tooltip is no panel: it shows when the pointer rests over a button, wherever an earlier test left
+ * it.
+ */
 function railRight(element: HTMLElement): number {
   const rail = element.shadowRoot?.querySelector<HTMLElement>(".rail");
   if (rail === null || rail === undefined) throw new Error("no bar of buttons");
   const right = Math.max(
-    ...Array.from(rail.children, (panel) => panel.getBoundingClientRect())
+    ...Array.from(rail.children)
+      .filter((panel) => !panel.classList.contains("tip"))
+      .map((panel) => panel.getBoundingClientRect())
       .filter((box) => box.width > 0)
       .map((box) => box.right),
   );
