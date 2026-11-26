@@ -2,7 +2,18 @@ import { describe, expect, test } from "vitest";
 import { Clock } from "./clock.js";
 import { type HistoryEvent, historyOf, replay } from "./history.js";
 import type { Stroke } from "./ink.js";
-import { holds, keptOffset, rectangleOf, SELECT_SHARE, takenBy } from "./select.js";
+import {
+  holds,
+  keptOffset,
+  rectangleOf,
+  SCALE_BOUNDS,
+  SCALE_LEAST,
+  SELECT_SHARE,
+  scaledStroke,
+  scaledWidth,
+  scaleRange,
+  takenBy,
+} from "./select.js";
 import { REACH } from "./sheet.js";
 import { stroke } from "./sheets.fixture.js";
 import { nextIdOf, resumeOf, Work } from "./work.js";
@@ -230,5 +241,102 @@ describe("Select's actions on the work", () => {
     expect(work.onTracing(5)).toBe(true);
     expect(work.history.at(-1)).toHaveProperty("on", "tracing");
     expect(Work.restore(work.history, new Clock(), true).strokes).toEqual(work.strokes);
+  });
+});
+
+describe("Select's scale", () => {
+  const liner = { pen: "liner", color: "#0a63d6", width: 2, opacity: 100 } as const;
+  const styled: HistoryEvent[] = [
+    ...written,
+    {
+      kind: "write",
+      t: 70,
+      stroke: { ...stroke(4, [200, 400, 60], [260, 440, 65]), style: liner },
+    },
+  ];
+  const at: [number, number] = [100, 100];
+  /** A stroke written before, scaled from `at` by `factor` and numbered `id`. */
+  function scaled(of: number, id: number, factor: number): Stroke {
+    const event = styled[of - 1] as HistoryEvent & { kind: "write" };
+    return scaledStroke(event.stroke, { factor, at }, id);
+  }
+  const scale: HistoryEvent = {
+    kind: "scale",
+    t: 80,
+    ids: [1, 4],
+    strokes: [scaled(1, 5, 1.5), scaled(4, 6, 1.5)],
+    factor: 1.5,
+    at,
+  };
+
+  test("a stroke scales from its point, its line with it to a tenth, and one of no style keeps none", () => {
+    const line = scaled(4, 9, 1.5);
+    expect(line.id).toBe(9);
+    expect(line.points.map(({ x, y, t, p }) => [x, y, t, p])).toEqual([
+      [250, 550, 60, 0.5],
+      [340, 610, 65, 0.5],
+    ]);
+    expect(line.style).toEqual({ ...liner, width: 3 });
+    expect(scaled(1, 9, 2).style).toBeUndefined();
+    expect(scaledWidth(1.2, 1.37)).toBe(1.6);
+    expect(scaledWidth(0.1, 0.25)).toBe(0.1);
+    expect(scaledWidth(28, 4)).toBe(50);
+  });
+
+  test("its factors are a quarter to four, no smaller than the least size, kept to the sheet", () => {
+    const box = { minX: 100, minY: 200, maxX: 300, maxY: 300 };
+    expect(scaleRange(box, [100, 200], REACH.width, REACH.height)).toEqual(SCALE_BOUNDS);
+    // A box of 40 on its longer side shrinks no further than to the least size.
+    const small = { minX: 100, minY: 100, maxX: 140, maxY: 120 };
+    expect(scaleRange(small, [100, 100], REACH.width, REACH.height)[0]).toBe(SCALE_LEAST / 40);
+    // One already smaller shrinks no more.
+    const dot = { minX: 100, minY: 100, maxX: 110, maxY: 105 };
+    expect(scaleRange(dot, [100, 100], REACH.width, REACH.height)[0]).toBe(1);
+    // From its bottom right, its top left reaches the sheet's corner at twice its size.
+    expect(scaleRange(box, [300, 300], REACH.width, REACH.height)[1]).toBe(1.5);
+    const edge = { minX: REACH.width - 100, minY: 0, maxX: REACH.width, maxY: 50 };
+    expect(scaleRange(edge, [REACH.width - 100, 0], REACH.width, REACH.height)[1]).toBe(1);
+  });
+
+  test("its event takes the strokes off and puts them back scaled, under new IDs, at the end", () => {
+    const history = historyOf([...styled, scale]);
+    expect(history.at(-1)).toEqual(scale);
+    expect(replay(history).map(({ id }) => id)).toEqual([2, 3, 5, 6]);
+    expect(nextIdOf(history)).toBe(7);
+    expect(Object.isFrozen((history.at(-1) as HistoryEvent & { kind: "scale" }).at)).toBe(true);
+  });
+
+  test("takes no event of another factor, point or width, nor a factor out of bounds", () => {
+    const bad = (event: Record<string, unknown>) => () =>
+      historyOf([...styled, { ...scale, ...event }]);
+    expect(bad({ factor: 1 })).toThrow(/factor: from 0.25 to 4, and not 1/);
+    expect(bad({ factor: 5 })).toThrow(/factor/);
+    expect(bad({ factor: "2" })).toThrow(/factor/);
+    expect(bad({ at: [100] })).toThrow(/at: a point/);
+    expect(bad({ at: undefined })).toThrow(/at: a point/);
+    expect(bad({ factor: 2 })).toThrow(/scaled from `at` by `factor`/);
+    expect(bad({ at: [0, 0] })).toThrow(/scaled from `at` by `factor`/);
+    const thin = { ...scaled(4, 6, 1.5), style: liner };
+    expect(bad({ strokes: [scaled(1, 5, 1.5), thin] })).toThrow(/its width scaled/);
+    expect(bad({ strokes: [scaled(1, 5, 1.5), shifted(2, 6, [0, 0])] })).toThrow(/as they were/);
+    expect(() => historyOf([...styled, { ...scale, on: "tracing" }])).toThrow(/on/);
+  });
+
+  test("is one action, which an undo takes back whole and a redo puts back, and its history replays", () => {
+    const clock = new Clock();
+    const work = Work.restore(styled, clock);
+    clock.resume(resumeOf(work.history));
+    const before = work.strokes;
+    expect(work.scale([4, 1], { factor: 1.5, at }, 5, 1000)).toBe(true);
+    expect(work.strokes.map(({ id }) => id)).toEqual([2, 3, 5, 6]);
+    expect(work.history.at(-1)).toEqual({ ...scale, t: expect.any(Number) });
+    expect(Work.restore(work.history, new Clock()).strokes).toEqual(work.strokes);
+    expect(work.undo(1100)).toBe(true);
+    expect(work.strokes).toBe(before);
+    expect(work.history.at(-1)).toMatchObject({ kind: "undo", removed: [5, 6], restored: [1, 4] });
+    expect(work.redo(1200, () => 7)).toBe(true);
+    expect(work.history.at(-1)).toMatchObject({ kind: "scale", factor: 1.5, at, ids: [1, 4] });
+    expect(Work.restore(work.history, new Clock()).strokes).toEqual(work.strokes);
+    expect(work.scale([99], { factor: 2, at }, 9, 1300)).toBe(false);
   });
 });

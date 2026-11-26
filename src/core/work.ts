@@ -14,14 +14,16 @@ import {
 } from "./history.js";
 import type { Stroke } from "./ink.js";
 import type { Point } from "./screen.js";
+import { type Scaling, scaledStroke } from "./select.js";
 import { reachOf, type StrokeStyle } from "./style.js";
 
 /**
  * An action on the sheet, the thing undo takes back: a stroke written; strokes erased,
  * each with the place it had on the sheet; strokes cut, with the sheet as it was before and the
  * pieces left; the sheet cleared, with the strokes that were on it; the tutor's act, with the
- * sheet as it was before, its strokes and the IDs it took off; or Select's move or copy, with the
- * sheet as it was before, the new strokes and the IDs they are of.
+ * sheet as it was before, its strokes and the IDs it took off; or Select's move, copy or scale, with
+ * the sheet as it was before, the new strokes and the IDs they are of — and of a scale, its factor
+ * and the point it kept.
  */
 type Action =
   | { readonly kind: "write"; readonly stroke: Stroke }
@@ -34,14 +36,15 @@ type Action =
     }
   | { readonly kind: "clear"; readonly strokes: readonly Stroke[] }
   | {
-      readonly kind: "tutor" | "move" | "copy";
+      readonly kind: "tutor" | "move" | "copy" | "scale";
       readonly before: readonly Stroke[];
       readonly strokes: readonly Stroke[];
       readonly ids: readonly number[];
+      readonly scaling?: Scaling;
     };
 
-/** What Select does with the strokes it took: moves them, or copies them. */
-export type SelectAction = "move" | "copy";
+/** What Select does with the strokes it took: moves them, copies them or scales them. */
+export type SelectAction = "move" | "copy" | "scale";
 
 /**
  * A stroke the tutor writes, before it lands: its ID, its style and its points in the units of its
@@ -307,7 +310,7 @@ export class Work {
           }));
         return this.#tutor(strokes.length, strokesAt, ids, at, on);
       }
-      return this.#select(action.kind, ids, () => strokes, at);
+      return this.#select(action.kind, ids, () => strokes, at, undefined, action.scaling);
     } finally {
       this.#redoing = false;
     }
@@ -344,7 +347,7 @@ export class Work {
    * longer on the sheet are left out; none on it, or strokes of both layers, is no action.
    */
   select(
-    kind: SelectAction,
+    kind: "move" | "copy",
     ids: Iterable<number>,
     offset: readonly [number, number],
     first: number,
@@ -360,6 +363,17 @@ export class Work {
         }),
       );
     return this.#select(kind, ids, moved, () => this.#clock.at(time));
+  }
+
+  /**
+   * Select's scale, in one action: the strokes of these IDs the sheet shows, all of one layer,
+   * scaled as `scaling` says in their layer's units, as new strokes after every other, their IDs
+   * from `first` on in the sheet's order, the strokes they are of taken off, as a move's are.
+   */
+  scale(ids: Iterable<number>, scaling: Scaling, first: number, time: number): boolean {
+    const scaled = (taken: readonly Stroke[]) =>
+      taken.map((stroke, k) => scaledStroke(stroke, scaling, first + k));
+    return this.#select("scale", ids, scaled, () => this.#clock.at(time), undefined, scaling);
   }
 
   /** Takes every stroke off the sheet, in one action. Clearing an empty sheet is no action. */
@@ -480,11 +494,12 @@ export class Work {
     strokesOf: (taken: readonly Stroke[]) => readonly Stroke[],
     at: () => number,
     on?: "tracing",
+    scaling?: Scaling,
   ): boolean {
     const wanted = new Set(ids);
     const before = this.#strokes;
     const taken = before.filter((stroke) => wanted.has(stroke.id));
-    if (taken.length === 0) return false;
+    if (taken.length === 0 || (kind === "scale") !== (scaling !== undefined)) return false;
     const traced = this.#tracing.has((taken[0] as Stroke).id);
     if (taken.some((stroke) => this.#tracing.has(stroke.id) !== traced)) return false;
     // Replayed, the event says its layer, which must be the strokes'.
@@ -493,16 +508,30 @@ export class Work {
     if (written.length !== taken.length) return false;
     const t = at();
     const strokes =
-      kind === "move" ? before.filter((stroke) => !wanted.has(stroke.id)) : [...before];
+      kind === "copy" ? [...before] : before.filter((stroke) => !wanted.has(stroke.id));
     strokes.push(...written);
     if (traced) for (const stroke of written) this.#tracing.add(stroke.id);
     this.#strokes = strokes;
     const taking = taken.map((stroke) => stroke.id);
-    this.#done.push({ kind, before, strokes: written, ids: taking });
+    const layer = traced ? ({ on: "tracing" } as const) : {};
+    // A scale alone has its scaling, as the check above holds.
+    this.#done.push(
+      scaling === undefined
+        ? { kind, before, strokes: written, ids: taking }
+        : { kind, before, strokes: written, ids: taking, scaling },
+    );
     this.#record(
-      traced
-        ? { kind, t, ids: taking, strokes: written, on: "tracing" }
-        : { kind, t, ids: taking, strokes: written },
+      scaling === undefined
+        ? { kind: kind as "move" | "copy", t, ids: taking, strokes: written, ...layer }
+        : {
+            kind: "scale",
+            t,
+            ids: taking,
+            strokes: written,
+            factor: scaling.factor,
+            at: scaling.at,
+            ...layer,
+          },
     );
     return true;
   }
@@ -529,8 +558,8 @@ export class Work {
       this.#strokes = action.before;
       const removed = action.pieces.map(({ stroke }) => stroke.id);
       this.#record({ kind: "undo", t, removed, restored: [...action.ids] });
-    } else if (action.kind === "tutor" || action.kind === "move") {
-      // So is it as the tutor's act or the move left it, whole.
+    } else if (action.kind === "tutor" || action.kind === "move" || action.kind === "scale") {
+      // So is it as the tutor's act, the move or the scale left it, whole.
       this.#strokes = action.before;
       const removed = action.strokes.map((stroke) => stroke.id);
       this.#record({ kind: "undo", t, removed, restored: [...action.ids] });
@@ -569,6 +598,9 @@ export class Work {
       done = this.#tutor(event.strokes.length, () => event.strokes, event.ids, at, event.on);
     } else if (event.kind === "move" || event.kind === "copy") {
       done = this.#select(event.kind, event.ids, () => event.strokes, at, event.on);
+    } else if (event.kind === "scale") {
+      const scaling = { factor: event.factor, at: event.at };
+      done = this.#select("scale", event.ids, () => event.strokes, at, event.on, scaling);
     } else done = this.#undo(at);
     const recorded = this.#events.at(-1);
     if (done && recorded !== undefined && sameEvent(recorded, event)) return;
@@ -642,6 +674,9 @@ export function resumeOf(history: readonly HistoryEvent[]): number {
   return last === undefined ? 0 : last.t + GROUP_RULE.pause + 1;
 }
 
+/** What Select did with strokes, for a message. */
+const SELECTED_AS = { move: "moved", copy: "copied", scale: "scaled" } as const;
+
 /** What an event of a history says it does, for a message. */
 function what(event: HistoryEvent): string {
   switch (event.kind) {
@@ -657,7 +692,8 @@ function what(event: HistoryEvent): string {
       return `the tutor's act that writes ${shown(event.strokes.map(({ id }) => id))} and takes off ${shown(event.ids)}`;
     case "move":
     case "copy":
-      return `strokes ${shown(event.ids)} ${event.kind === "move" ? "moved" : "copied"} as ${shown(event.strokes.map(({ id }) => id))}`;
+    case "scale":
+      return `strokes ${shown(event.ids)} ${SELECTED_AS[event.kind]} as ${shown(event.strokes.map(({ id }) => id))}`;
     case "undo":
       return `an undo that takes off ${shown(event.removed)} and brings back ${shown(event.restored)}`;
   }
@@ -670,6 +706,7 @@ function instead(recorded: HistoryEvent | undefined): string {
     case "cut":
     case "tutor":
     case "move":
+    case "scale":
       return `where the sheet takes off ${shown(recorded.ids)}, in its order`;
     case "copy":
       return `where the sheet copies ${shown(recorded.ids)}, in its order`;
@@ -691,6 +728,7 @@ function unable(event: HistoryEvent): string {
       return "but none of them is on the sheet";
     case "move":
     case "copy":
+    case "scale":
       return "but none of them is on the sheet, or they are of both layers, or not of its layer";
     case "clear":
       return "but the sheet is empty";

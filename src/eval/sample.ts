@@ -295,15 +295,15 @@ function strokeField(stroke: Stroke): MessageInitShape<typeof StrokeSchema> {
  * The history of writing as a sample keeps it: each event at its time in whole
  * milliseconds, a stroke's points to a tenth of a unit and in whole milliseconds, without the
  * pressure, and its style. Rounding keeps the order of times, so a stroke still lands no sooner
- * than its last point, and a piece's times stay within its stroke's. A move of Select is an erasing
- * of the strokes it moved and a writing of each new stroke, and a copy the writings alone, at its
+ * than its last point, and a piece's times stay within its stroke's. A move or a scale of Select is an
+ * erasing of the strokes it took and a writing of each new stroke, and a copy the writings alone, at its
  * time: the protocol has no event of Select, and they replay to the same sheet. Its strokes are
  * those the history shows at the end, as the file holds them.
  */
 function historyInk(history: readonly HistoryEvent[], shown: readonly Stroke[]): Ink {
   const events = history.flatMap((event): MessageInitShape<typeof HistoryEventSchema>[] => {
     const tMs = toMs(event.t);
-    if (event.kind === "move" || event.kind === "copy") {
+    if (event.kind === "move" || event.kind === "copy" || event.kind === "scale") {
       const writes = event.strokes.map((stroke) => ({
         tMs,
         event: { case: "write" as const, value: strokeField(stroke) },
@@ -329,7 +329,7 @@ function historyInk(history: readonly HistoryEvent[], shown: readonly Stroke[]):
 
 /** An event of the history as a sample keeps it, but for Select's, which it spells otherwise. */
 function eventField(
-  event: Exclude<HistoryEvent, { kind: "move" | "copy" }>,
+  event: Exclude<HistoryEvent, { kind: "move" | "copy" | "scale" }>,
   tMs: number,
 ): MessageInitShape<typeof HistoryEventSchema> {
   switch (event.kind) {
