@@ -135,7 +135,7 @@ test("the sheet is a stack of layers in the order spec's glossary gives them, an
   const rail = root.querySelector(".rail");
   const buttons = [...root.querySelectorAll(".tools button")];
   if (!bar || !row || !rail) throw new Error("the element has no bar and row in a rail");
-  expect(buttons).toHaveLength(12);
+  expect(buttons).toHaveLength(13);
   expect(rail.getBoundingClientRect().width).toBe(0);
   const boxes = [canvas, stage, sheetBox, viewport, rail, bar, row, ...buttons];
   for (const box of boxes) expect(getComputedStyle(box).pointerEvents).toBe("auto");

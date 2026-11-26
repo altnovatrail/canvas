@@ -96,7 +96,7 @@ import { sameItems } from "../core/fields.js";
 import { type Box, boxOf } from "../core/geometry.js";
 import { dotsTiling, GRID_STEP, gridBand, gridPath } from "../core/grid.js";
 import { type Contact, Hands } from "../core/hands.js";
-import { begins, type HistoryEvent, sameHistory } from "../core/history.js";
+import { begins, type HistoryEvent, sameHistory, writtenBy } from "../core/history.js";
 import type { InkPoint, Stroke } from "../core/ink.js";
 import { type Manifest, NO_MANIFEST, type Settings, settingsOf } from "../core/manifest.js";
 import {
@@ -1204,6 +1204,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     {
       choose: (tool) => this.#choose(tool),
       undo: () => this.undo(),
+      redo: () => this.redo(),
       clear: () => this.clear(),
       zoom: (larger) => this.#zoomBy(larger),
       turnGrid: () => this.#turnGrid(),
@@ -1797,6 +1798,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
         `paper.statement: the task's crop, a Blob of a JPEG or a PNG, not ${typeof statement}`,
       );
     }
+    const source: unknown = paper.source ?? "photo";
+    if (source !== "photo" && source !== "module") {
+      throw new TypeError(`paper.source: "photo" or "module", not ${String(source)}`);
+    }
+    this.#tracingPaper.source = source;
     // A consumer that renders the same crop anew in a new object keeps the paper where it lies.
     if (this.#paper?.statement === statement) {
       this.#paper = paper;
@@ -2196,6 +2202,21 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       this.#changed();
     }
     return undone;
+  }
+
+  /**
+   * Does again the last action an undo took back, if no other action came since, and says whether
+   * there was one, with a `historychange` if there was: the history gets an action of its kind, its
+   * new strokes under new IDs. The element's Redo button calls it, and so may the consumer. A
+   * stroke under way stays, as for an undo.
+   */
+  redo(): boolean {
+    const redone = this.#work.redo(performance.now(), (count) => this.#recorder.reserve(count));
+    if (redone) {
+      this.#endDrawing();
+      this.#changed();
+    }
+    return redone;
   }
 
   /**
@@ -3222,19 +3243,12 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * Every stroke the sheet has known, erased or not, as its history wrote them: the strokes
-   * written, and the pieces the eraser cut.
+   * written, the pieces the eraser cut, the tutor's, and those a move or a copy landed.
    */
   #known(): Stroke[] {
     const tracing = this.#tracing;
     return this.#work.history.flatMap((event) => {
-      const strokes =
-        event.kind === "write"
-          ? [event.stroke]
-          : event.kind === "cut"
-            ? event.pieces.map(({ stroke }) => stroke)
-            : event.kind === "tutor"
-              ? event.strokes
-              : [];
+      const strokes = writtenBy(event);
       return tracing === undefined
         ? strokes
         : strokes.map((stroke) => this.#onSheet(stroke, tracing));
@@ -4434,6 +4448,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       tools: this.#shownTemplate.tools,
       tool: this.#tool,
       undoable: this.#work.undoable,
+      redoable: this.#work.redoable,
       clearable: this.#work.strokes.length > 0,
       larger: PAGE_ZOOM.larger,
       smaller: PAGE_ZOOM.smaller,

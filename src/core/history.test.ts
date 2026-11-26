@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { begins, type HistoryEvent, historyOf, replay, sameHistory } from "./history.js";
+import { begins, type HistoryEvent, historyOf, replay, sameHistory, writtenBy } from "./history.js";
 import type { Stroke } from "./ink.js";
 
 function stroke(id: number, ...times: number[]): Stroke {
@@ -19,6 +19,27 @@ test("replay leaves on the sheet what the events put there and did not take off,
   expect(replay(history.slice(0, 4)).map((each) => each.id)).toEqual([2]);
   expect(replay([...history, { kind: "clear", t: 90, ids: [1, 2] }])).toEqual([]);
   expect(replay([])).toEqual([]);
+});
+
+test("writtenBy gives the strokes each event puts on the sheet with IDs of their own, and none for the rest", () => {
+  const history: HistoryEvent[] = [
+    { kind: "write", t: 10, stroke: stroke(1, 0, 10) },
+    { kind: "cut", t: 20, ids: [1], pieces: [{ of: 1, stroke: stroke(2, 0, 5) }] },
+    { kind: "move", t: 30, ids: [2], strokes: [stroke(3, 0, 5)] },
+    { kind: "copy", t: 40, ids: [3], strokes: [stroke(4, 0, 5)] },
+    { kind: "erase", t: 50, ids: [4] },
+    { kind: "clear", t: 60, ids: [3] },
+    { kind: "undo", t: 70, removed: [], restored: [3] },
+  ];
+  expect(history.map((event) => writtenBy(event).map(({ id }) => id))).toEqual([
+    [1],
+    [2],
+    [3],
+    [4],
+    [],
+    [],
+    [],
+  ]);
 });
 
 const sheet: HistoryEvent[] = [

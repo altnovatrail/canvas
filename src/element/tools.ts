@@ -47,12 +47,13 @@ export type Value = keyof typeof ROW;
 
 /**
  * What the bar asks of the element: a tool the learner chose — perhaps the one in use — an undo, a
- * clearing, a step of the zoom, larger or smaller, and on a worked example the next part of its
+ * redo, a clearing, a step of the zoom, larger or smaller, and on a worked example the next part of its
  * demo, or the whole demo hidden or shown.
  */
 export interface ToolActions {
   readonly choose: (tool: Tool) => void;
   readonly undo: () => void;
+  readonly redo: () => void;
   readonly clear: () => void;
   readonly zoom: (larger: boolean) => void;
   /** A task from paper's grid turned to the next. */
@@ -89,6 +90,7 @@ export interface ToolState {
   readonly tools: readonly Tool[];
   readonly tool: Tool;
   readonly undoable: boolean;
+  readonly redoable: boolean;
   readonly clearable: boolean;
   readonly larger: boolean;
   readonly smaller: boolean;
@@ -143,6 +145,7 @@ export class Tools {
   readonly #select = radioButton("selectLasso");
   readonly #hand = radioButton("hand");
   readonly #undo = plainButton("undo");
+  readonly #redo = plainButton("redo");
   readonly #clear = plainButton("clear");
   /** The page's zoom of the sheet, after a line. */
   readonly #beforeZoom = separator();
@@ -166,6 +169,7 @@ export class Tools {
     [this.#select, "select"],
     [this.#hand, "hand"],
     [this.#undo, "undo"],
+    [this.#redo, "redo"],
     [this.#clear, "clear"],
     [this.#zoomIn, "zoomIn"],
     [this.#zoomOut, "zoomOut"],
@@ -248,6 +252,7 @@ export class Tools {
       this.#afterTask,
       this.#group,
       this.#undo,
+      this.#redo,
       this.#clear,
       this.#beforeZoom,
       this.#zoomIn,
@@ -309,6 +314,7 @@ export class Tools {
       });
     };
     doing(this.#undo, actions.undo);
+    doing(this.#redo, actions.redo);
     doing(this.#clear, actions.clear);
     doing(this.#zoomIn, () => actions.zoom(true));
     doing(this.#zoomOut, () => actions.zoom(false));
@@ -366,6 +372,7 @@ export class Tools {
       tools,
       tool,
       undoable,
+      redoable,
       clearable,
       larger,
       smaller,
@@ -395,6 +402,7 @@ export class Tools {
       [this.#select, writes],
       [this.#hand, writes],
       [this.#undo, writes],
+      [this.#redo, writes],
       [this.#clear, writes],
       [this.#beforeZoom, writes],
       [this.#zoomIn, writes],
@@ -407,6 +415,7 @@ export class Tools {
     write(this.#select, "aria-checked", String(tool === "select"));
     write(this.#hand, "aria-checked", String(tool === "hand"));
     write(this.#undo, "aria-disabled", undoable ? null : "true");
+    write(this.#redo, "aria-disabled", redoable ? null : "true");
     write(this.#clear, "aria-disabled", clearable ? null : "true");
     write(this.#zoomIn, "aria-disabled", larger ? null : "true");
     write(this.#zoomOut, "aria-disabled", smaller ? null : "true");

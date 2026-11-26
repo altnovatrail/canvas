@@ -94,6 +94,48 @@ test("the history is frozen, the same array between actions, and what historycha
   ]);
 });
 
+test("Redo does again what Undo took back, by the method and by its button, one event of the action's kind, till another action", async () => {
+  const { element, canvas, view } = await sheet();
+  const heard = told(element);
+  const redo = () => {
+    const all = element.shadowRoot?.querySelectorAll<HTMLButtonElement>(".tools button") ?? [];
+    const button = [...all].find((each) => each.textContent === "Redo");
+    if (button === undefined) throw new Error("no Redo");
+    return button;
+  };
+  expect(element.redo()).toBe(false);
+  level(canvas, view, 100, 100, 300);
+  level(canvas, view, 200, 100, 300);
+  const [first, second] = element.history as [HistoryEvent, HistoryEvent];
+  element.undo();
+  element.undo();
+  await settle();
+  expect(redo().getAttribute("aria-disabled")).toBeNull();
+  redo().click();
+  expect(element.redo()).toBe(true);
+  await settle();
+  expect(redo().getAttribute("aria-disabled")).toBe("true");
+  // Each written again, a new stroke above every ID before, its points as they were.
+  const again = element.history.slice(-2);
+  expect(again.map((event) => event.kind)).toEqual(["write", "write"]);
+  const strokes = again.map((event) => (event.kind === "write" ? event.stroke : undefined));
+  expect(strokes.map((stroke) => stroke?.id)).toEqual([3, 4]);
+  expect(strokes.map((stroke) => stroke?.points)).toEqual(
+    [first, second].map((event) => (event.kind === "write" ? event.stroke.points : undefined)),
+  );
+  expect(heard.map(({ from }) => from)).toEqual([0, 1, 2, 3, 4, 5]);
+  // The stroke written next takes the ID after them; and another action leaves nothing to redo.
+  element.undo();
+  level(canvas, view, 300, 100, 300);
+  const last = element.history.at(-1);
+  expect(last?.kind === "write" ? last.stroke.id : undefined).toBe(5);
+  expect(element.redo()).toBe(false);
+  // A history given back with an undo at its end leaves that action to redo.
+  element.undo();
+  element.history = stored(element.history);
+  expect(element.redo()).toBe(true);
+});
+
 test("no event comes for a cancelled stroke, a press of the eraser that took nothing, an undo or a clearing that changed nothing, or a history given", async () => {
   const { element, canvas, view } = await sheet();
   const heard = told(element);

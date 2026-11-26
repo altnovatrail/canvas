@@ -10,6 +10,7 @@ import {
   type Piece,
   sameEvent,
   TUTOR_POINTER,
+  writtenBy,
 } from "./history.js";
 import type { Stroke } from "./ink.js";
 import type { Point } from "./screen.js";
@@ -74,11 +75,14 @@ interface Entry extends Box {
 
 /**
  * The work on the sheet: the strokes in sight, the stack of the actions that undo takes back, the
- * last first, and the history of writing, every action as an event at the sheet's time.
- * Clearing and erasing are actions too, so undo brings their strokes back. Nothing is
- * redone. The times its methods take are the page's, and the sheet's clock turns one into the
- * sheet's time only when the action lands: an undo that has nothing to take back is no event. A
- * history given to the sheet is replayed by the same rules, each action at its own time.
+ * last first, the stack of those it took back that redo does again, and the history of writing,
+ * every action as an event at the sheet's time. Clearing and erasing are actions too, so undo
+ * brings their strokes back. A redo is the action again, an event of its kind, its new strokes
+ * under new IDs, for a stroke's ID is never given twice; any other action leaves nothing to redo.
+ * The times its methods take are the page's, and the sheet's clock turns one into the sheet's time
+ * only when the action lands: an undo or a redo that has nothing to do is no event. A history given
+ * to the sheet is replayed by the same rules, each action at its own time, so the undos at its end
+ * leave their actions to redo.
  */
 export class Work {
   readonly #clock: Clock;
@@ -89,6 +93,15 @@ export class Work {
    */
   #replaying = false;
   readonly #done: Action[] = [];
+  /** The actions undo took back since the last other action, the last first: those redo does. */
+  readonly #undone: Action[] = [];
+  /**
+   * The ID a stroke took when an action was redone, by the ID it had: an action still to redo
+   * names the strokes by the IDs they had when it was done.
+   */
+  readonly #renamed = new Map<number, number>();
+  /** Whether a redo is under way, which leaves the stack of redo as it is. */
+  #redoing = false;
   /** The history's events, and the copy of them last handed out, until the next action. */
   readonly #events: HistoryEvent[] = [];
   #history: readonly HistoryEvent[] | undefined;
@@ -145,6 +158,14 @@ export class Work {
    */
   get undoable(): boolean {
     return this.#done.length > 0;
+  }
+
+  /**
+   * Whether redo has an action to do again: undo took one back, and no other action came since.
+   * The element's Redo button stands unavailable while it has none.
+   */
+  get redoable(): boolean {
+    return this.#undone.length > 0;
   }
 
   /**
@@ -224,6 +245,72 @@ export class Work {
    */
   undo(time: number): boolean {
     return this.#undo(() => this.#clock.at(time));
+  }
+
+  /**
+   * Does again the last action undo took back, as an action of its kind: a stroke written again, the
+   * same strokes erased, cut, moved or copied again, the sheet cleared again, the tutor's act again.
+   * The strokes it puts on the sheet are new, their IDs from `reserve`, which gives the first of as
+   * many new IDs as it is asked for, ascending above every ID before; their points as they were, but
+   * the tutor's, at the redo's time. Nothing to redo changes nothing.
+   */
+  redo(time: number, reserve: (count: number) => number): boolean {
+    const action = this.#undone.pop();
+    if (action === undefined) return false;
+    const now = (id: number): number => {
+      let at = id;
+      for (let next = this.#renamed.get(at); next !== undefined; next = this.#renamed.get(at)) {
+        at = next;
+      }
+      return at;
+    };
+    const fresh = (strokes: readonly Stroke[]): Stroke[] => {
+      const first = strokes.length === 0 ? 0 : reserve(strokes.length);
+      return strokes.map((stroke, k) => {
+        this.#renamed.set(stroke.id, first + k);
+        return { ...stroke, id: first + k };
+      });
+    };
+    const layerOf = (strokes: readonly Stroke[]): "tracing" | undefined =>
+      strokes.some((stroke) => this.#tracing.has(stroke.id)) ? "tracing" : undefined;
+    const at = () => this.#clock.at(time);
+    this.#redoing = true;
+    try {
+      if (action.kind === "write") {
+        const on = layerOf([action.stroke]);
+        const [stroke] = fresh([action.stroke]);
+        this.#write(stroke as Stroke, at(), on);
+        return true;
+      }
+      if (action.kind === "erase")
+        return this.#erase(
+          action.erased.map(({ stroke }) => now(stroke.id)),
+          at,
+        );
+      if (action.kind === "clear") return this.#clear(at);
+      if (action.kind === "cut") {
+        const pieces = fresh(action.pieces.map(({ stroke }) => stroke));
+        const cuts = action.ids.map((id) => ({
+          id: now(id),
+          pieces: pieces.filter((_, k) => action.pieces[k]?.of === id),
+        }));
+        return this.#cut(cuts, at);
+      }
+      const ids = action.ids.map(now);
+      const on = layerOf(action.strokes);
+      const strokes = fresh(action.strokes);
+      if (action.kind === "tutor") {
+        const strokesAt = (t: number) =>
+          strokes.map((stroke) => ({
+            ...stroke,
+            points: stroke.points.map((point) => ({ ...point, t })),
+          }));
+        return this.#tutor(strokes.length, strokesAt, ids, at, on);
+      }
+      return this.#select(action.kind, ids, () => strokes, at);
+    } finally {
+      this.#redoing = false;
+    }
   }
 
   /**
@@ -423,6 +510,7 @@ export class Work {
   #undo(at: () => number): boolean {
     const action = this.#done.pop();
     if (action === undefined) return false;
+    this.#undone.push(action);
     const t = at();
     if (action.kind === "write") {
       // Each undo gives back the sheet as it was after the action before, so a written stroke is
@@ -488,6 +576,11 @@ export class Work {
   }
 
   #record(event: HistoryEvent): void {
+    // Any other action is new work: what undo took back before it is no more to redo.
+    if (event.kind !== "undo" && !this.#redoing) {
+      this.#undone.length = 0;
+      this.#renamed.clear();
+    }
     this.#events.push(frozen(event));
     this.#history = undefined;
   }
@@ -526,12 +619,7 @@ export class Work {
 export function nextIdOf(history: readonly HistoryEvent[]): number {
   let highest = 0;
   for (const event of history) {
-    if (event.kind === "write") highest = Math.max(highest, event.stroke.id);
-    else if (event.kind === "cut") {
-      for (const { stroke } of event.pieces) highest = Math.max(highest, stroke.id);
-    } else if (event.kind === "tutor" || event.kind === "move" || event.kind === "copy") {
-      for (const stroke of event.strokes) highest = Math.max(highest, stroke.id);
-    }
+    for (const stroke of writtenBy(event)) highest = Math.max(highest, stroke.id);
   }
   return highest + 1;
 }

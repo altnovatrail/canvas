@@ -507,6 +507,33 @@ test("draws a verdict at each answer's box, a tick or a cross on its halo, by it
   }).toThrow(/a box alone/);
 });
 
+test("takes the marks of a work whose strokes on the tracing paper were copied and moved", async () => {
+  const { element, root, canvas, view } = await paper();
+  write(canvas, view, [220, 80], [340, 80]);
+  element.tool = "select";
+  await settle();
+  write(canvas, view, [200, 68], [360, 68], [360, 100], [200, 100], [200, 70]);
+  await settle();
+  await userEvent.click(buttonOf(element, "Copy"));
+  await settle();
+  const copy = element.history.at(-1);
+  if (copy?.kind !== "copy") throw new Error(`the history ends in ${copy?.kind}, not a copy`);
+  expect(copy.on).toBe("tracing");
+  // The copies stay taken: a drag of them moves them on the tracing paper.
+  write(canvas, view, [280, 98], [300, 104]);
+  await settle();
+  expect(element.history.at(-1)?.kind).toBe("move");
+  const work = (await element.exportWork()) as ExportedPaper | null;
+  if (work === null || !("statement" in work)) throw new Error("no work of a task from paper");
+  element.marks = {
+    submission: work.submission,
+    marks: [{ kind: "verdict", at: { box: [0, 0, 1000, 1000] }, correct: true, name: "Task 1" }],
+  };
+  await settle();
+  expect(element.marks?.submission).toBe(work.submission);
+  expect(root.querySelectorAll(".marks g[role=img]")).toHaveLength(1);
+});
+
 test("draws the wavy line of «Show where» under its place, over its halo, by its name, with no violation", async () => {
   const { element, root, canvas, view } = await paper();
   write(canvas, view, [300, 100], [320, 140]);

@@ -40,7 +40,8 @@ export interface Value {
  * the demo is shown or hidden, and the grid of a task from paper's sheet four, one for each grid,
  * which its button shows. The task from paper's button atop the tools fills its icon while
  * the tracing paper is shown. The tracing paper's bar and sign have theirs: Smaller, Larger,
- * Fit, Recognise and Original, which the photo's sign shows too. Select has two, its button showing
+ * Fit, Recognise and Original, which the photo's sign shows too, and the book the sign of a task
+ * of a module shows. Select has two, its button showing
  * the shape it draws, as do the shapes of its popover, and its bar has Copy and Delete.
  */
 export const TABLE: Readonly<Record<string, Value>> = {
@@ -53,6 +54,7 @@ export const TABLE: Readonly<Record<string, Value>> = {
   selectLasso: { base: "lasso-select", filled: true, mirrored: false },
   selectRectangle: { base: "select", filled: true, mirrored: false },
   undo: { base: "undo", filled: false, mirrored: true },
+  redo: { base: "redo", filled: false, mirrored: true },
   clear: { base: "delete-sweep", filled: false, mirrored: false },
   hand: { base: "pan-tool", filled: true, mirrored: false },
   gridDots: { base: "background-dot-small", filled: false, mirrored: false },
@@ -66,6 +68,7 @@ export const TABLE: Readonly<Record<string, Value>> = {
   fit: { base: "fit-screen", filled: false, mirrored: false },
   recognise: { base: "auto-awesome", filled: false, mirrored: false },
   original: { base: "image", filled: false, mirrored: false },
+  module: { base: "menu-book", filled: false, mirrored: false },
   copy: { base: "content-copy", filled: false, mirrored: false },
   remove: { base: "delete", filled: false, mirrored: false },
 };
