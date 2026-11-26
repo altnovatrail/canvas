@@ -310,7 +310,7 @@ test("a history with an undo keeps it, the strokes it took off and put back", ()
   expect(strokesOf(sample).map(({ id }) => id)).toEqual(replay(history).map(({ id }) => id));
 });
 
-test("Select's move is spelt as an erasing and the writes of the strokes moved, its copy as the writes", () => {
+test("Select's move and scale are spelt as an erasing and the writes of the strokes they took, its copy as the writes", () => {
   const clock = new Clock();
   const work = Work.restore(undone().work.history, clock);
   clock.resume(resumeOf(work.history));
@@ -319,15 +319,26 @@ test("Select's move is spelt as an erasing and the writes of the strokes moved, 
   expect(work.select("move", [first], [40, 0], next, 1000)).toBe(true);
   expect(work.select("copy", [second], [0, 80], next + 1, 1200)).toBe(true);
   expect(work.undo(1400)).toBe(true);
+  const [x, y] = [work.strokes[0]?.points[0]?.x ?? 0, work.strokes[0]?.points[0]?.y ?? 0];
+  expect(work.scale([next], { factor: 0.5, at: [x, y] }, next + 2, 1600)).toBe(true);
   const { history } = work;
   const input = sheetSample(Purpose.MEASUREMENT, Writer.ADULT, "1");
   const sample = sampleOf({ ...input, surface: { sheet: { history, digit: 24 } }, markup: {} });
   if (sample.ink.case !== "history") throw new Error("no history");
-  const tail = sample.ink.value.events.slice(-4).map(({ event }) => event);
-  expect(tail.map(({ case: kind }) => kind)).toEqual(["erase", "write", "write", "undo"]);
+  const tail = sample.ink.value.events.slice(-6).map(({ event }) => event);
+  expect(tail.map(({ case: kind }) => kind)).toEqual([
+    "erase",
+    "write",
+    "write",
+    "undo",
+    "erase",
+    "write",
+  ]);
   expect(tail[0]?.value).toMatchObject({ ids: [first] });
   expect(tail[1]?.value).toMatchObject({ id: next });
   expect(tail[2]?.value).toMatchObject({ id: next + 1 });
+  expect(tail[4]?.value).toMatchObject({ ids: [next] });
+  expect(tail[5]?.value).toMatchObject({ id: next + 2 });
   expect(strokesOf(sample).map(({ id }) => id)).toEqual(work.strokes.map(({ id }) => id));
 });
 

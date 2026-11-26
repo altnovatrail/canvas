@@ -562,7 +562,7 @@ describe("a history given to the sheet", () => {
       [[null], /^history\[0\]: an object/],
       [
         [{ kind: "draw", t: 0 }],
-        /^history\[0\]\.kind: "write", "erase", "cut", "clear", "move", "copy" or "undo"/,
+        /^history\[0\]\.kind: "write", "erase", "cut", "clear", "move", "copy", "scale" or "undo"/,
       ],
       [[write(stroke([point]), Number.NaN)], /^history\[0\]\.t: .*not NaN$/],
       [[write(stroke([point]), -1)], /^history\[0\]\.t: .*from 0, not -1$/],

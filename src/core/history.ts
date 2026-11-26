@@ -2,6 +2,7 @@ import type { HistoryEvent, Piece } from "@altnovatrail/spec/canvas";
 import { record, shown } from "./fields.js";
 import { segmentDistance } from "./geometry.js";
 import type { InkPoint, Stroke } from "./ink.js";
+import { SCALE_BOUNDS, type Scaling, scaledWidth } from "./select.js";
 import { REACH } from "./sheet.js";
 import { sameStyle, styleOf } from "./style.js";
 
@@ -17,7 +18,7 @@ export type { HistoryEvent, Piece };
 
 /**
  * The strokes an event puts on the sheet with IDs of their own: the stroke written, the pieces a
- * cut leaves, the tutor's strokes and the strokes a move or a copy lands; none for an erasing, a
+ * cut leaves, the tutor's strokes and the strokes a move, a copy or a scale lands; none for an erasing, a
  * clearing or an undo. A kind of event this does not name is a type error, so that whatever counts
  * the strokes a history has known cannot pass over a new one.
  */
@@ -30,6 +31,7 @@ export function writtenBy(event: HistoryEvent): readonly Stroke[] {
     case "tutor":
     case "move":
     case "copy":
+    case "scale":
       return event.strokes;
     case "erase":
     case "clear":
@@ -69,6 +71,7 @@ export function replay(history: readonly HistoryEvent[]): Stroke[] {
         break;
       case "tutor":
       case "move":
+      case "scale":
         for (const id of event.ids) visible.delete(id);
         for (const stroke of event.strokes) {
           written.push(stroke);
@@ -119,7 +122,9 @@ export function replay(history: readonly HistoryEvent[]): Stroke[] {
  * copies them, `copy`: the IDs of strokes written before, one at least, none twice, and as many
  * new strokes, their IDs ascending above every ID before them, each the stroke of the same place
  * with every point moved by one offset for all of them, its pointer, style, times and pressures as
- * they were, landed by the event's time; `on`, "tracing" or none, as for a stroke written. Whether
+ * they were, landed by the event's time; `on`, "tracing" or none, as for a stroke written. It
+ * scales them, `scale`, as it moves them, each point from `at` by `factor`, from 0.25 to 4 and not 1,
+ * and the width of its style with it, to a tenth within a style's bounds. Whether
  * the actions keep the rules of the stack, take off strokes the sheet shows and take those of one
  * layer, the work on the sheet checks as it replays them (`Work.restore`).
  */
@@ -170,7 +175,8 @@ export function historyOf(value: unknown, paper = false): HistoryEvent[] {
         return frozen(event);
       }
       case "move":
-      case "copy": {
+      case "copy":
+      case "scale": {
         const event = selectOf(fields, fields.kind, t, path, highest, written, paper);
         for (const [k, stroke] of event.strokes.entries()) fresh(stroke, `${path}.strokes[${k}]`);
         return frozen(event);
@@ -190,7 +196,7 @@ export function historyOf(value: unknown, paper = false): HistoryEvent[] {
         });
       default:
         throw new TypeError(
-          `${path}.kind: "write", "erase", "cut", "clear", "move", "copy"${paper ? ', "tutor"' : ""} or "undo", not ${shown(fields.kind)}`,
+          `${path}.kind: "write", "erase", "cut", "clear", "move", "copy", "scale"${paper ? ', "tutor"' : ""} or "undo", not ${shown(fields.kind)}`,
         );
     }
   });
@@ -261,20 +267,21 @@ function tutorOf(
 const OFFSET_SLACK = 1e-6;
 
 /**
- * A move's or a copy's fields, checked: the IDs of strokes written before, one at least, none
- * twice; as many strokes, their IDs ascending above `highest`, each the stroke of the same place
- * moved by one offset for all — its pointer, style, times and pressures, and its points' count —,
- * landed by `t`; and `on`, "tracing" on a task from paper, or none.
+ * A move's, a copy's or a scale's fields, checked: the IDs of strokes written before, one at least,
+ * none twice; as many strokes, their IDs ascending above `highest`, each the stroke of the same
+ * place — its pointer, times and pressures, and its points' count — moved by one offset for all,
+ * or of a scale, scaled as its `factor` and `at` say, its style's width with it; landed by `t`; and
+ * `on`, "tracing" on a task from paper, or none.
  */
 function selectOf(
   fields: Record<string, unknown>,
-  kind: "move" | "copy",
+  kind: "move" | "copy" | "scale",
   t: number,
   path: string,
   highest: number,
   written: ReadonlyMap<number, Stroke>,
   paper: boolean,
-): HistoryEvent & { kind: "move" | "copy" } {
+): HistoryEvent & { kind: "move" | "copy" | "scale" } {
   const ids = idsOf(fields.ids, `${path}.ids`);
   if (ids.length === 0) throw new TypeError(`${path}.ids: one stroke at least, not none`);
   if (!Array.isArray(fields.strokes) || fields.strokes.length !== ids.length) {
@@ -282,6 +289,8 @@ function selectOf(
       `${path}.strokes: a list of ${ids.length} strokes, one for each ID, not ${shown(fields.strokes)}`,
     );
   }
+  const scaling = kind === "scale" ? scalingOf(fields, path) : undefined;
+  const done = scaling === undefined ? "moved by the one offset" : "scaled from `at` by `factor`";
   let above = highest;
   let offset: readonly [number, number] | undefined;
   const strokes = Array.from(fields.strokes, (item: unknown, k): Stroke => {
@@ -297,38 +306,75 @@ function selectOf(
     if (from === undefined) {
       throw new TypeError(`${path}.ids[${k}]: ${id}, the ID of no stroke written before`);
     }
+    const style =
+      scaling === undefined || from.style === undefined
+        ? from.style
+        : { ...from.style, width: scaledWidth(from.style.width, scaling.factor) };
     if (
       stroke.kind !== from.kind ||
-      !sameStyle(stroke.style, from.style) ||
+      !sameStyle(stroke.style, style) ||
       stroke.points.length !== from.points.length
     ) {
       throw new TypeError(
-        `${at}: stroke ${id} moved, its pointer, style and points as they were, not another`,
+        `${at}: stroke ${id} ${scaling === undefined ? "moved" : "scaled"}, its pointer, style and points as they were${scaling === undefined ? "" : ", its width scaled"}, not another`,
       );
     }
     for (const [n, point] of stroke.points.entries()) {
       const was = from.points[n] as InkPoint;
-      offset ??= [point.x - was.x, point.y - was.y];
+      let x = was.x;
+      let y = was.y;
+      if (scaling === undefined) {
+        offset ??= [point.x - was.x, point.y - was.y];
+        x += offset[0];
+        y += offset[1];
+      } else {
+        const {
+          factor,
+          at: [ax, ay],
+        } = scaling;
+        x = ax + (x - ax) * factor;
+        y = ay + (y - ay) * factor;
+      }
       if (
         point.t !== was.t ||
         point.p !== was.p ||
-        Math.abs(point.x - was.x - offset[0]) > OFFSET_SLACK ||
-        Math.abs(point.y - was.y - offset[1]) > OFFSET_SLACK
+        Math.abs(point.x - x) > OFFSET_SLACK ||
+        Math.abs(point.y - y) > OFFSET_SLACK
       ) {
         throw new TypeError(
-          `${at}.points[${n}]: the point of stroke ${id} moved by the one offset, its time and pressure as they were`,
+          `${at}.points[${n}]: the point of stroke ${id} ${done}, its time and pressure as they were`,
         );
       }
     }
     return stroke;
   });
-  if (fields.on === undefined) return { kind, t, ids, strokes };
-  if (fields.on !== "tracing" || !paper) {
+  if (fields.on !== undefined && (fields.on !== "tracing" || !paper)) {
     throw new TypeError(
       `${path}.on: ${paper ? '"tracing", or none' : "none, on a sheet with no task from paper"}, not ${shown(fields.on)}`,
     );
   }
-  return { kind, t, ids, strokes, on: "tracing" };
+  const layer = fields.on === undefined ? {} : ({ on: "tracing" } as const);
+  if (scaling === undefined) return { kind: kind as "move" | "copy", t, ids, strokes, ...layer };
+  return { kind: "scale", t, ids, strokes, factor: scaling.factor, at: scaling.at, ...layer };
+}
+
+/** A scale's `factor` and `at`, checked: a factor from a quarter to four and not 1, and a point. */
+function scalingOf(fields: Record<string, unknown>, path: string): Scaling {
+  const { factor, at } = fields;
+  const [least, most] = SCALE_BOUNDS;
+  if (typeof factor !== "number" || !(factor >= least && factor <= most) || factor === 1) {
+    throw new TypeError(
+      `${path}.factor: from ${least} to ${most}, and not 1, not ${shown(factor)}`,
+    );
+  }
+  if (
+    !Array.isArray(at) ||
+    at.length !== 2 ||
+    !at.every((n) => typeof n === "number" && Number.isFinite(n))
+  ) {
+    throw new TypeError(`${path}.at: a point, [x, y] in sheet units, not ${shown(at)}`);
+  }
+  return { factor, at: [at[0] as number, at[1] as number] };
 }
 
 /** A stroke lands no sooner than its last point: a piece too, when its cut lands. */
@@ -498,10 +544,16 @@ export function frozen(event: HistoryEvent): HistoryEvent {
   } else if (event.kind === "undo") {
     Object.freeze(event.removed);
     Object.freeze(event.restored);
-  } else if (event.kind === "tutor" || event.kind === "move" || event.kind === "copy") {
+  } else if (
+    event.kind === "tutor" ||
+    event.kind === "move" ||
+    event.kind === "copy" ||
+    event.kind === "scale"
+  ) {
     for (const stroke of event.strokes) frozenStroke(stroke);
     Object.freeze(event.strokes);
     Object.freeze(event.ids);
+    if (event.kind === "scale") Object.freeze(event.at);
   } else {
     Object.freeze(event.ids);
     if (event.kind === "cut") {
@@ -564,6 +616,17 @@ export function sameEvent(value: unknown, event: HistoryEvent): boolean {
     case "copy":
       return (
         given.on === event.on &&
+        sameIds(given.ids, event.ids) &&
+        sameStrokes(given.strokes, event.strokes)
+      );
+    case "scale":
+      return (
+        given.on === event.on &&
+        given.factor === event.factor &&
+        Array.isArray(given.at) &&
+        given.at.length === 2 &&
+        given.at[0] === event.at[0] &&
+        given.at[1] === event.at[1] &&
         sameIds(given.ids, event.ids) &&
         sameStrokes(given.strokes, event.strokes)
       );

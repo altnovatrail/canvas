@@ -120,7 +120,14 @@ import {
 import { encodePNG } from "../core/png.js";
 import { type PointerSample, Recorder } from "../core/recorder.js";
 import { fitScale, K_MAX, type Point, scaleFor, toSheet, type View } from "../core/screen.js";
-import { keptOffset, rectangleOf, takenBy } from "../core/select.js";
+import {
+  keptOffset,
+  rectangleOf,
+  type Scaling,
+  scaledStroke,
+  scaleRange,
+  takenBy,
+} from "../core/select.js";
 import { extentOf, pictureOf, REACH, SHEET, type Size } from "../core/sheet.js";
 import {
   type EraserMode,
@@ -195,7 +202,7 @@ import { Parts } from "./parts.js";
 import { pensStyle, samePens, screenColourOf } from "./pens.js";
 import { Pictures } from "./pictures.js";
 import { attachProbe } from "./probe.js";
-import { Selection } from "./selection.js";
+import { type Corner, Selection } from "./selection.js";
 import { PAGE_ZOOM, PEN_MODE } from "./session.js";
 import { Statement } from "./statement.js";
 import { type DemoControls, type RowKind, Tools } from "./tools.js";
@@ -628,19 +635,19 @@ canvas {
 .tracing-frame {
   border: 1.5px solid var(--novatrail-canvas-accent, ${ACCENT}); border-radius: var(--round, 6px);
 }
-.tracing-frame .corner {
+.tracing-frame .corner, .selection-grips .corner {
   position: absolute; width: 44px; height: 44px; margin: -22px; pointer-events: auto;
   touch-action: none;
 }
-.tracing-frame .corner::after {
+.tracing-frame .corner::after, .selection-grips .corner::after {
   content: ""; position: absolute; inset: 13px; box-sizing: border-box; border-radius: 50%;
   background: #fff; border: 2px solid var(--novatrail-canvas-accent, ${ACCENT});
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
-.tracing-frame .tl { left: 0; top: 0; cursor: nwse-resize; }
-.tracing-frame .tr { left: 100%; top: 0; cursor: nesw-resize; }
-.tracing-frame .bl { left: 0; top: 100%; cursor: nesw-resize; }
-.tracing-frame .br { left: 100%; top: 100%; cursor: nwse-resize; }
+.tracing-frame .tl, .selection-grips .tl { left: 0; top: 0; cursor: nwse-resize; }
+.tracing-frame .tr, .selection-grips .tr { left: 100%; top: 0; cursor: nesw-resize; }
+.tracing-frame .bl, .selection-grips .bl { left: 0; top: 100%; cursor: nesw-resize; }
+.tracing-frame .br, .selection-grips .br { left: 100%; top: 100%; cursor: nwse-resize; }
 .stage > .tracing-sign {
   inset: 0 auto auto 0; width: auto; height: 24px; box-sizing: border-box; padding: 0 10px;
   display: flex; align-items: center; gap: 6px; border-radius: 999px; white-space: nowrap;
@@ -673,7 +680,14 @@ canvas {
   width: max-content; height: auto; max-height: none; margin: 0; padding: 4px;
   flex-direction: row; gap: 2px; pointer-events: auto; overflow: visible;
 }
-.stage > .selection-bar[hidden] { display: none; }
+.stage > .selection-bar[hidden], .selection-bar [hidden], .stage > .selection-grips[hidden] {
+  display: none;
+}
+.selection-bar .percent {
+  min-width: 64px; padding: 0 12px; line-height: 44px; text-align: center; font-size: 14px;
+  font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.stage > .selection-grips { inset: 0 auto auto 0; box-sizing: border-box; }
 .selection-bar .remove { color: #d70015; }
 .tracing-scale .percent { min-width: 64px; padding: 0 8px; font-variant-numeric: tabular-nums; }
 .tracing-scale .mode {
@@ -725,7 +739,9 @@ canvas {
   .grip .bar, .grip.dragging .bar { background: ButtonText; }
   .grip:focus-visible { outline-color: Highlight; }
   .tracing-frame { border-color: Highlight; }
-  .tracing-frame .corner::after { background: Canvas; border-color: Highlight; }
+  .tracing-frame .corner::after, .selection-grips .corner::after {
+    background: Canvas; border-color: Highlight;
+  }
   .statements { color: CanvasText; }
   .statements .slot { border-color: CanvasText; }
   .scan { background: transparent; }
@@ -930,8 +946,35 @@ interface Dragging {
   readonly moved: Map<number, Stroke>;
 }
 
+/**
+ * The strokes Select took, scaled by a grip: its pointer, the strokes by ID; the corner across,
+ * `at`, which stays, and the grip's corner, `corner`, of the box of their points in their layer's
+ * units; where the pointer came down, and CSS pixels to a unit of the layer; the factors the scale
+ * may take; the factor the canvas shows, and the one the last frame painted; and each stroke
+ * scaled by it, made once for each factor.
+ */
+interface Resizing {
+  readonly pointerId: number;
+  readonly ids: ReadonlySet<number>;
+  readonly at: readonly [number, number];
+  readonly corner: readonly [number, number];
+  readonly x: number;
+  readonly y: number;
+  readonly k: number;
+  readonly range: readonly [number, number];
+  factor: number;
+  painted: number;
+  readonly scaled: Map<number, Stroke>;
+}
+
 /** How far the box round the strokes Select took keeps from their points, in CSS pixels. */
 const SELECT_PAD_PX = 10;
+
+/**
+ * The least change of size a grip's drag makes a scale of, as the mockup's: a hand that only
+ * touched the grip scales nothing.
+ */
+const SCALE_LEAST_CHANGE = 0.02;
 
 /**
  * How far below the strokes Select took their copy lands, past their own height, in their layer's
@@ -1167,10 +1210,15 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   #selected: Selected | undefined;
   /** The strokes taken, dragged: see `Dragging`. */
   #dragging: Dragging | undefined;
-  /** Select's shape, the box round what it took, and the bar of Copy and Delete. */
+  /** The strokes taken, scaled by a grip: see `Resizing`. */
+  #resizing: Resizing | undefined;
+  /** Select's shape, the box round what it took with its grips, and the bar of Copy and Delete. */
   readonly #selection = new Selection({
     copy: () => this.#copySelected(),
     remove: () => this.#removeSelected(),
+    scaleDown: (corner, event) => this.#scaleDown(corner, event),
+    scaleMove: (event) => this.#scaleMove(event),
+    scaleUp: (event) => this.#scaleUp(event),
   });
   /** The page's time of the frame being painted, by which the tutor's strokes are drawn so far. */
   #drawingNow = 0;
@@ -1502,6 +1550,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       this.#tracingPaper.grip,
       this.#tracingPaper.tip,
       this.#tracingPaper.bar,
+      this.#selection.grips,
       this.#selection.bar,
     );
     this.#sheet.append(this.#stage, this.#parts.spot);
@@ -2589,9 +2638,96 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#act("copy", selected, keptOffset(box, [0, down], REACH.width, REACH.height));
   }
 
+  /**
+   * A grip's press: the strokes Select took scale from the corner across as its pointer goes, kept
+   * to the scale's bounds and to the sheet. A press with a drag or another scale under way, or of
+   * another button than the first, does nothing.
+   */
+  #scaleDown(corner: Corner, event: PointerEvent): void {
+    const selected = this.#selectedNow();
+    const box = selected === undefined ? undefined : this.#selectedBox(selected);
+    const screen = this.#view();
+    const busy = this.#dragging !== undefined || this.#resizing !== undefined;
+    if (event.button !== 0 || busy || selected === undefined || box === undefined) return;
+    if (screen === undefined) return;
+    event.preventDefault();
+    event.stopPropagation();
+    try {
+      if (event.currentTarget instanceof Element) {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }
+    } catch {
+      // An event a script made, which no pointer backs: the drag goes on by its moves all the same.
+    }
+    const right = corner.endsWith("r");
+    const bottom = corner.startsWith("b");
+    const at: [number, number] = [right ? box.minX : box.maxX, bottom ? box.minY : box.maxY];
+    this.#resizing = {
+      pointerId: event.pointerId,
+      ids: new Set(selected.ids),
+      at,
+      corner: [right ? box.maxX : box.minX, bottom ? box.maxY : box.minY],
+      x: event.clientX,
+      y: event.clientY,
+      k: screen.k * this.#layerScale(selected.layer),
+      range: scaleRange(box, at, REACH.width, REACH.height),
+      factor: 1,
+      painted: 1,
+      scaled: new Map(),
+    };
+    this.#request();
+  }
+
+  /**
+   * A grip's drag, as the mockup's: the factor is how far the pointer has taken the grip's corner
+   * along the line from the corner across, its shape kept, to a thousandth.
+   */
+  #scaleMove(event: PointerEvent): void {
+    const resizing = this.#resizing;
+    if (resizing === undefined || event.pointerId !== resizing.pointerId) return;
+    const [ax, ay] = resizing.at;
+    const [cx, cy] = resizing.corner;
+    const px = cx + (event.clientX - resizing.x) / resizing.k;
+    const py = cy + (event.clientY - resizing.y) / resizing.k;
+    const [vx, vy] = [cx - ax, cy - ay];
+    const along = vx * vx + vy * vy;
+    const asked = along === 0 ? 1 : ((px - ax) * vx + (py - ay) * vy) / along;
+    const [lo, hi] = resizing.range;
+    const factor = Math.round(Math.min(Math.max(asked, lo), hi) * 1000) / 1000;
+    if (factor === resizing.factor) return;
+    resizing.factor = factor;
+    resizing.scaled.clear();
+    this.#request();
+  }
+
+  /**
+   * A grip's drag ends: lifted, the strokes land scaled in one action that an undo takes back
+   * whole, unless the size has hardly changed; cancelled or lost, they stay as they were.
+   */
+  #scaleUp(event: PointerEvent): void {
+    const resizing = this.#resizing;
+    if (resizing === undefined || event.pointerId !== resizing.pointerId) return;
+    if (event.type === "pointerup") this.#scaleMove(event);
+    this.#resizing = undefined;
+    const selected = this.#selectedNow();
+    const { factor, at } = resizing;
+    if (
+      event.type !== "pointerup" ||
+      selected === undefined ||
+      Math.abs(factor - 1) < SCALE_LEAST_CHANGE
+    ) {
+      this.#painted = undefined;
+      this.#request();
+      return;
+    }
+    const scaling: Scaling = { factor, at };
+    this.#land(selected, (first, time) => this.#work.scale(selected.ids, scaling, first, time));
+  }
+
   /** A key while Select has taken strokes: Delete or Backspace erases them, Escape lets them go. */
   #selectKey(event: KeyboardEvent): void {
-    if (this.#dragging !== undefined || this.#selectedNow() === undefined) return;
+    const busy = this.#dragging !== undefined || this.#resizing !== undefined;
+    if (busy || this.#selectedNow() === undefined) return;
     if (event.key === "Delete" || event.key === "Backspace") this.#removeSelected();
     else if (event.key === "Escape") {
       this.#selected = undefined;
@@ -2612,15 +2748,25 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /** A move or a copy of the strokes Select took, whose new strokes it takes then. */
   #act(kind: "move" | "copy", selected: Selected, offset: readonly [number, number]): void {
+    this.#land(selected, (first, time) =>
+      this.#work.select(kind, selected.ids, offset, first, time),
+    );
+  }
+
+  /**
+   * Select's action on the strokes it took, by `act` with the first of the IDs it reserves for the
+   * new strokes: Select takes those then, or, should the action do nothing, lets them go.
+   */
+  #land(selected: Selected, act: (first: number, time: number) => boolean): void {
     const first = this.#recorder.reserve(selected.ids.length);
-    if (this.#work.select(kind, selected.ids, offset, first, performance.now())) {
+    if (act(first, performance.now())) {
       this.#selected = {
         ids: selected.ids.map((_, k) => first + k),
         layer: selected.layer,
       };
       this.#changed();
     } else {
-      // The strokes a drag showed moved go back where they are: the whole sheet is drawn anew.
+      // The strokes a drag showed moved or scaled go back as they are: the whole sheet is drawn anew.
       this.#selected = undefined;
       this.#painted = undefined;
       this.#request();
@@ -2696,13 +2842,17 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     const selected = this.#selectedNow();
     const box = selected === undefined ? undefined : this.#selectedBox(selected);
     if (selected === undefined || box === undefined) {
-      this.#selection.box(undefined, screen, screen.height, false);
+      this.#selection.box(undefined, screen, { top: 0, bottom: screen.height }, false);
       return;
     }
     const [dx, dy] = this.#dragging?.offset ?? [0, 0];
+    // While a grip is dragged, the box as the scale will leave it.
+    const resizing = this.#resizing;
+    const [ax, ay] = resizing?.at ?? [0, 0];
+    const f = resizing?.factor ?? 1;
     const at = toSheetOf(selected.layer);
-    const corner = at({ x: box.minX + dx, y: box.minY + dy });
-    const end = at({ x: box.maxX + dx, y: box.maxY + dy });
+    const corner = at({ x: ax + (box.minX - ax) * f + dx, y: ay + (box.minY - ay) * f + dy });
+    const end = at({ x: ax + (box.maxX - ax) * f + dx, y: ay + (box.maxY - ay) * f + dy });
     const pad = SELECT_PAD_PX / screen.k;
     const onSheet = {
       minX: corner.x - pad,
@@ -2710,7 +2860,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       maxX: end.x + pad,
       maxY: end.y + pad,
     };
-    this.#selection.box(onSheet, screen, screen.height, this.#dragging !== undefined);
+    const moving = this.#dragging !== undefined;
+    // The bar keeps to the part of the stage in sight: the container may scroll the stage's top or
+    // bottom out of it, under the statement or past the window.
+    const seen = { top: screen.shown.top - screen.top, bottom: screen.shown.bottom - screen.top };
+    this.#selection.box(onSheet, screen, seen, moving, resizing?.factor);
   }
 
   /** A stroke moved by the drag's offset, as the drag shows it: made once for each offset. */
@@ -2752,6 +2906,44 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       }
     }
     dragging.painted = now;
+    return at;
+  }
+
+  /** A stroke scaled by the grip's drag, as it shows it: made once for each factor. */
+  #scaledOf(stroke: Stroke, resizing: Resizing): Stroke {
+    const kept = resizing.scaled.get(stroke.id);
+    if (kept !== undefined) return kept;
+    const scaled = scaledStroke(stroke, resizing, stroke.id);
+    resizing.scaled.set(stroke.id, scaled);
+    return scaled;
+  }
+
+  /**
+   * Where the canvas no longer shows the strokes a grip scales as they are now: around each as the
+   * last frame painted it and as it is now. None without a scale, or where it has not changed.
+   */
+  #resizedChanged(frame: Frame): Pixels | undefined {
+    const resizing = this.#resizing;
+    if (resizing === undefined || resizing.painted === resizing.factor) return undefined;
+    const [ax, ay] = resizing.at;
+    let at: Pixels | undefined;
+    for (const stroke of this.#work.strokes) {
+      if (!resizing.ids.has(stroke.id)) continue;
+      const traced = this.#work.onTracing(stroke.id);
+      // A stroke's outline scales with its points and its width, which rounds to a tenth: a unit
+      // round it holds what the rounding adds.
+      const ink = this.#finished(stroke);
+      for (const f of [resizing.painted, resizing.factor]) {
+        const box = {
+          minX: ax + (ink.left - ax) * f - 1,
+          minY: ay + (ink.top - ay) * f - 1,
+          maxX: ax + (ink.right - ax) * f + 1,
+          maxY: ay + (ink.bottom - ay) * f + 1,
+        };
+        at = union(at, this.#pixelsOf(frame, traced, box));
+      }
+    }
+    resizing.painted = resizing.factor;
     return at;
   }
 
@@ -4779,7 +4971,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
           was,
           this.#pixelsOf(frame, this.#work.onTracing(landed.id), this.#finished(landed)),
         );
-      drew = union(this.#drawingChanged(frame), this.#draggedChanged(frame));
+      drew = union(
+        this.#drawingChanged(frame),
+        union(this.#draggedChanged(frame), this.#resizedChanged(frame)),
+      );
       was = union(was, drew);
     } else {
       // Anything but the act's own first frame and a stroke landing — a scroll, an undo, a new
@@ -4998,8 +5193,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     // A stroke of the tutor's act being drawn: the part of it drawn so far. A stroke an eraser has
     // come near: out of sight, or the pieces a cut would leave of it.
     const dragging = this.#dragging;
+    const resizing = this.#resizing;
     const drawn = (stroke: Stroke): readonly Stroke[] => {
       if (dragging?.ids.has(stroke.id)) return [this.#movedOf(stroke, dragging.offset)];
+      if (resizing?.ids.has(stroke.id)) return [this.#scaledOf(stroke, resizing)];
       if (drawing?.timings.has(stroke.id)) {
         const part = this.#partOf(stroke, drawing);
         return part === undefined ? [] : [part];
