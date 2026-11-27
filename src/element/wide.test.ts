@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from "vitest";
 import { server, userEvent } from "vitest/browser";
 import { budget } from "../core/budget.fixture.js";
-import { gridPath } from "../core/grid.js";
+import { gridPath, thinned } from "../core/grid.js";
 import { SLOP_PX } from "../core/hands.js";
 import type { HistoryEvent } from "../core/history.js";
 import { INK_REACH } from "../core/outline.js";
@@ -621,7 +621,6 @@ test("under the consumer's padding the grid goes on above the sheet and below it
   element.paper = { statement: await paperCrop() };
   element.grid = "squares";
   await settle();
-  const step = rulingsOf("squares")?.step ?? Number.NaN;
   const above = root.querySelector<SVGSVGElement>(".band.above");
   const below = root.querySelector<SVGSVGElement>(".band.below");
   const sheet = root.querySelector(".sheet");
@@ -633,6 +632,10 @@ test("under the consumer's padding the grid goes on above the sheet and below it
   element.style.setProperty("--novatrail-canvas-pad-bottom", "60px");
   await settle();
   const k = view().k;
+  // The squares as the screen shows them: every second at this width.
+  const squares = rulingsOf("squares");
+  const step = squares === undefined ? Number.NaN : thinned(squares, k).step;
+  expect(step).toBe(50);
   const top = above.getBoundingClientRect();
   const box = sheet.getBoundingClientRect();
   expect(top.height).toBeCloseTo(40, 3);

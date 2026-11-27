@@ -26,6 +26,22 @@ export const GRID_STEP_MAX = 500;
  */
 export const DEFAULT_GRID: Grid = Object.freeze({ kind: "squares", step: GRID_STEP });
 
+/** The least gap, CSS px, between the rulings of a learner's grid on the screen. */
+export const GRID_GAP_MIN_PX = 16;
+
+/**
+ * The step a learner's grid of dots or squares shows at `k` CSS px a unit: its own, doubled as
+ * often as it takes to stand `GRID_GAP_MIN_PX` apart on the screen. A doubled step keeps every
+ * ruling it shows where the own step put one, so the grid thins out and does not move. Lines keep
+ * their step: they are the height of a written line.
+ */
+export function thinned(grid: Grid, k: number): Grid {
+  if (grid.kind === "lines" || !(k > 0)) return grid;
+  let step = grid.step;
+  while (step * k < GRID_GAP_MIN_PX) step *= 2;
+  return step === grid.step ? grid : { kind: grid.kind, step };
+}
+
 /**
  * A grid's path in SVG, in sheet units: a line along every ruling, strictly inside the sheet as
  * large as `size` — the page, unless the sheet is laid out larger —, or, for dots, a dot where two

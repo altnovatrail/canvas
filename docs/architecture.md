@@ -196,7 +196,7 @@ The handwriting sheet counts in logical units, as canvas-api does: they do not d
 
 In these units:
 - the points of strokes, as fractional numbers, as they came: only the recording of a sample rounds them, to 0.1 unit (below, under «The sample file»). A point outside the reach input presses to its edge, as in canvas-api ([canvas-api@0901af0, `docs/spec.md`](https://github.com/mathtrail/canvas-api/blob/0901af0/docs/spec.md));
-- the grid: its kind — squares, lines or dots — and its step are set by the task, and the default step is 50 units, like canvas-api's square; a task from paper's is the learner's. It rules the whole extent;
+- the grid: its kind — squares, lines or dots — and its step are set by the task, and the default step is 50 units, like canvas-api's square; a task from paper's is the learner's, whose dots and squares double their step on a small screen till they stand 16 CSS px apart. It rules the whole extent;
 - the zone of an answer slot, a rectangle in the sheet's units: `left` and `top` from the left and top edges, `width` and `height`;
 - all the layers of the stack (above, under «The drawing engine and the layers»).
 
