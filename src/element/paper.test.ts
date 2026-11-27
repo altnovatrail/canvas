@@ -1,6 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
-import { gridPath } from "../core/grid.js";
+import { gridPath, thinned } from "../core/grid.js";
 import type { View } from "../core/screen.js";
 import { sheetTask, workedExample } from "../core/tasks.fixture.js";
 import { axeOf } from "./axe.fixture.js";
@@ -251,11 +251,12 @@ test("rules its sheet by the grid the consumer gives, dots as it comes, lines, s
   expect(element.grid).toBe("dots");
   // Dots are tiles of a pattern, and the path is empty.
   expect(grid?.getAttribute("d")).toBe("");
-  expect(dotTilesOf(root)).toEqual(dotTiles(25, extent()));
+  // 25 units at k 0.5 are 12.5 px: the dots and the squares show every second, 25 px apart.
+  expect(dotTilesOf(root)).toEqual(dotTiles(50, extent()));
   expect(grid?.classList.contains("dots")).toBe(true);
   for (const [given, path] of [
     ["lines", gridPath({ kind: "lines", step: 40 }, extent())],
-    ["squares", gridPath({ kind: "squares", step: 25 }, extent())],
+    ["squares", gridPath({ kind: "squares", step: 50 }, extent())],
     ["blank", ""],
     ["dots", ""],
   ] as const) {
@@ -263,7 +264,7 @@ test("rules its sheet by the grid the consumer gives, dots as it comes, lines, s
     expect(element.grid).toBe(given);
     expect(grid?.getAttribute("d"), given).toBe(path);
     expect(grid?.classList.contains("dots"), given).toBe(given === "dots");
-    expect(dotTilesOf(root), given).toEqual(given === "dots" ? dotTiles(25, extent()) : undefined);
+    expect(dotTilesOf(root), given).toEqual(given === "dots" ? dotTiles(50, extent()) : undefined);
   }
   // The bar's button says the grid the consumer gave.
   element.grid = "blank";
@@ -293,6 +294,38 @@ test("rules its sheet by the grid the consumer gives, dots as it comes, lines, s
   await settle();
   expect(extent().width).toBeGreaterThan(before.width);
   expect(grid?.getAttribute("d")).toBe(gridPath({ kind: "lines", step: 40 }, extent()));
+});
+
+test("thins its dots and squares as the sheet grows small on the screen, every ruling where the own step put one", async () => {
+  const { element, root } = await paper(1000);
+  const extent = () => {
+    const box = root.querySelector(".sheet")?.getBoundingClientRect();
+    const { k } = viewOf(element);
+    return { width: Math.round((box?.width ?? 0) / k), height: Math.round((box?.height ?? 0) / k) };
+  };
+  // A tablet's width at the fit: every 25 units.
+  expect(viewOf(element).k).toBeCloseTo(1, 6);
+  expect(dotTilesOf(root)).toEqual(dotTiles(25, extent()));
+  // A phone's: every 50, about 20 px.
+  element.style.width = "393px";
+  await settle();
+  const k = viewOf(element).k;
+  expect(thinned({ kind: "dots", step: 25 }, k).step).toBe(50);
+  expect(dotTilesOf(root)).toEqual(dotTiles(50, extent()));
+  element.grid = "squares";
+  expect(root.querySelector(".grid")?.getAttribute("d")).toBe(
+    gridPath({ kind: "squares", step: 50 }, extent()),
+  );
+  // Lines keep their step: they are a line's height.
+  element.grid = "lines";
+  expect(root.querySelector(".grid")?.getAttribute("d")).toBe(
+    gridPath({ kind: "lines", step: 40 }, extent()),
+  );
+  // Wide again: every 25 once more.
+  element.grid = "dots";
+  element.style.width = "1000px";
+  await settle();
+  expect(dotTilesOf(root)).toEqual(dotTiles(25, extent()));
 });
 
 test("lays the sheet out past a tracing paper the consumer gives beyond it, by one view more, and back as it is given back", async () => {

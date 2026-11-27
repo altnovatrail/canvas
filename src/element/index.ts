@@ -94,7 +94,7 @@ import {
 } from "../core/example.js";
 import { sameItems } from "../core/fields.js";
 import { type Box, boxOf } from "../core/geometry.js";
-import { dotsTiling, GRID_STEP, gridBand, gridPath } from "../core/grid.js";
+import { dotsTiling, GRID_STEP, gridBand, gridPath, thinned } from "../core/grid.js";
 import { type Contact, Hands } from "../core/hands.js";
 import { begins, type HistoryEvent, sameHistory, writtenBy } from "../core/history.js";
 import type { InkPoint, Stroke } from "../core/ink.js";
@@ -344,6 +344,8 @@ const WAVY_REACH = 10;
 const MARK_PADDING = 10;
 /** The rounding of a frame's corners, in sheet units. */
 const MARK_CORNER = 6;
+/** A sheet narrower than this, CSS px, is a phone's: its dots are smaller. */
+const NARROW_PX = 600;
 
 /**
  * How near a stroke's ink the eraser takes it, in CSS pixels: the same on every screen, whatever
@@ -405,8 +407,8 @@ const ERASER_RADIUS_PX = 10;
 // it off, and what the print needs comes back. A box's frame is one CSS pixel at any scale,
 // on whole device pixels: an antialiased line of one pixel would lose its contrast. A filled box's
 // is three, in the same ink, and the system's highlight with forced colours. A dot of the grid
-// is three pixels across at the fit and above it, and smaller by the zoom below it, so that a sheet
-// zoomed out is no field of dots.
+// is three pixels across at the fit and above it — two on a sheet narrower than a tablet's, a
+// phone's —, and smaller by the zoom below it, so that a sheet zoomed out is no field of dots.
 const STYLE = `
 :host {
   display: flex; flex-direction: column; isolation: isolate; writing-mode: horizontal-tb;
@@ -556,7 +558,7 @@ const STYLE = `
   fill: none; stroke: var(--novatrail-canvas-grid, #d3dbe5); stroke-width: 1px;
   vector-effect: non-scaling-stroke;
 }
-.grid.dots { stroke-width: calc(3px * min(1, var(--zoom, 1))); stroke-linecap: round; }
+.grid.dots { stroke-width: calc(var(--dot, 3px) * min(1, var(--zoom, 1))); stroke-linecap: round; }
 .print {
   all: initial; font-family: inherit; visibility: inherit; pointer-events: none; direction: ltr;
   user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
@@ -4069,6 +4071,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     }
     if (this.#vx > 0 && k !== this.#k) this.#viewport.scrollLeft = sheetAtX + this.#vx * k;
     this.#k = k;
+    // A dot of two pixels on a sheet narrower than a tablet's.
+    this.#column.style.setProperty("--dot", area.width < NARROW_PX ? "2px" : "3px");
+    // A task from paper's grid thins out by the scale on the screen.
+    if (this.#paper !== undefined) this.#drawGrid();
     this.#sheetAt = sheetAt;
     this.#sheetAtX = sheetAtX;
     this.#keepDirection();
@@ -4205,15 +4211,20 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
 
   /**
    * The template's grid over the whole sheet, as far as it goes: the task's, or a task from
-   * paper's that the learner turns, none on a blank one; a workbook has its lines instead.
+   * paper's that the learner turns, none on a blank one; a workbook has its lines instead. A task
+   * from paper's dots and squares thin out on a small screen: the learner's grid is an aid, and a
+   * task's own step may count.
    */
   #drawGrid(): void {
     const template = this.#shownTemplate;
+    const paperGrid = rulingsOf(this.#paperGrid);
     const grid = isWorkbook(template)
       ? undefined
       : this.#paper === undefined
         ? template.grid
-        : rulingsOf(this.#paperGrid);
+        : paperGrid === undefined
+          ? undefined
+          : thinned(paperGrid, this.#k);
     const { width, height } = this.#extent;
     const key = grid === undefined ? "" : `${grid.kind} ${grid.step} ${width} ${height}`;
     if (key === this.#gridDrawn) return;

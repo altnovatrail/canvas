@@ -1,5 +1,13 @@
 import { expect, test } from "vitest";
-import { DEFAULT_GRID, dotsTiling, type GridKind, gridBand, gridPath } from "./grid.js";
+import {
+  DEFAULT_GRID,
+  dotsTiling,
+  GRID_GAP_MIN_PX,
+  type GridKind,
+  gridBand,
+  gridPath,
+  thinned,
+} from "./grid.js";
 
 /** The subpaths of a path, each from its moveto. */
 function subpaths(path: string): string[] {
@@ -70,6 +78,24 @@ test("a step that does not divide the sheet stops short of its edges, at exact p
   const third = subpaths(gridPath({ kind: "squares", step: 100 / 3 }));
   expect(third.filter((part) => part.includes("V")).at(-1)).toBe("966.667 0V1400");
   expect(third.some((part) => part.startsWith("1000 "))).toBe(false);
+});
+
+test("a learner's dots and squares double their step till they stand 16 px apart on the screen, and lines keep theirs", () => {
+  expect(GRID_GAP_MIN_PX).toBe(16);
+  const dots = { kind: "dots", step: 25 } as const;
+  // A tablet's sheet at its fit: as it is, the same object.
+  expect(thinned(dots, 0.83)).toBe(dots);
+  expect(thinned(dots, 0.64)).toBe(dots);
+  // A phone's: 50 units, about 20 px.
+  expect(thinned(dots, 0.393)).toEqual({ kind: "dots", step: 50 });
+  expect(thinned({ kind: "squares", step: 25 }, 0.5)).toEqual({ kind: "squares", step: 50 });
+  // Zoomed out further: 100 and 200, each a multiple of the step, so no ruling moves.
+  expect(thinned(dots, 0.2)).toEqual({ kind: "dots", step: 100 });
+  expect(thinned(dots, 0.1)).toEqual({ kind: "dots", step: 200 });
+  const lines = { kind: "lines", step: 40 } as const;
+  expect(thinned(lines, 0.2)).toBe(lines);
+  // No scale yet: as it is.
+  expect(thinned(dots, 0)).toBe(dots);
 });
 
 test("a sheet without a task is ruled in squares of 50 units, and each kind draws something", () => {

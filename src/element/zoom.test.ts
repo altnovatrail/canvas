@@ -152,21 +152,24 @@ test("a stroke on a zoomed sheet lands in sheet units, and the work for checking
   );
 });
 
-test("a dot of the grid is 3 px across at the fit and above it, and smaller by the zoom below it", async () => {
-  const { element, root } = await placed(made, 400, 300, { task: sheetTask({ grid: "dots" }) });
-  const dots = [...root.querySelectorAll<SVGPathElement>(".grid")];
-  // The sheet's grid, the dot of its pattern's tile, and the bands above and below it.
-  expect(dots).toHaveLength(4);
-  const across = () => dots.map((dot) => getComputedStyle(dot).strokeWidth);
-  for (const [zoom, width] of [
-    [1, "3px"],
-    [2, "3px"],
-    [0.75, "2.25px"],
-    [0.5, "1.5px"],
+test("a dot of the grid is 3 px across at the fit and above it, 2 px on a phone's sheet, and smaller by the zoom below it", async () => {
+  for (const [wide, at] of [
+    [800, ["3px", "3px", "2.25px", "1.5px"]],
+    [400, ["2px", "2px", "1.5px", "1px"]],
   ] as const) {
-    await zoomTo(element, zoom);
-    expect(dots.every((dot) => dot.classList.contains("dots"))).toBe(true);
-    expect(across()).toEqual([width, width, width, width]);
+    const { element, root } = await placed(made, wide, 300, { task: sheetTask({ grid: "dots" }) });
+    const dots = [...root.querySelectorAll<SVGPathElement>(".grid")];
+    // The sheet's grid, the dot of its pattern's tile, and the bands above and below it.
+    expect(dots).toHaveLength(4);
+    const across = () => dots.map((dot) => getComputedStyle(dot).strokeWidth);
+    for (const [i, zoom] of [1, 2, 0.75, 0.5].entries()) {
+      await zoomTo(element, zoom);
+      expect(dots.every((dot) => dot.classList.contains("dots"))).toBe(true);
+      const width = at[i];
+      expect(across(), `${wide} px at ${zoom}`).toEqual([width, width, width, width]);
+    }
+    element.remove();
+    PAGE_ZOOM.set(1);
   }
 });
 

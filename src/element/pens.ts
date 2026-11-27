@@ -581,9 +581,10 @@ export class Pens {
     const outer = rail.getBoundingClientRect();
     const scale = rail.offsetHeight > 0 ? outer.height / rail.offsetHeight : 1;
     const box = host.getBoundingClientRect();
-    const below = Number.parseFloat(
-      getComputedStyle(host).getPropertyValue("--novatrail-canvas-pad-bottom"),
-    );
+    // The consumer's padding as the column lays it out, in pixels: the property itself is the
+    // consumer's words, "5rem" as well as "80px".
+    const column = root instanceof ShadowRoot ? root.querySelector(".column") : null;
+    const below = column === null ? 0 : Number.parseFloat(getComputedStyle(column).paddingBottom);
     const top = Math.max(box.top, 0) + EDGE_PX * scale;
     const bottom =
       Math.min(box.bottom, innerHeight) - ((Number.isFinite(below) ? below : 0) + EDGE_PX) * scale;

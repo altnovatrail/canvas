@@ -13,7 +13,7 @@ import {
 } from "../core/style.js";
 import { sheetTask, workedExample } from "../core/tasks.fixture.js";
 import type { HistoryChange, NovatrailCanvas } from "./index.js";
-import { NARROW_PX } from "./pens.js";
+import { NARROW_PX, Pens } from "./pens.js";
 import {
   buttonOf,
   hand,
@@ -686,7 +686,8 @@ test("the popover stands right of the bar level with its button, its arrow at it
   expect(box.top).toBeGreaterThanOrEqual(host.top + 8 - 0.5);
   expect(box.bottom).toBeLessThanOrEqual(host.bottom - 8 + 0.5);
   const narrow = await sheet(NARROW_PX - 200, 700);
-  narrow.element.style.setProperty("--novatrail-canvas-pad-bottom", "40px");
+  // In rem, as app gives it: 40 pixels all the same.
+  narrow.element.style.setProperty("--novatrail-canvas-pad-bottom", "2.5rem");
   await userEvent.click(buttonOf(narrow.element, "Eraser"));
   await userEvent.click(buttonOf(narrow.element, "Eraser"));
   const docked = popoverOf(narrow.element, "Eraser settings").pop;
@@ -697,6 +698,24 @@ test("the popover stands right of the bar level with its button, its arrow at it
   expect(around.right - at.right).toBeCloseTo(8, 0);
   // Above the padding at the bottom, of the element or of the window, whichever is in sight.
   expect(Math.min(around.bottom, innerHeight) - at.bottom).toBeCloseTo(48, 0);
+});
+
+test("a bar of pens outside the element's shadow root keeps no padding below its popover", () => {
+  const pens = new Pens(
+    () => {},
+    () => {},
+  );
+  const rail = document.createElement("div");
+  rail.style.cssText = "position: fixed; inset: 0 auto auto 0; width: 300px; height: 400px;";
+  const opener = document.createElement("button");
+  rail.append(opener, pens.pen, pens.eraser, pens.select);
+  document.body.append(rail);
+  made.push(rail);
+  pens.open("pen", opener, false);
+  expect(pens.pen.classList.contains("docked")).toBe(true);
+  // Only the edge above and below: no column to give the consumer's padding.
+  expect(pens.pen.style.getPropertyValue("--pop-max")).toBe("384px");
+  pens.close();
 });
 
 test("every target of the popovers is 44 × 44 CSS px at least", async () => {
