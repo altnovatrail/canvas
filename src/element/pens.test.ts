@@ -686,7 +686,8 @@ test("the popover stands right of the bar level with its button, its arrow at it
   expect(box.top).toBeGreaterThanOrEqual(host.top + 8 - 0.5);
   expect(box.bottom).toBeLessThanOrEqual(host.bottom - 8 + 0.5);
   const narrow = await sheet(NARROW_PX - 200, 700);
-  narrow.element.style.setProperty("--novatrail-canvas-pad-bottom", "40px");
+  // In rem, as app gives it: 40 pixels all the same.
+  narrow.element.style.setProperty("--novatrail-canvas-pad-bottom", "2.5rem");
   await userEvent.click(buttonOf(narrow.element, "Eraser"));
   await userEvent.click(buttonOf(narrow.element, "Eraser"));
   const docked = popoverOf(narrow.element, "Eraser settings").pop;
