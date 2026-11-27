@@ -701,7 +701,10 @@ test("the popover stands right of the bar level with its button, its arrow at it
 });
 
 test("a bar of pens outside the element's shadow root keeps no padding below its popover", () => {
-  const pens = new Pens(() => {}, () => {});
+  const pens = new Pens(
+    () => {},
+    () => {},
+  );
   const rail = document.createElement("div");
   rail.style.cssText = "position: fixed; inset: 0 auto auto 0; width: 300px; height: 400px;";
   const opener = document.createElement("button");
