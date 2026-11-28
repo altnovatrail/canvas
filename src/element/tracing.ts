@@ -6,7 +6,9 @@
 // keys, a step at a time, Shift a leap (WCAG 2.1.1); a drag is the pointer's one way, as the sheet
 // moves under the hand. The grip's tooltip says its name on the hover of a pointer that
 // hovers and on the keyboard's focus, and Escape dismisses it, as the bar's do (WCAG 1.4.13). The
-// crop's picture is read once, to its grey pixels, for the crop of the work.
+// crop's picture is read once, to its grey pixels, for the crop of the work. A task of a module's
+// paper is opaque instead, white over the grid: its picture is the module's text on white, and the
+// grid through it would only be noise under the print.
 //
 // Its scale, as the mockup's `Zadacha-masshtab` has it: the grip's press, or its focus,
 // chooses the paper — a blue frame round it with a handle at each corner, which a drag scales from
@@ -18,15 +20,19 @@
 // picture is the module's text, the module's book, with no button to read it.
 //
 // A task of a module whose answer is a choice has its options on the paper, under the picture, as
-// the interface mockup draws them: pills in a row that wraps, the one the consumer chose filled
-// with the accent. They are a part of the paper, which grows down to hold them: they move, scale and
+// the interface mockup draws them: first one pale pill, "Answer options", and once the learner
+// presses it, in its place, the options as pills in a row that wraps, the one the consumer chose
+// filled with the accent, each the consumer judged green with a tick or orange and struck out, and
+// the rest faded once one is correct. The options stay behind the pill till a learner asks, so that
+// a guess among them is no shortcut past the work; a new task shuts them again. A judged option
+// tells nothing more, nor does any once one is correct. They are a part of the paper, which grows down to hold them: they move, scale and
 // hide with it, and a press on the paper beside them writes on it. They are laid out at the paper's
 // own size, a CSS pixel a unit, and scaled with it to the screen, so that how they wrap, and how far
 // the paper grows, is the same at every zoom. They are a group of radio buttons, a stop of Tab with
 // the arrow keys among them, as the tool bar's tools; a press, Enter or Space tells the consumer,
 // which holds the choice and gives it back. This module is no entry point of the package.
 
-import type { PaperTask, TracingReading } from "@altnovatrail/spec/canvas";
+import type { OptionVerdict, PaperTask, TracingReading } from "@altnovatrail/spec/canvas";
 import { sameItems } from "../core/fields.js";
 import {
   type Gray,
@@ -124,6 +130,8 @@ export class TracingPaper {
   /** The layer, in sheet units by its view box, which says nothing to a screen reader. */
   readonly layer = document.createElementNS(SVG, "svg");
   readonly #image = document.createElementNS(SVG, "image");
+  /** Under the picture, the whole paper: white for a task of a module, nothing for a photo. */
+  readonly #ground = document.createElementNS(SVG, "rect");
   readonly #edge = document.createElementNS(SVG, "rect");
   /** The grip, a button of the stage's own, which takes the pointer as the canvas does. */
   readonly grip = document.createElement("button");
@@ -149,13 +157,19 @@ export class TracingPaper {
   readonly #fit = plainButton("fit");
   readonly #mode = plainButton("recognise");
   /**
-   * Over the ink: the options of a task of a module, a group of radio buttons under the picture,
-   * which take the pointer where they stand and leave the paper round them to the ink.
+   * Over the ink: the options of a task of a module under the picture, which take the pointer
+   * where they stand and leave the paper round them to the ink: the button that shows them, and
+   * once it is pressed, in its place, the group of radio buttons.
    */
   readonly choices = document.createElement("div");
-  /** The options' texts, in their order, and the one the consumer chose. */
+  readonly #reveal = plainButton("options");
+  readonly #group = document.createElement("div");
+  /** The options' texts, in their order, the one the consumer chose, and what each came to. */
   #options: readonly string[] = [];
   #picked: number | undefined;
+  #verdicts: readonly (OptionVerdict | null)[] = [];
+  /** The learner pressed the button that shows the options. */
+  #open = false;
   /**
    * How far the options reach below the picture, in their letters' size: the same at any width of
    * the paper, whose 272ths their letters are, and at any zoom, which only scales them.
@@ -237,8 +251,9 @@ export class TracingPaper {
     this.layer.setAttribute("preserveAspectRatio", "none");
     this.layer.setAttribute("aria-hidden", "true");
     this.#image.setAttribute("preserveAspectRatio", "none");
+    this.#ground.setAttribute("class", "ground");
     this.#edge.setAttribute("class", "edge");
-    this.layer.append(this.#image, this.#edge);
+    this.layer.append(this.#ground, this.#image, this.#edge);
     this.layer.setAttribute("display", "none");
     this.grip.type = "button";
     this.grip.className = "grip";
@@ -329,9 +344,14 @@ export class TracingPaper {
     });
     this.#mode.addEventListener("click", () => this.#pressMode());
     this.choices.className = "tracing-choices";
-    this.choices.setAttribute("role", "radiogroup");
     this.choices.hidden = true;
-    this.choices.addEventListener("keydown", (event) => this.#arrow(event));
+    this.#reveal.classList.add("reveal");
+    this.#reveal.addEventListener("click", () => this.#openOptions());
+    this.#group.className = "options";
+    this.#group.setAttribute("role", "radiogroup");
+    this.#group.hidden = true;
+    this.#group.addEventListener("keydown", (event) => this.#arrow(event));
+    this.choices.append(this.#reveal, this.#group);
     this.#laid.observe(this.choices);
     // Escape lets the paper go, and the focus goes back to its grip.
     this.bar.addEventListener("keydown", (event) => {
@@ -371,6 +391,7 @@ export class TracingPaper {
   set source(source: Source) {
     if (source === this.#source) return;
     this.#source = source;
+    this.layer.classList.toggle("module", source === "module");
     this.#shows = "photo";
     this.#drawn = "";
     this.#showReading();
@@ -378,14 +399,16 @@ export class TracingPaper {
 
   /**
    * The options of a task of a module, or none: a button each under the picture, in their order,
-   * none chosen till the consumer says. The same texts again change nothing, the choice neither.
+   * none chosen and none judged till the consumer says. The same texts again change nothing, the
+   * choice and the verdicts neither.
    */
   set options(options: readonly string[] | undefined) {
     const texts = options ?? [];
     if (sameItems(texts, this.#options)) return;
     this.#options = texts;
     this.#picked = undefined;
-    this.choices.replaceChildren(
+    this.#verdicts = [];
+    this.#group.replaceChildren(
       ...texts.map((text, n) => {
         const button = asRadio(document.createElement("button"));
         button.type = "button";
@@ -393,15 +416,38 @@ export class TracingPaper {
         // the system's Highlight may be translucent, and so has to lie on Canvas, not on the ink.
         const words = document.createElement("span");
         words.textContent = text;
+        const tick = iconOf(ROW.correct.outline);
+        tick.classList.add("tick");
+        words.prepend(tick);
         button.append(words);
         button.tabIndex = n === 0 ? 0 : -1;
-        button.addEventListener("click", () => this.#moves.tap(n));
+        button.addEventListener("click", () => {
+          if (!this.#settled(n)) this.#moves.tap(n);
+        });
         button.addEventListener("focus", () => this.#stopAt(n));
         return button;
       }),
     );
     this.#band = texts.length === 0 ? 0 : ONE_ROW;
     this.#resize();
+    this.#showVerdicts();
+  }
+
+  /**
+   * What each option came to, by its index, as the consumer checked it: drawn on its button, which
+   * tells nothing more; once one is correct none does, and the others fade.
+   */
+  set verdicts(verdicts: readonly (OptionVerdict | null)[]) {
+    this.#verdicts = verdicts;
+    this.#showVerdicts();
+  }
+
+  /** The options behind their button again, as a new task from paper comes. */
+  shut(): void {
+    if (!this.#open) return;
+    this.#open = false;
+    this.#reveal.hidden = false;
+    this.#group.hidden = true;
   }
 
   /**
@@ -411,7 +457,7 @@ export class TracingPaper {
   set chosen(option: number | undefined) {
     if (option === this.#picked) return;
     this.#picked = option;
-    const buttons = this.choices.children;
+    const buttons = this.#group.children;
     for (let n = 0; n < buttons.length; n++) {
       write(buttons[n] as Element, "aria-checked", String(n === option));
     }
@@ -492,8 +538,13 @@ export class TracingPaper {
     write(this.tip, "lang", lang);
     for (const part of [this.bar, this.sign]) write(part, "lang", lang);
     write(this.bar, "aria-label", labels.scaleButtons);
-    write(this.choices, "aria-label", labels.options);
+    write(this.#group, "aria-label", labels.options);
     write(this.choices, "lang", lang);
+    const shows = this.#reveal.querySelector(".label");
+    if (shows !== null && shows.textContent !== labels.showOptions) {
+      shows.textContent = labels.showOptions;
+    }
+    this.#showVerdicts();
     for (const [button, words] of [
       [this.#smaller, labels.smaller],
       [this.#larger, labels.larger],
@@ -545,6 +596,7 @@ export class TracingPaper {
     // The picture above, and the edge round it and the options under it.
     const pictured = this.#picture.height * scale;
     for (const [shape, tall] of [
+      [this.#ground, height],
       [this.#image, pictured],
       [this.#edge, height],
     ] as const) {
@@ -649,10 +701,54 @@ export class TracingPaper {
     this.choices.style.transform = `translate(${left}px, ${top}px) scale(${by})`;
   }
 
+  /**
+   * The options in place of their button: the focus, if the button had it, goes to the option Tab
+   * comes to, which leaves it nowhere else as the button goes.
+   */
+  #openOptions(): void {
+    const focused = this.#reveal.matches(":focus");
+    this.#open = true;
+    this.#reveal.hidden = true;
+    this.#group.hidden = false;
+    if (!focused) return;
+    for (const button of this.#group.children) {
+      if ((button as HTMLElement).tabIndex === 0) (button as HTMLElement).focus();
+    }
+  }
+
+  /** Whether the option at `n` tells nothing on a press: judged, or another is correct. */
+  #settled(n: number): boolean {
+    return (this.#verdicts[n] ?? null) !== null || this.#verdicts.includes("correct");
+  }
+
+  /**
+   * Each option as what it came to: its verdict, on the button and in its name, in the element's
+   * language; and on the group whether one is correct, which fades the rest.
+   */
+  #showVerdicts(): void {
+    const solved = this.#verdicts.includes("correct");
+    write(this.#group, "data-solved", solved ? "" : null);
+    const buttons = this.#group.children;
+    for (let n = 0; n < buttons.length; n++) {
+      const button = buttons[n] as Element;
+      const verdict = this.#verdicts[n] ?? null;
+      write(button, "data-verdict", verdict);
+      write(button, "aria-disabled", this.#settled(n) ? "true" : null);
+      const labels = this.#labels;
+      const name =
+        verdict === null || labels === undefined
+          ? null
+          : say(verdict === "correct" ? labels.optionCorrect : labels.optionNotYet, {
+              option: this.#options[n] ?? "",
+            });
+      write(button, "aria-label", name);
+    }
+  }
+
   /** The arrow keys, Home and End move the focus among the options, choosing none. */
   #arrow(event: KeyboardEvent): void {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
-    const buttons = [...this.choices.children] as HTMLElement[];
+    const buttons = [...this.#group.children] as HTMLElement[];
     const at = buttons.indexOf(event.target as HTMLElement);
     if (at < 0) return;
     const to = arrowedTo(event.key, buttons.length, at, "both");
@@ -663,7 +759,7 @@ export class TracingPaper {
 
   /** The one option Tab comes to: the last focused, or the one chosen. */
   #stopAt(option: number): void {
-    const buttons = this.choices.children;
+    const buttons = this.#group.children;
     for (let n = 0; n < buttons.length; n++) {
       (buttons[n] as HTMLElement).tabIndex = n === option ? 0 : -1;
     }
@@ -1006,11 +1102,17 @@ function signOf(shows: "busy" | "text" | "photo" | "module"): Element {
     spinner.className = "spinner";
     return spinner;
   }
-  const name: IconName =
-    ROW[shows === "module" ? "module" : shows === "text" ? "recognise" : "original"].outline;
+  return iconOf(
+    ROW[shows === "module" ? "module" : shows === "text" ? "recognise" : "original"].outline,
+  );
+}
+
+/** An icon of the set, which says nothing to a screen reader. */
+function iconOf(name: IconName): SVGSVGElement {
   const { viewBox, paths } = ICONS[name];
   const icon = document.createElementNS(SVG, "svg");
   icon.setAttribute("viewBox", viewBox);
+  icon.setAttribute("aria-hidden", "true");
   for (const d of paths) {
     const path = document.createElementNS(SVG, "path");
     path.setAttribute("d", d);

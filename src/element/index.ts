@@ -67,6 +67,7 @@ import type {
   GridChange,
   HistoryChange,
   Media,
+  OptionVerdict,
   PaintStats,
   PaperGrid,
   PaperTask,
@@ -180,6 +181,7 @@ import {
   rectOf as tracingRect,
   scaleOf as tracingScaleOf,
   tracingStateOf,
+  verdictsOf,
   whollyOff,
 } from "../core/tracing.js";
 import {
@@ -238,6 +240,7 @@ export type {
   Media,
   OptionTap,
   OptionTapEvent,
+  OptionVerdict,
   PaintStats,
   PaperGrid,
   PaperTask,
@@ -298,6 +301,8 @@ const TRACING_CHANGE = "tracingchange";
 const TRACING_READ = "tracingread";
 /** The event the element sends when the learner presses an option on the tracing paper. */
 const OPTION_TAP = "optiontap";
+/** The verdicts on a task from paper's options as it comes: none. */
+const NO_VERDICTS: readonly (OptionVerdict | null)[] = Object.freeze([]);
 /** The event the element sends when the learner turns a task from paper's grid with its button. */
 const GRID_CHANGE = "gridchange";
 /** The event the element sends when the learner changes a setting of the pen or the eraser. */
@@ -585,6 +590,10 @@ canvas {
 .sheet.hand canvas { cursor: grab; }
 .sheet.panning canvas { cursor: grabbing; }
 .tracing { mix-blend-mode: multiply; }
+.tracing .ground { fill: none; }
+/* A task of a module's paper is opaque: white over the grid, its options' band too. */
+.tracing.module { mix-blend-mode: normal; }
+.tracing.module .ground { fill: #fff; }
 .tracing .edge {
   fill: none; stroke: rgba(60, 60, 67, 0.3); stroke-width: 1px; vector-effect: non-scaling-stroke;
 }
@@ -678,31 +687,63 @@ canvas {
 /* A task of a module's options under its picture, as the mockup's: its numbers on a paper 272 px
    wide, its letters 12.5 high, in their size — 4 above, pills 28 high, 10 within at each side and 6
    apart, 8 from the paper's sides and 12 below. The element sets the letters' size and the width,
-   the paper's own, and scales them to the screen. A long option wraps within its pill. */
+   the paper's own, and scales them to the screen. A long option wraps within its pill. Before
+   them, in their place, the pale pill that shows them, as high as one of them. */
 .stage > .tracing-choices {
   inset: 0 auto auto 0; height: auto; box-sizing: border-box; transform-origin: 0 0;
-  display: flex; flex-wrap: wrap; align-content: flex-start; gap: 0.48em;
-  padding: 0.32em 0.64em 0.96em; direction: ltr;
+  display: block; padding: 0.32em 0.64em 0.96em; direction: ltr;
 }
-.stage > .tracing-choices[hidden] { display: none; }
-.tracing-choices button {
+.stage > .tracing-choices[hidden], .tracing-choices [hidden] { display: none; }
+.tracing-choices .options {
+  display: flex; flex-wrap: wrap; align-content: flex-start; gap: 0.48em;
+}
+.tracing-choices .reveal {
+  box-sizing: border-box; min-height: 2.24em; margin: 0; padding: 0.2em 0.8em 0.2em 0.64em;
+  border: none; border-radius: 1.12em; display: inline-flex; align-items: center; gap: 0.4em;
+  font: inherit; font-weight: 600; line-height: 1.2; color: #0058b8; background: #e5f0ff;
+  cursor: pointer; pointer-events: auto; touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.tracing-choices .reveal svg {
+  display: block; flex: none; width: 1.28em; height: 1.28em; fill: currentColor;
+}
+.tracing-choices .reveal:focus-visible {
+  outline: 2px solid var(--novatrail-canvas-accent, ${ACCENT}); outline-offset: 2px;
+}
+.tracing-choices .options button {
   box-sizing: border-box; max-width: 100%; margin: 0; padding: 0; border: none;
   border-radius: 1.12em; font: inherit; font-weight: 500; line-height: 1.2; color: #1d1d1f;
   background: #fff; box-shadow: inset 0 0 0 1px rgba(60, 60, 67, 0.3); cursor: pointer;
   pointer-events: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
 }
-.tracing-choices button > span {
+.tracing-choices .options button > span {
   box-sizing: border-box; min-height: 2.24em; padding: 0.2em 0.8em; border-radius: inherit;
   display: flex; align-items: center; justify-content: center; white-space: normal;
   overflow-wrap: anywhere; text-align: center;
 }
-.tracing-choices button[aria-checked="true"] {
+.tracing-choices .options button[aria-checked="true"] {
   background: var(--novatrail-canvas-accent, ${ACCENT}); color: #fff; box-shadow: none;
   font-weight: 600;
 }
-.tracing-choices button:focus-visible {
+.tracing-choices .options button:focus-visible {
   outline: 2px solid var(--novatrail-canvas-accent, ${ACCENT}); outline-offset: 2px;
 }
+/* What an option came to, over its being chosen: green with a tick, or orange and struck out; and
+   once one is correct, the rest faded. A judged option takes no press. */
+.tracing-choices .tick {
+  display: none; flex: none; width: 1.12em; height: 1.12em; margin-inline-end: 0.24em;
+  fill: currentColor;
+}
+.tracing-choices .options button[data-verdict="correct"] {
+  background: #248a3d; color: #fff; box-shadow: none; font-weight: 600;
+}
+.tracing-choices .options button[data-verdict="correct"] .tick { display: block; }
+.tracing-choices .options button[data-verdict="not_yet"] {
+  background: #fff1e6; color: #a04100; box-shadow: inset 0 0 0 1.5px #ff9500;
+}
+.tracing-choices .options button[data-verdict="not_yet"] > span { text-decoration: line-through; }
+.tracing-choices .options[data-solved] button:not([data-verdict="correct"]) { opacity: 0.4; }
+.tracing-choices .options button[aria-disabled="true"] { cursor: default; }
 /* Select's marks, dashed in the accent over a light wash of it, as thin at any zoom; and its bar of
    glass over them, which the element places. */
 .selection .shape, .selection .box {
@@ -771,6 +812,7 @@ canvas {
   .marks .wavy .glow { stroke: Canvas; }
   .marks .wavy .line { stroke: Highlight; }
   .tracing { mix-blend-mode: normal; }
+  .tracing.module .ground { fill: Canvas; }
   .tracing .edge { stroke: CanvasText; }
   .grip .bar, .grip.dragging .bar { background: ButtonText; }
   .grip:focus-visible { outline-color: Highlight; }
@@ -801,15 +843,32 @@ canvas {
   .tools [aria-checked="true"] {
     background: Highlight; color: HighlightText; border-color: Highlight;
   }
-  .tracing-choices button {
+  .tracing-choices .reveal {
+    background: ButtonFace; color: ButtonText; border: 1px solid ButtonBorder;
+  }
+  .tracing-choices .options button {
     background: Canvas; color: ButtonText; border: 1px solid ButtonBorder;
   }
-  .tracing-choices button > span { background: ButtonFace; }
-  .tracing-choices button[aria-checked="true"] { border-color: Highlight; }
-  .tracing-choices button[aria-checked="true"] > span {
+  .tracing-choices .options button > span { background: ButtonFace; }
+  .tracing-choices .options button[aria-checked="true"] { border-color: Highlight; }
+  .tracing-choices .options button[aria-checked="true"] > span {
     background: Highlight; color: HighlightText;
   }
-  .tracing-choices button:focus-visible { outline-color: Highlight; }
+  .tracing-choices .options button[data-verdict="correct"] { border: 2px solid Highlight; }
+  .tracing-choices .options button[data-verdict="correct"] > span {
+    background: Highlight; color: HighlightText;
+  }
+  .tracing-choices .options button[data-verdict="not_yet"] { border: 2px dashed CanvasText; }
+  .tracing-choices .options button[data-verdict="not_yet"] > span {
+    background: Canvas; color: CanvasText;
+  }
+  .tracing-choices .options[data-solved] button:not([data-verdict="correct"]) {
+    opacity: 1; border-color: GrayText;
+  }
+  .tracing-choices .options[data-solved] button:not([data-verdict="correct"]) > span {
+    background: Canvas; color: GrayText;
+  }
+  .tracing-choices :is(.reveal, .options button):focus-visible { outline-color: Highlight; }
   :is(.tools, .tracing-scale, .selection-bar) [aria-disabled="true"] { color: GrayText; border-color: GrayText; }
   .tip { background: Canvas; color: CanvasText; border: 1px solid CanvasText; }
   :is(.tools, .tracing-scale, .selection-bar) button:focus-visible, .viewport:focus-visible + .ring {
@@ -1332,9 +1391,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   /** The task from paper as the consumer gave it, and where its tracing paper lies. */
   #paper: PaperTask | undefined;
   #tracing: TracingState | undefined;
-  /** The options of a task of a module, as checked, and the one the consumer chose. */
+  /** The options of a task of a module, as checked, the one the consumer chose, and the verdicts. */
   #options: readonly string[] | undefined;
   #chosen: number | undefined;
+  #verdicts: readonly (OptionVerdict | null)[] = NO_VERDICTS;
   /** The tracing paper's state the learner's move began at: the move tells only if it changed it. */
   #moveFrom: TracingState | undefined;
   /** The layer the stroke under way is written on, and the erasing under way erases. */
@@ -1700,6 +1760,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#adopt("tracing");
     this.#adopt("grid");
     this.#adopt("chosen");
+    this.#adopt("optionVerdicts");
     this.#adopt("manifest");
     this.#adopt("media");
     // The history before the marks: they hold on to its strokes.
@@ -1865,9 +1926,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * history has strokes on the tracing paper, a TypeError. Either drops a stroke or an erasing
    * under way on the tracing paper, as a new history drops the one under the pen. The crop's
    * picture is read as it comes; till then the paper has its largest size. A task of a module, its
-   * `source` "module", may have `options`: buttons on the paper under its picture, none chosen as
-   * they come (`chosen`). Options on another task, an empty list or a text of white space alone
-   * are a TypeError.
+   * `source` "module", has an opaque paper and may have `options`: behind one button on the paper
+   * under its picture, which shows them in its place, none chosen (`chosen`) and none judged
+   * (`optionVerdicts`) as they come; another crop shuts them behind the button again. Options on
+   * another task, fewer than two or a text of white space alone are a TypeError.
    */
   get paper(): PaperTask | undefined {
     return this.#paper;
@@ -1924,6 +1986,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       return;
     }
     this.#offer(undefined);
+    this.#tracingPaper.shut();
     this.#leaveTracing(false);
     // A new task from paper comes on dots; another crop in its place keeps the learner's grid.
     if (this.#paper === undefined) this.#paperGrid = PAPER_GRIDS[0] as PaperGrid;
@@ -1955,14 +2018,32 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
   }
 
   /**
-   * The options on the tracing paper, or none: other texts than those shown drop the choice, and the
-   * same keep it.
+   * What each option of the task from paper's `options` came to, by its index, frozen: "correct"
+   * drawn green with a tick, "not_yet" orange and struck out, `null` as it is, and the others
+   * faded once one is correct. A judged option tells no `optiontap`, nor does any once one is
+   * correct. Empty as a task from paper or other options come; the consumer sets it as each verdict
+   * comes, and gives it back to open the task as it was, which sends no event. A list not of the
+   * options' length, or with another value, is a TypeError.
+   */
+  get optionVerdicts(): readonly (OptionVerdict | null)[] {
+    return this.#verdicts;
+  }
+
+  set optionVerdicts(verdicts: readonly (OptionVerdict | null)[]) {
+    this.#verdicts = verdictsOf(verdicts, this.#options?.length ?? 0);
+    this.#tracingPaper.verdicts = this.#verdicts;
+  }
+
+  /**
+   * The options on the tracing paper, or none: other texts than those shown drop the choice and the
+   * verdicts, and the same keep them.
    */
   #offer(options: readonly string[] | undefined): void {
     const shown = this.#options ?? [];
     if (sameItems(options ?? [], shown)) return;
     this.#options = options;
     this.#chosen = undefined;
+    this.#verdicts = NO_VERDICTS;
     this.#tracingPaper.options = options;
     this.#tracingPaper.chosen = undefined;
   }
@@ -3369,6 +3450,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       | "tracing"
       | "grid"
       | "chosen"
+      | "optionVerdicts"
       | "manifest"
       | "media"
       | "history"

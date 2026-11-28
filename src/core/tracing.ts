@@ -1,4 +1,10 @@
-import type { PaperGrid, PaperTask, TracingReading, TracingState } from "@altnovatrail/spec/canvas";
+import type {
+  OptionVerdict,
+  PaperGrid,
+  PaperTask,
+  TracingReading,
+  TracingState,
+} from "@altnovatrail/spec/canvas";
 import { record, shown } from "./fields.js";
 import type { Box } from "./geometry.js";
 import { tenths } from "./geometry.js";
@@ -196,7 +202,7 @@ export function readingOf(value: unknown): TracingReading {
 
 /**
  * The options of a task from paper a consumer gives, checked and frozen: none, or, on a task of a
- * module alone, its `source` "module", a list of one text at least, none of them empty or of white
+ * module alone, its `source` "module", a list of two texts at least, none of them empty or of white
  * space alone. Anything else is a TypeError.
  */
 export function optionsOf(
@@ -209,11 +215,11 @@ export function optionsOf(
   }
   if (
     !Array.isArray(value) ||
-    value.length === 0 ||
+    value.length < 2 ||
     !value.every((each) => typeof each === "string" && each.trim() !== "")
   ) {
     throw new TypeError(
-      `paper.options: one text at least, none empty or of white space alone, not ${shown(value)}`,
+      `paper.options: two texts at least, none empty or of white space alone, not ${shown(value)}`,
     );
   }
   return Object.freeze([...(value as string[])]);
@@ -233,6 +239,26 @@ export function chosenOf(value: unknown, count: number): number | undefined {
     );
   }
   return value;
+}
+
+/** What an option may come to, or `null` for an option not judged. */
+const VERDICTS: readonly unknown[] = ["correct", "not_yet", null];
+
+/**
+ * What each of `count` options came to that a consumer gives, checked and frozen: a list of
+ * `count`, each "correct", "not_yet" or `null`. Anything else is a TypeError.
+ */
+export function verdictsOf(value: unknown, count: number): readonly (OptionVerdict | null)[] {
+  if (
+    !Array.isArray(value) ||
+    value.length !== count ||
+    !value.every((each) => VERDICTS.includes(each))
+  ) {
+    throw new TypeError(
+      `optionVerdicts: one of "correct", "not_yet" or null for each of ${count} options, not ${shown(value)}`,
+    );
+  }
+  return Object.freeze([...(value as (OptionVerdict | null)[])]);
 }
 
 /** Whether two tracing states say the same. */
