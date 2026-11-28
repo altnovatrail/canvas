@@ -30,6 +30,8 @@ import type {
   Marks,
   Media,
   NovatrailCanvas,
+  OptionTap,
+  OptionTapEvent,
   PaintStats,
   PaperGrid,
   PaperSubmission,
@@ -74,6 +76,8 @@ export type Contract = All<
     Same<Mark, spec.Mark>,
     Same<Marks, spec.Marks>,
     Same<Media, spec.Media>,
+    Same<OptionTap, spec.OptionTap>,
+    Same<OptionTapEvent, spec.OptionTapEvent>,
     Same<PaintStats, spec.PaintStats>,
     Same<PaperGrid, spec.PaperGrid>,
     Same<PaperSubmission, spec.PaperSubmission>,
@@ -95,6 +99,7 @@ export type Contract = All<
     Same<GlobalEventHandlersEventMap["demochange"], CanvasEventMap["demochange"]>,
     Same<GlobalEventHandlersEventMap["tracingchange"], CanvasEventMap["tracingchange"]>,
     Same<GlobalEventHandlersEventMap["gridchange"], CanvasEventMap["gridchange"]>,
+    Same<GlobalEventHandlersEventMap["optiontap"], CanvasEventMap["optiontap"]>,
     Same<GlobalEventHandlersEventMap["penchange"], CanvasEventMap["penchange"]>,
   ]
 >;
@@ -209,6 +214,20 @@ document.addEventListener("gridchange", (event) => {
   const chosen: GridChange = event.detail;
   sheet.grid = chosen.grid;
 });
+/**
+ * A task of a module's options on the tracing paper: a tap tells an optiontap, and the consumer,
+ * which holds the choice, sets it; its work holds the strokes alone beside the crop.
+ */
+sheet.paper = { statement, source: "module", options: ["7", "8", "9"] };
+sheet.chosen = 1;
+sheet.chosen = undefined;
+export const picked: number | undefined = sheet.chosen;
+sheet.addEventListener("optiontap", (event: OptionTapEvent) => event.detail.option);
+document.addEventListener("optiontap", (event) => {
+  const tap: OptionTap = event.detail;
+  sheet.chosen = tap.option;
+});
+export const own: Blob | undefined = fromPaper.strokes;
 /**
  * The settings of the pen and the eraser, which a penchange tells and the consumer gives back to
  * the next element; undefined changes nothing.
@@ -338,6 +357,14 @@ sheet.task = { ...posts, canvas: { kind: "handwriting_sheet", digit: 48 } };
 sheet.task = { ...posts, givens: "A post every 4 m." };
 // @ts-expect-error A tool the sheet has not is no tool of it.
 sheet.tool = "ruler";
+document.addEventListener("optiontap", (event) => {
+  // @ts-expect-error The option told is the learner's tap, to read.
+  event.detail.option = 0;
+});
+// @ts-expect-error An option is chosen by its index, not by its text.
+sheet.chosen = "8";
+// @ts-expect-error The options are texts.
+sheet.paper = { statement, source: "module", options: [7, 8] };
 // @ts-expect-error A grid of no name is no grid: a blank sheet is "blank".
 sheet.grid = "none";
 // @ts-expect-error null is no grid: undefined, and undefined alone, changes nothing.

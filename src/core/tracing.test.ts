@@ -10,6 +10,7 @@ import { stroke } from "./sheets.fixture.js";
 import { paperWorkForCheck } from "./submission.js";
 import {
   boxOnSheet,
+  chosenOf,
   grayOf,
   isPaperGrid,
   keptOn,
@@ -18,6 +19,7 @@ import {
   nextGrid,
   onSheet,
   onTracing,
+  optionsOf,
   PAPER_GRIDS,
   rectOf,
   rulingsOf,
@@ -67,6 +69,32 @@ describe("the grid of a task from paper", () => {
     expect(PAPER_GRIDS.every(isPaperGrid)).toBe(true);
     for (const each of ["none", "Dots", "", 1, null, undefined])
       expect(isPaperGrid(each)).toBe(false);
+  });
+});
+
+describe("the options of a task of a module", () => {
+  test("are a task of a module's alone, one text at least, none blank, and come frozen", () => {
+    const given = ["7", "eight", " 9 "];
+    const options = optionsOf(given, "module");
+    expect(options).toEqual(given);
+    expect(options).not.toBe(given);
+    expect(Object.isFrozen(options)).toBe(true);
+    expect(optionsOf(undefined, "module")).toBeUndefined();
+    expect(optionsOf(undefined, "photo")).toBeUndefined();
+    expect(() => optionsOf(["7"], "photo")).toThrow(/a task of a module's alone/);
+    for (const value of [[], ["7", ""], ["7", " \n\u00a0"], [7], "7", null, { 0: "7" }]) {
+      expect(() => optionsOf(value, "module"), JSON.stringify(value)).toThrow(TypeError);
+    }
+  });
+
+  test("have one chosen by its index within them, or none", () => {
+    expect(chosenOf(undefined, 3)).toBeUndefined();
+    expect(chosenOf(undefined, 0)).toBeUndefined();
+    expect([chosenOf(0, 3), chosenOf(2, 3)]).toEqual([0, 2]);
+    for (const value of [3, -1, 0.5, Number.NaN, "1", null]) {
+      expect(() => chosenOf(value, 3), String(value)).toThrow(/the index of one of 3 options/);
+    }
+    expect(() => chosenOf(0, 0)).toThrow(/has no options/);
   });
 });
 

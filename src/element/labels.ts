@@ -1,7 +1,7 @@
 // The labels of the element's own buttons, of the popovers of the pen, the eraser and Select, of
-// Select's bar, of a workbook's boxes and of the parts of a worked example's demo, in the
-// languages of the interface, English and Russian, by the shared rules of the packages'
-// translations:
+// Select's bar, of the group of a task of a module's options, of a workbook's boxes and of the
+// parts of a worked example's demo, in the languages of the interface, English and Russian, by the
+// shared rules of the packages' translations:
 // - the language is the element's own `lang`, looked up as RFC 4647 does it, and English stands for
 //   any other, under a `lang` of its own;
 // - a label with a number or a word in it is one string with named places, «Часть {n} из {total}.»,
@@ -79,6 +79,8 @@ export interface Labels {
   readonly photoShown: string;
   readonly readingShown: string;
   readonly moduleShown: string;
+  /** The group of a task of a module's options on the tracing paper. */
+  readonly options: string;
   /** A box of a workbook's line, alone in it. */
   readonly box: string;
   /** A box among several of its line, by its slot: {slot}. */
@@ -183,6 +185,7 @@ const ENGLISH: Labels = Object.freeze({
   photoShown: "Photo of the task",
   readingShown: "Recognised by AI",
   moduleShown: "Task of the module",
+  options: "Answers",
   box: "Box",
   boxAt: "Box {slot}",
   boxIn: "Box {line}.{slot}",
@@ -279,6 +282,7 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
       photoShown: "Фото задачи",
       readingShown: "Распознано ИИ",
       moduleShown: "Задача модуля",
+      options: "Варианты ответа",
       box: "Окошко",
       boxAt: "Окошко {slot}",
       boxIn: "Окошко {line}.{slot}",

@@ -219,10 +219,29 @@ async function fromPaper(made: HTMLElement[]) {
   return element;
 }
 
+/** A task of a module on a new element, its options under its picture, the second chosen, and a
+ * stroke on the paper over its picture. */
+async function fromModule(made: HTMLElement[]) {
+  const { element, root, canvas, view } = await placed(made, 400);
+  element.paper = {
+    statement: await paperCrop(),
+    source: "module",
+    options: ["December", "January", "February", "September", "November"],
+  };
+  await expect
+    .poll(() => root.querySelector<HTMLElement>(".grip")?.hidden, { timeout: GRIP_MS })
+    .toBe(false);
+  element.chosen = 1;
+  await settle();
+  level(canvas, view(), 230, 700, 900);
+  await settle();
+  return element;
+}
+
 /** Every kind of canvas the element shows: a sheet with its task and a stroke, a statement with
  * pictures, a workbook, marks on a sheet, a worked example on a sheet with pictures beside it and
  * on its sheet, without the consumer's button in its row and with it, one on a workbook, a task
- * from paper with the tutor's marks, and a sheet with the popover of its pen or its eraser open. */
+ * from paper with the tutor's marks, a task of a module with its options, and a sheet with the popover of its pen or its eraser open. */
 export const KINDS: readonly Kind[] = [
   { name: "a sheet with its task and a stroke", put: written, incomplete: [] },
   {
@@ -283,6 +302,11 @@ export const KINDS: readonly Kind[] = [
   {
     name: "a task from paper, with a stroke, a verdict and a wavy line",
     put: fromPaper,
+    incomplete: [],
+  },
+  {
+    name: "a task of a module with its options, one chosen, and a stroke on its paper",
+    put: fromModule,
     incomplete: [],
   },
   {

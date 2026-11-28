@@ -15,10 +15,19 @@
 // are the keyboard's way, and a drag's alternative (WCAG 2.5.7). Above its corner a sign says what
 // it shows: the photo, the reading on its way, or the statements the AI read, which the bar's last
 // button offers, waits for and gives back the photo from; or, for a task of a module, whose
-// picture is the module's text, the module's book, with no button to read it. This module is no
-// entry point of the package.
+// picture is the module's text, the module's book, with no button to read it.
+//
+// A task of a module whose answer is a choice has its options on the paper, under the picture, as
+// the interface mockup draws them: pills in a row that wraps, the one the consumer chose filled
+// with the accent. They are a part of the paper, which grows down to hold them: they move, scale and
+// hide with it, and a press on the paper beside them writes on it. They are laid out at the paper's
+// own size, a CSS pixel a unit, and scaled with it to the screen, so that how they wrap, and how far
+// the paper grows, is the same at every zoom. They are a group of radio buttons, a stop of Tab with
+// the arrow keys among them, as the tool bar's tools; a press, Enter or Space tells the consumer,
+// which holds the choice and gives it back. This module is no entry point of the package.
 
 import type { PaperTask, TracingReading } from "@altnovatrail/spec/canvas";
+import { sameItems } from "../core/fields.js";
 import {
   type Gray,
   grayOf,
@@ -33,7 +42,7 @@ import { SVG, write } from "./attributes.js";
 import { ICONS, type IconName, ROW } from "./icons.js";
 import { type Labels, say } from "./labels.js";
 import { lineOf } from "./notation.js";
-import { draw, plainButton } from "./tools.js";
+import { arrowedTo, asRadio, draw, plainButton } from "./tools.js";
 
 /**
  * What the grip, the corners and the bar ask of the element: the tracing paper moved to a place,
@@ -50,6 +59,8 @@ export interface TracingMoves {
   readonly moved: () => void;
   /** The learner pressed "Recognise" while the reading is offered. */
   readonly read: () => void;
+  /** The learner pressed an option, by its index, the chosen one too. */
+  readonly tap: (option: number) => void;
 }
 
 /**
@@ -89,6 +100,16 @@ const GRIP = Object.freeze({ width: 68, height: 44, over: 29 });
 const BAR = Object.freeze({ gap: 18, height: 52, margin: 8 });
 const SIGN = Object.freeze({ over: 34 });
 
+/**
+ * The options under the picture, as the mockup lays them out on a paper 272 of its pixels wide: in
+ * 272ths of the paper's width, their letters `font` high and the rest in their letters' size, so
+ * that the options grow with the statement the consumer drew to the paper's width. The style holds
+ * the rest of the mockup's numbers in `em`.
+ */
+const OPTIONS = Object.freeze({ across: 272, font: 12.5 });
+/** The room the options take before they are laid out: one row, in their letters' size. */
+const ONE_ROW = (4 + 28 + 12) / 12.5;
+
 /** How long the wheel rests before a scale by it is over, ms. */
 const WHEEL_REST = 300;
 
@@ -127,6 +148,25 @@ export class TracingPaper {
   readonly #larger = plainButton("larger");
   readonly #fit = plainButton("fit");
   readonly #mode = plainButton("recognise");
+  /**
+   * Over the ink: the options of a task of a module, a group of radio buttons under the picture,
+   * which take the pointer where they stand and leave the paper round them to the ink.
+   */
+  readonly choices = document.createElement("div");
+  /** The options' texts, in their order, and the one the consumer chose. */
+  #options: readonly string[] = [];
+  #picked: number | undefined;
+  /**
+   * How far the options reach below the picture, in their letters' size: the same at any width of
+   * the paper, whose 272ths their letters are, and at any zoom, which only scales them.
+   */
+  #band = 0;
+  /** The options laid out anew, by their texts, their font or the paper's width. */
+  readonly #laid = new ResizeObserver((entries) => this.#measure(entries));
+  /** The paper's width, in units, that the options were last laid out across, a CSS pixel each. */
+  #across: number | undefined;
+  /** Hears that the paper's size is known, or changed as its options were laid out. */
+  #sized: () => void = () => undefined;
   readonly #moves: TracingMoves;
   #labels: Labels | undefined;
   #lang = "en";
@@ -165,6 +205,8 @@ export class TracingPaper {
   #url: string | undefined;
   #connected = false;
   #read: Promise<Read> = Promise.resolve({ size: LARGEST, gray: null });
+  /** The picture's size on the sheet, and the paper's, with its options under the picture. */
+  #picture: Size = LARGEST;
   #size: Size = LARGEST;
   /** The picture is read, or could not be: till then the paper is neither shown nor written on. */
   #ready = false;
@@ -286,6 +328,11 @@ export class TracingPaper {
       this.#moves.moved();
     });
     this.#mode.addEventListener("click", () => this.#pressMode());
+    this.choices.className = "tracing-choices";
+    this.choices.setAttribute("role", "radiogroup");
+    this.choices.hidden = true;
+    this.choices.addEventListener("keydown", (event) => this.#arrow(event));
+    this.#laid.observe(this.choices);
     // Escape lets the paper go, and the focus goes back to its grip.
     this.bar.addEventListener("keydown", (event) => {
       if (event.key !== "Escape") return;
@@ -329,6 +376,48 @@ export class TracingPaper {
     this.#showReading();
   }
 
+  /**
+   * The options of a task of a module, or none: a button each under the picture, in their order,
+   * none chosen till the consumer says. The same texts again change nothing, the choice neither.
+   */
+  set options(options: readonly string[] | undefined) {
+    const texts = options ?? [];
+    if (sameItems(texts, this.#options)) return;
+    this.#options = texts;
+    this.#picked = undefined;
+    this.choices.replaceChildren(
+      ...texts.map((text, n) => {
+        const button = asRadio(document.createElement("button"));
+        button.type = "button";
+        // Its words on a fill of their own over the button's, which is opaque in forced colours:
+        // the system's Highlight may be translucent, and so has to lie on Canvas, not on the ink.
+        const words = document.createElement("span");
+        words.textContent = text;
+        button.append(words);
+        button.tabIndex = n === 0 ? 0 : -1;
+        button.addEventListener("click", () => this.#moves.tap(n));
+        button.addEventListener("focus", () => this.#stopAt(n));
+        return button;
+      }),
+    );
+    this.#band = texts.length === 0 ? 0 : ONE_ROW;
+    this.#resize();
+  }
+
+  /**
+   * The option the consumer chose, by its index among the options, or none: it alone shows as
+   * chosen, and Tab comes to it.
+   */
+  set chosen(option: number | undefined) {
+    if (option === this.#picked) return;
+    this.#picked = option;
+    const buttons = this.choices.children;
+    for (let n = 0; n < buttons.length; n++) {
+      write(buttons[n] as Element, "aria-checked", String(n === option));
+    }
+    if (option !== undefined) this.#stopAt(option);
+  }
+
   /** The press on the sheet lets the paper go: its frame, corners and bar go out of sight. */
   letGo(): void {
     this.#choose(false);
@@ -344,7 +433,10 @@ export class TracingPaper {
     }, WHEEL_REST);
   }
 
-  /** The tracing paper's size on the sheet: the largest till the crop's picture is read. */
+  /**
+   * The tracing paper's size on the sheet: the picture's, and under it its options', if any; the
+   * largest till the crop's picture is read.
+   */
   get size(): Size {
     return this.#size;
   }
@@ -369,7 +461,9 @@ export class TracingPaper {
   show(blob: Blob | undefined, sized: () => void): void {
     if (blob === this.#blob) return;
     this.#blob = blob;
-    this.#size = LARGEST;
+    this.#sized = sized;
+    this.#picture = LARGEST;
+    this.#resize();
     this.#ready = false;
     this.#release();
     if (blob === undefined) {
@@ -379,7 +473,8 @@ export class TracingPaper {
     if (this.#connected) this.#address();
     this.#read = readOf(blob).then((read) => {
       if (this.#blob === blob) {
-        this.#size = read.size;
+        this.#picture = read.size;
+        this.#resize();
         this.#ready = true;
         sized();
       }
@@ -397,6 +492,8 @@ export class TracingPaper {
     write(this.tip, "lang", lang);
     for (const part of [this.bar, this.sign]) write(part, "lang", lang);
     write(this.bar, "aria-label", labels.scaleButtons);
+    write(this.choices, "aria-label", labels.options);
+    write(this.choices, "lang", lang);
     for (const [button, words] of [
       [this.#smaller, labels.smaller],
       [this.#larger, labels.larger],
@@ -434,6 +531,8 @@ export class TracingPaper {
     write(this.layer, "display", shown ? null : "none");
     if (this.grip.hidden === shown) this.grip.hidden = !shown;
     for (const part of [this.cover, this.sign]) if (part.hidden === shown) part.hidden = !shown;
+    const offered = shown && this.#options.length > 0;
+    if (this.choices.hidden === offered) this.choices.hidden = !offered;
     const chosen = shown && this.#chosen;
     for (const part of [this.frame, this.bar]) if (part.hidden === chosen) part.hidden = !chosen;
     if (!shown) {
@@ -443,11 +542,16 @@ export class TracingPaper {
     const [x, y] = this.#at;
     const width = this.#size.width * scale;
     const height = this.#size.height * scale;
-    for (const shape of [this.#image, this.#edge]) {
+    // The picture above, and the edge round it and the options under it.
+    const pictured = this.#picture.height * scale;
+    for (const [shape, tall] of [
+      [this.#image, pictured],
+      [this.#edge, height],
+    ] as const) {
       write(shape, "x", String(x));
       write(shape, "y", String(y));
       write(shape, "width", String(width));
-      write(shape, "height", String(height));
+      write(shape, "height", String(tall));
     }
     const { k } = view;
     const box = {
@@ -456,15 +560,19 @@ export class TracingPaper {
       width: width * k,
       height: height * k,
     };
+    if (offered) this.#placeChoices(box.left, box.top + pictured * k, k * scale);
     const left = box.left + box.width / 2 - GRIP.width / 2;
     const top = box.top - GRIP.over;
     this.grip.style.transform = `translate(${left}px, ${top}px)`;
     this.tip.style.setProperty("--tip-x", `${left + GRIP.width + 8}px`);
     this.tip.style.setProperty("--tip-y", `${top + GRIP.height / 2}px`);
-    for (const part of [this.cover, this.frame]) {
+    for (const [part, tall] of [
+      [this.cover, pictured * k],
+      [this.frame, box.height],
+    ] as const) {
       part.style.transform = `translate(${box.left}px, ${box.top}px)`;
       part.style.width = `${box.width}px`;
-      part.style.height = `${box.height}px`;
+      part.style.height = `${tall}px`;
     }
     this.sign.style.transform = `translate(${box.left}px, ${box.top - SIGN.over}px)`;
     // Under the paper, but kept within the stage: a paper as tall as the window keeps its bar.
@@ -473,7 +581,7 @@ export class TracingPaper {
     this.bar.style.setProperty("--bar-y", `${Math.max(BAR.margin, under)}px`);
     // The paper's corners round with its scale, as the mockup's: 6 px at its own size, 12 at most.
     this.frame.style.setProperty("--round", `${Math.round(6 * Math.min(scale, 2))}px`);
-    this.#box = { width: box.width, height: box.height };
+    this.#box = { width: box.width, height: pictured * k };
     if (this.#shows === "text") this.#drawText();
     this.#showTip();
   }
@@ -500,6 +608,65 @@ export class TracingPaper {
       this.#moves.moved();
     }
     this.#showTip();
+  }
+
+  /** The paper's size: its picture's, and its options' under it, in their letters' size. */
+  #resize(): void {
+    const { width, height } = this.#picture;
+    this.#size =
+      this.#band === 0
+        ? this.#picture
+        : Object.freeze({ width, height: height + this.#band * fontOf(width) });
+  }
+
+  /**
+   * The options as the browser laid them out at the paper's own size: how far they reach, in their
+   * letters' size. A change of it changes the paper's size, which `sized` hears.
+   */
+  #measure(entries: readonly ResizeObserverEntry[]): void {
+    const { width } = this.#picture;
+    const height = entries.at(-1)?.borderBoxSize[0]?.blockSize ?? 0;
+    // Out of sight, or not yet laid out at this picture's width: it keeps what it reached last.
+    if (this.choices.hidden || this.#across !== width || !(height > 0)) return;
+    const band = height / fontOf(width);
+    if (Math.abs(band - this.#band) < 1e-3) return;
+    this.#band = band;
+    this.#resize();
+    if (this.#ready) this.#sized();
+  }
+
+  /**
+   * The options at their place on the stage, under the picture's `left` and `top`: laid out a CSS
+   * pixel a unit of the paper's own size, and scaled to the screen by `by`, its pixels a unit.
+   */
+  #placeChoices(left: number, top: number, by: number): void {
+    const { width } = this.#picture;
+    if (this.#across !== width) {
+      this.#across = width;
+      this.choices.style.width = `${width}px`;
+      this.choices.style.fontSize = `${fontOf(width)}px`;
+    }
+    this.choices.style.transform = `translate(${left}px, ${top}px) scale(${by})`;
+  }
+
+  /** The arrow keys, Home and End move the focus among the options, choosing none. */
+  #arrow(event: KeyboardEvent): void {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const buttons = [...this.choices.children] as HTMLElement[];
+    const at = buttons.indexOf(event.target as HTMLElement);
+    if (at < 0) return;
+    const to = arrowedTo(event.key, buttons.length, at, "both");
+    if (to === undefined) return;
+    event.preventDefault();
+    buttons[to]?.focus();
+  }
+
+  /** The one option Tab comes to: the last focused, or the one chosen. */
+  #stopAt(option: number): void {
+    const buttons = this.choices.children;
+    for (let n = 0; n < buttons.length; n++) {
+      (buttons[n] as HTMLElement).tabIndex = n === option ? 0 : -1;
+    }
   }
 
   #address(): void {
@@ -791,6 +958,11 @@ export class TracingPaper {
     if (wanted) document.addEventListener("keydown", this.#escape, true);
     else document.removeEventListener("keydown", this.#escape, true);
   }
+}
+
+/** The size of the options' letters on a paper `width` units wide, in its units. */
+function fontOf(width: number): number {
+  return (width * OPTIONS.font) / OPTIONS.across;
 }
 
 /**
