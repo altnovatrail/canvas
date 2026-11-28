@@ -617,13 +617,10 @@ export class Tools {
     const shown = this.#shown();
     const at = shown.indexOf(event.target as HTMLButtonElement);
     if (at < 0) return;
-    let next: HTMLButtonElement | undefined;
-    if (event.key === "ArrowDown") next = shown[(at + 1) % shown.length];
-    else if (event.key === "ArrowUp") next = shown[(at - 1 + shown.length) % shown.length];
-    else if (event.key === "Home") next = shown[0];
-    else if (event.key === "End") next = shown.at(-1);
-    else return;
+    const to = arrowedTo(event.key, shown.length, at, "vertical");
+    if (to === undefined) return;
     event.preventDefault();
+    const next = shown[to];
     if (next === undefined) return;
     next.focus();
     bringIn(this.element, next);
@@ -698,10 +695,36 @@ function separator(): HTMLDivElement {
 
 /** A button of a tool: a radio button of the group, a button still, which the arrows leave alone. */
 function radioButton(value: Value): HTMLButtonElement {
-  const button = plainButton(value);
+  return asRadio(plainButton(value));
+}
+
+/**
+ * A button as a radio button of its group, not chosen: a button still, which Enter and Space press,
+ * and which the arrow keys only move the focus from, choosing nothing.
+ */
+export function asRadio(button: HTMLButtonElement): HTMLButtonElement {
   button.setAttribute("role", "radio");
   button.setAttribute("aria-checked", "false");
   return button;
+}
+
+/**
+ * Where a key takes the focus among `count` buttons from the one at `at`, round: the next by
+ * ArrowDown, and across `"both"` axes by ArrowRight too, the one before by ArrowUp, and across both
+ * by ArrowLeft, the first by Home and the last by End; `undefined` for any other key.
+ */
+export function arrowedTo(
+  key: string,
+  count: number,
+  at: number,
+  axes: "vertical" | "both",
+): number | undefined {
+  const across = axes === "both";
+  if (key === "ArrowDown" || (across && key === "ArrowRight")) return (at + 1) % count;
+  if (key === "ArrowUp" || (across && key === "ArrowLeft")) return (at - 1 + count) % count;
+  if (key === "Home") return 0;
+  if (key === "End") return count - 1;
+  return undefined;
 }
 
 /**

@@ -160,12 +160,14 @@ import {
 } from "../core/task.js";
 import {
   boxOnSheet,
+  chosenOf,
   isPaperGrid,
   keptOn,
   layOver,
   nextGrid,
   onSheet,
   onTracing,
+  optionsOf,
   PAPER_GRIDS,
   readingOf,
   rulingsOf,
@@ -234,6 +236,8 @@ export type {
   HistoryChange,
   HistoryChangeEvent,
   Media,
+  OptionTap,
+  OptionTapEvent,
   PaintStats,
   PaperGrid,
   PaperTask,
@@ -292,6 +296,8 @@ const DEMO_CHANGE = "demochange";
 /** The event the element sends when the learner moves the tracing paper, or hides or shows it. */
 const TRACING_CHANGE = "tracingchange";
 const TRACING_READ = "tracingread";
+/** The event the element sends when the learner presses an option on the tracing paper. */
+const OPTION_TAP = "optiontap";
 /** The event the element sends when the learner turns a task from paper's grid with its button. */
 const GRID_CHANGE = "gridchange";
 /** The event the element sends when the learner changes a setting of the pen or the eraser. */
@@ -669,6 +675,34 @@ canvas {
   flex-direction: row; gap: 2px; pointer-events: auto; overflow: visible;
 }
 .tracing-scale .line { width: 1px; height: 24px; margin: 0 4px; }
+/* A task of a module's options under its picture, as the mockup's: its numbers on a paper 272 px
+   wide, its letters 12.5 high, in their size — 4 above, pills 28 high, 10 within at each side and 6
+   apart, 8 from the paper's sides and 12 below. The element sets the letters' size and the width,
+   the paper's own, and scales them to the screen. A long option wraps within its pill. */
+.stage > .tracing-choices {
+  inset: 0 auto auto 0; height: auto; box-sizing: border-box; transform-origin: 0 0;
+  display: flex; flex-wrap: wrap; align-content: flex-start; gap: 0.48em;
+  padding: 0.32em 0.64em 0.96em; direction: ltr;
+}
+.stage > .tracing-choices[hidden] { display: none; }
+.tracing-choices button {
+  box-sizing: border-box; max-width: 100%; margin: 0; padding: 0; border: none;
+  border-radius: 1.12em; font: inherit; font-weight: 500; line-height: 1.2; color: #1d1d1f;
+  background: #fff; box-shadow: inset 0 0 0 1px rgba(60, 60, 67, 0.3); cursor: pointer;
+  pointer-events: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.tracing-choices button > span {
+  box-sizing: border-box; min-height: 2.24em; padding: 0.2em 0.8em; border-radius: inherit;
+  display: flex; align-items: center; justify-content: center; white-space: normal;
+  overflow-wrap: anywhere; text-align: center;
+}
+.tracing-choices button[aria-checked="true"] {
+  background: var(--novatrail-canvas-accent, ${ACCENT}); color: #fff; box-shadow: none;
+  font-weight: 600;
+}
+.tracing-choices button:focus-visible {
+  outline: 2px solid var(--novatrail-canvas-accent, ${ACCENT}); outline-offset: 2px;
+}
 /* Select's marks, dashed in the accent over a light wash of it, as thin at any zoom; and its bar of
    glass over them, which the element places. */
 .selection .shape, .selection .box {
@@ -767,6 +801,15 @@ canvas {
   .tools [aria-checked="true"] {
     background: Highlight; color: HighlightText; border-color: Highlight;
   }
+  .tracing-choices button {
+    background: Canvas; color: ButtonText; border: 1px solid ButtonBorder;
+  }
+  .tracing-choices button > span { background: ButtonFace; }
+  .tracing-choices button[aria-checked="true"] { border-color: Highlight; }
+  .tracing-choices button[aria-checked="true"] > span {
+    background: Highlight; color: HighlightText;
+  }
+  .tracing-choices button:focus-visible { outline-color: Highlight; }
   :is(.tools, .tracing-scale, .selection-bar) [aria-disabled="true"] { color: GrayText; border-color: GrayText; }
   .tip { background: Canvas; color: CanvasText; border: 1px solid CanvasText; }
   :is(.tools, .tracing-scale, .selection-bar) button:focus-visible, .viewport:focus-visible + .ring {
@@ -1275,12 +1318,23 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       this.dispatchEvent(
         new CustomEvent(TRACING_READ, { bubbles: true, composed: true, detail: null }),
       ),
+    tap: (option) =>
+      this.dispatchEvent(
+        new CustomEvent(OPTION_TAP, {
+          bubbles: true,
+          composed: true,
+          detail: Object.freeze({ option }),
+        }),
+      ),
   });
   /** The reading of the statement of the task from paper, as the consumer gave it. */
   #reading: TracingReading | undefined;
   /** The task from paper as the consumer gave it, and where its tracing paper lies. */
   #paper: PaperTask | undefined;
   #tracing: TracingState | undefined;
+  /** The options of a task of a module, as checked, and the one the consumer chose. */
+  #options: readonly string[] | undefined;
+  #chosen: number | undefined;
   /** The tracing paper's state the learner's move began at: the move tells only if it changed it. */
   #moveFrom: TracingState | undefined;
   /** The layer the stroke under way is written on, and the erasing under way erases. */
@@ -1552,6 +1606,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       this.#tracingPaper.grip,
       this.#tracingPaper.tip,
       this.#tracingPaper.bar,
+      this.#tracingPaper.choices,
       this.#selection.grips,
       this.#selection.bar,
     );
@@ -1644,6 +1699,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#adopt("demoState");
     this.#adopt("tracing");
     this.#adopt("grid");
+    this.#adopt("chosen");
     this.#adopt("manifest");
     this.#adopt("media");
     // The history before the marks: they hold on to its strokes.
@@ -1808,7 +1864,10 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * element; one of the same crop changes nothing. `undefined` takes it off, but not while the
    * history has strokes on the tracing paper, a TypeError. Either drops a stroke or an erasing
    * under way on the tracing paper, as a new history drops the one under the pen. The crop's
-   * picture is read as it comes; till then the paper has its largest size.
+   * picture is read as it comes; till then the paper has its largest size. A task of a module, its
+   * `source` "module", may have `options`: buttons on the paper under its picture, none chosen as
+   * they come (`chosen`). Options on another task, an empty list or a text of white space alone
+   * are a TypeError.
    */
   get paper(): PaperTask | undefined {
     return this.#paper;
@@ -1827,6 +1886,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       this.#tracing = undefined;
       this.#reading = undefined;
       this.#tracingPaper.reading = undefined;
+      this.#offer(undefined);
       this.#tracingPaper.show(undefined, () => {});
       this.#whole = false;
       this.#present(NO_TASK);
@@ -1853,12 +1913,17 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     if (source !== "photo" && source !== "module") {
       throw new TypeError(`paper.source: "photo" or "module", not ${String(source)}`);
     }
+    const options = optionsOf(paper.options, source);
     this.#tracingPaper.source = source;
-    // A consumer that renders the same crop anew in a new object keeps the paper where it lies.
+    // A consumer that renders the same crop anew in a new object keeps the paper where it lies, and
+    // the choice among the same options.
     if (this.#paper?.statement === statement) {
       this.#paper = paper;
+      this.#offer(options);
+      this.#request();
       return;
     }
+    this.#offer(undefined);
     this.#leaveTracing(false);
     // A new task from paper comes on dots; another crop in its place keeps the learner's grid.
     if (this.#paper === undefined) this.#paperGrid = PAPER_GRIDS[0] as PaperGrid;
@@ -1867,9 +1932,39 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
     this.#reading = undefined;
     this.#tracingPaper.reading = undefined;
     this.#tracingPaper.show(statement, () => this.#sized());
+    this.#offer(options);
     this.#whole = true;
     this.#present(PAPER_TEMPLATE);
     this.#request();
+  }
+
+  /**
+   * The option of the task from paper's `options` that the element shows as chosen, by its index:
+   * `undefined` as a task from paper comes, or other options, and none chosen. The consumer holds
+   * the choice: it sets it on an `optiontap`, and gives it back to open the task as it was, after
+   * the paper; the element keeps none of its own, and setting it sends no event. An index without
+   * options, or not a whole number within them, is a TypeError.
+   */
+  get chosen(): number | undefined {
+    return this.#chosen;
+  }
+
+  set chosen(option: number | undefined) {
+    this.#chosen = chosenOf(option, this.#options?.length ?? 0);
+    this.#tracingPaper.chosen = this.#chosen;
+  }
+
+  /**
+   * The options on the tracing paper, or none: other texts than those shown drop the choice, and the
+   * same keep it.
+   */
+  #offer(options: readonly string[] | undefined): void {
+    const shown = this.#options ?? [];
+    if (sameItems(options ?? [], shown)) return;
+    this.#options = options;
+    this.#chosen = undefined;
+    this.#tracingPaper.options = options;
+    this.#tracingPaper.chosen = undefined;
   }
 
   /**
@@ -2290,9 +2385,11 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
    * shows, its PNG, and the context of the submission — the crop's numbers, the groups and their
    * digest. On a workbook it is the crop of each filled box, by its strokes alone, with
    * its item and its slot, and the context — the table «box → stroke IDs» and its digest; the
-   * draft goes nowhere. The consumer keeps the context, sends only the PNGs and their
-   * places to be checked, and gives the context back with the tutor's marks. It is the
-   * sheet as it is when this is called: a stroke under way is not on it yet, while the strokes
+   * draft goes nowhere. On a task from paper it is the crop with the paper's picture, the task's
+   * crop and the context; on a task of a module, beside them, the crop of the strokes alone that
+   * the screen shows, made as a sheet's is, for a check by the module's key. The consumer keeps
+   * the context, sends only the PNGs and their places to be checked, and gives the context back
+   * with the tutor's marks. It is the sheet as it is when this is called: a stroke under way is not on it yet, while the strokes
    * under an eraser not yet lifted still are, as `filled` has them. A sheet without strokes, and a
    * workbook with no box filled, have no work to check, and the promise gives null (H3); so has a
    * worked example, whose sheet the learner does not write on.
@@ -2320,10 +2417,19 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
         digit,
       );
       if (work === null) return null;
+      // A task of a module's strokes alone, as the screen shows them, for a check by its key.
+      const own =
+        paper.source === "module"
+          ? workForCheck(
+              tracing.hidden ? strokes.filter(({ id }) => !onTracing(id)) : strokes,
+              digit,
+            )
+          : null;
       return Object.freeze({
         statement: paper.statement,
         png: blobOf(work.png),
         submission: work.submission,
+        ...(own === null ? {} : { strokes: blobOf(own.png) }),
       });
     }
     if (isWorkbook(this.#shownTemplate)) {
@@ -3262,6 +3368,7 @@ export class NovatrailCanvas extends HTMLElement implements CanvasElement {
       | "demoState"
       | "tracing"
       | "grid"
+      | "chosen"
       | "manifest"
       | "media"
       | "history"

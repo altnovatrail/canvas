@@ -1,4 +1,4 @@
-import type { PaperGrid, TracingReading, TracingState } from "@altnovatrail/spec/canvas";
+import type { PaperGrid, PaperTask, TracingReading, TracingState } from "@altnovatrail/spec/canvas";
 import { record, shown } from "./fields.js";
 import type { Box } from "./geometry.js";
 import { tenths } from "./geometry.js";
@@ -192,6 +192,47 @@ export function readingOf(value: unknown): TracingReading {
     );
   }
   return Object.freeze({ state, statements: Object.freeze([...(statements as string[])]) });
+}
+
+/**
+ * The options of a task from paper a consumer gives, checked and frozen: none, or, on a task of a
+ * module alone, its `source` "module", a list of one text at least, none of them empty or of white
+ * space alone. Anything else is a TypeError.
+ */
+export function optionsOf(
+  value: unknown,
+  source: NonNullable<PaperTask["source"]>,
+): readonly string[] | undefined {
+  if (value === undefined) return undefined;
+  if (source !== "module") {
+    throw new TypeError(`paper.options: a task of a module's alone, not one of a ${source}'s`);
+  }
+  if (
+    !Array.isArray(value) ||
+    value.length === 0 ||
+    !value.every((each) => typeof each === "string" && each.trim() !== "")
+  ) {
+    throw new TypeError(
+      `paper.options: one text at least, none empty or of white space alone, not ${shown(value)}`,
+    );
+  }
+  return Object.freeze([...(value as string[])]);
+}
+
+/**
+ * The option chosen that a consumer gives, checked against `count` options: none, or the index of
+ * one of them, a whole number from 0 below `count`. Anything else is a TypeError.
+ */
+export function chosenOf(value: unknown, count: number): number | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value >= count) {
+    throw new TypeError(
+      count === 0
+        ? `chosen: the task from paper has no options, and ${shown(value)} chooses none of them`
+        : `chosen: the index of one of ${count} options, a whole number from 0, not ${shown(value)}`,
+    );
+  }
+  return value;
 }
 
 /** Whether two tracing states say the same. */

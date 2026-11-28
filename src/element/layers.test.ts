@@ -69,12 +69,12 @@ function rgbaAt(canvas: HTMLCanvasElement, view: View, x: number, y: number): nu
 test("the sheet is a stack of layers in the order spec's glossary gives them, and of them the canvas alone takes pointer events, as the element does, and so do the buttons of the bar, while the rail it stands in covers nothing of the sheet", async () => {
   const { element, root, canvas, stage, viewport } = await sheet(400);
   // Over the tracing paper, under the ink, its cover of the statements read; over the layers its
-  // frame, its sign, its grip and tooltip and its bar of scale: they and the paper's layer show on
-  // a task from paper alone.
+  // frame, its sign, its grip and tooltip, its bar of scale and a task of a module's options: they
+  // and the paper's layer show on a task from paper alone.
   // The circle of a hovering pen is none either, nor are Select's grips and bar. Select's marks are
   // a layer over them all.
   const parts =
-    ".tracing-cover, .tracing-frame, .tracing-sign, .grip, .tip, .tracing-scale, .hover, .selection-grips, .selection-bar";
+    ".tracing-cover, .tracing-frame, .tracing-sign, .grip, .tip, .tracing-scale, .tracing-choices, .hover, .selection-grips, .selection-bar";
   const layers = [...stage.children].filter((each) => !each.matches(parts));
   expect(layers.map((layer) => layer.getAttribute("class") ?? layer.localName)).toEqual([
     "template",
@@ -98,6 +98,7 @@ test("the sheet is a stack of layers in the order spec's glossary gives them, an
     ["grip", true],
     ["tip grip-tip", true],
     ["tracing-scale", true],
+    ["tracing-choices", true],
     ["selection-grips", true],
     ["selection-bar", true],
   ]);
