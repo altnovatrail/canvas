@@ -32,6 +32,7 @@ import {
   tenthsOf,
   toTracing,
   tracingStateOf,
+  verdictsOf,
   whollyOff,
 } from "./tracing.js";
 import { Work } from "./work.js";
@@ -73,7 +74,7 @@ describe("the grid of a task from paper", () => {
 });
 
 describe("the options of a task of a module", () => {
-  test("are a task of a module's alone, one text at least, none blank, and come frozen", () => {
+  test("are a task of a module's alone, two texts at least, none blank, and come frozen", () => {
     const given = ["7", "eight", " 9 "];
     const options = optionsOf(given, "module");
     expect(options).toEqual(given);
@@ -82,7 +83,7 @@ describe("the options of a task of a module", () => {
     expect(optionsOf(undefined, "module")).toBeUndefined();
     expect(optionsOf(undefined, "photo")).toBeUndefined();
     expect(() => optionsOf(["7"], "photo")).toThrow(/a task of a module's alone/);
-    for (const value of [[], ["7", ""], ["7", " \n\u00a0"], [7], "7", null, { 0: "7" }]) {
+    for (const value of [[], ["7"], ["7", ""], ["7", " \n\u00a0"], [7], "7", null, { 0: "7" }]) {
       expect(() => optionsOf(value, "module"), JSON.stringify(value)).toThrow(TypeError);
     }
   });
@@ -95,6 +96,28 @@ describe("the options of a task of a module", () => {
       expect(() => chosenOf(value, 3), String(value)).toThrow(/the index of one of 3 options/);
     }
     expect(() => chosenOf(0, 0)).toThrow(/has no options/);
+  });
+
+  test("come to a verdict each, or none, a list of their length, frozen", () => {
+    const given = ["correct", null, "not_yet"];
+    const verdicts = verdictsOf(given, 3);
+    expect(verdicts).toEqual(given);
+    expect(verdicts).not.toBe(given);
+    expect(Object.isFrozen(verdicts)).toBe(true);
+    expect(verdictsOf([], 0)).toEqual([]);
+    for (const value of [
+      [],
+      [null, null],
+      [null, null, null, null],
+      ["right", null, null],
+      [undefined, null, null],
+      [false, null, null],
+      "correct",
+      null,
+      undefined,
+    ]) {
+      expect(() => verdictsOf(value, 3), JSON.stringify(value)).toThrow(/optionVerdicts/);
+    }
   });
 });
 

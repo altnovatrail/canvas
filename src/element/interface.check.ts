@@ -32,6 +32,7 @@ import type {
   NovatrailCanvas,
   OptionTap,
   OptionTapEvent,
+  OptionVerdict,
   PaintStats,
   PaperGrid,
   PaperSubmission,
@@ -78,6 +79,7 @@ export type Contract = All<
     Same<Media, spec.Media>,
     Same<OptionTap, spec.OptionTap>,
     Same<OptionTapEvent, spec.OptionTapEvent>,
+    Same<OptionVerdict, spec.OptionVerdict>,
     Same<PaintStats, spec.PaintStats>,
     Same<PaperGrid, spec.PaperGrid>,
     Same<PaperSubmission, spec.PaperSubmission>,
@@ -216,12 +218,15 @@ document.addEventListener("gridchange", (event) => {
 });
 /**
  * A task of a module's options on the tracing paper: a tap tells an optiontap, and the consumer,
- * which holds the choice, sets it; its work holds the strokes alone beside the crop.
+ * which holds the choice and what each option came to, sets them; its work holds the strokes alone
+ * beside the crop.
  */
 sheet.paper = { statement, source: "module", options: ["7", "8", "9"] };
 sheet.chosen = 1;
 sheet.chosen = undefined;
 export const picked: number | undefined = sheet.chosen;
+sheet.optionVerdicts = ["not_yet", null, "correct"];
+export const judged: readonly (OptionVerdict | null)[] = sheet.optionVerdicts;
 sheet.addEventListener("optiontap", (event: OptionTapEvent) => event.detail.option);
 document.addEventListener("optiontap", (event) => {
   const tap: OptionTap = event.detail;
@@ -363,6 +368,10 @@ document.addEventListener("optiontap", (event) => {
 });
 // @ts-expect-error An option is chosen by its index, not by its text.
 sheet.chosen = "8";
+// @ts-expect-error An option comes to "correct" or "not_yet", or to nothing yet, null.
+sheet.optionVerdicts = ["wrong", null, null];
+// @ts-expect-error The verdicts the consumer holds, not one to write in place.
+sheet.optionVerdicts[0] = "correct";
 // @ts-expect-error The options are texts.
 sheet.paper = { statement, source: "module", options: [7, 8] };
 // @ts-expect-error A grid of no name is no grid: a blank sheet is "blank".

@@ -219,9 +219,18 @@ async function fromPaper(made: HTMLElement[]) {
   return element;
 }
 
-/** A task of a module on a new element, its options under its picture, the second chosen, and a
- * stroke on the paper over its picture. */
-async function fromModule(made: HTMLElement[]) {
+/**
+ * A task of a module on a new element, its options under its picture, shown by their button
+ * unless `shut`, the second chosen and judged by `verdicts` if any, and a stroke on the paper
+ * over its picture.
+ */
+async function fromModule(
+  made: HTMLElement[],
+  {
+    shut = false,
+    verdicts,
+  }: { shut?: boolean; verdicts?: readonly ("correct" | "not_yet" | null)[] } = {},
+) {
   const { element, root, canvas, view } = await placed(made, 400);
   element.paper = {
     statement: await paperCrop(),
@@ -231,7 +240,9 @@ async function fromModule(made: HTMLElement[]) {
   await expect
     .poll(() => root.querySelector<HTMLElement>(".grip")?.hidden, { timeout: GRIP_MS })
     .toBe(false);
+  if (!shut) root.querySelector<HTMLButtonElement>(".tracing-choices .reveal")?.click();
   element.chosen = 1;
+  if (verdicts !== undefined) element.optionVerdicts = verdicts;
   await settle();
   level(canvas, view(), 230, 700, 900);
   await settle();
@@ -307,6 +318,16 @@ export const KINDS: readonly Kind[] = [
   {
     name: "a task of a module with its options, one chosen, and a stroke on its paper",
     put: fromModule,
+    incomplete: [],
+  },
+  {
+    name: "a task of a module with its options behind their button",
+    put: (made) => fromModule(made, { shut: true }),
+    incomplete: [],
+  },
+  {
+    name: "a task of a module with its options judged, one not yet, then one correct",
+    put: (made) => fromModule(made, { verdicts: ["not_yet", "correct", null, null, null] }),
     incomplete: [],
   },
   {

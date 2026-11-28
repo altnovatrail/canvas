@@ -81,6 +81,12 @@ export interface Labels {
   readonly moduleShown: string;
   /** The group of a task of a module's options on the tracing paper. */
   readonly options: string;
+  /** The button that shows a task of a module's options in its place. */
+  readonly showOptions: string;
+  /** An option the consumer judged correct, by its text: {option}. */
+  readonly optionCorrect: string;
+  /** An option the consumer judged not yet the answer, by its text: {option}. */
+  readonly optionNotYet: string;
   /** A box of a workbook's line, alone in it. */
   readonly box: string;
   /** A box among several of its line, by its slot: {slot}. */
@@ -186,6 +192,9 @@ const ENGLISH: Labels = Object.freeze({
   readingShown: "Recognised by AI",
   moduleShown: "Task of the module",
   options: "Answers",
+  showOptions: "Answer options",
+  optionCorrect: "{option}: correct",
+  optionNotYet: "{option}: not yet",
   box: "Box",
   boxAt: "Box {slot}",
   boxIn: "Box {line}.{slot}",
@@ -283,6 +292,9 @@ const LABELS: ReadonlyMap<string, Labels> = new Map([
       readingShown: "Распознано ИИ",
       moduleShown: "Задача модуля",
       options: "Варианты ответа",
+      showOptions: "Варианты ответа",
+      optionCorrect: "{option}: верно",
+      optionNotYet: "{option}: пока нет",
       box: "Окошко",
       boxAt: "Окошко {slot}",
       boxIn: "Окошко {line}.{slot}",

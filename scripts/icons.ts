@@ -41,7 +41,8 @@ export interface Value {
  * which its button shows. The task from paper's button atop the tools fills its icon while
  * the tracing paper is shown. The tracing paper's bar and sign have theirs: Smaller, Larger,
  * Fit, Recognise and Original, which the photo's sign shows too, and the book the sign of a task
- * of a module shows. Select has two, its button showing
+ * of a module shows; a task of a module's options have the list on the button that shows them and
+ * the tick of the one correct. Select has two, its button showing
  * the shape it draws, as do the shapes of its popover, and its bar has Copy and Delete.
  */
 export const TABLE: Readonly<Record<string, Value>> = {
@@ -69,6 +70,8 @@ export const TABLE: Readonly<Record<string, Value>> = {
   recognise: { base: "auto-awesome", filled: false, mirrored: false },
   original: { base: "image", filled: false, mirrored: false },
   module: { base: "menu-book", filled: false, mirrored: false },
+  options: { base: "format-list-bulleted", filled: false, mirrored: false },
+  correct: { base: "check", filled: false, mirrored: false },
   copy: { base: "content-copy", filled: false, mirrored: false },
   remove: { base: "delete", filled: false, mirrored: false },
 };
